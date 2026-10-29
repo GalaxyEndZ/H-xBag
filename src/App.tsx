@@ -95,10 +95,12 @@ function App() {
   const [campaignName, setCampaignName] = useState('')
   const [campaignDescription, setCampaignDescription] = useState('')
   const [systemName, setSystemName] = useState('')
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
 
   const [characterName, setCharacterName] = useState('')
   const [archetype, setArchetype] = useState('')
   const [characterLevel, setCharacterLevel] = useState('1')
+  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null)
 
   const [newItemName, setNewItemName] = useState('')
   const [newItemDescription, setNewItemDescription] = useState('')
@@ -402,84 +404,105 @@ function App() {
     }
   }
 
-  async function createCampaign(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
 
-    if (!campaignName.trim()) return
+async function createCampaign(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault()
 
-    setLoading(true)
-    setError('')
-    setNotice('')
+  if (!campaignName.trim()) return
 
-    const { data, error: createError } = await supabase.rpc(
-      'create_campaign',
-      {
-        p_name: campaignName.trim(),
-        p_description: campaignDescription.trim() || null,
-        p_system_name: systemName.trim() || null,
-      },
-    )
+  setLoading(true)
+  setError('')
+  setNotice('')
 
-    if (createError) {
-      setError(`Não foi possível criar a campanha: ${createError.message}`)
-      setLoading(false)
-      return
-    }
+  const { data, error: createError } = await supabase.rpc(
+    'create_campaign',
+    {
+      p_name: campaignName.trim(),
+      p_description: campaignDescription.trim() || null,
+      p_system_name: systemName.trim() || null,
+    },
+  )
 
-    const newCampaignId = data as string
-
-    const { data: membership, error: membershipError } = await supabase
-      .from('campaign_members')
-      .select('campaign_id, role')
-      .eq('campaign_id', newCampaignId)
-      .eq('user_id', session!.user.id)
-      .maybeSingle()
-
-    if (membershipError || !membership) {
-      setError(
-        'A campanha foi criada, mas não consegui confirmar sua participação. Atualize a página.',
-      )
-      setLoading(false)
-      return
-    }
-
-    const { data: campaign, error: fetchError } = await supabase
-      .from('campaigns')
-      .select('id, name, description, system_name, created_by')
-      .eq('id', newCampaignId)
-      .single()
-
-    if (fetchError || !campaign) {
-      setError('A campanha foi criada. Atualize a página para carregá-la.')
-      setLoading(false)
-      return
-    }
-
-    setCampaigns((current) => [
-      ...current,
-      { ...campaign, role: membership.role },
-    ])
-    setSelectedCampaignId(newCampaignId)
-    setCharacters([])
-    setItems([])
-    setSelectedCharacterId('')
-    setCampaignName('')
-    setCampaignDescription('')
-    setSystemName('')
-    setShowCampaignForm(false)
-    setNotice('Campanha criada e salva!')
+  if (createError) {
+    setError(`Não foi possível criar a campanha: ${createError.message}`)
     setLoading(false)
+    return
   }
+
+  if (!data) {
+    setError('Não foi possível criar a campanha: nenhum dado retornado.')
+    setLoading(false)
+    return
+  }
+
+  const newCampaignId = data as string
+
+  const { data: membership, error: membershipError } = await supabase
+    .from('campaign_members')
+    .select('campaign_id, role')
+    .eq('campaign_id', newCampaignId)
+    .eq('user_id', session!.user.id)
+    .maybeSingle()
+
+  if (membershipError || !membership) {
+    setError(
+      'A campanha foi criada, mas não consegui confirmar sua participação. Atualize a página.',
+    )
+    setLoading(false)
+    return
+  }
+
+  const { data: campaign, error: fetchError } = await supabase
+    .from('campaigns')
+    .select('id, name, description, system_name, created_by')
+    .eq('id', newCampaignId)
+    .single()
+
+  if (fetchError || !campaign) {
+    setError('A campanha foi criada. Atualize a página para carregá-la.')
+    setLoading(false)
+    return
+  }
+
+  setCampaigns((current) => [
+    ...current,
+    { ...campaign, role: membership.role },
+  ])
+  setSelectedCampaignId(newCampaignId)
+  setCharacters([])
+  setItems([])
+  setSelectedCharacterId('')
+  setCampaignName('')
+  setCampaignDescription('')
+  setSystemName('')
+  setShowCampaignForm(false)
+  setNotice('Campanha criada e salva!')
+  setLoading(false)
+}
+
 
   async function createCharacter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!selectedCampaignId || !characterName.trim()) return
+    if (!session?.user.id) {
+      setError('Você precisa estar conectado para criar um personagem.')
+      return
+    }
+
+    if (!selectedCampaignId) {
+      setError('Selecione uma campanha antes de criar um personagem.')
+      return
+    }
+
+    if (!characterName.trim()) {
+      setError('Informe o nome do personagem.')
+      return
+    }
 
     const level = Number(characterLevel)
 
-    if (!Number.isInteger(level) || level < 1 || level > 999) {
-      setError('O nível deve ser um número inteiro entre 1 e 999.')
+    if (!Number.isInteger(level) || level < 1) {
+      setError('O nível precisa ser um número inteiro maior que zero.')
       return
     }
 
@@ -491,11 +514,10 @@ function App() {
       .from('characters')
       .insert({
         campaign_id: selectedCampaignId,
-        user_id: session!.user.id,
+        user_id: session.user.id,
         name: characterName.trim(),
         archetype: archetype.trim() || null,
         level,
-        strength: 0,
       })
       .select(
         'id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at',
@@ -513,10 +535,191 @@ function App() {
     setCharacterName('')
     setArchetype('')
     setCharacterLevel('1')
+    setEditingCharacter(null)
     setShowCharacterForm(false)
     setNotice('Personagem criado e salvo!')
     setLoading(false)
   }
+
+  async function updateCampaign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!editingCampaign || !campaignName.trim()) return
+
+    setLoading(true)
+    setError('')
+    setNotice('')
+
+    const { data, error: updateError } = await supabase
+      .from('campaigns')
+      .update({
+        name: campaignName.trim(),
+        description: campaignDescription.trim() || null,
+        system_name: systemName.trim() || null,
+      })
+      .eq('id', editingCampaign.id)
+      .select('id, name, description, system_name, created_by')
+      .maybeSingle()
+
+    if (updateError) {
+      setError(`Não foi possível atualizar a campanha: ${updateError.message}`)
+      setLoading(false)
+      return
+    }
+
+    if (!data) {
+      setError(
+        'A campanha não foi atualizada. Verifique as permissões no Supabase.',
+      )
+      setLoading(false)
+      return
+    }
+
+    setCampaigns((current) =>
+      current.map((campaign) =>
+        campaign.id === editingCampaign.id
+          ? { ...data, role: campaign.role }
+          : campaign,
+      ),
+    )
+
+    setCampaignName('')
+    setCampaignDescription('')
+    setSystemName('')
+    setEditingCampaign(null)
+    setShowCampaignForm(false)
+    setNotice('Campanha atualizada com sucesso!')
+    setLoading(false)
+  }
+
+
+  async function deleteCampaign(campaign: Campaign) {
+    if (campaign.role !== 'master') {
+      setError('Somente um mestre pode excluir esta campanha.')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `ATENÇÃO: deseja excluir permanentemente a campanha "${campaign.name}"?\n\n` +
+      'Personagens, inventários, membros e permissões relacionados também poderão ser excluídos. Esta ação não pode ser desfeita.',
+    )
+
+    if (!confirmed) return
+
+    setLoading(true)
+    setError('')
+    setNotice('')
+
+    const { error: deleteError } = await supabase.rpc(
+      'delete_campaign',
+      { p_campaign_id: campaign.id },
+    )
+
+    if (deleteError) {
+      setError(`Não foi possível excluir a campanha: ${deleteError.message}`)
+      setLoading(false)
+      return
+    }
+
+    setCampaigns((current) =>
+      current.filter((entry) => entry.id !== campaign.id),
+    )
+
+    if (selectedCampaignId === campaign.id) {
+      setSelectedCampaignId('')
+      setSelectedCharacterId('')
+      setCharacters([])
+      setItems([])
+      setCampaignMembers([])
+      setCharacterGrants([])
+      setShowCharacterForm(false)
+      setShowItemForm(false)
+      setShowCampaignForm(false)
+      setEditingCampaign(null)
+      resetItemForm()
+      setEmojiPickerItem(null)
+    }
+
+    setNotice(`Campanha "${campaign.name}" excluída com sucesso.`)
+    setLoading(false)
+  }
+
+
+  const startEditingCampaign = (campaign: Campaign) => {
+    setEditingCampaign(campaign)
+    setCampaignName(campaign.name)
+    setCampaignDescription(campaign.description ?? '')
+    setSystemName(campaign.system_name ?? '')
+    setError('')
+    setNotice('')
+    setShowCampaignForm(true)
+  }
+
+  const startEditingCharacter = (character: Character) => {
+    setEditingCharacter(character)
+    setSelectedCharacterId(character.id)
+    setCharacterName(character.name)
+    setArchetype(character.archetype ?? '')
+    setCharacterLevel(String(character.level))
+    setError('')
+    setNotice('')
+    setShowCharacterForm(true)
+  }
+
+  async function removeCharacter(character: Character) {
+    const confirmed = window.confirm(
+      `Tem certeza de que deseja excluir o personagem "${character.name}"? Os itens do inventário dele também podem ser afetados.`,
+    )
+
+    if (!confirmed) return
+
+    setError('')
+    setNotice('')
+
+    const { data, error: deleteError } = await supabase
+      .from('characters')
+      .delete()
+      .eq('id', character.id)
+      .eq('campaign_id', character.campaign_id)
+      .select('id')
+
+    if (deleteError) {
+      setError(
+        `Não foi possível excluir o personagem: ${deleteError.message}`,
+      )
+      return
+    }
+
+    if (!data?.length) {
+      setError(
+        'Nenhum personagem foi excluído. Verifique as permissões no Supabase.',
+      )
+      return
+    }
+
+    setCharacters((current) =>
+      current.filter((entry) => entry.id !== character.id),
+    )
+
+    if (selectedCharacterId === character.id) {
+      setSelectedCharacterId('')
+      setItems([])
+      setShowItemForm(false)
+      resetItemForm()
+      setEmojiPickerItem(null)
+    }
+
+    if (editingCharacter?.id === character.id) {
+      setEditingCharacter(null)
+      setCharacterName('')
+      setArchetype('')
+      setCharacterLevel('1')
+      setShowCharacterForm(false)
+    }
+
+    setNotice(`Personagem "${character.name}" excluído com sucesso.`)
+  }
+
 
   async function saveStrength() {
     if (!selectedCharacter) return
@@ -1247,11 +1450,18 @@ function App() {
           )}
 
           {showCampaignForm && (
-            <form className="add-form" onSubmit={createCampaign}>
+            <form
+              className="add-form"
+              onSubmit={editingCampaign ? updateCampaign : createCampaign}
+            >
               <div className="form-heading">
                 <div>
-                  <h3>Nova campanha</h3>
-                  <p>Você será registrado com o papel definido pelo banco.</p>
+                  <h3>{editingCampaign ? 'Editar campanha' : 'Nova campanha'}</h3>
+                  <p>
+                    {editingCampaign
+                      ? 'Altere os dados da campanha.'
+                      : 'Você será registrado com o papel definido pelo banco.'}
+                  </p>
                 </div>
                 <span>✧</span>
               </div>
@@ -1294,7 +1504,11 @@ function App() {
                 type="submit"
                 disabled={loading}
               >
-                {loading ? 'Criando...' : 'Criar campanha'}
+                {loading
+                  ? 'Salvando...'
+                  : editingCampaign
+                    ? 'Salvar alterações'
+                    : 'Criar campanha'}
               </button>
             </form>
           )}
@@ -1321,6 +1535,31 @@ function App() {
                 <div className="character-meta">
                   <span>{characters.length} personagem(ns)</span>
                 </div>
+
+
+                {isMaster && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => startEditingCampaign(selectedCampaign)}
+                      disabled={loading}
+                    >
+                      Editar campanha
+                    </button>
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => void deleteCampaign(selectedCampaign)}
+                      disabled={loading}
+                      style={{ borderColor: '#b84d5a', color: '#ff9aa5' }}
+                    >
+                      Excluir campanha
+                    </button>
+                  </div>
+                )}
+
               </div>
             </section>
           )}
@@ -1367,30 +1606,31 @@ function App() {
                             ? 'Pode administrar os membros da campanha.'
                             : 'Participante da campanha.'}
                         </p>
+
+
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            className="primary-button"
-                            disabled={memberActionLoading !== null || isLastMaster}
-                            onClick={() => void changeMemberRole(member)}
-                            title={isLastMaster ? 'A campanha precisa ter pelo menos um mestre.' : undefined}
-                          >
-                            {memberActionLoading === member.user_id
-                              ? 'Aguarde...'
-                              : member.role === 'master'
-                                ? 'Rebaixar a jogador'
-                                : 'Promover a mestre'}
-                          </button>
-                          <button
-                            type="button"
                             className="secondary-button"
-                            disabled={memberActionLoading !== null || isLastMaster}
-                            onClick={() => void removeCampaignMember(member)}
-                            title={isLastMaster ? 'O último mestre não pode ser removido.' : undefined}
+                            onClick={() => void changeMemberRole(member)}
+                            disabled={!!memberActionLoading || isLastMaster}
                           >
-                            Remover
+                            {member.role === 'master' ? 'Tornar jogador' : 'Promover a mestre'}
                           </button>
+
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() => void removeCampaignMember(member)}
+                              disabled={!!memberActionLoading || isLastMaster}
+                            >
+                              Remover membro
+                            </button>
+                          )}
                         </div>
+
+
                       </article>
                     )
                   })}
@@ -1421,7 +1661,24 @@ function App() {
 
                   <button
                     className="primary-button"
-                    onClick={() => setShowCharacterForm((value) => !value)}
+                    type="button"
+                    onClick={() => {
+                      if (showCharacterForm) {
+                        setShowCharacterForm(false)
+                        setEditingCharacter(null)
+                        setCharacterName('')
+                        setArchetype('')
+                        setCharacterLevel('1')
+                      } else {
+                        setEditingCharacter(null)
+                        setCharacterName('')
+                        setArchetype('')
+                        setCharacterLevel('1')
+                        setError('')
+                        setNotice('')
+                        setShowCharacterForm(true)
+                      }
+                    }}
                   >
                     {showCharacterForm ? 'Cancelar' : '+ Novo personagem'}
                   </button>
@@ -1431,8 +1688,12 @@ function App() {
                   <form className="add-form" onSubmit={createCharacter}>
                     <div className="form-heading">
                       <div>
-                        <h3>Novo personagem</h3>
-                        <p>Preencha os dados básicos do aventureiro.</p>
+                        <h3>{editingCharacter ? 'Editar personagem' : 'Novo personagem'}</h3>
+                        <p>
+                          {editingCharacter
+                            ? 'Altere os dados do personagem.'
+                            : 'Preencha os dados básicos do aventureiro.'}
+                        </p>
                       </div>
                       <span>♙</span>
                     </div>
@@ -1481,7 +1742,11 @@ function App() {
                       type="submit"
                       disabled={loading}
                     >
-                      {loading ? 'Salvando...' : 'Salvar personagem'}
+                      {loading
+                        ? 'Salvando...'
+                        : editingCharacter
+                          ? 'Salvar alterações'
+                          : 'Salvar personagem'}
                     </button>
                   </form>
                 )}
@@ -1519,17 +1784,48 @@ function App() {
                         <small style={{ display: 'block', color: '#c9bed8', margin: '8px 0' }}>
                           {character.visibility === 'campaign' ? '🌐 Toda a campanha' : character.visibility === 'selected' ? '👥 Jogadores selecionados' : '🔒 Privado'}
                         </small>
-                        <button
-                          className="primary-button"
-                          onClick={() => {
-                            setSelectedCharacterId(character.id)
-                            setNotice(`${character.name} selecionado.`)
-                          }}
-                        >
-                          {selectedCharacterId === character.id
-                            ? 'Personagem selecionado'
-                            : 'Selecionar personagem'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={() => {
+                              setSelectedCharacterId(character.id)
+                              setNotice(`${character.name} selecionado.`)
+                            }}
+                          >
+                            {selectedCharacterId === character.id
+                              ? 'Personagem selecionado'
+                              : 'Selecionar personagem'}
+                          </button>
+
+
+                          {(character.user_id === session.user.id || isMaster) && (
+                            <>
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => {
+                                  setError('')
+                                  setNotice('')
+                                  startEditingCharacter(character)
+                                }}
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                onClick={() => void removeCharacter(character)}
+                                disabled={loading}
+                                title="Excluir personagem"
+                              >
+                                Excluir
+                              </button>
+                            </>
+                          )}
+
+                        </div>
                       </article>
                     ))}
                   </div>
@@ -1591,7 +1887,7 @@ function App() {
                   </div>
 
                   {isMaster && (
-                    <div className="visibility-panel">
+                    <div style={{ minWidth: 220, padding: '12px', border: '1px solid #493568', borderRadius: 10, background: '#17131e' }}>
                       <label style={labelStyle} htmlFor="character-visibility">Visibilidade</label>
                       <select
                         id="character-visibility"
