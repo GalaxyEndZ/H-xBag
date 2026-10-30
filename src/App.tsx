@@ -36,6 +36,8 @@ type CharacterGrant = {
   user_id: string
 }
 
+type Season = { id: string; campaign_id: string; name: string; description: string | null; season_number: number; status: 'draft' | 'active' | 'completed' | 'archived' }
+type CharacterSheet = { id: string; character_id: string; season_id: string; sheet_data: Record<string, unknown> }
 type Item = {
   id: string
   character_id: string
@@ -75,7 +77,6 @@ function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
-  const [strengthDraft, setStrengthDraft] = useState('0')
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
@@ -87,6 +88,20 @@ function App() {
   const [visibilitySaving, setVisibilitySaving] = useState(false)
   const [items, setItems] = useState<Item[]>([])
   const [itemsLoading, setItemsLoading] = useState(false)
+  const [seasons, setSeasons] = useState<Season[]>([])
+  const [selectedSeasonId, setSelectedSeasonId] = useState('')
+  const [seasonNameDraft, setSeasonNameDraft] = useState('')
+  const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
+  const [newSeasonName, setNewSeasonName] = useState('')
+  const [newSeasonDescription, setNewSeasonDescription] = useState('')
+  const [copyPreviousSheet, setCopyPreviousSheet] = useState(true)
+  const [sheet, setSheet] = useState<CharacterSheet | null>(null)
+  const [sheetDraft, setSheetDraft] = useState('{}')
+  const [sheetLoading, setSheetLoading] = useState(false)
+  const [sheetSaving, setSheetSaving] = useState(false)
+
+  const [activePage, setActivePage] = useState<'inventory' | 'sheets' | 'characters' | 'campaigns'>('inventory')
+  const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
   const [showCharacterForm, setShowCharacterForm] = useState(false)
@@ -94,13 +109,14 @@ function App() {
 
   const [campaignName, setCampaignName] = useState('')
   const [campaignDescription, setCampaignDescription] = useState('')
+  const [campaignInviteLink, setCampaignInviteLink] = useState('')
+  const [inviteCode, setInviteCode] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
   const [systemName, setSystemName] = useState('')
-  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
 
   const [characterName, setCharacterName] = useState('')
   const [archetype, setArchetype] = useState('')
   const [characterLevel, setCharacterLevel] = useState('1')
-  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null)
 
   const [newItemName, setNewItemName] = useState('')
   const [newItemDescription, setNewItemDescription] = useState('')
@@ -119,6 +135,12 @@ function App() {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const invite = params.get('invite')
+    if (invite) setInviteCode(invite)
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -229,6 +251,42 @@ function App() {
       cancelled = true
     }
   }, [session?.user.id])
+
+  useEffect(() => {
+    if (!selectedCampaignId) { setSeasons([]); setSelectedSeasonId(''); return }
+    let cancelled = false
+    async function loadSeasons() {
+      const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('id,campaign_id,name,description,season_number,status').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
+      if (cancelled) return
+      if (seasonsError) { setError(`Erro ao carregar temporadas: ${seasonsError.message}`); setSeasons([]); setSelectedSeasonId(''); return }
+      const rows = (data ?? []) as Season[]
+      setSeasons(rows)
+      setSelectedSeasonId(current => rows.some(row => row.id === current) ? current : (rows.find(row => row.status === 'active')?.id ?? rows[0]?.id ?? ''))
+    }
+    void loadSeasons()
+    return () => { cancelled = true }
+  }, [selectedCampaignId])
+
+  useEffect(() => {
+    const season = seasons.find(entry => entry.id === selectedSeasonId)
+    setSeasonNameDraft(season?.name ?? '')
+    setSeasonDescriptionDraft(season?.description ?? '')
+  }, [selectedSeasonId, seasons])
+
+  useEffect(() => {
+    if (!selectedCharacterId || !selectedSeasonId) { setSheet(null); setSheetDraft('{}'); return }
+    let cancelled = false
+    async function loadSheet() {
+      setSheetLoading(true)
+      const { data, error: sheetError } = await supabase.from('character_sheets').select('id,character_id,season_id,sheet_data').eq('character_id', selectedCharacterId).eq('season_id', selectedSeasonId).maybeSingle()
+      if (cancelled) return
+      if (sheetError) { setError(`Erro ao carregar ficha: ${sheetError.message}`); setSheet(null); setSheetDraft('{}') }
+      else { const value = (data ?? null) as CharacterSheet | null; setSheet(value); setSheetDraft(JSON.stringify(value?.sheet_data ?? {}, null, 2)) }
+      setSheetLoading(false)
+    }
+    void loadSheet()
+    return () => { cancelled = true }
+  }, [selectedCharacterId, selectedSeasonId])
 
   useEffect(() => {
     if (!selectedCampaignId) {
@@ -388,14 +446,6 @@ function App() {
     }
   }, [selectedCharacterId])
 
-  useEffect(() => {
-    const character = characters.find(
-      (entry) => entry.id === selectedCharacterId,
-    )
-
-    setStrengthDraft(String(character?.strength ?? 0))
-  }, [selectedCharacterId, characters])
-
   async function handleSignOut() {
     const { error: signOutError } = await supabase.auth.signOut()
 
@@ -404,105 +454,214 @@ function App() {
     }
   }
 
+  async function createCampaign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
 
-async function createCampaign(event: FormEvent<HTMLFormElement>) {
-  event.preventDefault()
+    if (!campaignName.trim()) return
 
-  if (!campaignName.trim()) return
+    setLoading(true)
+    setError('')
+    setNotice('')
 
-  setLoading(true)
-  setError('')
-  setNotice('')
-
-  const { data, error: createError } = await supabase.rpc(
-    'create_campaign',
-    {
-      p_name: campaignName.trim(),
-      p_description: campaignDescription.trim() || null,
-      p_system_name: systemName.trim() || null,
-    },
-  )
-
-  if (createError) {
-    setError(`Não foi possível criar a campanha: ${createError.message}`)
-    setLoading(false)
-    return
-  }
-
-  if (!data) {
-    setError('Não foi possível criar a campanha: nenhum dado retornado.')
-    setLoading(false)
-    return
-  }
-
-  const newCampaignId = data as string
-
-  const { data: membership, error: membershipError } = await supabase
-    .from('campaign_members')
-    .select('campaign_id, role')
-    .eq('campaign_id', newCampaignId)
-    .eq('user_id', session!.user.id)
-    .maybeSingle()
-
-  if (membershipError || !membership) {
-    setError(
-      'A campanha foi criada, mas não consegui confirmar sua participação. Atualize a página.',
+    const { data, error: createError } = await supabase.rpc(
+      'create_campaign',
+      {
+        p_name: campaignName.trim(),
+        p_description: campaignDescription.trim() || null,
+        p_system_name: systemName.trim() || null,
+      },
     )
+
+    if (createError) {
+      setError(`Não foi possível criar a campanha: ${createError.message}`)
+      setLoading(false)
+      return
+    }
+
+    const newCampaignId = data as string
+
+    const { data: membership, error: membershipError } = await supabase
+      .from('campaign_members')
+      .select('campaign_id, role')
+      .eq('campaign_id', newCampaignId)
+      .eq('user_id', session!.user.id)
+      .maybeSingle()
+
+    if (membershipError || !membership) {
+      setError(
+        'A campanha foi criada, mas não consegui confirmar sua participação. Atualize a página.',
+      )
+      setLoading(false)
+      return
+    }
+
+    const { data: campaign, error: fetchError } = await supabase
+      .from('campaigns')
+      .select('id, name, description, system_name, created_by')
+      .eq('id', newCampaignId)
+      .single()
+
+    if (fetchError || !campaign) {
+      setError('A campanha foi criada. Atualize a página para carregá-la.')
+      setLoading(false)
+      return
+    }
+
+    setCampaigns((current) => [
+      ...current,
+      { ...campaign, role: membership.role },
+    ])
+    setSelectedCampaignId(newCampaignId)
+    setCharacters([])
+    setItems([])
+    setSelectedCharacterId('')
+    setCampaignName('')
+    setCampaignDescription('')
+    setSystemName('')
+    setShowCampaignForm(false)
+    setNotice('Campanha criada e salva!')
     setLoading(false)
-    return
   }
 
-  const { data: campaign, error: fetchError } = await supabase
-    .from('campaigns')
-    .select('id, name, description, system_name, created_by')
-    .eq('id', newCampaignId)
-    .single()
-
-  if (fetchError || !campaign) {
-    setError('A campanha foi criada. Atualize a página para carregá-la.')
-    setLoading(false)
-    return
+  async function createCampaignInvite() {
+    if (!selectedCampaignId || !isMaster || inviteLoading) return
+    setInviteLoading(true); setError(''); setNotice('')
+    const { data, error: inviteError } = await supabase.rpc('create_campaign_invite', { p_campaign_id: selectedCampaignId })
+    if (inviteError || !data) {
+      setError(`Não foi possível gerar o convite: ${inviteError?.message ?? 'resposta vazia'}`)
+      setInviteLoading(false)
+      return
+    }
+    const token = typeof data === 'string' ? data : String(data)
+    const link = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`
+    setCampaignInviteLink(link)
+    setNotice('Convite criado. Copie o link e compartilhe com os jogadores.')
+    setInviteLoading(false)
   }
 
-  setCampaigns((current) => [
-    ...current,
-    { ...campaign, role: membership.role },
-  ])
-  setSelectedCampaignId(newCampaignId)
-  setCharacters([])
-  setItems([])
-  setSelectedCharacterId('')
-  setCampaignName('')
-  setCampaignDescription('')
-  setSystemName('')
-  setShowCampaignForm(false)
-  setNotice('Campanha criada e salva!')
-  setLoading(false)
-}
+  async function joinCampaignWithInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!inviteCode.trim() || inviteLoading) return
+    setInviteLoading(true); setError(''); setNotice('')
+    const { data, error: joinError } = await supabase.rpc('join_campaign_by_invite', { p_token: inviteCode.trim() })
+    if (joinError || !data) {
+      setError(`Não foi possível entrar na campanha: ${joinError?.message ?? 'convite inválido'}`)
+      setInviteLoading(false)
+      return
+    }
+    const joinedId = typeof data === 'string' ? data : String(data)
+    const { data: campaign, error: campaignError } = await supabase.from('campaigns').select('id,name,description,system_name,created_by').eq('id', joinedId).single()
+    if (campaignError || !campaign) {
+      setError(`Você entrou na campanha, mas não foi possível carregá-la: ${campaignError?.message ?? ''}`)
+      setInviteLoading(false)
+      return
+    }
+    setCampaigns(current => current.some(entry => entry.id === campaign.id) ? current : [...current, { ...campaign, role: 'player' }])
+    setSelectedCampaignId(campaign.id); setInviteCode(''); setCampaignInviteLink('')
+    window.history.replaceState({}, '', window.location.pathname)
+    setNotice(`Você entrou na campanha ${campaign.name}!`)
+    setInviteLoading(false)
+  }
 
+  async function createSeason(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedCampaignId || !isMaster || !newSeasonName.trim()) return
+    setLoading(true); setError(''); setNotice('')
+    const nextNumber = Math.max(0, ...seasons.map(season => season.season_number)) + 1
+    const { data: created, error: createError } = await supabase.from('campaign_seasons').insert({ campaign_id: selectedCampaignId, name: newSeasonName.trim(), description: newSeasonDescription.trim() || null, season_number: nextNumber, status: seasons.some(season => season.status === 'active') ? 'draft' : 'active', created_by: session!.user.id }).select('id,campaign_id,name,description,season_number,status').single()
+    if (createError || !created) { setError(`Não foi possível criar a temporada: ${createError?.message ?? 'resposta vazia'}`); setLoading(false); return }
+    const season = created as Season
+    for (const character of characters) {
+      let initialData: Record<string, unknown> = {}
+      if (copyPreviousSheet && selectedSeasonId) {
+        const { data: previous, error: previousError } = await supabase.from('character_sheets').select('sheet_data').eq('character_id', character.id).eq('season_id', selectedSeasonId).maybeSingle()
+        if (previousError) { setError(`Temporada criada, mas não foi possível copiar a ficha de ${character.name}: ${previousError.message}`); setLoading(false); return }
+        initialData = (previous?.sheet_data ?? {}) as Record<string, unknown>
+      }
+      const { data: newSheet, error: newSheetError } = await supabase.from('character_sheets').insert({ character_id: character.id, season_id: season.id, sheet_data: initialData, created_by: session!.user.id }).select('id,character_id,season_id,sheet_data').single()
+      if (newSheetError) { setError(`Temporada criada, mas a ficha de ${character.name} não foi inicializada: ${newSheetError.message}`); setLoading(false); return }
+      const { error: versionError } = await supabase.from('character_sheet_versions').insert({ character_sheet_id: newSheet.id, character_id: character.id, season_id: season.id, sheet_data: initialData, milestone_type: 'season_start', milestone_name: `Início da temporada ${season.name}`, notes: 'Snapshot automático no início da temporada.', created_by: session!.user.id })
+      if (versionError) { setError(`Ficha de ${character.name} criada, mas o snapshot inicial falhou: ${versionError.message}`); setLoading(false); return }
+    }
+    setSeasons(current => [...current, season].sort((a,b) => a.season_number-b.season_number)); setSelectedSeasonId(season.id); setNewSeasonName(''); setNewSeasonDescription(''); setNotice(`Temporada “${season.name}” criada.`); setLoading(false)
+  }
+
+  async function saveSeasonDetails() {
+    const season = seasons.find(entry => entry.id === selectedSeasonId)
+    if (!season || !isMaster || !seasonNameDraft.trim()) return
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ name: seasonNameDraft.trim(), description: seasonDescriptionDraft.trim() || null }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status').single()
+    if (updateError || !data) { setError(`Não foi possível atualizar a temporada: ${updateError?.message ?? 'resposta vazia'}`); return }
+    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice('Dados da temporada atualizados.')
+  }
+
+  async function changeSeasonStatus(status: Season['status']) {
+    const season = seasons.find(entry => entry.id === selectedSeasonId)
+    if (!season || !isMaster) return
+    if (status === 'active' && seasons.some(entry => entry.status === 'active' && entry.id !== season.id)) { setError('Já existe uma temporada ativa. Conclua ou arquive a atual antes de ativar outra.'); return }
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ status }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status').single()
+    if (updateError || !data) { setError(`Não foi possível mudar o status: ${updateError?.message ?? 'resposta vazia'}`); return }
+    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`)
+  }
+
+  async function saveCharacterSheet() {
+    if (!selectedCharacterId || !selectedSeasonId || !isMaster) return
+    let parsed: Record<string, unknown>
+    try { const value: unknown = JSON.parse(sheetDraft); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('A ficha precisa ser um objeto JSON.'); parsed = value as Record<string, unknown> }
+    catch (e) { setError(e instanceof Error ? e.message : 'JSON inválido.'); return }
+    setSheetSaving(true); setError('')
+    if (sheet) {
+      const { data, error: updateError } = await supabase.from('character_sheets').update({ sheet_data: parsed }).eq('id', sheet.id).select('id,character_id,season_id,sheet_data').single()
+      if (updateError || !data) { setError(`Não foi possível salvar a ficha: ${updateError?.message ?? 'resposta vazia'}`); setSheetSaving(false); return }
+      setSheet(data as CharacterSheet)
+    } else {
+      const { data, error: insertError } = await supabase.from('character_sheets').insert({ character_id: selectedCharacterId, season_id: selectedSeasonId, sheet_data: parsed, created_by: session!.user.id }).select('id,character_id,season_id,sheet_data').single()
+      if (insertError || !data) { setError(`Não foi possível criar a ficha: ${insertError?.message ?? 'resposta vazia'}`); setSheetSaving(false); return }
+      setSheet(data as CharacterSheet)
+    }
+    let strengthSyncFailed = false
+    const sheetStrength = (parsed.attributes as Record<string, unknown> | undefined)?.strength
+    if (typeof sheetStrength === 'number' && Number.isInteger(sheetStrength) && sheetStrength >= 0 && sheetStrength <= 100) {
+      const { data: updatedCharacter, error: strengthError } = await supabase
+        .from('characters')
+        .update({ strength: sheetStrength })
+        .eq('id', selectedCharacterId)
+        .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at')
+        .maybeSingle()
+      if (strengthError) {
+        strengthSyncFailed = true
+        setError(`Ficha salva, mas não foi possível sincronizar a Força com a capacidade de carga: ${strengthError.message}`)
+      } else if (updatedCharacter) {
+        setCharacters(current => current.map(character => character.id === selectedCharacterId ? updatedCharacter as Character : character))
+      }
+    }
+    setSheetDraft(JSON.stringify(parsed, null, 2));
+    if (!strengthSyncFailed) setNotice('Ficha salva.');
+    setSheetSaving(false)
+  }
+
+  async function createSheetMilestone() {
+    if (!sheet || !selectedCharacterId || !selectedSeasonId || !isMaster) return
+    let parsed: Record<string, unknown>
+    try { const value: unknown = JSON.parse(sheetDraft); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('A ficha precisa ser um objeto JSON.'); parsed = value as Record<string, unknown> }
+    catch (e) { setError(e instanceof Error ? e.message : 'JSON inválido.'); return }
+    const { error: saveError } = await supabase.from('character_sheets').update({ sheet_data: parsed }).eq('id', sheet.id)
+    if (saveError) { setError(`Não foi possível salvar antes do marco: ${saveError.message}`); return }
+    const milestoneName = window.prompt('Nome deste marco (ex.: Após a missão):')
+    if (!milestoneName?.trim()) return
+    const { error: milestoneError } = await supabase.from('character_sheet_versions').insert({ character_sheet_id: sheet.id, character_id: selectedCharacterId, season_id: selectedSeasonId, sheet_data: parsed, milestone_type: 'manual', milestone_name: milestoneName.trim(), created_by: session!.user.id })
+    if (milestoneError) { setError(`Ficha salva, mas não foi possível registrar o marco: ${milestoneError.message}`); return }
+    setSheet({ ...sheet, sheet_data: parsed }); setNotice('Marco do histórico registrado.')
+  }
 
   async function createCharacter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!session?.user.id) {
-      setError('Você precisa estar conectado para criar um personagem.')
-      return
-    }
-
-    if (!selectedCampaignId) {
-      setError('Selecione uma campanha antes de criar um personagem.')
-      return
-    }
-
-    if (!characterName.trim()) {
-      setError('Informe o nome do personagem.')
-      return
-    }
+    if (!selectedCampaignId || !characterName.trim()) return
 
     const level = Number(characterLevel)
 
-    if (!Number.isInteger(level) || level < 1) {
-      setError('O nível precisa ser um número inteiro maior que zero.')
+    if (!Number.isInteger(level) || level < 1 || level > 999) {
+      setError('O nível deve ser um número inteiro entre 1 e 999.')
       return
     }
 
@@ -514,10 +673,11 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
       .from('characters')
       .insert({
         campaign_id: selectedCampaignId,
-        user_id: session.user.id,
+        user_id: session!.user.id,
         name: characterName.trim(),
         archetype: archetype.trim() || null,
         level,
+        strength: 0,
       })
       .select(
         'id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at',
@@ -535,241 +695,9 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
     setCharacterName('')
     setArchetype('')
     setCharacterLevel('1')
-    setEditingCharacter(null)
     setShowCharacterForm(false)
     setNotice('Personagem criado e salvo!')
     setLoading(false)
-  }
-
-  async function updateCampaign(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!editingCampaign || !campaignName.trim()) return
-
-    setLoading(true)
-    setError('')
-    setNotice('')
-
-    const { data, error: updateError } = await supabase
-      .from('campaigns')
-      .update({
-        name: campaignName.trim(),
-        description: campaignDescription.trim() || null,
-        system_name: systemName.trim() || null,
-      })
-      .eq('id', editingCampaign.id)
-      .select('id, name, description, system_name, created_by')
-      .maybeSingle()
-
-    if (updateError) {
-      setError(`Não foi possível atualizar a campanha: ${updateError.message}`)
-      setLoading(false)
-      return
-    }
-
-    if (!data) {
-      setError(
-        'A campanha não foi atualizada. Verifique as permissões no Supabase.',
-      )
-      setLoading(false)
-      return
-    }
-
-    setCampaigns((current) =>
-      current.map((campaign) =>
-        campaign.id === editingCampaign.id
-          ? { ...data, role: campaign.role }
-          : campaign,
-      ),
-    )
-
-    setCampaignName('')
-    setCampaignDescription('')
-    setSystemName('')
-    setEditingCampaign(null)
-    setShowCampaignForm(false)
-    setNotice('Campanha atualizada com sucesso!')
-    setLoading(false)
-  }
-
-
-  async function deleteCampaign(campaign: Campaign) {
-    if (campaign.role !== 'master') {
-      setError('Somente um mestre pode excluir esta campanha.')
-      return
-    }
-
-    const confirmed = window.confirm(
-      `ATENÇÃO: deseja excluir permanentemente a campanha "${campaign.name}"?\n\n` +
-      'Personagens, inventários, membros e permissões relacionados também poderão ser excluídos. Esta ação não pode ser desfeita.',
-    )
-
-    if (!confirmed) return
-
-    setLoading(true)
-    setError('')
-    setNotice('')
-
-    const { error: deleteError } = await supabase.rpc(
-      'delete_campaign',
-      { p_campaign_id: campaign.id },
-    )
-
-    if (deleteError) {
-      setError(`Não foi possível excluir a campanha: ${deleteError.message}`)
-      setLoading(false)
-      return
-    }
-
-    setCampaigns((current) =>
-      current.filter((entry) => entry.id !== campaign.id),
-    )
-
-    if (selectedCampaignId === campaign.id) {
-      setSelectedCampaignId('')
-      setSelectedCharacterId('')
-      setCharacters([])
-      setItems([])
-      setCampaignMembers([])
-      setCharacterGrants([])
-      setShowCharacterForm(false)
-      setShowItemForm(false)
-      setShowCampaignForm(false)
-      setEditingCampaign(null)
-      resetItemForm()
-      setEmojiPickerItem(null)
-    }
-
-    setNotice(`Campanha "${campaign.name}" excluída com sucesso.`)
-    setLoading(false)
-  }
-
-
-  const startEditingCampaign = (campaign: Campaign) => {
-    setEditingCampaign(campaign)
-    setCampaignName(campaign.name)
-    setCampaignDescription(campaign.description ?? '')
-    setSystemName(campaign.system_name ?? '')
-    setError('')
-    setNotice('')
-    setShowCampaignForm(true)
-  }
-
-  const startEditingCharacter = (character: Character) => {
-    setEditingCharacter(character)
-    setSelectedCharacterId(character.id)
-    setCharacterName(character.name)
-    setArchetype(character.archetype ?? '')
-    setCharacterLevel(String(character.level))
-    setError('')
-    setNotice('')
-    setShowCharacterForm(true)
-  }
-
-  async function removeCharacter(character: Character) {
-    const confirmed = window.confirm(
-      `Tem certeza de que deseja excluir o personagem "${character.name}"? Os itens do inventário dele também podem ser afetados.`,
-    )
-
-    if (!confirmed) return
-
-    setError('')
-    setNotice('')
-
-    const { data, error: deleteError } = await supabase
-      .from('characters')
-      .delete()
-      .eq('id', character.id)
-      .eq('campaign_id', character.campaign_id)
-      .select('id')
-
-    if (deleteError) {
-      setError(
-        `Não foi possível excluir o personagem: ${deleteError.message}`,
-      )
-      return
-    }
-
-    if (!data?.length) {
-      setError(
-        'Nenhum personagem foi excluído. Verifique as permissões no Supabase.',
-      )
-      return
-    }
-
-    setCharacters((current) =>
-      current.filter((entry) => entry.id !== character.id),
-    )
-
-    if (selectedCharacterId === character.id) {
-      setSelectedCharacterId('')
-      setItems([])
-      setShowItemForm(false)
-      resetItemForm()
-      setEmojiPickerItem(null)
-    }
-
-    if (editingCharacter?.id === character.id) {
-      setEditingCharacter(null)
-      setCharacterName('')
-      setArchetype('')
-      setCharacterLevel('1')
-      setShowCharacterForm(false)
-    }
-
-    setNotice(`Personagem "${character.name}" excluído com sucesso.`)
-  }
-
-
-  async function saveStrength() {
-    if (!selectedCharacter) return
-
-    const strength = Number(strengthDraft)
-
-    if (
-      strengthDraft.trim() === '' ||
-      !Number.isInteger(strength) ||
-      strength < 0 ||
-      strength > 100
-    ) {
-      setError('A Força deve ser um número inteiro entre 0 e 100.')
-      return
-    }
-
-    setError('')
-    setNotice('')
-
-    const { data, error: updateError } = await supabase
-      .from('characters')
-      .update({ strength })
-      .eq('id', selectedCharacter.id)
-      .select(
-        'id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at',
-      )
-      .maybeSingle()
-
-    if (updateError) {
-      setError(`Não foi possível salvar a Força: ${updateError.message}`)
-      return
-    }
-
-    if (!data) {
-      setError(
-        'A Força não foi alterada. Verifique as permissões no Supabase.',
-      )
-      return
-    }
-
-    setCharacters((current) =>
-      current.map((character) =>
-        character.id === selectedCharacter.id
-          ? (data as Character)
-          : character,
-      ),
-    )
-
-    setStrengthDraft(String(strength))
-    setNotice(`Força de ${selectedCharacter.name} atualizada!`)
   }
 
   async function changeCharacterVisibility(visibility: Character['visibility']) {
@@ -1343,22 +1271,16 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
           <a className="nav-link" href="#inicio">
             <span>◫</span> Visão geral
           </a>
-          <a className="nav-link active" href="#inventario">
-            <span>▤</span> Inventário
-            <span className="nav-count">{items.length}</span>
-          </a>
-          <button
-            className="nav-link"
-            onClick={() => setShowCharacterForm((value) => !value)}
-            disabled={!selectedCampaignId}
-          >
-            <span>♙</span> Personagens
-            <span className="nav-count">{characters.length}</span>
+          <button className={`nav-link ${activePage === 'inventory' ? 'active' : ''}`} onClick={() => setActivePage('inventory')}>
+            <span>▤</span> Inventário <span className="nav-count">{items.length}</span>
           </button>
-          <button
-            className="nav-link"
-            onClick={() => setShowCampaignForm((value) => !value)}
-          >
+          <button className={`nav-link ${activePage === 'sheets' ? 'active' : ''}`} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }} disabled={!selectedCampaignId}>
+            <span>▧</span> Fichas <span className="nav-count">{characters.length}</span>
+          </button>
+          <button className={`nav-link ${activePage === 'characters' ? 'active' : ''}`} onClick={() => setActivePage('characters')} disabled={!selectedCampaignId}>
+            <span>♙</span> Personagens <span className="nav-count">{characters.length}</span>
+          </button>
+          <button className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(true) }}>
             <span>⚑</span> Campanhas
           </button>
         </nav>
@@ -1366,8 +1288,40 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
         <div className="sidebar-bottom">
           <div className="invite-card">
             <div className="invite-icon">✧</div>
-            <strong>A aventura é melhor em grupo.</strong>
-            <p>O compartilhamento de campanhas será nossa próxima evolução.</p>
+            <strong>Convide seu grupo.</strong>
+            <p>{!selectedCampaignId
+              ? 'Escolha uma campanha para gerar um convite e reunir seus jogadores.'
+              : isMaster
+                ? 'Compartilhe um link e traga novos jogadores para esta campanha.'
+                : 'Tem um convite? Acesse campanhas para entrar em uma nova aventura.'}</p>
+            <button
+              type="button"
+              className="secondary-button"
+              style={{ marginTop: 10, width: '100%' }}
+              onClick={() => {
+                if (selectedCampaignId && isMaster) {
+                  void createCampaignInvite()
+                } else {
+                  setActivePage('campaigns')
+                }
+              }}
+              disabled={inviteLoading}
+            >
+              {inviteLoading ? 'Gerando convite…' : selectedCampaignId && isMaster ? 'Gerar convite' : 'Ver campanhas'}
+            </button>
+            {campaignInviteLink && selectedCampaignId && isMaster && (
+              <button
+                type="button"
+                className="nav-link"
+                style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
+                onClick={() => {
+                  void navigator.clipboard.writeText(campaignInviteLink)
+                  setNotice('Link copiado!')
+                }}
+              >
+                Copiar link do convite
+              </button>
+            )}
           </div>
 
           <div className="profile">
@@ -1403,27 +1357,119 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
           </div>
         </header>
 
-        <div className="page-content">
+        <div className={`page-content page-${activePage}`}>
+          <style>{`
+            .page-content.page-sheets > * { display: none !important; }
+            .page-content.page-sheets > .sheet-page-panel { display: block !important; }
+            .page-content.page-characters > * { display: none !important; }
+            .page-content.page-characters > .characters-page-panel { display: block !important; }
+            .page-content.page-campaigns > * { display: none !important; }
+            .page-content.page-campaigns > .campaigns-page-panel { display: block !important; }
+            .page-content.page-inventory > .season-sheet-section { display: none !important; }
+          `}</style>
           <section className="welcome-row">
             <div>
               <div className="eyebrow">
                 <span /> SUA JORNADA COMEÇA AQUI
               </div>
               <h1>
-                Seu inventário<span className="title-period">.</span>
+                {activePage === 'inventory' ? 'Seu inventário' : activePage === 'sheets' ? 'Fichas de personagens' : activePage === 'characters' ? 'Personagens' : 'Campanhas'}<span className="title-period">.</span>
               </h1>
               <p className="page-description">
-                Organize campanhas, personagens e tudo o que carregam.
+                {activePage === 'inventory' ? 'Organize os itens e acompanhe a carga do personagem.' : activePage === 'sheets' ? 'Consulte e atualize as fichas por temporada.' : activePage === 'characters' ? 'Crie personagens e gerencie quem pode acessá-los.' : 'Organize suas campanhas e escolha qual deseja administrar.'}
               </p>
             </div>
 
-            <button
-              className="primary-button"
-              onClick={() => setShowCampaignForm((value) => !value)}
-            >
-              + Criar campanha
-            </button>
+            {activePage === 'campaigns' && (
+              <button
+                className="primary-button"
+                onClick={() => setShowCampaignForm((value) => !value)}
+              >
+                + Criar campanha
+              </button>
+            )}
           </section>
+
+          {activePage === 'sheets' && selectedCampaignId && (
+            <section className="inventory-section sheet-page-panel">
+              {!sheetCharacterView ? <>
+                <div className="inventory-heading"><div><h2>Fichas de personagens</h2><p>Escolha um personagem para abrir sua ficha.</p></div></div>
+                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">▧</div><div className="item-category">NÍVEL {character.level}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p><button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
+              </> : <>
+                <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · Kisatsutai RPG</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
+                <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
+                {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
+                {isMaster && <form onSubmit={createSeason} style={{display:'grid',gap:8,margin:'16px 0',padding:14,border:'1px solid #493568',borderRadius:10}}><h3>Nova temporada</h3><label style={labelStyle}>Nome<input required value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} style={inputStyle} placeholder={`Temporada ${seasons.length+1}`}/></label><label style={labelStyle}>Descrição<input value={newSeasonDescription} onChange={e=>setNewSeasonDescription(e.target.value)} style={inputStyle}/></label><label><input type="checkbox" checked={copyPreviousSheet} onChange={e=>setCopyPreviousSheet(e.target.checked)}/> Copiar ficha da temporada selecionada</label><button className="primary-button" type="submit" disabled={loading || !newSeasonName.trim()}>Criar temporada</button></form>}
+                {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
+                  <p style={{color:'#c9bed8'}}>Ficha organizada por identidade, status, atributos, perícias, combate, fluxos e habilidades. Os valores derivados são calculados automaticamente.</p>
+                  {(() => {
+                    let data: Record<string, any> = {}
+                    try { data = JSON.parse(sheetDraft) } catch { data = {} }
+                    const read = (path: string, fallback: any = 0) => path.split('.').reduce((obj: any, key) => obj && typeof obj === 'object' ? obj[key] : undefined, data) ?? fallback
+                    const write = (path: string, value: any) => {
+                      const next = { ...data }
+                      const parts = path.split('.')
+                      let node: Record<string, any> = next
+                      for (const part of parts.slice(0, -1)) {
+                        if (!node[part] || typeof node[part] !== 'object' || Array.isArray(node[part])) node[part] = {}
+                        else node[part] = { ...node[part] }
+                        node = node[part]
+                      }
+                      node[parts[parts.length - 1]] = value
+                      setSheetDraft(JSON.stringify(next, null, 2))
+                    }
+                    const num = (path: string) => Math.max(0, Number(read(path, 0)) || 0)
+                    const agility = Math.floor(num('attributes.agility'))
+                    const movementActions = Math.floor(agility / 2)
+                    const extraActions = agility % 2
+                    const dexterity = num('skills.dexterity')
+                    const intellect = Math.floor(num('attributes.intellect'))
+                    const choices: string[] = Array.isArray(read('skills.intelligenceChoices', [])) ? read('skills.intelligenceChoices', []) : []
+                    const mainAllocations = Array.from({ length: intellect }, (_, i) => choices[i] === 'extra' ? 'extra' : 'main')
+                    const mainPoints = mainAllocations.filter(v => v === 'main').length * 5
+                    const extraLevels = mainAllocations.filter(v => v === 'extra').length
+                    const vigor = num('skills.vigor')
+                    const mental = num('skills.mental')
+                    const breathing = num('attributes.breathing')
+                    const ability = num('skills.ability')
+                    const defense = num('attributes.defense')
+                    const combat = num('skills.combat')
+                    const resistance = num('skills.resistance')
+                    const strength = num('attributes.strength')
+                    const derived = [
+                      ['Pontos de Vida (PV)', vigor * 10, '10 PV por ponto de Vigor'],
+                      ['Pontos de Sanidade (PS)', mental * 10, '10 PS por ponto de Mental'],
+                      ['Pontos de Respiração (PR)', (breathing + ability) * 10, '10 PR por ponto de Respiração e Habilidade'],
+                    ] as const
+                    const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<input type={type} min={type === 'number' ? 0 : undefined} step="1" value={String(read(path, type === 'number' ? 0 : ''))} onChange={e => write(path, type === 'number' ? (e.target.value === '' ? 0 : Number(e.target.value)) : e.target.value)} style={inputStyle}/>{hint && <small style={{color:'#b9a9d0'}}>{hint}</small>}</label>
+                    const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
+                    const panel = (title: string, children: any) => <section style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>{title}</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>{children}</div></section>
+                    return <>
+                      {panel('1. Identidade', <>{field('identity.name','Nome','text')}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{field('identity.primaryArchetype','Arquétipo primário','text')}{field('identity.secondaryArchetype','Arquétipo secundário','text')}{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{field('identity.rank','Classe / patente','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
+                      {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small style={{color:'#c9bed8'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'#b9a9d0'}}>{hint}</small></div>)}</>)}
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'#c9bed8',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Capacidade de carga: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'#21182f',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'#c9bed8',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'#c9bed8'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base')}{field('combat.extraDamage','Dano extra')}{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions*dexterity}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{defense}</div></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
+                      {panel('6. Fluxos', <>{area('attributes.fluxes','Fluxos de atributos')}{area('flows.details','Detalhes dos fluxos')}</>)}
+                      {panel('7. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
+                      {panel('Anotações', area('notes','Anotações gerais'))}
+                    </>
+                  })()}
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="button" disabled={!isMaster||sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!isMaster||!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>
+                  {!isMaster&&<small>Somente mestres podem editar as fichas nesta versão.</small>}
+                </>}
+              </>}
+            </section>
+          )}
+          {activePage === 'characters' && selectedCampaignId && <section className="inventory-section characters-page-panel"><div className="inventory-heading"><div><h2>Personagens</h2><p>Personagens da campanha selecionada.</p></div><button className="primary-button" onClick={()=>setShowCharacterForm(true)}>+ Novo personagem</button></div>{showCharacterForm&&<form className="add-form" onSubmit={createCharacter}><label>Nome<input value={characterName} onChange={e=>setCharacterName(e.target.value)} required style={inputStyle}/></label><label>Arquétipo<input value={archetype} onChange={e=>setArchetype(e.target.value)} style={inputStyle}/></label><label>Nível<input type="number" min="1" value={characterLevel} onChange={e=>setCharacterLevel(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="submit" disabled={loading}>Salvar personagem</button></form>}<div className="item-grid">{characters.map(character=><article className="item-card" key={character.id}><h3>{character.name}</h3><p>{character.archetype||'Arquétipo não definido'} · Nível {character.level}</p><button className="primary-button" onClick={()=>{setSelectedCharacterId(character.id);setActivePage('sheets');setSheetCharacterView(true)}}>Abrir ficha</button></article>)}</div></section>}
+          {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
+            {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
+            <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
+            {showCampaignForm&&<form className="add-form" onSubmit={createCampaign}><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} style={inputStyle}/></label><label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="submit" disabled={loading}>Criar campanha</button></form>}
+            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('inventory')}}>Selecionar campanha</button></article>)}</div>
+            {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
+          </section>}
+
 
           {error && (
             <div className="notice" role="alert">
@@ -1449,69 +1495,7 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
             </div>
           )}
 
-          {showCampaignForm && (
-            <form
-              className="add-form"
-              onSubmit={editingCampaign ? updateCampaign : createCampaign}
-            >
-              <div className="form-heading">
-                <div>
-                  <h3>{editingCampaign ? 'Editar campanha' : 'Nova campanha'}</h3>
-                  <p>
-                    {editingCampaign
-                      ? 'Altere os dados da campanha.'
-                      : 'Você será registrado com o papel definido pelo banco.'}
-                  </p>
-                </div>
-                <span>✧</span>
-              </div>
-
-              <label>
-                Nome da campanha
-                <input
-                  value={campaignName}
-                  onChange={(event) => setCampaignName(event.target.value)}
-                  placeholder="Ex.: As Terras Esquecidas"
-                  required
-                  maxLength={100}
-                />
-              </label>
-
-              <label>
-                Sistema de RPG (opcional)
-                <input
-                  value={systemName}
-                  onChange={(event) => setSystemName(event.target.value)}
-                  placeholder="Ex.: D&D 5e, Tormenta 20..."
-                  maxLength={100}
-                />
-              </label>
-
-              <label>
-                Descrição (opcional)
-                <input
-                  value={campaignDescription}
-                  onChange={(event) =>
-                    setCampaignDescription(event.target.value)
-                  }
-                  placeholder="Uma breve descrição da aventura"
-                  maxLength={500}
-                />
-              </label>
-
-              <button
-                className="primary-button"
-                type="submit"
-                disabled={loading}
-              >
-                {loading
-                  ? 'Salvando...'
-                  : editingCampaign
-                    ? 'Salvar alterações'
-                    : 'Criar campanha'}
-              </button>
-            </form>
-          )}
+          {/* O formulário de campanha fica somente na página Campanhas. */}
 
           {selectedCampaign && (
             <section className="character-banner">
@@ -1535,31 +1519,6 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
                 <div className="character-meta">
                   <span>{characters.length} personagem(ns)</span>
                 </div>
-
-
-                {isMaster && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => startEditingCampaign(selectedCampaign)}
-                      disabled={loading}
-                    >
-                      Editar campanha
-                    </button>
-
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => void deleteCampaign(selectedCampaign)}
-                      disabled={loading}
-                      style={{ borderColor: '#b84d5a', color: '#ff9aa5' }}
-                    >
-                      Excluir campanha
-                    </button>
-                  </div>
-                )}
-
               </div>
             </section>
           )}
@@ -1606,31 +1565,30 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
                             ? 'Pode administrar os membros da campanha.'
                             : 'Participante da campanha.'}
                         </p>
-
-
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            className="secondary-button"
+                            className="primary-button"
+                            disabled={memberActionLoading !== null || isLastMaster}
                             onClick={() => void changeMemberRole(member)}
-                            disabled={!!memberActionLoading || isLastMaster}
+                            title={isLastMaster ? 'A campanha precisa ter pelo menos um mestre.' : undefined}
                           >
-                            {member.role === 'master' ? 'Tornar jogador' : 'Promover a mestre'}
+                            {memberActionLoading === member.user_id
+                              ? 'Aguarde...'
+                              : member.role === 'master'
+                                ? 'Rebaixar a jogador'
+                                : 'Promover a mestre'}
                           </button>
-
-                          {!isSelf && (
-                            <button
-                              type="button"
-                              className="secondary-button"
-                              onClick={() => void removeCampaignMember(member)}
-                              disabled={!!memberActionLoading || isLastMaster}
-                            >
-                              Remover membro
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={memberActionLoading !== null || isLastMaster}
+                            onClick={() => void removeCampaignMember(member)}
+                            title={isLastMaster ? 'O último mestre não pode ser removido.' : undefined}
+                          >
+                            Remover
+                          </button>
                         </div>
-
-
                       </article>
                     )
                   })}
@@ -1661,24 +1619,7 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
 
                   <button
                     className="primary-button"
-                    type="button"
-                    onClick={() => {
-                      if (showCharacterForm) {
-                        setShowCharacterForm(false)
-                        setEditingCharacter(null)
-                        setCharacterName('')
-                        setArchetype('')
-                        setCharacterLevel('1')
-                      } else {
-                        setEditingCharacter(null)
-                        setCharacterName('')
-                        setArchetype('')
-                        setCharacterLevel('1')
-                        setError('')
-                        setNotice('')
-                        setShowCharacterForm(true)
-                      }
-                    }}
+                    onClick={() => setShowCharacterForm((value) => !value)}
                   >
                     {showCharacterForm ? 'Cancelar' : '+ Novo personagem'}
                   </button>
@@ -1688,12 +1629,8 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
                   <form className="add-form" onSubmit={createCharacter}>
                     <div className="form-heading">
                       <div>
-                        <h3>{editingCharacter ? 'Editar personagem' : 'Novo personagem'}</h3>
-                        <p>
-                          {editingCharacter
-                            ? 'Altere os dados do personagem.'
-                            : 'Preencha os dados básicos do aventureiro.'}
-                        </p>
+                        <h3>Novo personagem</h3>
+                        <p>Preencha os dados básicos do aventureiro.</p>
                       </div>
                       <span>♙</span>
                     </div>
@@ -1742,11 +1679,7 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
                       type="submit"
                       disabled={loading}
                     >
-                      {loading
-                        ? 'Salvando...'
-                        : editingCharacter
-                          ? 'Salvar alterações'
-                          : 'Salvar personagem'}
+                      {loading ? 'Salvando...' : 'Salvar personagem'}
                     </button>
                   </form>
                 )}
@@ -1784,48 +1717,17 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
                         <small style={{ display: 'block', color: '#c9bed8', margin: '8px 0' }}>
                           {character.visibility === 'campaign' ? '🌐 Toda a campanha' : character.visibility === 'selected' ? '👥 Jogadores selecionados' : '🔒 Privado'}
                         </small>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="primary-button"
-                            onClick={() => {
-                              setSelectedCharacterId(character.id)
-                              setNotice(`${character.name} selecionado.`)
-                            }}
-                          >
-                            {selectedCharacterId === character.id
-                              ? 'Personagem selecionado'
-                              : 'Selecionar personagem'}
-                          </button>
-
-
-                          {(character.user_id === session.user.id || isMaster) && (
-                            <>
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => {
-                                  setError('')
-                                  setNotice('')
-                                  startEditingCharacter(character)
-                                }}
-                              >
-                                Editar
-                              </button>
-
-                              <button
-                                type="button"
-                                className="secondary-button"
-                                onClick={() => void removeCharacter(character)}
-                                disabled={loading}
-                                title="Excluir personagem"
-                              >
-                                Excluir
-                              </button>
-                            </>
-                          )}
-
-                        </div>
+                        <button
+                          className="primary-button"
+                          onClick={() => {
+                            setSelectedCharacterId(character.id)
+                            setNotice(`${character.name} selecionado.`)
+                          }}
+                        >
+                          {selectedCharacterId === character.id
+                            ? 'Personagem selecionado'
+                            : 'Selecionar personagem'}
+                        </button>
                       </article>
                     ))}
                   </div>
@@ -1957,29 +1859,6 @@ async function createCampaign(event: FormEvent<HTMLFormElement>) {
                         : `${Math.abs(remainingCapacity).toFixed(1)} kg acima do limite`}
                     </small>
 
-                    <div className="strength-editor">
-                      <label htmlFor="character-strength">Força</label>
-
-                      <input
-                        id="character-strength"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={strengthDraft}
-                        onChange={(event) =>
-                          setStrengthDraft(event.target.value)
-                        }
-                      />
-
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => void saveStrength()}
-                      >
-                        Salvar
-                      </button>
-                    </div>
 
                     <small className="stat-caption">
                       10 kg base + 2 kg por ponto de Força
