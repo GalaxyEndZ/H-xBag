@@ -36,7 +36,7 @@ type CharacterGrant = {
   user_id: string
 }
 
-type Season = { id: string; campaign_id: string; name: string; description: string | null; season_number: number; status: 'draft' | 'active' | 'completed' | 'archived' }
+type Season = { id: string; campaign_id: string; name: string; description: string | null; season_number: number; status: 'draft' | 'active' | 'completed' | 'archived'; theme_key?: string | null }
 type CharacterSheet = { id: string; character_id: string; season_id: string; sheet_data: Record<string, unknown> }
 type Item = {
   id: string
@@ -78,6 +78,17 @@ const KISATSUTAI_RANKS = [
   { id: 'hashira-inferior', name: 'Hashira Inferior (Shinkai)', group: 'Corvo', focus: '92', benefits: '+56 PV, +51 PS, +80 PR; 35 pontos de perícias; +10 atributos extras; técnica perfeita DT17; não gasta PR nas formas Tigre e Raposa; dano 1d12.' },
   { id: 'hashira-superior', name: 'Hashira Superior (Saikou)', group: 'Corvo', focus: 'Ilimitado', benefits: 'Benefícios totais não definidos no material.' },
 ] as const
+
+const KISATSUTAI_RANK_STATUS: Record<string, { pv: number; ps: number; pr: number }> = {
+  zaidan: { pv: 15, ps: 10, pr: 0 },
+  mizunoto: { pv: 30, ps: 25, pr: 5 },
+  mizunoe: { pv: 35, ps: 30, pr: 10 },
+  hinoto: { pv: 40, ps: 35, pr: 20 },
+  hinoe: { pv: 41, ps: 36, pr: 25 },
+  kinoto: { pv: 42, ps: 37, pr: 30 },
+  kinoe: { pv: 44, ps: 39, pr: 35 },
+  'hashira-inferior': { pv: 56, ps: 51, pr: 80 },
+}
 
 const KISATSUTAI_PROMOTIONS: Record<string, string> = {
   'zaidan>mizunoto': '+15 PV, +15 PS, +5 PR, +5 pontos de perícias, +1 foco; dano 1d4 → 1d6; desbloqueia fluxo Raposa.',
@@ -125,13 +136,29 @@ function App() {
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
+  const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
+  const seasonThemes = {
+    default: { label: 'Padrão HäxBag', primary: '#c8b5ff', secondary: '#7958cf', glow: 'rgba(190,170,255,.20)', bg: '#0e0b17', surface: '#181323', surfaceAlt: '#251b36', line: '#493765' },
+    crimson: { label: 'Lua de Sangue', primary: '#ff334f', secondary: '#b5122e', glow: 'rgba(255,35,65,.22)', bg: '#080809', surface: '#111114', surfaceAlt: '#1b1115', line: '#64202e' },
+    forest: { label: 'Floresta Esquecida', primary: '#9be8b7', secondary: '#397b58', glow: 'rgba(139,224,178,.19)', bg: '#09130f', surface: '#122019', surfaceAlt: '#1c3024', line: '#3b6249' },
+    frost: { label: 'Inverno Eterno', primary: '#b9e8ff', secondary: '#4b88b5', glow: 'rgba(169,222,248,.20)', bg: '#09131d', surface: '#121f2c', surfaceAlt: '#1b3041', line: '#3c617c' },
+    arcane: { label: 'Arcano', primary: '#e7c5ff', secondary: '#8754c5', glow: 'rgba(223,184,255,.20)', bg: '#120b1b', surface: '#1c1428', surfaceAlt: '#2b1c40', line: '#5a3d78' },
+    ghost_vale: { label: 'Vale Fantasma', primary: '#ffc078', secondary: '#c85d27', glow: 'rgba(255,158,75,.19)', bg: '#080a0d', surface: '#11161b', surfaceAlt: '#1b252d', line: '#46535d' },
+    crimson_vale: { label: 'Vale Carmesim', primary: '#ff5268', secondary: '#a91f38', glow: 'rgba(255,55,85,.20)', bg: '#09090c', surface: '#151216', surfaceAlt: '#24151c', line: '#653044' },  
+  } as const
+  const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
+  const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
+  const activeTheme = seasonThemes[activeThemeKey]
+
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
-  const [copyPreviousSheet, setCopyPreviousSheet] = useState(true)
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
   const [sheetDraft, setSheetDraft] = useState('{}')
+  const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
+  const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
   const [sheetLoading, setSheetLoading] = useState(false)
   const [sheetSaving, setSheetSaving] = useState(false)
+  const [editingSheet, setEditingSheet] = useState(false)
 
   const [activePage, setActivePage] = useState<'inventory' | 'sheets' | 'characters' | 'campaigns'>('inventory')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
@@ -139,7 +166,7 @@ function App() {
   const [showCampaignForm, setShowCampaignForm] = useState(false)
   const [showCharacterForm, setShowCharacterForm] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
-
+  const [copyPreviousSheet] = useState(true);
   const [campaignName, setCampaignName] = useState('')
   const [campaignDescription, setCampaignDescription] = useState('')
   const [campaignInviteLink, setCampaignInviteLink] = useState('')
@@ -289,7 +316,7 @@ function App() {
     if (!selectedCampaignId) { setSeasons([]); setSelectedSeasonId(''); return }
     let cancelled = false
     async function loadSeasons() {
-      const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('id,campaign_id,name,description,season_number,status').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
+      const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('id,campaign_id,name,description,season_number,status,theme_key').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
       if (cancelled) return
       if (seasonsError) { setError(`Erro ao carregar temporadas: ${seasonsError.message}`); setSeasons([]); setSelectedSeasonId(''); return }
       const rows = (data ?? []) as Season[]
@@ -557,19 +584,58 @@ function App() {
   }
 
   async function createCampaignInvite() {
-    if (!selectedCampaignId || !isMaster || inviteLoading) return
-    setInviteLoading(true); setError(''); setNotice('')
-    const { data, error: inviteError } = await supabase.rpc('create_campaign_invite', { p_campaign_id: selectedCampaignId })
-    if (inviteError || !data) {
-      setError(`Não foi possível gerar o convite: ${inviteError?.message ?? 'resposta vazia'}`)
-      setInviteLoading(false)
+    if (inviteLoading) return
+    if (!selectedCampaignId) {
+      setError('Selecione uma campanha antes de gerar o convite.')
       return
     }
-    const token = typeof data === 'string' ? data : String(data)
-    const link = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`
-    setCampaignInviteLink(link)
-    setNotice('Convite criado. Copie o link e compartilhe com os jogadores.')
-    setInviteLoading(false)
+    if (!isMaster) {
+      setError('Somente o mestre da campanha pode gerar convites.')
+      return
+    }
+
+    setInviteLoading(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const { data, error: inviteError } = await supabase.rpc(
+        'create_campaign_invite',
+        { p_campaign_id: selectedCampaignId },
+      )
+
+      if (inviteError) {
+        throw new Error(inviteError.message)
+      }
+
+      // A RPC normalmente retorna o token como texto. Também aceitamos
+      // formatos JSON caso a função SQL tenha sido criada como RETURNS json.
+      let token = ''
+      if (typeof data === 'string') {
+        token = data.trim()
+      } else if (data && typeof data === 'object') {
+        const result = data as Record<string, unknown>
+        const candidate = result.token ?? result.invite_token ?? result.create_campaign_invite
+        if (typeof candidate === 'string') token = candidate.trim()
+      }
+
+      if (!token) {
+        throw new Error(
+          `A função do Supabase respondeu, mas não retornou um token válido. Resposta: ${JSON.stringify(data)}`,
+        )
+      }
+
+      const link = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`
+      setCampaignInviteLink(link)
+      setNotice('Convite criado. Copie o link e compartilhe com os jogadores.')
+    } catch (inviteError) {
+      const message = inviteError instanceof Error
+        ? inviteError.message
+        : String(inviteError)
+      setError(`Não foi possível gerar o convite: ${message}`)
+    } finally {
+      setInviteLoading(false)
+    }
   }
 
   async function joinCampaignWithInvite(event: FormEvent<HTMLFormElement>) {
@@ -601,7 +667,7 @@ function App() {
     if (!selectedCampaignId || !isMaster || !newSeasonName.trim()) return
     setLoading(true); setError(''); setNotice('')
     const nextNumber = Math.max(0, ...seasons.map(season => season.season_number)) + 1
-    const { data: created, error: createError } = await supabase.from('campaign_seasons').insert({ campaign_id: selectedCampaignId, name: newSeasonName.trim(), description: newSeasonDescription.trim() || null, season_number: nextNumber, status: seasons.some(season => season.status === 'active') ? 'draft' : 'active', created_by: session!.user.id }).select('id,campaign_id,name,description,season_number,status').single()
+    const { data: created, error: createError } = await supabase.from('campaign_seasons').insert({ campaign_id: selectedCampaignId, name: newSeasonName.trim(), description: newSeasonDescription.trim() || null, season_number: nextNumber, status: seasons.some(season => season.status === 'active') ? 'draft' : 'active', created_by: session!.user.id }).select('id,campaign_id,name,description,season_number,status,theme_key').single()
     if (createError || !created) { setError(`Não foi possível criar a temporada: ${createError?.message ?? 'resposta vazia'}`); setLoading(false); return }
     const season = created as Season
     for (const character of characters) {
@@ -619,10 +685,21 @@ function App() {
     setSeasons(current => [...current, season].sort((a,b) => a.season_number-b.season_number)); setSelectedSeasonId(season.id); setNewSeasonName(''); setNewSeasonDescription(''); setNotice(`Temporada “${season.name}” criada.`); setLoading(false)
   }
 
+  async function saveSeasonTheme(themeKey: keyof typeof seasonThemes) {
+    const season = seasons.find(entry => entry.id === selectedSeasonId)
+    if (!season || !isMaster || seasonThemeSaving) return
+    setSeasonThemeSaving(true)
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ theme_key: themeKey }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
+    setSeasonThemeSaving(false)
+    if (updateError || !data) { setError(`Não foi possível salvar o tema: ${updateError?.message ?? 'resposta vazia'}`); return }
+    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry))
+    setNotice(`Tema “${seasonThemes[themeKey].label}” aplicado à temporada.`)
+  }
+
   async function saveSeasonDetails() {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
     if (!season || !isMaster || !seasonNameDraft.trim()) return
-    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ name: seasonNameDraft.trim(), description: seasonDescriptionDraft.trim() || null }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status').single()
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ name: seasonNameDraft.trim(), description: seasonDescriptionDraft.trim() || null }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
     if (updateError || !data) { setError(`Não foi possível atualizar a temporada: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice('Dados da temporada atualizados.')
   }
@@ -631,7 +708,7 @@ function App() {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
     if (!season || !isMaster) return
     if (status === 'active' && seasons.some(entry => entry.status === 'active' && entry.id !== season.id)) { setError('Já existe uma temporada ativa. Conclua ou arquive a atual antes de ativar outra.'); return }
-    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ status }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status').single()
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ status }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
     if (updateError || !data) { setError(`Não foi possível mudar o status: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`)
   }
@@ -691,9 +768,10 @@ function App() {
 
     if (!selectedCampaignId || !characterName.trim()) return
 
-    const level = Number(characterLevel)
+    const kisatsutaiCampaign = String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai')
+    const level = kisatsutaiCampaign ? 1 : Number(characterLevel)
 
-    if (!Number.isInteger(level) || level < 1 || level > 999) {
+    if (!kisatsutaiCampaign && (!Number.isInteger(level) || level < 1 || level > 999)) {
       setError('O nível deve ser um número inteiro entre 1 e 999.')
       return
     }
@@ -702,20 +780,15 @@ function App() {
     setError('')
     setNotice('')
 
-    const { data, error: createError } = await supabase
-      .from('characters')
-      .insert({
-        campaign_id: selectedCampaignId,
-        user_id: session!.user.id,
-        name: characterName.trim(),
-        archetype: archetype.trim() || null,
-        level,
-        strength: 0,
-      })
-      .select(
-        'id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at',
-      )
-      .single()
+    const { data, error: createError } = await supabase.rpc(
+      'create_character',
+      {
+        p_campaign_id: selectedCampaignId,
+        p_name: characterName.trim(),
+        p_archetype: archetype.trim() || null,
+        p_level: level,
+      },
+    )
 
     if (createError) {
       setError(`Não foi possível criar o personagem: ${createError.message}`)
@@ -723,8 +796,21 @@ function App() {
       return
     }
 
-    setCharacters((current) => [...current, data as Character])
-    setSelectedCharacterId(data.id)
+    if (!data) {
+      setError('Não foi possível confirmar a criação do personagem.')
+      setLoading(false)
+      return
+    }
+
+    const createdCharacter = data as Character
+    setCharacters((current) =>
+      current.some((character) => character.id === createdCharacter.id)
+        ? current.map((character) =>
+            character.id === createdCharacter.id ? createdCharacter : character,
+          )
+        : [...current, createdCharacter],
+    )
+    setSelectedCharacterId(createdCharacter.id)
     setCharacterName('')
     setArchetype('')
     setCharacterLevel('1')
@@ -1263,7 +1349,7 @@ function App() {
   if (!session) return <Auth />
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${activeThemeKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.bg,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
       <aside className="sidebar">
         <a className="brand" href="#inicio" aria-label="HäxBag, início">
           <span className="brand-mark">H</span>
@@ -1313,7 +1399,7 @@ function App() {
           <button className={`nav-link ${activePage === 'characters' ? 'active' : ''}`} onClick={() => setActivePage('characters')} disabled={!selectedCampaignId}>
             <span>♙</span> Personagens <span className="nav-count">{characters.length}</span>
           </button>
-          <button className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(true) }}>
+          <button className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }}>
             <span>⚑</span> Campanhas
           </button>
         </nav>
@@ -1425,6 +1511,36 @@ function App() {
 
           {activePage === 'sheets' && selectedCampaignId && (
             <section className="inventory-section sheet-page-panel">
+            {isMaster && selectedCampaignId && !sheetCharacterView && (
+  <form className="add-form" onSubmit={createSeason}>
+    <h3>Criar nova temporada</h3>
+
+    <label style={labelStyle}>
+      Nome da temporada
+      <input
+        value={newSeasonName}
+        onChange={e => setNewSeasonName(e.target.value)}
+        placeholder="Ex.: A Jornada Começa"
+        required
+        style={inputStyle}
+      />
+    </label>
+
+    <label style={labelStyle}>
+      Descrição
+      <input
+        value={newSeasonDescription}
+        onChange={e => setNewSeasonDescription(e.target.value)}
+        placeholder="Uma breve descrição da temporada"
+        style={inputStyle}
+      />
+    </label>
+
+    <button className="primary-button" type="submit">
+      Criar temporada
+    </button>
+  </form>
+)}
               {!sheetCharacterView ? <>
                 <div className="inventory-heading"><div><h2>Fichas de personagens</h2><p>Escolha um personagem para abrir sua ficha.</p></div></div>
                 {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">▧</div><div className="item-category">NÍVEL {character.level}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p><button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
@@ -1432,9 +1548,16 @@ function App() {
                 <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · Kisatsutai RPG</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
                 <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
                 {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
-                {isMaster && <form onSubmit={createSeason} style={{display:'grid',gap:8,margin:'16px 0',padding:14,border:'1px solid #493568',borderRadius:10}}><h3>Nova temporada</h3><label style={labelStyle}>Nome<input required value={newSeasonName} onChange={e=>setNewSeasonName(e.target.value)} style={inputStyle} placeholder={`Temporada ${seasons.length+1}`}/></label><label style={labelStyle}>Descrição<input value={newSeasonDescription} onChange={e=>setNewSeasonDescription(e.target.value)} style={inputStyle}/></label><label><input type="checkbox" checked={copyPreviousSheet} onChange={e=>setCopyPreviousSheet(e.target.checked)}/> Copiar ficha da temporada selecionada</label><button className="primary-button" type="submit" disabled={loading || !newSeasonName.trim()}>Criar temporada</button></form>}
+                {selectedSeasonId && <div className="season-theme-panel">
+                  <div className="season-theme-heading"><div><strong>Identidade visual</strong><small>Tema desta temporada: <b>{activeTheme.label}</b></small></div><span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} /></div>
+                  {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
+                </div>}
+
                 {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
-                  <p style={{color:'#c9bed8'}}>Ficha organizada por identidade, status, atributos, perícias, combate, fluxos e habilidades. Os valores derivados são calculados automaticamente.</p>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',margin:'14px 0'}}>
+                    <p style={{color:'var(--season-muted, #b9b4c2)',margin:0}}>Consulte os dados calculados da ficha. As alterações ficam concentradas no modo de edição.</p>
+                    {isMaster && <button className="primary-button" type="button" onClick={()=>setEditingSheet(value=>!value)}>{editingSheet?'Fechar edição':'Editar ficha'}</button>}
+                  </div>
                   {(() => {
                     let data: Record<string, any> = {}
                     try { data = JSON.parse(sheetDraft) } catch { data = {} }
@@ -1451,33 +1574,70 @@ function App() {
                       node[parts[parts.length - 1]] = value
                       setSheetDraft(JSON.stringify(next, null, 2))
                     }
-                    const num = (path: string) => Math.max(0, Number(read(path, 0)) || 0)
-                    const agility = Math.floor(num('attributes.agility'))
-                    const movementActions = Math.floor(agility / 2)
+                    const familyTierKey = String(read('family.tier', '5')) as keyof typeof KISATSUTAI_FAMILY_TIERS
+                    const familyTier = KISATSUTAI_FAMILY_TIERS[familyTierKey] || KISATSUTAI_FAMILY_TIERS['5']
+                    const isKisatsutaiSheet = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai')).toLowerCase().includes('kisatsutai')
+                    const allocationSources = ['family', 'class', 'progression'] as const
+                    const familyAllocationKeys = ['strength','agility','defense','breathing','intellect'] as const
+                    const allocationKeysFor = (_source: typeof allocationSources[number]) => familyAllocationKeys
+                    const allocationLabels: Record<string,string> = {strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:'Respiração',intellect:'Intelecto',vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
+                    const allocation = (source: string, key: string) => { if (!(familyAllocationKeys as readonly string[]).includes(key)) return 0; return Math.max(0, Math.floor(Number(read(`progression.allocations.${source}.${key}`, 0)) || 0)) }
+                    const allocationPool = (source: typeof allocationSources[number]) => source === 'family' ? (isKisatsutaiSheet ? familyTier.points : 0) : source === 'class' ? numRaw('progression.extraAttributePoints') + numRaw('progression.classSkillPoints') : numRaw('progression.attributePoints') + numRaw('progression.skillPoints')
+                    const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
+                    const num = (path: string) => {
+                      const base = numRaw(path)
+                      const match = path.match(/^(attributes|skills)\.(.+)$/)
+                      if (!match) return base
+                      const key = match[2]
+                      const sourceBonus = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                      return Math.min(match[1] === 'attributes' ? 5 : 12, base + sourceBonus)
+                    }
+                    const effectiveAttribute = (path: string, bonus: number) => Math.min(5, Math.max(0, num(path) + (isKisatsutaiSheet ? bonus : 0)))
+                    const agility = Math.floor(effectiveAttribute('attributes.agility', familyTier.agility))
+                    const movementActions = 1 + Math.floor(agility / 2)
                     const extraActions = agility % 2
-                    const dexterity = num('skills.dexterity')
-                    const intellect = Math.floor(num('attributes.intellect'))
+                    const dexterity = Math.min(12, num('skills.dexterity'))
+                    const intellect = Math.floor(effectiveAttribute('attributes.intellect', familyTier.intellect))
                     const choices: string[] = Array.isArray(read('skills.intelligenceChoices', [])) ? read('skills.intelligenceChoices', []) : []
                     const mainAllocations = Array.from({ length: intellect }, (_, i) => choices[i] === 'extra' ? 'extra' : 'main')
                     const mainPoints = mainAllocations.filter(v => v === 'main').length * 5
                     const extraLevels = mainAllocations.filter(v => v === 'extra').length
-                    const vigor = num('skills.vigor')
-                    const mental = num('skills.mental')
-                    const breathing = num('attributes.breathing')
-                    const ability = num('skills.ability')
-                    const defense = num('attributes.defense')
-                    const combat = num('skills.combat')
-                    const resistance = num('skills.resistance')
-                    const strength = num('attributes.strength')
+                    const vigor = Math.min(12, num('skills.vigor'))
+                    const mental = Math.min(12, num('skills.mental'))
+                    const breathing = effectiveAttribute('attributes.breathing', familyTier.breathing)
+                    const ability = Math.min(12, num('skills.ability'))
+                    const defense = effectiveAttribute('attributes.defense', familyTier.defense)
+                    const combat = Math.min(12, num('skills.combat'))
+                    const resistance = Math.min(12, num('skills.resistance'))
+                    const strength = effectiveAttribute('attributes.strength', familyTier.strength)
+                    const rankIdForStatus = String(read('progression.rankId', 'zaidan'))
+                    const rankStatus = isKisatsutaiSheet ? (KISATSUTAI_RANK_STATUS[rankIdForStatus] || { pv: 0, ps: 0, pr: 0 }) : { pv: 0, ps: 0, pr: 0 }
+                    const customClassPV = num('progression.classStatus.pv')
+                    const customClassPS = num('progression.classStatus.ps')
+                    const customClassPR = num('progression.classStatus.pr')
+                    const classPV = rankStatus.pv + customClassPV
+                    const classPS = rankStatus.ps + customClassPS
+                    const classPR = rankStatus.pr + customClassPR
+                    const progressionPV = num('progression.statusBonuses.pv')
+                    const progressionPS = num('progression.statusBonuses.ps')
+                    const progressionPR = num('progression.statusBonuses.pr')
+                    const familyPV = isKisatsutaiSheet ? familyTier.pv : 0
+                    const familyPS = isKisatsutaiSheet ? familyTier.ps : 0
+                    const familyPR = isKisatsutaiSheet ? familyTier.pr : 0
                     const derived = [
-                      ['Pontos de Vida (PV)', vigor * 10, '10 PV por ponto de Vigor'],
-                      ['Pontos de Sanidade (PS)', mental * 10, '10 PS por ponto de Mental'],
-                      ['Pontos de Respiração (PR)', (breathing + ability) * 10, '10 PR por ponto de Respiração e Habilidade'],
+                      ['Pontos de Vida (PV)', vigor * 10 + familyPV + classPV + progressionPV, `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
+                      ['Pontos de Sanidade (PS)', mental * 10 + familyPS + classPS + progressionPS, `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
+                      ['Pontos de Respiração (PR)', (breathing + ability) * 10 + familyPR + classPR + progressionPR, `(Respiração + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
                     ] as const
-                    const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<input type={type} min={type === 'number' ? 0 : undefined} step="1" value={String(read(path, type === 'number' ? 0 : ''))} onChange={e => write(path, type === 'number' ? (e.target.value === '' ? 0 : Number(e.target.value)) : e.target.value)} style={inputStyle}/>{hint && <small style={{color:'#b9a9d0'}}>{hint}</small>}</label>
+                    const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => { const limit = path.startsWith('attributes.') ? 5 : path.startsWith('skills.') ? 12 : undefined; return <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<input type={type} min={type === 'number' ? 0 : undefined} max={type === 'number' ? limit : undefined} step="1" value={String(read(path, type === 'number' ? 0 : ''))} onChange={e => write(path, type === 'number' ? Math.min(limit ?? 999, Math.max(0, e.target.value === '' ? 0 : Number(e.target.value))) : e.target.value)} style={inputStyle}/>{hint && <small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}{limit ? ` · máximo ${limit}` : ''}</small>}</label> }
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
-                    const panel = (title: string, children: any) => <section style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>{title}</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>{children}</div></section>
-                    return <>
+                    const panel = (title: string, children: any) => <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>{title}</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>{children}</div></section>
+                    return (
+                      editingSheet && isMaster ? (<fieldset
+                        disabled={!editingSheet || !isMaster}
+                        className="character-sheet-editor"
+                        style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+                      >
                       {(() => {
                         const system = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai'))
                         const kisatsutai = system.toLowerCase().includes('kisatsutai')
@@ -1493,48 +1653,152 @@ function App() {
                           const transition = `${rankId}>${nextId}`
                           if (promotionLog.some(entry => entry.transition === transition)) { setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.'); return }
                           const promotionId = `${Date.now()}-${transition}`
-                          const next = { ...data, progression: { ...(data.progression || {}), rankId: nextId, rankName: nextRank?.name || nextId, promotionLog: [...promotionLog, { id: promotionId, transition, from: oldRank?.name || rankId, to: nextRank?.name || nextId, at: new Date().toISOString(), benefitReference: KISATSUTAI_PROMOTIONS[transition] || 'Benefícios incrementais não definidos no material.', applied: false }] } }
+                          const description = window.prompt('Descrição desta promoção (motivo, missão, observações):', '') ?? ''
+                          const next = { ...data, progression: { ...(data.progression || {}), rankId: nextId, rankName: nextRank?.name || nextId, promotionLog: [...promotionLog, { id: promotionId, transition, from: oldRank?.name || rankId, to: nextRank?.name || nextId, at: new Date().toISOString(), description, benefitReference: KISATSUTAI_PROMOTIONS[transition] || 'Benefícios incrementais não definidos no material.', applied: false }] } }
                           setSheetDraft(JSON.stringify(next, null, 2))
                         }
-                        return <section style={{padding:16,margin:'14px 0',border:'1px solid #7955a6',borderRadius:12,background:'#1c1626'}}>
+                        return <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
                           <h3 style={{marginTop:0}}>Progressão, classe e família</h3>
                           <label style={labelStyle}>Sistema de progressão<select value={system} onChange={e=>write('progression.system',e.target.value)} style={inputStyle}><option value="Kisatsutai">Kisatsutai</option><option value="Personalizado">Personalizado</option></select></label>
                           {kisatsutai ? <>
                             <label style={{...labelStyle,display:'block',marginTop:12}}>Classe / hierarquia do caçador<select value={rankId} onChange={e=>changeRank(e.target.value)} style={inputStyle}>{KISATSUTAI_RANKS.map(entry=><option key={entry.id} value={entry.id}>{entry.group} · {entry.name}</option>)}</select></label>
                             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10,marginTop:12}}>
-                              <div style={{padding:12,border:'1px solid #63428a',borderRadius:10}}><small>FOCO EXIGIDO</small><div style={{fontSize:22,fontWeight:800}}>{rank.focus}</div></div>
-                              <div style={{padding:12,border:'1px solid #63428a',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
+                              <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>FOCO EXIGIDO</small><div style={{fontSize:22,fontWeight:800}}>{rank.focus}</div></div>
+                              <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
                             </div>
-                            <p style={{color:'#d7c9e7',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
-                            <p style={{color:'#b9a9d0',fontSize:12}}>Os benefícios listados são referências do material, não são somados automaticamente aos atributos/status para evitar duplicação. Aplique os valores confirmados pelo mestre na ficha.</p>
+                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginTop:10}}>{field('progression.classSkillPoints','Pontos de perícias da classe')}{field('progression.classFocus','Foco adicional da classe')}{field('progression.extraAttributePoints','Pontos de atributos concedidos pela classe')}</div>
+                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr','PR adicional')}</div></div>
                             <label style={{...labelStyle,display:'block',marginTop:12}}>Tier da família<select value={tierKey} onChange={e=>write('family.tier',e.target.value)} style={inputStyle}>{Object.entries(KISATSUTAI_FAMILY_TIERS).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>{[['PV',tier.pv],['PS',tier.ps],['PR',tier.pr],['Força',tier.strength],['Agilidade',tier.agility],['Defesa',tier.defense],['Respiração',tier.breathing],['Intelecto',tier.intellect],['Pontos livres',tier.points],['Foco',tier.focus]].map(([label,value])=><div key={String(label)} style={{padding:9,border:'1px solid #493568',borderRadius:8,background:'#21182f'}}><small style={{color:'#b9a9d0'}}>{label}</small><div style={{fontSize:19,fontWeight:800}}>{value}</div></div>)}</div>
-                            <div style={{marginTop:14}}><strong>Histórico de promoções</strong>{promotionLog.length===0?<p style={{color:'#b9a9d0',fontSize:13}}>Nenhuma promoção registrada nesta ficha.</p>:promotionLog.map((entry:any)=><div key={entry.id} style={{padding:10,marginTop:8,border:'1px solid #493568',borderRadius:8}}><strong>{entry.from} → {entry.to}</strong><div style={{fontSize:12,color:'#b9a9d0'}}>{new Date(entry.at).toLocaleString('pt-BR')} · {entry.applied?'Benefícios marcados como aplicados':'Benefícios pendentes de conferência'}</div><p style={{fontSize:13,marginBottom:0}}>{entry.benefitReference}</p></div>)}</div>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>{[['PV',tier.pv],['PS',tier.ps],['PR',tier.pr],['Força',tier.strength],['Agilidade',tier.agility],['Defesa',tier.defense],['Respiração',tier.breathing],['Intelecto',tier.intellect],['Pontos base da família',tier.points],['Foco',tier.focus]].map(([label,value])=><div key={String(label)} style={{padding:9,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label}</small><div style={{fontSize:19,fontWeight:800}}>{value}</div></div>)}</div>
+                            <div style={{marginTop:14,padding:16,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:14,background:'linear-gradient(145deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)) 0%,var(--season-surface, var(--season-bg, #100e19)) 100%)',boxShadow:'0 8px 24px rgba(0,0,0,.16)'}}>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><strong style={{fontSize:15}}>Pontos da família</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',marginTop:3}}>Distribuição entre os cinco atributos principais</div></div><span style={{padding:'5px 10px',borderRadius:999,background:'var(--season-line, var(--season-surface-alt, #211c31))',color:'var(--season-on-primary, var(--season-bg, #100e19))',fontSize:11,fontWeight:700}}>TIER {tierKey}</span></div>
+                              {(()=>{const total=allocationPool('family');const spent=familyAllocationKeys.reduce((sum,key)=>sum+allocation('family',key),0);const remaining=Math.max(0,total-spent);const percent=total>0?Math.min(100,spent/total*100):0;return <><div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:9,marginTop:14}}>{[['Total',total],['Usados',spent],['Disponíveis',remaining]].map(([label,value],i)=><div key={String(label)} style={{padding:'11px 12px',borderRadius:10,background:i===2?'rgba(91,170,133,.13)':'rgba(255,255,255,.045)',border:'1px solid '+(i===2?'rgba(111,194,151,.35)':'var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 14%, transparent))')}}><small style={{color:'var(--season-muted, #b9b4c2)',fontSize:11}}>{label}</small><div style={{fontSize:25,fontWeight:800,lineHeight:1.25,marginTop:2,color:i===2?'#9de0b8':'#fff'}}>{value}</div></div>)}</div><div style={{height:7,background:'rgba(255,255,255,.09)',borderRadius:99,overflow:'hidden',marginTop:12}}><div style={{height:'100%',width:percent+'%',background:'linear-gradient(90deg,var(--season-secondary, var(--season-muted, #b9b4c2)),#70c49b)',borderRadius:99,transition:'width .2s'}}/></div></>})()}
+                              <small style={{display:'block',marginTop:10,color:'var(--season-muted, #b9b4c2)',lineHeight:1.5}}>Os pontos distribuíveis de Família, Classe e Progressão só podem ser alocados em FOR, AGI, DEF, RES e INT.</small>
+                            </div>
+                            <div style={{marginTop:16,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
+                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de pontos</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Gerencie separadamente os pontos recebidos por cada origem.</p></div></div>
+                              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:12}}>
+                              {allocationSources.map(source=>{const pool=allocationPool(source);const sourceKeys=allocationKeysFor(source);const spent=sourceKeys.reduce((sum,key)=>sum+allocation(source,key),0);const remaining=pool-spent;const percent=pool>0?Math.min(100,spent/pool*100):0;const sourceName=source==='family'?'Família':source==='class'?'Classe':'Progressão';const accent=source==='family'?'var(--season-primary, var(--season-primary, #b49aff))':source==='class'?'#8fb8d8':'#91c9ad';return <div key={source} style={{minWidth:0,padding:14,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',borderRadius:14,background:'linear-gradient(155deg,rgba(255,255,255,.055),rgba(255,255,255,.018))'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}><div style={{display:'flex',alignItems:'center',gap:8}}><span style={{width:8,height:8,borderRadius:99,background:accent,boxShadow:'0 0 12px var(--season-glow)'}}/><strong style={{fontSize:14}}>{sourceName}</strong></div><span style={{fontSize:11,color:remaining>0?'#a8dfbd':'var(--season-muted, #b9b4c2)',fontWeight:700}}>{remaining} livres</span></div><div style={{display:'flex',alignItems:'baseline',gap:5,marginTop:13}}><strong style={{fontSize:27,lineHeight:1,color:'#fff'}}>{spent}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}> / {pool} pontos usados</span></div><div style={{height:6,background:'rgba(255,255,255,.09)',borderRadius:99,overflow:'hidden',marginTop:10}}><div style={{height:'100%',width:percent+'%',background:`linear-gradient(90deg,${accent},${accent}bb)`,borderRadius:99,transition:'width .2s'}}/></div><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginTop:14}}>{sourceKeys.map(key=>{const isSkill=['vigor','mental','combat','dexterity','resistance','ability'].includes(key);const base=numRaw(`${isSkill?'skills':'attributes'}.${key}`);const other=allocationSources.filter(item=>item!==source).reduce((sum,item)=>sum+allocation(item,key),0);const max=Math.max(0,(isSkill?12:5)-base-other);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'9px 10px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{allocationLabels[key]}</span><input type="number" min="0" max={Math.min(max,Math.max(0,pool-spent+allocation(source,key)))} value={allocation(source,key)} onChange={e=>{const wanted=Math.max(0,Math.min(Math.floor(Number(e.target.value)||0),max,pool-spent+allocation(source,key)));write(`progression.allocations.${source}.${key}`,wanted)}} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/></label>})}</div></div>})}
+                              </div>
+                              <div style={{marginTop:14,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><div style={{fontSize:11,fontWeight:800,letterSpacing:1,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase',marginBottom:9}}>Pontos de perícia da progressão</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10}}>{field('progression.skillPoints','Pontos de perícias da progressão')}{field('progression.attributePoints','Pontos de atributos da progressão')}</div></div>
+                            </div>
+                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Benefícios por grupo</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginTop:8}}>{field('progression.damageBase','Dano base da classe','text')}{field('progression.unlockedFlows','Fluxos desbloqueados','text')}{field('progression.formLevels','Níveis de formas','text')}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>Registre separadamente dano base, fluxos e níveis de formas. Esses campos não alteram automaticamente outros valores.</small></div>
+                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:12}}>Os benefícios de classe são referências totais do material. Preencha os bônus de status acima apenas quando confirmar os valores aplicáveis ao personagem; não some novamente benefícios já incorporados.</p>
+                            <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button type="button" className="secondary-button" disabled={!promotionLog.length} onClick={()=>{if(window.confirm('Limpar todo o histórico de promoções desta ficha? Esta ação não pode ser desfeita.')){write('progression.promotionLog',[]);write('progression.appliedPromotionIds',[])}}}>Limpar histórico</button></div>{promotionLog.length===0?<p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Nenhuma promoção registrada nesta ficha.</p>:promotionLog.map((entry:any)=><div key={entry.id} style={{padding:10,marginTop:8,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8}}><strong>{entry.from} → {entry.to}</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>{new Date(entry.at).toLocaleString('pt-BR')} · {entry.applied?'Benefícios marcados como aplicados':'Benefícios pendentes de conferência'}</div>{entry.description&&<p style={{fontSize:13,marginBottom:4}}>{entry.description}</p>}<p style={{fontSize:13,marginBottom:0}}>{entry.benefitReference}</p></div>)}</div>
                             <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}><button className="secondary-button" type="button" onClick={()=>{const updated=promotionLog.map(entry=>({...entry,applied:true}));write('progression.promotionLog',updated);write('progression.appliedPromotionIds',Array.from(new Set([...benefitsApplied,...promotionLog.map(entry=>entry.transition)])))}}>Marcar promoções registradas como conferidas</button></div>
                           </> : <>
-                            <p style={{color:'#c9bed8',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
+                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
                             {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
-                            <label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
+                            <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr','Bônus de PR')}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
                           </>}
                         </section>
                       })()}
-                      {panel('1. Identidade', <>{field('identity.name','Nome','text')}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{field('identity.primaryArchetype','Arquétipo primário','text')}{field('identity.secondaryArchetype','Arquétipo secundário','text')}{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{field('identity.rank','Classe / patente','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
-                      {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small style={{color:'#c9bed8'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'#b9a9d0'}}>{hint}</small></div>)}</>)}
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'#c9bed8',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Capacidade de carga: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'#21182f',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'#c9bed8',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'#c9bed8'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base')}{field('combat.extraDamage','Dano extra')}{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions*dexterity}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{defense}</div></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
-                      {panel('6. Fluxos', <>{area('attributes.fluxes','Fluxos de atributos')}{area('flows.details','Detalhes dos fluxos')}</>)}
+                      {panel('1. Identidade', <>{field('identity.name','Nome','text')}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{field('identity.primaryArchetype','Arquétipo primário','text')}{field('identity.secondaryArchetype','Arquétipo secundário','text')}{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
+                      {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Efetivo com família: '+strength+' · Capacidade: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Efetivo com família: '+defense+' · Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Efetivo com família: '+breathing+' · Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Efetivo com família: '+intellect+' · Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base')}{field('combat.extraDamage','Dano extra')}{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions*dexterity}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{defense}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
+                      {panel('6. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
                       {panel('7. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
-                    </>
+                      </fieldset>) : (<section className="character-sheet-summary">
+                        <header className="sheet-summary-header">
+                          <div className="sheet-summary-identity"><span className="sheet-eyebrow">FICHA DE PERSONAGEM</span><h2>{String(read('identity.name', selectedCharacter?.name || 'Personagem'))}</h2><p>{String(read('identity.family', 'Família não definida'))} · {String(read('identity.primaryArchetype', selectedCharacter?.archetype || 'Arquétipo não definido'))}</p></div>
+                          <div className="sheet-summary-progression">{[['Classe',read('progression.rankName', KISATSUTAI_RANKS.find(entry=>entry.id===rankIdForStatus)?.name || 'Não definida')],['Tier familiar',familyTier.label],['Foco',read('progression.classFocus',familyTier.focus)],['Pontos de perícia',read('progression.classSkillPoints',0)]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
+                          <div className="sheet-summary-season">{seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada'}</div>
+                        </header>
+                        <div className="sheet-summary-status">{derived.map(([label,value], index) => {
+                          const keys = ['pv', 'ps', 'pr'] as const
+                          const key = keys[index]
+                          const currentPath = `status.current.${key}`
+                          const rawCurrent = Number(read(currentPath, value))
+                          const current = Math.max(0, key === 'pv' ? (Number.isFinite(rawCurrent) ? rawCurrent : value) : Math.min(value, Number.isFinite(rawCurrent) ? rawCurrent : value))
+                          const adjust = (delta: number) => {
+                            if (!isMaster) return
+                            const next = { ...data, status: { ...(data.status || {}), current: { ...((data.status || {}).current || {}), [key]: Math.max(0, key === 'pv' ? current + delta : Math.min(value, current + delta)) } } }
+                            setSheetDraft(JSON.stringify(next, null, 2))
+                          }
+                          const applyTypedAdjustment = () => {
+                            const raw = (statusAdjustments[key] ?? '').trim()
+                            if (!/^[+-]\d+$/.test(raw) || Number(raw) === 0) {
+                              setError('Digite um valor inteiro com sinal, como +10 ou -10.')
+                              return
+                            }
+                            adjust(Number(raw))
+                            setError('')
+                            setNotice(`${key.toUpperCase()} ajustado em ${raw}. Clique em “Salvar status” para confirmar.`)
+                          }
+                          const colors = [{accent:'#f28b9b',glow:'rgba(242,139,155,.18)'},{accent:'var(--season-primary)',glow:'var(--season-glow)'},{accent:'#75c9ee',glow:'rgba(117,201,238,.18)'}][index]
+                          const percent = value > 0 ? Math.min(current / value * 100, 100) : 0
+                          const extraPV = key === 'pv' ? Math.max(0, current - value) : 0
+                          const extraPercent = value > 0 ? Math.min(extraPV / value * 100, 100) : 0
+                          return <article key={label} className="sheet-summary-status-card" style={{position:'relative',overflow:'hidden'}}>
+                            <span>{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
+                            <strong style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
+                            <div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
+                            {extraPV > 0 && <><div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'0 0 6px'}}><div style={{height:'100%',width:`${extraPercent}%`,borderRadius:99,background:'linear-gradient(90deg,#f6b84a,#ff7b45)',boxShadow:'0 0 12px rgba(246,184,74,.3)',transition:'width .2s ease'}}/></div><small style={{display:'block',color:'#ffc875',marginBottom:6}}>＋{extraPV} PV excedentes · barra extra</small></>}
+                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                              <small style={{opacity:.7}}>{Math.round(percent)}% disponível</small>
+                              {isMaster && <div style={{display:'flex',gap:6}}>
+                                <button type="button" aria-label={`Diminuir ${key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
+                                <button type="button" aria-label={`Aumentar ${key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
+                              </div>}
+                            </div>
+                            {isMaster && <div style={{display:'flex',gap:7,marginTop:10}}>
+                              <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
+                              <button type="button" onClick={applyTypedAdjustment} style={{whiteSpace:'nowrap',padding:'7px 11px',borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontWeight:700,cursor:'pointer'}}>Aplicar</button>
+                            </div>}
+                            {key === 'pr' && isKisatsutaiSheet && (() => {
+                              const rank = KISATSUTAI_RANKS.find(entry => entry.id === rankIdForStatus) || KISATSUTAI_RANKS[0]
+                              const group = rank.group
+                              const dtByGroup: Record<string, number> = { Raposa: 20, Tigre: 19, Dragão: 18, Corvo: 17 }
+                              const dt = dtByGroup[group]
+                              const runBreathingTest = () => {
+                                if (group === 'Carpa' || !dt) return
+                                const diceCount = Math.max(1, Math.floor(1 + breathing))
+                                const rolls = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 20) + 1)
+                                const best = Math.max(...rolls)
+                                const total = best + vigor
+                                const success = total >= dt
+                                const recovery = Math.floor(value / (success ? 4 : 8))
+                                const applied = Math.min(recovery, Math.max(0, value - current))
+                                setBreathingTestResult({ rolls, best, total, dt, success, recovery, applied, group })
+                                if (isMaster && applied > 0) {
+                                  const next = { ...data, status: { ...(data.status || {}), current: { ...((data.status || {}).current || {}), pr: current + applied } } }
+                                  setSheetDraft(JSON.stringify(next, null, 2))
+                                  setNotice(`Teste de Respiração: ${success ? 'sucesso' : 'falha'}. ${applied} PR recuperados no rascunho; salve os status para confirmar.`)
+                                }
+                              }
+                              return <div style={{marginTop:12,padding:12,borderRadius:10,background:'rgba(117,201,238,.08)',border:'1px solid rgba(117,201,238,.22)'}}>
+                                <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap'}}><strong style={{fontSize:13}}>Teste de Respiração · {group}</strong><small style={{opacity:.75}}>{group === 'Carpa' ? 'Sem teste' : `DT ${dt}`}</small></div>
+                                {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o teste de Respiração.</small> : <>
+                                  <small style={{display:'block',marginTop:5,opacity:.8}}>{1 + breathing}d20 · maior resultado + Vigor ({vigor})</small>
+                                  <button type="button" onClick={runBreathingTest} style={{marginTop:9,padding:'8px 12px',borderRadius:9,border:'1px solid rgba(117,201,238,.55)',background:'rgba(117,201,238,.16)',color:'inherit',fontWeight:700,cursor:'pointer'}}>Rolar teste</button>
+                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} PR ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} PR</strong></div>{isMaster && <small style={{opacity:.75}}>O valor aplicado fica no rascunho. Use “Salvar status” para confirmar.</small>}</div>}
+                                </>}
+                              </div>
+                            })()}
+                          </article>
+                        })}</div>
+                        {isMaster && <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar status'}</button></div>}
+                        <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],['Respiração',breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
+                        <div className="sheet-summary-grid">
+                          <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
+                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',read('combat.extraDamage','—')],['Deslocamento',movementActions*dexterity],['Ações',movementActions+extraActions],['Reações',defense],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
+                        </div>
+                        <div className="sheet-summary-notes"><h3>Resumo do personagem</h3><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
+                        <p className="sheet-summary-hint">Esta é uma visão resumida. {isMaster ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Somente o mestre pode editar a ficha.'}</p>
+                      </section>)
+                    )
+
                   })()}
-                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="button" disabled={!isMaster||sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!isMaster||!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>
-                  {!isMaster&&<small>Somente mestres podem editar as fichas nesta versão.</small>}
+                  {editingSheet && isMaster && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>}
                 </>}
               </>}
             </section>
           )}
-          {activePage === 'characters' && selectedCampaignId && <section className="inventory-section characters-page-panel"><div className="inventory-heading"><div><h2>Personagens</h2><p>Personagens da campanha selecionada.</p></div><button className="primary-button" onClick={()=>setShowCharacterForm(true)}>+ Novo personagem</button></div>{showCharacterForm&&<form className="add-form" onSubmit={createCharacter}><label>Nome<input value={characterName} onChange={e=>setCharacterName(e.target.value)} required style={inputStyle}/></label><label>Arquétipo<input value={archetype} onChange={e=>setArchetype(e.target.value)} style={inputStyle}/></label><label>Nível<input type="number" min="1" value={characterLevel} onChange={e=>setCharacterLevel(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="submit" disabled={loading}>Salvar personagem</button></form>}<div className="item-grid">{characters.map(character=><article className="item-card" key={character.id}><h3>{character.name}</h3><p>{character.archetype||'Arquétipo não definido'} · Nível {character.level}</p><button className="primary-button" onClick={()=>{setSelectedCharacterId(character.id);setActivePage('sheets');setSheetCharacterView(true)}}>Abrir ficha</button></article>)}</div></section>}
+          {activePage === 'characters' && selectedCampaignId && <section className="inventory-section characters-page-panel"><div className="inventory-heading"><div><h2>Personagens</h2><p>Personagens da campanha selecionada.</p></div><button className="primary-button" onClick={()=>setShowCharacterForm(true)}>+ Novo personagem</button></div>{showCharacterForm&&<form className="add-form" onSubmit={createCharacter}><label>Nome<input value={characterName} onChange={e=>setCharacterName(e.target.value)} required style={inputStyle}/></label><label>Arquétipo<input value={archetype} onChange={e=>setArchetype(e.target.value)} style={inputStyle}/></label>{!String(selectedCampaign?.system_name||'').toLowerCase().includes('kisatsutai')&&<label>Nível<input type="number" min="1" max="999" value={characterLevel} onChange={e=>setCharacterLevel(e.target.value)} style={inputStyle}/></label>}<button className="primary-button" type="submit" disabled={loading}>Salvar personagem</button></form>}<div className="item-grid">{characters.map(character=><article className="item-card" key={character.id}><h3>{character.name}</h3><p>{character.archetype||'Arquétipo não definido'} · Nível {character.level}</p><button className="primary-button" onClick={()=>{setSelectedCharacterId(character.id);setActivePage('sheets');setSheetCharacterView(true)}}>Abrir ficha</button></article>)}</div></section>}
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
@@ -1732,19 +1996,10 @@ function App() {
                         />
                       </label>
 
-                      <label>
+                      {!String(selectedCampaign?.system_name||'').toLowerCase().includes('kisatsutai') && <label>
                         Nível
-                        <input
-                          type="number"
-                          min="1"
-                          max="999"
-                          value={characterLevel}
-                          onChange={(event) =>
-                            setCharacterLevel(event.target.value)
-                          }
-                          required
-                        />
-                      </label>
+                        <input type="number" min="1" max="999" value={characterLevel} onChange={(event) => setCharacterLevel(event.target.value)} required />
+                      </label>}
                     </div>
 
                     <button
@@ -1775,7 +2030,7 @@ function App() {
                         style={{
                           outline:
                             selectedCharacterId === character.id
-                              ? '1px solid #9565dc'
+                              ? '1px solid var(--season-primary)'
                               : undefined,
                         }}
                       >
@@ -1787,7 +2042,7 @@ function App() {
                         <p className="item-description">
                           {character.archetype || 'Arquétipo não definido'}
                         </p>
-                        <small style={{ display: 'block', color: '#c9bed8', margin: '8px 0' }}>
+                        <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', margin: '8px 0' }}>
                           {character.visibility === 'campaign' ? '🌐 Toda a campanha' : character.visibility === 'selected' ? '👥 Jogadores selecionados' : '🔒 Privado'}
                         </small>
                         <button
@@ -1862,7 +2117,7 @@ function App() {
                   </div>
 
                   {isMaster && (
-                    <div style={{ minWidth: 220, padding: '12px', border: '1px solid #493568', borderRadius: 10, background: '#17131e' }}>
+                    <div style={{ minWidth: 220, padding: '12px', border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))', borderRadius: 10, background: 'var(--season-bg, var(--season-bg, #100e19))' }}>
                       <label style={labelStyle} htmlFor="character-visibility">Visibilidade</label>
                       <select
                         id="character-visibility"
@@ -1875,7 +2130,7 @@ function App() {
                         <option value="campaign">Toda a campanha</option>
                         <option value="selected">Jogadores selecionados</option>
                       </select>
-                      <small style={{ display: 'block', color: '#c9bed8', lineHeight: 1.5 }}>
+                      <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', lineHeight: 1.5 }}>
                         {selectedCharacter.visibility === 'campaign'
                           ? 'Todos os membros da campanha podem ver este personagem.'
                           : selectedCharacter.visibility === 'selected'
@@ -1897,7 +2152,7 @@ function App() {
                             </label>
                           ))}
                           {campaignMembers.filter((member) => member.role !== 'master' && member.user_id !== selectedCharacter.user_id).length === 0 && (
-                            <small style={{ color: '#c9bed8' }}>Não há outros jogadores na campanha.</small>
+                            <small style={{ color: 'var(--season-muted, #b9b4c2)' }}>Não há outros jogadores na campanha.</small>
                           )}
                         </div>
                       )}
@@ -2372,14 +2627,14 @@ const centerStyle = {
   minHeight: '100vh',
   display: 'grid',
   placeItems: 'center',
-  background: '#0c0b10',
+  background: 'var(--season-bg, #100e19)',
   color: '#f4f0fa',
   fontFamily: 'sans-serif',
 } as const
 
 const labelStyle = {
   display: 'block',
-  color: '#c9bed8',
+  color: 'var(--season-muted, #b9b4c2)',
   fontSize: '12px',
   marginBottom: '6px',
 } as const
@@ -2388,18 +2643,18 @@ const inputStyle = {
   width: '100%',
   padding: '10px',
   borderRadius: '8px',
-  border: '1px solid #493568',
-  background: '#17131e',
+  border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))',
+  background: 'var(--season-bg, var(--season-bg, #100e19))',
   color: '#f4f0fa',
   marginBottom: '8px',
 } as const
 
 const secondaryButtonStyle = {
   padding: '8px 12px',
-  border: '1px solid #493568',
+  border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))',
   borderRadius: '8px',
-  background: '#21172f',
-  color: '#d8c6ff',
+  background: 'var(--season-surface-alt, var(--season-surface-alt, #211c31))',
+  color: 'var(--season-primary, var(--season-primary, #b49aff))',
   cursor: 'pointer',
   font: 'inherit',
   fontSize: '12px',
