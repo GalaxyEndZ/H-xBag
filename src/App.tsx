@@ -55,6 +55,39 @@ function displayNameForMembers(session: Session | null) {
     'Você'
 }
 
+const KISATSUTAI_FAMILY_TIERS = {
+  '1': { label: 'Tier 1 — Família principal', pv: 30, ps: 25, pr: 60, strength: 1, agility: 1, defense: 1, breathing: 2, intellect: 1, points: 7, focus: 24 },
+  '2': { label: 'Tier 2 — Família muito influente', pv: 25, ps: 20, pr: 40, strength: 0, agility: 1, defense: 0, breathing: 2, intellect: 1, points: 5, focus: 12 },
+  '3': { label: 'Tier 3 — Envolvimento direto', pv: 20, ps: 15, pr: 20, strength: 0, agility: 0, defense: 0, breathing: 1, intellect: 1, points: 3, focus: 6 },
+  '4': { label: 'Tier 4 — Conhecimento dos Kisatsutai', pv: 15, ps: 10, pr: 10, strength: 0, agility: 0, defense: -1, breathing: 1, intellect: 1, points: 2, focus: 4 },
+  '5': { label: 'Tier 5 — Sem relação com Kisatsutai', pv: 10, ps: 5, pr: 5, strength: -1, agility: 0, defense: -1, breathing: -1, intellect: 0, points: 0, focus: 2 },
+} as const
+
+const KISATSUTAI_RANKS = [
+  { id: 'zaidan', name: 'Zaidan', group: 'Carpa', focus: '1', benefits: '+15 PV, +10 PS, +0 PR; 20 pontos de perícias principais; +1 atributo extra; dano 1d4; formas Carpa e Raposa.' },
+  { id: 'mizunoto', name: 'Mizunoto', group: 'Raposa', focus: '2', benefits: '+30 PV, +25 PS, +5 PR; 25 pontos de perícias; +1 atributo extra; dano 1d6; fluxo Raposa.' },
+  { id: 'mizunoe', name: 'Mizunoe', group: 'Raposa', focus: '4', benefits: '+35 PV, +30 PS, +10 PR; 25 pontos de perícias; +2 atributos extras; dano 1d6; fluxo Raposa.' },
+  { id: 'kanoto', name: 'Kanoto', group: 'Raposa', focus: '6', benefits: 'Benefícios totais não definidos no material.' },
+  { id: 'kanoe', name: 'Kanoe', group: 'Tigre', focus: '10', benefits: 'Benefícios totais não definidos no material.' },
+  { id: 'tsuchinoto', name: 'Tsuchinoto', group: 'Tigre', focus: '14', benefits: 'Benefícios totais não definidos no material.' },
+  { id: 'tsuchinoe', name: 'Tsuchinoe', group: 'Tigre', focus: '18', benefits: 'Benefícios totais não definidos no material.' },
+  { id: 'hinoto', name: 'Hinoto', group: 'Dragão', focus: '24', benefits: '+40 PV, +35 PS, +20 PR; 28 pontos de perícias; +4 atributos extras; Concentração Total Aprimorada (DT19); dano 1d10.' },
+  { id: 'hinoe', name: 'Hinoe', group: 'Dragão', focus: '28', benefits: '+41 PV, +36 PS, +25 PR; 28 pontos de perícias; +5 atributos extras; técnica aprimorada DT19; dano 1d10.' },
+  { id: 'kinoto', name: 'Kinoto', group: 'Dragão', focus: '32', benefits: '+42 PV, +37 PS, +30 PR; 29 pontos de perícias; +5 atributos extras; técnica aprimorada DT19; dano 1d10.' },
+  { id: 'kinoe', name: 'Kinoe (Tsuguko)', group: 'Corvo', focus: '44', benefits: '+44 PV, +39 PS, +35 PR; 29 pontos de perícias; +6 atributos extras; técnica completa DT18; dano 1d12; fluxo Corvo.' },
+  { id: 'hashira-inferior', name: 'Hashira Inferior (Shinkai)', group: 'Corvo', focus: '92', benefits: '+56 PV, +51 PS, +80 PR; 35 pontos de perícias; +10 atributos extras; técnica perfeita DT17; não gasta PR nas formas Tigre e Raposa; dano 1d12.' },
+  { id: 'hashira-superior', name: 'Hashira Superior (Saikou)', group: 'Corvo', focus: 'Ilimitado', benefits: 'Benefícios totais não definidos no material.' },
+] as const
+
+const KISATSUTAI_PROMOTIONS: Record<string, string> = {
+  'zaidan>mizunoto': '+15 PV, +15 PS, +5 PR, +5 pontos de perícias, +1 foco; dano 1d4 → 1d6; desbloqueia fluxo Raposa.',
+  'mizunoto>mizunoe': '+5 PV, +5 PS, +5 PR, +1 atributo extra, +2 foco.',
+  'mizunoe>kanoto': '+1 PV, +1 PS, +5 PR, +1 ponto de perícia principal, +2 foco.',
+  'hinoto>hinoe': 'Registro inconsistente no material: menciona +1 PR, +1 PS, +5 PR, +1 ponto de atributo e +6 foco. Confirmar com o mestre antes de aplicar.',
+  'kinoto>kinoe': '+2 PV, +2 PS, +5 PR, +1 ponto de atributo, técnica completa DT18, dano 1d10 → 1d12, fluxo Corvo, +12 foco e formas Corvo.',
+  'kinoe>hashira-inferior': '+12 PV, +12 PS, +45 PR, +6 perícias principais, +4 atributos extras, técnica perfeita DT17, formas Tigre/Raposa sem custo de PR e +48 foco.',
+}
+
 const categories = [
   'Todos',
   'Armas',
@@ -1445,6 +1478,46 @@ function App() {
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
                     const panel = (title: string, children: any) => <section style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>{title}</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>{children}</div></section>
                     return <>
+                      {(() => {
+                        const system = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai'))
+                        const kisatsutai = system.toLowerCase().includes('kisatsutai')
+                        const tierKey = String(read('family.tier', '5')) as keyof typeof KISATSUTAI_FAMILY_TIERS
+                        const tier = KISATSUTAI_FAMILY_TIERS[tierKey] || KISATSUTAI_FAMILY_TIERS['5']
+                        const rankId = String(read('progression.rankId', 'zaidan'))
+                        const rank = KISATSUTAI_RANKS.find(entry => entry.id === rankId) || KISATSUTAI_RANKS[0]
+                        const promotionLog: any[] = Array.isArray(read('progression.promotionLog', [])) ? read('progression.promotionLog', []) : []
+                        const benefitsApplied: string[] = Array.isArray(read('progression.appliedPromotionIds', [])) ? read('progression.appliedPromotionIds', []) : []
+                        const changeRank = (nextId: string) => {
+                          const oldRank = KISATSUTAI_RANKS.find(entry => entry.id === rankId)
+                          const nextRank = KISATSUTAI_RANKS.find(entry => entry.id === nextId)
+                          const transition = `${rankId}>${nextId}`
+                          if (promotionLog.some(entry => entry.transition === transition)) { setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.'); return }
+                          const promotionId = `${Date.now()}-${transition}`
+                          const next = { ...data, progression: { ...(data.progression || {}), rankId: nextId, rankName: nextRank?.name || nextId, promotionLog: [...promotionLog, { id: promotionId, transition, from: oldRank?.name || rankId, to: nextRank?.name || nextId, at: new Date().toISOString(), benefitReference: KISATSUTAI_PROMOTIONS[transition] || 'Benefícios incrementais não definidos no material.', applied: false }] } }
+                          setSheetDraft(JSON.stringify(next, null, 2))
+                        }
+                        return <section style={{padding:16,margin:'14px 0',border:'1px solid #7955a6',borderRadius:12,background:'#1c1626'}}>
+                          <h3 style={{marginTop:0}}>Progressão, classe e família</h3>
+                          <label style={labelStyle}>Sistema de progressão<select value={system} onChange={e=>write('progression.system',e.target.value)} style={inputStyle}><option value="Kisatsutai">Kisatsutai</option><option value="Personalizado">Personalizado</option></select></label>
+                          {kisatsutai ? <>
+                            <label style={{...labelStyle,display:'block',marginTop:12}}>Classe / hierarquia do caçador<select value={rankId} onChange={e=>changeRank(e.target.value)} style={inputStyle}>{KISATSUTAI_RANKS.map(entry=><option key={entry.id} value={entry.id}>{entry.group} · {entry.name}</option>)}</select></label>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10,marginTop:12}}>
+                              <div style={{padding:12,border:'1px solid #63428a',borderRadius:10}}><small>FOCO EXIGIDO</small><div style={{fontSize:22,fontWeight:800}}>{rank.focus}</div></div>
+                              <div style={{padding:12,border:'1px solid #63428a',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
+                            </div>
+                            <p style={{color:'#d7c9e7',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
+                            <p style={{color:'#b9a9d0',fontSize:12}}>Os benefícios listados são referências do material, não são somados automaticamente aos atributos/status para evitar duplicação. Aplique os valores confirmados pelo mestre na ficha.</p>
+                            <label style={{...labelStyle,display:'block',marginTop:12}}>Tier da família<select value={tierKey} onChange={e=>write('family.tier',e.target.value)} style={inputStyle}>{Object.entries(KISATSUTAI_FAMILY_TIERS).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
+                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>{[['PV',tier.pv],['PS',tier.ps],['PR',tier.pr],['Força',tier.strength],['Agilidade',tier.agility],['Defesa',tier.defense],['Respiração',tier.breathing],['Intelecto',tier.intellect],['Pontos livres',tier.points],['Foco',tier.focus]].map(([label,value])=><div key={String(label)} style={{padding:9,border:'1px solid #493568',borderRadius:8,background:'#21182f'}}><small style={{color:'#b9a9d0'}}>{label}</small><div style={{fontSize:19,fontWeight:800}}>{value}</div></div>)}</div>
+                            <div style={{marginTop:14}}><strong>Histórico de promoções</strong>{promotionLog.length===0?<p style={{color:'#b9a9d0',fontSize:13}}>Nenhuma promoção registrada nesta ficha.</p>:promotionLog.map((entry:any)=><div key={entry.id} style={{padding:10,marginTop:8,border:'1px solid #493568',borderRadius:8}}><strong>{entry.from} → {entry.to}</strong><div style={{fontSize:12,color:'#b9a9d0'}}>{new Date(entry.at).toLocaleString('pt-BR')} · {entry.applied?'Benefícios marcados como aplicados':'Benefícios pendentes de conferência'}</div><p style={{fontSize:13,marginBottom:0}}>{entry.benefitReference}</p></div>)}</div>
+                            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}><button className="secondary-button" type="button" onClick={()=>{const updated=promotionLog.map(entry=>({...entry,applied:true}));write('progression.promotionLog',updated);write('progression.appliedPromotionIds',Array.from(new Set([...benefitsApplied,...promotionLog.map(entry=>entry.transition)])))}}>Marcar promoções registradas como conferidas</button></div>
+                          </> : <>
+                            <p style={{color:'#c9bed8',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
+                            {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
+                            <label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
+                          </>}
+                        </section>
+                      })()}
                       {panel('1. Identidade', <>{field('identity.name','Nome','text')}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{field('identity.primaryArchetype','Arquétipo primário','text')}{field('identity.secondaryArchetype','Arquétipo secundário','text')}{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{field('identity.rank','Classe / patente','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid #63428a',borderRadius:10,background:'#21182f'}}><small style={{color:'#c9bed8'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'#b9a9d0'}}>{hint}</small></div>)}</>)}
                       <div style={{padding:16,margin:'14px 0',border:'1px solid #493568',borderRadius:12,background:'#17131e'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'#c9bed8',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Capacidade de carga: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'#21182f',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
