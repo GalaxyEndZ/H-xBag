@@ -79,6 +79,14 @@ const KISATSUTAI_RANKS = [
   { id: 'hashira-superior', name: 'Hashira Superior (Saikou)', group: 'Corvo', focus: 'Ilimitado', benefits: 'Benefícios totais não definidos no material.' },
 ] as const
 
+const KISATSUTAI_ARCHETYPES = [
+  'Linha de Frente',
+  'Flanco',
+  'Defensor',
+  'Especialista',
+  'Suporte',
+] as const
+
 const KISATSUTAI_RANK_STATUS: Record<string, { pv: number; ps: number; pr: number }> = {
   zaidan: { pv: 15, ps: 10, pr: 0 },
   mizunoto: { pv: 30, ps: 25, pr: 5 },
@@ -179,6 +187,9 @@ function App() {
 
   const [characterName, setCharacterName] = useState('')
   const [archetype, setArchetype] = useState('')
+  const [primaryArchetype, setPrimaryArchetype] = useState('')
+  const [secondaryArchetype, setSecondaryArchetype] = useState('')
+  const [characterRank, setCharacterRank] = useState('zaidan')
   const [characterLevel, setCharacterLevel] = useState('1')
 
   const [newItemName, setNewItemName] = useState('')
@@ -771,8 +782,25 @@ function App() {
 
     if (!selectedCampaignId || !characterName.trim()) return
 
-    const kisatsutaiCampaign = String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai')
+    const kisatsutaiCampaign = String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai')
     const level = kisatsutaiCampaign ? 1 : Number(characterLevel)
+    if (kisatsutaiCampaign) {
+  if (!primaryArchetype || !secondaryArchetype) {
+    setError('Selecione os dois arquétipos.')
+    return
+  }
+
+  const forbidden =
+    (primaryArchetype === 'Linha de Frente' && secondaryArchetype === 'Suporte') ||
+    (primaryArchetype === 'Suporte' && secondaryArchetype === 'Linha de Frente') ||
+    (primaryArchetype === 'Defensor' && secondaryArchetype === 'Flanco') ||
+    (primaryArchetype === 'Flanco' && secondaryArchetype === 'Defensor')
+
+  if (forbidden) {
+    setError('Essa combinação de arquétipos não é permitida.')
+    return
+  }
+}
 
     if (!kisatsutaiCampaign && (!Number.isInteger(level) || level < 1 || level > 999)) {
       setError('O nível deve ser um número inteiro entre 1 e 999.')
@@ -788,7 +816,9 @@ function App() {
       {
         p_campaign_id: selectedCampaignId,
         p_name: characterName.trim(),
-        p_archetype: archetype.trim() || null,
+        p_archetype: kisatsutaiCampaign
+  ? primaryArchetype
+  : archetype.trim() || null,
         p_level: level,
       },
     )
@@ -806,6 +836,39 @@ function App() {
     }
 
     const createdCharacter = data as Character
+    if (kisatsutaiCampaign && selectedSeasonId) {
+const initialSheetData = {
+  identity: {
+    primaryArchetype,
+    secondaryArchetype,
+  },
+  progression: {
+    system: 'Kisatsutai',
+    rankId: characterRank,
+    rankName: KISATSUTAI_RANKS.find(
+      rank => rank.id === characterRank
+    )?.name || 'Zaidan',
+  },
+}
+
+  const { data: newSheet, error: sheetError } = await supabase
+    .from('character_sheets')
+    .insert({
+      character_id: createdCharacter.id,
+      season_id: selectedSeasonId,
+      sheet_data: initialSheetData,
+      created_by: session!.user.id,
+    })
+    .select('id,character_id,season_id,sheet_data')
+    .single()
+
+  if (sheetError) {
+    setError(`Personagem criado, mas houve um erro ao inicializar sua ficha: ${sheetError.message}`)
+  } else {
+    setSheet(newSheet as CharacterSheet)
+    setSheetDraft(JSON.stringify(initialSheetData, null, 2))
+  }
+}
     setCharacters((current) =>
       current.some((character) => character.id === createdCharacter.id)
         ? current.map((character) =>
@@ -814,9 +877,12 @@ function App() {
         : [...current, createdCharacter],
     )
     setSelectedCharacterId(createdCharacter.id)
-    setCharacterName('')
-    setArchetype('')
-    setCharacterLevel('1')
+setCharacterName('')
+setArchetype('')
+setPrimaryArchetype('')
+setSecondaryArchetype('')
+setCharacterLevel('1')
+setCharacterRank('zaidan')
     setShowCharacterForm(false)
     setNotice('Personagem criado e salvo!')
     setLoading(false)
@@ -1667,6 +1733,12 @@ async function deleteCharacter(character: Character) {
                     const resistance = Math.min(12, num('skills.resistance'))
                     const strength = effectiveAttribute('attributes.strength', familyTier.strength)
                     const rankIdForStatus = String(read('progression.rankId', 'zaidan'))
+                    const rankName = String(
+  read(
+    'progression.rankName',
+    KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.name || 'Zaidan'
+  )
+)
                     const rankStatus = isKisatsutaiSheet ? (KISATSUTAI_RANK_STATUS[rankIdForStatus] || { pv: 0, ps: 0, pr: 0 }) : { pv: 0, ps: 0, pr: 0 }
                     const customClassPV = num('progression.classStatus.pv')
                     const customClassPS = num('progression.classStatus.ps')
@@ -1689,7 +1761,18 @@ async function deleteCharacter(character: Character) {
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
                     const panel = (title: string, children: any) => <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>{title}</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>{children}</div></section>
                     return (
-                      editingSheet && isMaster ? (<fieldset
+                      <>
+  {isKisatsutaiSheet && (
+    <section className="inventory-section" style={{ marginBottom: 16 }}>
+      <div className="inventory-heading">
+        <div>
+          <small>GRADUAÇÃO ATUAL</small>
+          <h2>{rankName}</h2>
+        </div>
+      </div>
+    </section>
+  )}
+                      {editingSheet && isMaster ? (<fieldset
                         disabled={!editingSheet || !isMaster}
                         className="character-sheet-editor"
                         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
@@ -1799,7 +1882,50 @@ async function deleteCharacter(character: Character) {
                           </>}
                         </section>
                       })()}
-                      {panel('1. Identidade', <>{field('identity.name','Nome','text')}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{field('identity.primaryArchetype','Arquétipo primário','text')}{field('identity.secondaryArchetype','Arquétipo secundário','text')}{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
+                      {panel('1. Identidade', <>{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
+  const otherKey = key === 'primaryArchetype'
+    ? 'secondaryArchetype'
+    : 'primaryArchetype'
+
+  const current = String(read(`identity.${key}`, ''))
+  const other = String(read(`identity.${otherKey}`, ''))
+
+  const isForbidden = (a: string, b: string) =>
+    (a === 'Linha de Frente' && b === 'Suporte') ||
+    (a === 'Suporte' && b === 'Linha de Frente') ||
+    (a === 'Defensor' && b === 'Flanco') ||
+    (a === 'Flanco' && b === 'Defensor')
+
+  return (
+    <label key={key} style={{...labelStyle, display:'flex', flexDirection:'column', gap:6}}>
+      {key === 'primaryArchetype' ? 'Arquétipo primário' : 'Arquétipo secundário'}
+      <select
+        value={current}
+        onChange={e => {
+          const next = e.target.value
+          if (other && isForbidden(next, other)) {
+            setError('Essa combinação de arquétipos não é permitida.')
+            return
+          }
+          write(`identity.${key}`, next)
+        }}
+        style={inputStyle}
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map(archetype => (
+          <option
+            key={archetype}
+            value={archetype}
+            disabled={Boolean(other && isForbidden(archetype, other))}
+          >
+            {archetype}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+})}
+{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
                       <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Efetivo com família: '+strength+' · Capacidade: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Efetivo com família: '+defense+' · Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Efetivo com família: '+breathing+' · Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Efetivo com família: '+intellect+' · Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
                       <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
@@ -1894,7 +2020,8 @@ async function deleteCharacter(character: Character) {
                         </div>
                         <div className="sheet-summary-notes"><h3>Resumo do personagem</h3><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
                         <p className="sheet-summary-hint">Esta é uma visão resumida. {isMaster ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Somente o mestre pode editar a ficha.'}</p>
-                      </section>)
+                      </section>)}
+                    </>
                     )
 
                   })()}
@@ -1957,28 +2084,129 @@ async function deleteCharacter(character: Character) {
           />
         </label>
 
-        <label>
-          Arquétipo
-          <input
-            value={archetype}
-            onChange={e => setArchetype(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
+{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
+  <>
+    <label>
+      Arquétipo primário
+      <select
+        value={primaryArchetype}
+        onChange={e => setPrimaryArchetype(e.target.value)}
+        required
+        style={inputStyle}
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map(item => (
+          <option
+            key={item}
+            value={item}
+            disabled={
+              (item === 'Linha de Frente' && secondaryArchetype === 'Suporte') ||
+              (item === 'Suporte' && secondaryArchetype === 'Linha de Frente') ||
+              (item === 'Defensor' && secondaryArchetype === 'Flanco') ||
+              (item === 'Flanco' && secondaryArchetype === 'Defensor')
+            }
+          >
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
 
-        {!String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && (
-          <label>
-            Nível
-            <input
-              type="number"
-              min="1"
-              max="999"
-              value={characterLevel}
-              onChange={e => setCharacterLevel(e.target.value)}
-              style={inputStyle}
-            />
-          </label>
-        )}
+    <label>
+      Arquétipo secundário
+      <select
+        value={secondaryArchetype}
+        onChange={e => setSecondaryArchetype(e.target.value)}
+        required
+        style={inputStyle}
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map(item => (
+          <option
+            key={item}
+            value={item}
+            disabled={
+              (item === 'Linha de Frente' && primaryArchetype === 'Suporte') ||
+              (item === 'Suporte' && primaryArchetype === 'Linha de Frente') ||
+              (item === 'Defensor' && primaryArchetype === 'Flanco') ||
+              (item === 'Flanco' && primaryArchetype === 'Defensor')
+            }
+          >
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
+  </>
+) : (
+  <label>
+    Arquétipo
+    <input
+      value={archetype}
+      onChange={e => setArchetype(e.target.value)}
+      style={inputStyle}
+    />
+  </label>
+)}
+
+{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
+  <>
+    <label>
+      Arquétipo primário
+      <select
+        value={primaryArchetype}
+        onChange={(event) => setPrimaryArchetype(event.target.value)}
+        required
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map(item => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+    </label>
+
+    <label>
+      Arquétipo secundário
+      <select
+        value={secondaryArchetype}
+        onChange={(event) => setSecondaryArchetype(event.target.value)}
+        required
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map(item => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+    </label>
+
+    <label>
+      Graduação
+      <select
+        value={characterRank}
+        onChange={(event) => setCharacterRank(event.target.value)}
+        required
+      >
+        {KISATSUTAI_RANKS.map(rank => (
+          <option key={rank.id} value={rank.id}>
+            {rank.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  </>
+) : (
+  <label>
+    Nível
+    <input
+      type="number"
+      min="1"
+      max="999"
+      value={characterLevel}
+      onChange={(event) => setCharacterLevel(event.target.value)}
+      required
+    />
+  </label>
+)}
 
         <button className="primary-button" type="submit" disabled={loading}>
           Salvar personagem
@@ -2239,21 +2467,62 @@ async function deleteCharacter(character: Character) {
                     </label>
 
                     <div className="form-row">
-                      <label>
-                        Classe ou arquétipo
-                        <input
-                          value={archetype}
-                          onChange={(event) => setArchetype(event.target.value)}
-                          placeholder="Ex.: Andarilho"
-                          maxLength={100}
-                        />
-                      </label>
+{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
+  <>
+    <label>
+      Arquétipo primário
+      <select
+        value={primaryArchetype}
+        onChange={(event) => setPrimaryArchetype(event.target.value)}
+        required
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map((item) => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+    </label>
 
-                      {!String(selectedCampaign?.system_name||'').toLowerCase().includes('kisatsutai') && <label>
-                        Nível
-                        <input type="number" min="1" max="999" value={characterLevel} onChange={(event) => setCharacterLevel(event.target.value)} required />
-                      </label>}
-                    </div>
+    <label>
+      Arquétipo secundário
+      <select
+        value={secondaryArchetype}
+        onChange={(event) => setSecondaryArchetype(event.target.value)}
+        required
+      >
+        <option value="">Selecione...</option>
+        {KISATSUTAI_ARCHETYPES.map((item) => (
+          <option key={item} value={item}>{item}</option>
+        ))}
+      </select>
+    </label>
+  </>
+) : (
+  <label>
+    Classe ou arquétipo
+    <input
+      value={archetype}
+      onChange={(event) => setArchetype(event.target.value)}
+      placeholder="Ex.: Andarilho"
+      maxLength={100}
+    />
+  </label>
+)}
+
+{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && (
+    <label>
+      Nível
+      <input
+        type="number"
+        min="1"
+        max="999"
+        value={characterLevel}
+        onChange={(event) => setCharacterLevel(event.target.value)}
+        required
+      />
+    </label>
+  )}
+</div>
 
                     <button
                       className="primary-button"
@@ -2288,9 +2557,13 @@ async function deleteCharacter(character: Character) {
                         }}
                       >
                         <div className="item-art">♙</div>
-                        <div className="item-category">
-                          NÍVEL {character.level}
-                        </div>
+<div className="item-category">
+  {String(selectedCampaign?.system_name || '')
+    .toLowerCase()
+    .includes('kisatsutai')
+    ? 'PERSONAGEM'
+    : `NÍVEL ${character.level}`}
+</div>
                         <h3>{character.name}</h3>
                         <p className="item-description">
                           {character.archetype || 'Arquétipo não definido'}
@@ -2363,11 +2636,15 @@ async function deleteCharacter(character: Character) {
                       <span /> PERSONAGEM ATIVO
                     </div>
                     <h2>{selectedCharacter.name}</h2>
-                    <p>
-                      {selectedCharacter.archetype || 'Aventureiro'}
-                      <span> · </span>
-                      Nível {selectedCharacter.level}
-                    </p>
+<p>
+  {selectedCharacter.archetype || 'Aventureiro'}
+{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && (
+    <>
+      <span> · </span>
+      Nível {selectedCharacter.level}
+    </>
+  )}
+</p>
                   </div>
 
                   {isMaster && (
