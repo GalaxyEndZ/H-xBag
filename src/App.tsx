@@ -126,6 +126,7 @@ function App() {
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
+  const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(null)
   const [campaignMembers, setCampaignMembers] = useState<CampaignMember[]>([])
   const [memberActionLoading, setMemberActionLoading] = useState<string | null>(null)
   const [characterGrants, setCharacterGrants] = useState<CharacterGrant[]>([])
@@ -818,6 +819,58 @@ function App() {
     setNotice('Personagem criado e salvo!')
     setLoading(false)
   }
+
+async function deleteCharacter(character: Character) {
+  if (!isMaster || deletingCharacterId) return
+
+  const confirmed = window.confirm(
+    `ATENÇÃO: deseja excluir definitivamente "${character.name}"?\n\n` +
+    'Todas as fichas, versões históricas, itens e permissões deste personagem serão apagados.\n\n' +
+    'Esta ação não pode ser desfeita.'
+  )
+
+  if (!confirmed) return
+
+  setDeletingCharacterId(character.id)
+  setError('')
+  setNotice('')
+
+  try {
+    const { error: deleteError } = await supabase.rpc(
+      'delete_character',
+      { p_character_id: character.id }
+    )
+
+    if (deleteError) {
+      throw new Error(deleteError.message)
+    }
+
+    const remainingCharacters = characters.filter(
+      entry => entry.id !== character.id
+    )
+
+    setCharacters(remainingCharacters)
+
+    if (selectedCharacterId === character.id) {
+      setSelectedCharacterId(remainingCharacters[0]?.id ?? '')
+      setItems([])
+      setSheet(null)
+      setSheetDraft('{}')
+      setCharacterGrants([])
+      setSheetCharacterView(false)
+    }
+
+    setNotice(`Personagem "${character.name}" excluído permanentemente.`)
+  } catch (deleteError) {
+    const message = deleteError instanceof Error
+      ? deleteError.message
+      : String(deleteError)
+
+    setError(`Não foi possível excluir o personagem: ${message}`)
+  } finally {
+    setDeletingCharacterId(null)
+  }
+}
 
   async function changeCharacterVisibility(visibility: Character['visibility']) {
     if (!selectedCharacter || !isMaster) return
@@ -1607,6 +1660,7 @@ function App() {
                     const breathing = effectiveAttribute('attributes.breathing', familyTier.breathing)
                     const ability = Math.min(12, num('skills.ability'))
                     const defense = effectiveAttribute('attributes.defense', familyTier.defense)
+                    const reactions = defense + 1
                     const combat = Math.min(12, num('skills.combat'))
                     const resistance = Math.min(12, num('skills.resistance'))
                     const strength = effectiveAttribute('attributes.strength', familyTier.strength)
@@ -1685,8 +1739,57 @@ function App() {
                             </div>
                             <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Benefícios por grupo</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginTop:8}}>{field('progression.damageBase','Dano base da classe','text')}{field('progression.unlockedFlows','Fluxos desbloqueados','text')}{field('progression.formLevels','Níveis de formas','text')}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>Registre separadamente dano base, fluxos e níveis de formas. Esses campos não alteram automaticamente outros valores.</small></div>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:12}}>Os benefícios de classe são referências totais do material. Preencha os bônus de status acima apenas quando confirmar os valores aplicáveis ao personagem; não some novamente benefícios já incorporados.</p>
-                            <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button type="button" className="secondary-button" disabled={!promotionLog.length} onClick={()=>{if(window.confirm('Limpar todo o histórico de promoções desta ficha? Esta ação não pode ser desfeita.')){write('progression.promotionLog',[]);write('progression.appliedPromotionIds',[])}}}>Limpar histórico</button></div>{promotionLog.length===0?<p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Nenhuma promoção registrada nesta ficha.</p>:promotionLog.map((entry:any)=><div key={entry.id} style={{padding:10,marginTop:8,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8}}><strong>{entry.from} → {entry.to}</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>{new Date(entry.at).toLocaleString('pt-BR')} · {entry.applied?'Benefícios marcados como aplicados':'Benefícios pendentes de conferência'}</div>{entry.description&&<p style={{fontSize:13,marginBottom:4}}>{entry.description}</p>}<p style={{fontSize:13,marginBottom:0}}>{entry.benefitReference}</p></div>)}</div>
-                            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}><button className="secondary-button" type="button" onClick={()=>{const updated=promotionLog.map(entry=>({...entry,applied:true}));write('progression.promotionLog',updated);write('progression.appliedPromotionIds',Array.from(new Set([...benefitsApplied,...promotionLog.map(entry=>entry.transition)])))}}>Marcar promoções registradas como conferidas</button></div>
+                            <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button
+  type="button"
+  className="secondary-button"
+  disabled={!promotionLog.length}
+  onClick={() => {
+    if (window.confirm('Limpar todo o histórico de promoções desta ficha? Esta ação não pode ser desfeita.')) {
+      const next = {
+        ...data,
+        progression: {
+          ...(data.progression || {}),
+          promotionLog: [],
+          appliedPromotionIds: [],
+        },
+      }
+
+      setSheetDraft(JSON.stringify(next, null, 2))
+    }
+  }}
+>
+  Limpar histórico
+</button></div>{promotionLog.length===0?<p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Nenhuma promoção registrada nesta ficha.</p>:promotionLog.map((entry:any)=><div key={entry.id} style={{padding:10,marginTop:8,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8}}><strong>{entry.from} → {entry.to}</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>{new Date(entry.at).toLocaleString('pt-BR')} · {entry.applied?'Benefícios marcados como aplicados':'Benefícios pendentes de conferência'}</div>{entry.description&&<p style={{fontSize:13,marginBottom:4}}>{entry.description}</p>}<p style={{fontSize:13,marginBottom:0}}>{entry.benefitReference}</p></div>)}</div>
+                            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}>
+  <button
+    className="secondary-button"
+    type="button"
+    onClick={() => {
+      const updated = promotionLog.map(entry => ({
+        ...entry,
+        applied: true,
+      }))
+
+      const next = {
+        ...data,
+        progression: {
+          ...(data.progression || {}),
+          promotionLog: updated,
+          appliedPromotionIds: Array.from(
+            new Set([
+              ...benefitsApplied,
+              ...promotionLog.map(entry => entry.transition),
+            ])
+          ),
+        },
+      }
+
+      setSheetDraft(JSON.stringify(next, null, 2))
+    }}
+  >
+    Marcar promoções registradas como conferidas
+  </button>
+</div>
                           </> : <>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
                             {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
@@ -1698,7 +1801,7 @@ function App() {
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
                       <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Efetivo com família: '+strength+' · Capacidade: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Efetivo com família: '+defense+' · Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Efetivo com família: '+breathing+' · Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Efetivo com família: '+intellect+' · Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
                       <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base')}{field('combat.extraDamage','Dano extra')}{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions*dexterity}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{defense}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base')}{field('combat.extraDamage','Dano extra')}{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions*dexterity}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
                       {panel('6. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
                       {panel('7. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
@@ -1785,7 +1888,7 @@ function App() {
                         <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],['Respiração',breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
                         <div className="sheet-summary-grid">
                           <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
-                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',read('combat.extraDamage','—')],['Deslocamento',movementActions*dexterity],['Ações',movementActions+extraActions],['Reações',defense],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
+                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',read('combat.extraDamage','—')],['Deslocamento',movementActions*dexterity],['Ações',movementActions+extraActions],['Reações',reactions],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
                         </div>
                         <div className="sheet-summary-notes"><h3>Resumo do personagem</h3><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
                         <p className="sheet-summary-hint">Esta é uma visão resumida. {isMaster ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Somente o mestre pode editar a ficha.'}</p>
@@ -2056,6 +2159,24 @@ function App() {
                             ? 'Personagem selecionado'
                             : 'Selecionar personagem'}
                         </button>
+                         {isMaster && (
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            style={{
+                              marginTop: 8,
+                              width: '100%',
+                              borderColor: '#b94b55',
+                              color: '#ff929a',
+                            }}
+                            disabled={deletingCharacterId !== null}
+                            onClick={() => void deleteCharacter(character)}
+                          >
+                            {deletingCharacterId === character.id
+                              ? 'Excluindo...'
+                              : 'Excluir personagem'}
+                          </button>
+                        )}
                       </article>
                     ))}
                   </div>
