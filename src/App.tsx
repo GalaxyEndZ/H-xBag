@@ -1935,7 +1935,13 @@ async function deleteCharacter(character: Character) {
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary">
                         <header className="sheet-summary-header">
-                          <div className="sheet-summary-identity"><span className="sheet-eyebrow">FICHA DE PERSONAGEM</span><h2>{String(read('identity.name', selectedCharacter?.name || 'Personagem'))}</h2><p>{String(read('identity.family', 'Família não definida'))} · {String(read('identity.primaryArchetype', selectedCharacter?.archetype || 'Arquétipo não definido'))}</p></div>
+                          <div className="sheet-summary-identity"><span className="sheet-eyebrow">FICHA DE PERSONAGEM</span><h2>{String(read('identity.name', selectedCharacter?.name || 'Personagem'))}</h2><p>
+  {String(read('identity.family', 'Família não definida'))}
+  {' · '}
+  {String(read('identity.primaryArchetype', selectedCharacter?.archetype || 'Arquétipo não definido'))}
+  {' + '}
+  {String(read('identity.secondaryArchetype', 'Arquétipo secundário não definido'))}
+</p></div>
                           <div className="sheet-summary-progression">{[['Classe',read('progression.rankName', KISATSUTAI_RANKS.find(entry=>entry.id===rankIdForStatus)?.name || 'Não definida')],['Tier familiar',familyTier.label],['Foco',read('progression.classFocus',familyTier.focus)],['Pontos de perícia',read('progression.classSkillPoints',0)]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
                           <div className="sheet-summary-season">{seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada'}</div>
                         </header>
