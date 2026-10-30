@@ -1901,7 +1901,48 @@ async function deleteCharacter(character: Character) {
               </>}
             </section>
           )}
-          {activePage === 'characters' && selectedCampaignId && <section className="inventory-section characters-page-panel"><div className="inventory-heading"><div><h2>Personagens</h2><p>Personagens da campanha selecionada.</p></div><button className="primary-button" onClick={()=>setShowCharacterForm(true)}>+ Novo personagem</button></div>{showCharacterForm&&<form className="add-form" onSubmit={createCharacter}><label>Nome<input value={characterName} onChange={e=>setCharacterName(e.target.value)} required style={inputStyle}/></label><label>Arquétipo<input value={archetype} onChange={e=>setArchetype(e.target.value)} style={inputStyle}/></label>{!String(selectedCampaign?.system_name||'').toLowerCase().includes('kisatsutai')&&<label>Nível<input type="number" min="1" max="999" value={characterLevel} onChange={e=>setCharacterLevel(e.target.value)} style={inputStyle}/></label>}<button className="primary-button" type="submit" disabled={loading}>Salvar personagem</button></form>}<div className="item-grid">{characters.map(character=><article className="item-card" key={character.id}><h3>{character.name}</h3><p>{character.archetype||'Arquétipo não definido'} · Nível {character.level}</p><button className="primary-button" onClick={()=>{setSelectedCharacterId(character.id);setActivePage('sheets');setSheetCharacterView(true)}}>Abrir ficha</button></article>)}</div></section>}
+          {activePage === 'characters' && selectedCampaignId && <section className="inventory-section characters-page-panel"><div className="inventory-heading"><div><h2>Personagens</h2><p>Personagens da campanha selecionada.</p></div><button className="primary-button" onClick={()=>setShowCharacterForm(true)}>+ Novo personagem</button></div>{showCharacterForm&&<form className="add-form" onSubmit={createCharacter}><label>Nome<input value={characterName} onChange={e=>setCharacterName(e.target.value)} required style={inputStyle}/></label><label>Arquétipo<input value={archetype} onChange={e=>setArchetype(e.target.value)} style={inputStyle}/></label>{!String(selectedCampaign?.system_name||'').toLowerCase().includes('kisatsutai')&&<label>Nível<input type="number" min="1" max="999" value={characterLevel} onChange={e=>setCharacterLevel(e.target.value)} style={inputStyle}/></label>}<button className="primary-button" type="submit" disabled={loading}>Salvar personagem</button></form>}
+<div className="item-grid">
+  {characters.map(character => (
+    <article className="item-card" key={character.id}>
+      <h3>{character.name}</h3>
+      <p>
+        {character.archetype || 'Arquétipo não definido'} · Nível {character.level}
+      </p>
+
+      <button
+        className="primary-button"
+        onClick={() => {
+          setSelectedCharacterId(character.id)
+          setActivePage('sheets')
+          setSheetCharacterView(true)
+        }}
+      >
+        Abrir ficha
+      </button>
+
+      {isMaster && (
+        <button
+          type="button"
+          className="secondary-button"
+          style={{
+            marginTop: 8,
+            width: '100%',
+            borderColor: '#b94b55',
+            color: '#ff929a',
+          }}
+          disabled={deletingCharacterId !== null}
+          onClick={() => void deleteCharacter(character)}
+        >
+          {deletingCharacterId === character.id
+            ? 'Excluindo...'
+            : 'Excluir personagem'}
+        </button>
+      )}
+    </article>
+  ))}
+</div>
+</section>}
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
