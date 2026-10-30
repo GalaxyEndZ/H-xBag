@@ -3734,3 +3734,32 @@ button:disabled { opacity: .58; }
 .app-shell.theme-crimson-vale * {
   scrollbar-color: #76283D #110E11;
 }
+/* =========================================
+   TEMA: AREIAS CELESTES
+   ========================================= */
+
+.app-shell.theme-celestial-sands {
+  --season-bg: #1e1f22;
+  --season-primary: #5865f2;
+  --season-secondary: #7289da;
+  --season-surface: #2b2d31;
+  --season-surface-alt: #313338;
+  --season-line: #404249;
+  --season-glow: rgba(88, 101, 242, 0.28);
+  --season-muted: #949ba4;
+
+  --theme-bg: #1e1f22;
+  --theme-surface: #2b2d31;
+  --theme-surface-2: #313338;
+  --theme-border: #404249;
+  --theme-accent: #5865f2;
+  --theme-accent-strong: #7289da;
+  --theme-accent-soft: rgba(88, 101, 242, 0.14);
+  --theme-accent-mid: rgba(88, 101, 242, 0.25);
+  --theme-accent-border: rgba(88, 101, 242, 0.4);
+  --theme-accent-glow: rgba(88, 101, 242, 0.28);
+
+  --purple: #5865f2;
+  --purple-bright: #7289da;
+  --purple-dark: #4752c4;
+}

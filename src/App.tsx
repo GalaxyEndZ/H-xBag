@@ -146,6 +146,7 @@ function App() {
     arcane: { label: 'Arcano', primary: '#e7c5ff', secondary: '#8754c5', glow: 'rgba(223,184,255,.20)', bg: '#120b1b', surface: '#1c1428', surfaceAlt: '#2b1c40', line: '#5a3d78' },
     ghost_vale: { label: 'Vale Fantasma', primary: '#ffc078', secondary: '#c85d27', glow: 'rgba(255,158,75,.19)', bg: '#080a0d', surface: '#11161b', surfaceAlt: '#1b252d', line: '#46535d' },
     crimson_vale: { label: 'Vale Carmesim', primary: '#ff5268', secondary: '#a91f38', glow: 'rgba(255,55,85,.20)', bg: '#09090c', surface: '#151216', surfaceAlt: '#24151c', line: '#653044' },  
+    celestial_sands: {  label: 'Areias Celestes',  primary: '#5865F2',  secondary: '#7289DA',  glow: 'rgba(88, 101, 242, 0.28)',  bg: '#1E1F22',  surface: '#2B2D31',  surfaceAlt: '#313338',  line: '#404249' },
   } as const
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
@@ -166,6 +167,7 @@ function App() {
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
   const [showCharacterForm, setShowCharacterForm] = useState(false)
+  const [showCharacterManagement, setShowCharacterManagement] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
   const [copyPreviousSheet] = useState(true);
   const [campaignName, setCampaignName] = useState('')
@@ -1901,48 +1903,155 @@ async function deleteCharacter(character: Character) {
               </>}
             </section>
           )}
-          {activePage === 'characters' && selectedCampaignId && <section className="inventory-section characters-page-panel"><div className="inventory-heading"><div><h2>Personagens</h2><p>Personagens da campanha selecionada.</p></div><button className="primary-button" onClick={()=>setShowCharacterForm(true)}>+ Novo personagem</button></div>{showCharacterForm&&<form className="add-form" onSubmit={createCharacter}><label>Nome<input value={characterName} onChange={e=>setCharacterName(e.target.value)} required style={inputStyle}/></label><label>Arquétipo<input value={archetype} onChange={e=>setArchetype(e.target.value)} style={inputStyle}/></label>{!String(selectedCampaign?.system_name||'').toLowerCase().includes('kisatsutai')&&<label>Nível<input type="number" min="1" max="999" value={characterLevel} onChange={e=>setCharacterLevel(e.target.value)} style={inputStyle}/></label>}<button className="primary-button" type="submit" disabled={loading}>Salvar personagem</button></form>}
-<div className="item-grid">
-  {characters.map(character => (
-    <article className="item-card" key={character.id}>
-      <h3>{character.name}</h3>
-      <p>
-        {character.archetype || 'Arquétipo não definido'} · Nível {character.level}
-      </p>
+          {activePage === 'characters' && selectedCampaignId && (
+  <section className="inventory-section characters-page-panel">
+    <div className="inventory-heading">
+      <div>
+        <h2>{showCharacterManagement ? 'Gerenciar personagens' : 'Personagens'}</h2>
+        <p>
+          {showCharacterManagement
+            ? 'Área administrativa da campanha.'
+            : 'Personagens da campanha selecionada.'}
+        </p>
+      </div>
 
-      <button
-        className="primary-button"
-        onClick={() => {
-          setSelectedCharacterId(character.id)
-          setActivePage('sheets')
-          setSheetCharacterView(true)
-        }}
-      >
-        Abrir ficha
-      </button>
-
-      {isMaster && (
+      {showCharacterManagement ? (
         <button
           type="button"
           className="secondary-button"
-          style={{
-            marginTop: 8,
-            width: '100%',
-            borderColor: '#b94b55',
-            color: '#ff929a',
-          }}
-          disabled={deletingCharacterId !== null}
-          onClick={() => void deleteCharacter(character)}
+          onClick={() => setShowCharacterManagement(false)}
         >
-          {deletingCharacterId === character.id
-            ? 'Excluindo...'
-            : 'Excluir personagem'}
+          ← Voltar aos personagens
         </button>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {isMaster && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setShowCharacterManagement(true)}
+            >
+              ⚙ Gerenciar personagens
+            </button>
+          )}
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setShowCharacterForm(true)}
+          >
+            + Novo personagem
+          </button>
+        </div>
       )}
-    </article>
-  ))}
-</div>
-</section>}
+    </div>
+
+    {!showCharacterManagement && showCharacterForm && (
+      <form className="add-form" onSubmit={createCharacter}>
+        <label>
+          Nome
+          <input
+            value={characterName}
+            onChange={e => setCharacterName(e.target.value)}
+            required
+            style={inputStyle}
+          />
+        </label>
+
+        <label>
+          Arquétipo
+          <input
+            value={archetype}
+            onChange={e => setArchetype(e.target.value)}
+            style={inputStyle}
+          />
+        </label>
+
+        {!String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && (
+          <label>
+            Nível
+            <input
+              type="number"
+              min="1"
+              max="999"
+              value={characterLevel}
+              onChange={e => setCharacterLevel(e.target.value)}
+              style={inputStyle}
+            />
+          </label>
+        )}
+
+        <button className="primary-button" type="submit" disabled={loading}>
+          Salvar personagem
+        </button>
+      </form>
+    )}
+
+{!showCharacterManagement ? (
+  <div className="item-grid">
+    {characters.map(character => (
+      <article className="item-card" key={character.id}>
+        <h3>{character.name}</h3>
+        <p>
+          {character.archetype || 'Arquétipo não definido'} · Nível {character.level}
+        </p>
+
+        <button
+          className="primary-button"
+          onClick={() => {
+            setSelectedCharacterId(character.id)
+            setActivePage('sheets')
+            setSheetCharacterView(true)
+          }}
+        >
+          Abrir ficha
+        </button>
+      </article>
+    ))}
+  </div>
+) : (
+  <div className="item-grid">
+    {characters.map(character => (
+      <article className="item-card" key={character.id}>
+        <h3>{character.name}</h3>
+        <p>
+          {character.archetype || 'Arquétipo não definido'} · Nível {character.level}
+        </p>
+
+        <button
+          className="primary-button"
+          onClick={() => {
+            setSelectedCharacterId(character.id)
+            setActivePage('sheets')
+            setSheetCharacterView(true)
+          }}
+        >
+          Abrir ficha
+        </button>
+
+        {isMaster && (
+          <button
+            type="button"
+            className="secondary-button"
+            style={{
+              marginTop: 8,
+              width: '100%',
+              borderColor: '#b94b55',
+              color: '#ff929a',
+            }}
+            disabled={deletingCharacterId !== null}
+            onClick={() => void deleteCharacter(character)}
+          >
+            {deletingCharacterId === character.id
+              ? 'Excluindo...'
+              : 'Excluir personagem'}
+          </button>
+        )}
+      </article>
+    ))}
+  </div>
+)}
+</section>
+)}
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
@@ -2200,24 +2309,7 @@ async function deleteCharacter(character: Character) {
                             ? 'Personagem selecionado'
                             : 'Selecionar personagem'}
                         </button>
-                         {isMaster && (
-                          <button
-                            type="button"
-                            className="secondary-button"
-                            style={{
-                              marginTop: 8,
-                              width: '100%',
-                              borderColor: '#b94b55',
-                              color: '#ff929a',
-                            }}
-                            disabled={deletingCharacterId !== null}
-                            onClick={() => void deleteCharacter(character)}
-                          >
-                            {deletingCharacterId === character.id
-                              ? 'Excluindo...'
-                              : 'Excluir personagem'}
-                          </button>
-                        )}
+
                       </article>
                     ))}
                   </div>
