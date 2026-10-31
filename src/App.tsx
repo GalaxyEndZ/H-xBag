@@ -10,6 +10,14 @@ type Campaign = {
   name: string
   description: string | null
   system_name: string | null
+  currency_config: {
+  currencies: {
+    id: string
+    name: string
+    symbol: string
+    conversionRate: number
+  }[]
+} | null
   created_by: string
   role: string
 }
@@ -46,6 +54,8 @@ type Item = {
   category: string
   quantity: number
   weight: number
+  unit_price: number
+  currency_id: string | null
   metadata: Record<string, unknown> | null
 }
 
@@ -53,6 +63,18 @@ function displayNameForMembers(session: Session | null) {
   return session?.user.user_metadata?.display_name ||
     session?.user.email?.split('@')[0] ||
     'Você'
+}
+
+type CurrencyTransaction = {
+  id: string
+  character_id: string
+  campaign_id: string
+  currency_id: string
+  amount_delta: number
+  balance_after: number
+  description: string | null
+  created_by: string | null
+  created_at: string
 }
 
 const KISATSUTAI_FAMILY_TIERS = {
@@ -140,7 +162,16 @@ function App() {
   const [characterGrants, setCharacterGrants] = useState<CharacterGrant[]>([])
   const [visibilitySaving, setVisibilitySaving] = useState(false)
   const [items, setItems] = useState<Item[]>([])
+  const [currencyBalances, setCurrencyBalances] = useState<Record<string, number>>({})
+  const [currencyAmount, setCurrencyAmount] = useState('')
+  const [currencyDescription, setCurrencyDescription] = useState('')
+  const [currencyActionLoading, setCurrencyActionLoading] = useState(false)
+  const [currencyLoading, setCurrencyLoading] = useState(false)
+  const [showCurrencyHistory, setShowCurrencyHistory] = useState(false)
+  const [currencyTransactions, setCurrencyTransactions] = useState<CurrencyTransaction[]>([])
+  const [currencyHistoryLoading, setCurrencyHistoryLoading] = useState(false)
   const [itemsLoading, setItemsLoading] = useState(false)
+  const [selectedItemDetails, setSelectedItemDetails] = useState<Item | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
@@ -194,9 +225,12 @@ function App() {
 
   const [newItemName, setNewItemName] = useState('')
   const [newItemDescription, setNewItemDescription] = useState('')
+  const [newItemRarity, setNewItemRarity] = useState('comum')
   const [newItemCategory, setNewItemCategory] = useState('Diversos')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemWeight, setNewItemWeight] = useState('0')
+  const [newItemUnitPrice, setNewItemUnitPrice] = useState('0')
+  const [newItemCurrencyId, setNewItemCurrencyId] = useState('')
   const [newItemEmoji, setNewItemEmoji] = useState('📦')
 
   const [editingItem, setEditingItem] = useState<Item | null>(null)
@@ -289,7 +323,7 @@ function App() {
 
       const { data, error: campaignError } = await supabase
         .from('campaigns')
-        .select('id, name, description, system_name, created_by')
+        .select('id, name, description, system_name, currency_config, created_by')
         .in('id', ids)
         .order('created_at', { ascending: true })
 
@@ -480,6 +514,50 @@ function App() {
     return () => { cancelled = true }
   }, [selectedCharacterId, selectedCampaignId, campaigns])
 
+  // CARREGAMENTO DA CARTEIRA
+  useEffect(() => {
+    if (!selectedCharacterId) {
+      setCurrencyBalances({})
+      setCurrencyLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadCurrencyBalances() {
+      setCurrencyLoading(true)
+
+      const { data, error: currencyError } = await supabase.rpc(
+        'get_character_currency',
+        {
+          p_character_id: selectedCharacterId,
+        },
+      )
+
+      if (cancelled) return
+
+      if (currencyError) {
+        setError(`Erro ao carregar carteira: ${currencyError.message}`)
+        setCurrencyBalances({})
+      } else {
+        setCurrencyBalances(
+          data && typeof data === 'object'
+            ? data as Record<string, number>
+            : {},
+        )
+      }
+
+      setCurrencyLoading(false)
+    }
+
+    void loadCurrencyBalances()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedCharacterId])
+
+  // CARREGAMENTO DO INVENTÁRIO
   useEffect(() => {
     if (!selectedCharacterId) {
       setItems([])
@@ -495,9 +573,7 @@ function App() {
 
       const { data, error: itemsError } = await supabase
         .from('inventory_items')
-        .select(
-          'id, character_id, name, description, category, quantity, weight, metadata',
-        )
+        .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
         .eq('character_id', selectedCharacterId)
         .order('created_at', { ascending: true })
 
@@ -519,6 +595,92 @@ function App() {
       cancelled = true
     }
   }, [selectedCharacterId])
+
+
+async function loadCurrencyHistory() {
+  if (!selectedCharacterId || currencyHistoryLoading) return
+
+  setCurrencyHistoryLoading(true)
+
+  const { data, error: historyError } = await supabase
+    .from('character_currency_transactions')
+    .select('id, character_id, campaign_id, currency_id, amount_delta, balance_after, description, created_by, created_at')
+    .eq('character_id', selectedCharacterId)
+    .order('created_at', { ascending: false })
+
+  if (historyError) {
+    setError(`Erro ao carregar histórico: ${historyError.message}`)
+    setCurrencyTransactions([])
+  } else {
+    setCurrencyTransactions((data ?? []) as CurrencyTransaction[])
+  }
+
+  setCurrencyHistoryLoading(false)
+}
+
+async function toggleCurrencyHistory() {
+  const nextState = !showCurrencyHistory
+
+  setShowCurrencyHistory(nextState)
+
+  if (nextState) {
+    setCurrencyTransactions([])
+    await loadCurrencyHistory()
+  }
+}
+
+async function handleCurrencyAdjustment(action: 'add' | 'remove') {
+  if (!selectedCharacterId || !selectedCampaign || currencyActionLoading) return
+
+  const currency = selectedCampaign.currency_config?.currencies?.[0]
+
+  if (!currency) {
+    setError('Esta campanha ainda não possui moedas configuradas.')
+    return
+  }
+
+  const amount = Number(currencyAmount.replace(',', '.'))
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    setError('Informe um valor válido e maior que zero.')
+    return
+  }
+
+  setCurrencyActionLoading(true)
+  setError('')
+  setNotice('')
+
+  const { data, error: adjustmentError } = await supabase.rpc(
+    'adjust_character_currency',
+    {
+      p_character_id: selectedCharacterId,
+      p_currency_id: currency.id,
+      p_amount: action === 'add' ? amount : -amount,
+      p_description: currencyDescription.trim() || null,
+    },
+  )
+
+  if (adjustmentError) {
+    setError(`Não foi possível movimentar a carteira: ${adjustmentError.message}`)
+    setCurrencyActionLoading(false)
+    return
+  }
+
+  setCurrencyBalances(current => ({
+    ...current,
+    [currency.id]: Number(data),
+  }))
+
+  setCurrencyAmount('')
+  setCurrencyDescription('')
+  setNotice(
+    action === 'add'
+      ? 'Dinheiro adicionado à carteira!'
+      : 'Dinheiro retirado da carteira!',
+  )
+
+  setCurrencyActionLoading(false)
+}
 
   async function handleSignOut() {
     const { error: signOutError } = await supabase.auth.signOut()
@@ -571,7 +733,7 @@ function App() {
 
     const { data: campaign, error: fetchError } = await supabase
       .from('campaigns')
-      .select('id, name, description, system_name, created_by')
+      .select('id, name, description, system_name, currency_config, created_by')
       .eq('id', newCampaignId)
       .single()
 
@@ -663,13 +825,24 @@ function App() {
       return
     }
     const joinedId = typeof data === 'string' ? data : String(data)
-    const { data: campaign, error: campaignError } = await supabase.from('campaigns').select('id,name,description,system_name,created_by').eq('id', joinedId).single()
+    const { data: campaign, error: campaignError } = await supabase.from('campaigns').select('id,name,description,system_name,currency_config,created_by').eq('id', joinedId).single()
     if (campaignError || !campaign) {
       setError(`Você entrou na campanha, mas não foi possível carregá-la: ${campaignError?.message ?? ''}`)
       setInviteLoading(false)
       return
     }
-    setCampaigns(current => current.some(entry => entry.id === campaign.id) ? current : [...current, { ...campaign, role: 'player' }])
+    setCampaigns(current =>
+  current.some(entry => entry.id === campaign.id)
+    ? current
+    : [
+        ...current,
+        {
+          ...campaign,
+          currency_config: (campaign as Campaign).currency_config ?? null,
+          role: 'player',
+        },
+      ],
+)
     setSelectedCampaignId(campaign.id); setInviteCode(''); setCampaignInviteLink('')
     window.history.replaceState({}, '', window.location.pathname)
     setNotice(`Você entrou na campanha ${campaign.name}!`)
@@ -1012,11 +1185,15 @@ async function deleteCharacter(character: Character) {
     setNewItemCategory('Diversos')
     setNewItemQuantity('1')
     setNewItemWeight('0')
+    setNewItemUnitPrice('0')
+    setNewItemCurrencyId('')
     setNewItemEmoji('📦')
   }
 
   function startEditingItem(item: Item) {
     setEditingItem(item)
+    setNewItemUnitPrice(String(item.unit_price ?? 0))
+    setNewItemCurrencyId(item.currency_id ?? '')
     setNewItemName(item.name)
     setNewItemDescription(item.description ?? '')
     setNewItemCategory(item.category)
@@ -1060,10 +1237,13 @@ async function deleteCharacter(character: Character) {
       category: newItemCategory,
       quantity,
       weight,
+      unit_price: Number(newItemUnitPrice.replace(',', '.')) || 0,
+      currency_id: newItemCurrencyId || null,
       metadata: {
-        ...(editingItem?.metadata ?? {}),
-        icon: newItemEmoji,
-      },
+  ...(editingItem?.metadata ?? {}),
+  icon: newItemEmoji,
+  rarity: newItemRarity,
+},
     }
 
     let savedItem: Item | null = null
@@ -1194,7 +1374,7 @@ async function deleteCharacter(character: Character) {
       .update({ quantity })
       .eq('id', item.id)
       .eq('character_id', item.character_id)
-      .select('id, character_id, name, description, category, quantity, weight, metadata')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
       .maybeSingle()
 
     setUpdatingQuantityItemId(null)
@@ -1223,7 +1403,7 @@ async function deleteCharacter(character: Character) {
       .update({ metadata })
       .eq('id', item.id)
       .eq('character_id', item.character_id)
-      .select('id, character_id, name, description, category, quantity, weight, metadata')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
       .maybeSingle()
 
     if (updateError) {
@@ -1252,9 +1432,11 @@ async function deleteCharacter(character: Character) {
         category: item.category,
         quantity: item.quantity,
         weight: item.weight,
+        unit_price: item.unit_price ?? 0,
+        currency_id: item.currency_id ?? null,
         metadata: { ...(item.metadata ?? {}), favorite: false },
       })
-      .select('id, character_id, name, description, category, quantity, weight, metadata')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
       .single()
 
     if (insertError) {
@@ -2032,6 +2214,327 @@ async function deleteCharacter(character: Character) {
 
                   })()}
                   {editingSheet && isMaster && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>}
+                
+{selectedCampaign?.currency_config?.currencies?.length ? (
+  <section className="inventory-section currency-wallet">
+    <div className="inventory-heading">
+      <div>
+        <h3>Carteira</h3>
+        <p>Saldo atual do personagem</p>
+      </div>
+    </div>
+
+    {selectedCampaign.currency_config.currencies.map(currency => (
+      <div className="currency-balance" key={currency.id}>
+        <span>{currency.name}</span>
+        <strong>
+          {currency.symbol}{' '}
+          {(currencyBalances[currency.id] ?? 0).toLocaleString('pt-BR')}
+        </strong>
+      </div>
+    ))}
+
+    {currencyLoading ? (
+      <p>Carregando carteira...</p>
+    ) : (
+      <div className="currency-actions">
+        <label>
+          Valor
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={currencyAmount}
+            onChange={event => setCurrencyAmount(event.target.value)}
+            placeholder="Quanto deseja movimentar?"
+          />
+        </label>
+
+        <label>
+          Descrição (opcional)
+          <input
+            type="text"
+            value={currencyDescription}
+            onChange={event => setCurrencyDescription(event.target.value)}
+            placeholder="Ex.: Recompensa de missão"
+          />
+        </label>
+
+        <div className="currency-buttons">
+          <button
+            type="button"
+            disabled={currencyActionLoading}
+            onClick={() => void handleCurrencyAdjustment('add')}
+          >
+            Adicionar
+          </button>
+
+          <button
+            type="button"
+            disabled={currencyActionLoading}
+            onClick={() => void handleCurrencyAdjustment('remove')}
+          >
+            Retirar
+          </button>
+        </div>
+        <button
+  type="button"
+  className="currency-history-toggle"
+  onClick={() => void toggleCurrencyHistory()}
+>
+  {showCurrencyHistory ? 'Ocultar histórico' : 'Histórico de transações'}
+</button>
+{showCurrencyHistory && (
+  <div className="currency-history">
+    <h4>Histórico de transações</h4>
+
+    {currencyHistoryLoading ? (
+      <p>Carregando histórico...</p>
+    ) : currencyTransactions.length === 0 ? (
+      <p>Nenhuma transação registrada ainda.</p>
+    ) : (
+      <div className="currency-history-list">
+        {currencyTransactions.map(transaction => {
+          const currency = selectedCampaign?.currency_config?.currencies
+            ?.find(item => item.id === transaction.currency_id)
+
+          return (
+            <div className="currency-history-entry" key={transaction.id}>
+              <div>
+                <strong>
+                  {transaction.amount_delta > 0 ? 'Entrada' : 'Retirada'}
+                </strong>
+                <span>
+                  {transaction.description || 'Sem descrição'}
+                </span>
+                <small>
+                  {new Date(transaction.created_at).toLocaleString('pt-BR')}
+                </small>
+              </div>
+
+              <div>
+                <strong>
+                  {transaction.amount_delta > 0 ? '+' : ''}
+                  {currency?.symbol ?? ''}
+                  {Math.abs(transaction.amount_delta).toLocaleString('pt-BR')}
+                </strong>
+                <small>
+                  Saldo: {currency?.symbol ?? ''}
+                  {transaction.balance_after.toLocaleString('pt-BR')}
+                </small>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )}
+  </div>
+)}
+      </div>
+    )}
+  </section>
+) : null}
+
+<section className="inventory-section" style={{ marginTop: 20 }}>
+  <div className="inventory-heading">
+    <div>
+      <small>INVENTÁRIO DO PERSONAGEM</small>
+      <h2>Mochila</h2>
+      <p>Pertences de {selectedCharacter?.name || 'Personagem'}.</p>
+    </div>
+  </div>
+
+  <div className="stats-grid">
+    <div className="stat-card">
+      <div className="stat-top">
+        <span>OBJETOS</span>
+      </div>
+      <div className="stat-number">
+        {totalObjects}<small> unidades</small>
+      </div>
+    </div>
+
+    <div className="stat-card">
+      <div className="stat-top">
+        <span>PESO TOTAL</span>
+      </div>
+      <div className="stat-number">
+        {totalWeight.toFixed(1)}<small> kg</small>
+      </div>
+    </div>
+
+    <div className="stat-card">
+      <div className="stat-top">
+        <span>CAPACIDADE</span>
+      </div>
+      <div className="stat-number">
+        {maxCapacity}<small> kg</small>
+      </div>
+    </div>
+  </div>
+
+  <div className="banner-stat" style={{ marginBottom: 20 }}>
+    <div className="progress-track">
+      <div
+        style={{
+          width: `${capacityPercent}%`,
+          background: totalWeight > maxCapacity ? '#e66b78' : undefined,
+        }}
+      />
+    </div>
+    <small className="stat-caption">
+      {remainingCapacity >= 0
+        ? `${remainingCapacity.toFixed(1)} kg disponíveis`
+        : `${Math.abs(remainingCapacity).toFixed(1)} kg acima do limite`}
+    </small>
+  </div>
+
+  {itemsLoading ? (
+    <div className="empty-state">
+      <p>Carregando mochila...</p>
+    </div>
+  ) : items.length === 0 ? (
+    <div className="empty-state">
+      <span>▤</span>
+      <h3>Mochila vazia</h3>
+      <p>Este personagem ainda não possui itens.</p>
+    </div>
+  ) : (
+    <div className="item-grid">
+      {items.map(item => (
+        <article className="item-card" key={item.id}>
+          <div className="item-art">
+            {typeof item.metadata?.icon === 'string'
+              ? item.metadata.icon
+              : '📦'}
+          </div>
+
+          <div className="item-category">{item.category}</div>
+          <h3>{item.name}</h3>
+
+          <p className="item-description">
+            {item.description || 'Sem descrição.'}
+          </p>
+
+          <div className="item-footer">
+            <span>
+              ⚖ {Number(item.weight).toFixed(1)} kg / un.
+            </span>
+
+            <div className="quantity-controls">
+              <button
+                type="button"
+                className="quantity-button"
+                onClick={() =>
+                  void changeItemQuantity(
+                    item,
+                    Number(item.quantity) - 1
+                  )
+                }
+                disabled={
+                  Number(item.quantity) <= 1 ||
+                  updatingQuantityItemId === item.id
+                }
+              >
+                −
+              </button>
+
+              <span className="quantity">{item.quantity}</span>
+
+              <button
+                type="button"
+                className="quantity-button"
+                onClick={() =>
+                  void changeItemQuantity(
+                    item,
+                    Number(item.quantity) + 1
+                  )
+                }
+                disabled={
+                  Number(item.quantity) >= 999 ||
+                  updatingQuantityItemId === item.id
+                }
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
+
+                <section className="inventory-section" style={{ marginTop: 20 }}>
+  <div className="inventory-heading">
+    <div>
+      <h2>🎒 Mochila</h2>
+      <p>Itens disponíveis no inventário da campanha.</p>
+    </div>
+  </div>
+
+  {items.length === 0 ? (
+    <div className="empty-state">
+      <p>A mochila está vazia.</p>
+    </div>
+  ) : (
+    <div className="item-grid">
+      {items.map(item => (
+        <article className="item-card" key={item.id}>
+          <div className="item-card-top">
+            <div className="item-art">
+              {typeof item.metadata?.icon === 'string'
+                ? item.metadata.icon
+                : '📦'}
+            </div>
+            <div className="item-category">{item.category}</div>
+          </div>
+
+          <h3>{item.name}</h3>
+          <p className="item-description">
+            {item.description || 'Sem descrição.'}
+          </p>
+
+          <div className="item-footer">
+            <span>⚖ {Number(item.weight).toFixed(1)} kg / un.</span>
+
+            <div className="quantity-controls">
+              <button
+                type="button"
+                className="quantity-button"
+                onClick={() =>
+                  void changeItemQuantity(item, Number(item.quantity) - 1)
+                }
+                disabled={
+                  Number(item.quantity) <= 1 ||
+                  updatingQuantityItemId === item.id
+                }
+              >
+                −
+              </button>
+
+              <span className="quantity">{item.quantity}</span>
+
+              <button
+                type="button"
+                className="quantity-button"
+                onClick={() =>
+                  void changeItemQuantity(item, Number(item.quantity) + 1)
+                }
+                disabled={
+                  Number(item.quantity) >= 999 ||
+                  updatingQuantityItemId === item.id
+                }
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
                 </>}
               </>}
             </section>
@@ -2820,9 +3323,10 @@ async function deleteCharacter(character: Character) {
                           ))}
                         </div>
 
-                        <p className="emoji-preview">
-                          Emoji selecionado: <span>{newItemEmoji}</span>
-                        </p>
+<p className="emoji-preview">
+  <span className="emoji-preview-label">Emoji selecionado:</span>
+  <span className="emoji-preview-icon">{newItemEmoji}</span>
+</p>
                       </div>
 
                       <label>
@@ -2842,6 +3346,23 @@ async function deleteCharacter(character: Character) {
                             ))}
                         </select>
                       </label>
+
+<label style={labelStyle}>
+  Raridade
+</label>
+
+<select
+  value={newItemRarity}
+  onChange={event => setNewItemRarity(event.target.value)}
+  style={inputStyle}
+>
+  <option value="comum">Comum</option>
+  <option value="incomum">Incomum</option>
+  <option value="raro">Raro</option>
+  <option value="épico">Épico</option>
+  <option value="lendário">Lendário</option>
+  <option value="mítico">Mítico</option>
+</select>
 
                       <label>
                         Quantidade
@@ -2873,6 +3394,33 @@ async function deleteCharacter(character: Character) {
                         />
                       </label>
                     </div>
+
+<label>
+  Valor unitário
+  <input
+    type="number"
+    min="0"
+    step="0.01"
+    value={newItemUnitPrice}
+    onChange={event => setNewItemUnitPrice(event.target.value)}
+    placeholder="Ex.: 500"
+  />
+</label>
+
+<label>
+  Moeda
+  <select
+    value={newItemCurrencyId}
+    onChange={event => setNewItemCurrencyId(event.target.value)}
+  >
+    <option value="">Sem moeda definida</option>
+    {selectedCampaign?.currency_config?.currencies?.map(currency => (
+      <option key={currency.id} value={currency.id}>
+        {currency.name} ({currency.symbol})
+      </option>
+    ))}
+  </select>
+</label>
 
                     <button
                       className="primary-button"
@@ -2980,7 +3528,12 @@ async function deleteCharacter(character: Character) {
                 ) : (
                   <div className="item-grid">
                     {filteredItems.map((item) => (
-                      <article className="item-card" key={item.id}>
+                      <article
+  className="item-card"
+  key={item.id}
+  onClick={() => setSelectedItemDetails(item)}
+  style={{ cursor: 'pointer' }}
+>
                         <div className="item-card-top">
                           <button
                             type="button"
@@ -3036,7 +3589,10 @@ async function deleteCharacter(character: Character) {
                             <button
                               type="button"
                               className="item-menu"
-                              onClick={() => void removeItem(item)}
+                              onClick={(event) => {
+  event.stopPropagation()
+  void removeItem(item)
+}}
                               title="Remover item"
                               aria-label={`Remover ${item.name}`}
                               disabled={loading}
@@ -3143,6 +3699,75 @@ async function deleteCharacter(character: Character) {
               </section>
             </div>
           )}
+
+{selectedItemDetails && (
+  <div className="modal-overlay" onClick={() => setSelectedItemDetails(null)}>
+    <div
+      className="item-details-modal"
+      onClick={event => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => setSelectedItemDetails(null)}
+      >
+        ✕
+      </button>
+
+      <div className="item-art">
+        {typeof selectedItemDetails.metadata?.icon === 'string'
+          ? selectedItemDetails.metadata.icon
+          : '📦'}
+      </div>
+
+<small>{selectedItemDetails.category}</small>
+
+<p>
+  **Raridade:** {
+    typeof selectedItemDetails.metadata?.rarity === 'string'
+      ? selectedItemDetails.metadata.rarity
+      : 'Comum'
+  }
+</p>
+      <h2>{selectedItemDetails.name}</h2>
+
+      <p>
+        {selectedItemDetails.description || 'Sem descrição.'}
+      </p>
+
+<div className="item-economic-details">
+  <div>
+    <span>Valor unitário</span>
+    <strong>
+      {selectedItemDetails.currency_id
+        ? `${selectedCampaign?.currency_config?.currencies?.find(
+            currency => currency.id === selectedItemDetails.currency_id,
+          )?.symbol ?? ''} `
+        : ''}
+      {selectedItemDetails.unit_price.toLocaleString('pt-BR')}
+    </strong>
+  </div>
+
+  <div>
+    <span>Valor total</span>
+    <strong>
+      {selectedItemDetails.currency_id
+        ? `${selectedCampaign?.currency_config?.currencies?.find(
+            currency => currency.id === selectedItemDetails.currency_id,
+          )?.symbol ?? ''} `
+        : ''}
+      {(Number(selectedItemDetails.unit_price ?? 0) * Number(selectedItemDetails.quantity ?? 0)).toLocaleString('pt-BR')}
+    </strong>
+  </div>
+</div>
+
+      <p>Quantidade: {selectedItemDetails.quantity}</p>
+      <p>Peso por unidade: {Number(selectedItemDetails.weight).toFixed(1)} kg</p>
+      <p>
+        Peso total: {(Number(selectedItemDetails.weight) * Number(selectedItemDetails.quantity)).toFixed(1)} kg
+      </p>
+    </div>
+  </div>
+)}
 
           <footer className="page-footer">
             <span>
