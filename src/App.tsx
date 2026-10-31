@@ -59,6 +59,27 @@ type Item = {
   metadata: Record<string, unknown> | null
 }
 
+type CampaignShop = {
+  id: string
+  campaign_id: string
+  name: string
+  description: string | null
+  is_visible: boolean
+}
+
+type CampaignShopItem = {
+  id: string
+  shop_id: string
+  name: string
+  description: string | null
+  category: string
+  weight: number
+  unit_price: number
+  currency_id: string | null
+  quantity: number | null
+  metadata: Record<string, unknown> | null
+}
+
 function displayNameForMembers(session: Session | null) {
   return session?.user.user_metadata?.display_name ||
     session?.user.email?.split('@')[0] ||
@@ -172,6 +193,29 @@ function App() {
   const [currencyHistoryLoading, setCurrencyHistoryLoading] = useState(false)
   const [itemsLoading, setItemsLoading] = useState(false)
   const [selectedItemDetails, setSelectedItemDetails] = useState<Item | null>(null)
+  const [shops, setShops] = useState<CampaignShop[]>([])
+  const [shopItems, setShopItems] = useState<CampaignShopItem[]>([])
+  const [selectedShopId, setSelectedShopId] = useState('')
+  const [shopPurchaseCharacterId, setShopPurchaseCharacterId] = useState('')
+
+  const [showShopForm, setShowShopForm] = useState(false)
+  const [editingShopId, setEditingShopId] = useState<string | null>(null)
+  const [shopName, setShopName] = useState('')
+  const [shopDescription, setShopDescription] = useState('')
+
+  const [showShopItemForm, setShowShopItemForm] = useState(false)
+  const [editingShopItemId, setEditingShopItemId] = useState<string | null>(null)
+  const [shopItemName, setShopItemName] = useState('')
+  const [shopItemDescription, setShopItemDescription] = useState('')
+  const [shopItemCategory, setShopItemCategory] = useState('Diversos')
+  const [shopItemWeight, setShopItemWeight] = useState('0')
+  const [shopItemPrice, setShopItemPrice] = useState('0')
+  const [shopItemCurrencyId, setShopItemCurrencyId] = useState('')
+  const [shopItemStock, setShopItemStock] = useState('')
+  const [shopItemEmoji, setShopItemEmoji] = useState('📦')
+
+  const [shopLoading, setShopLoading] = useState(false)
+  const [shopPurchaseLoading, setShopPurchaseLoading] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
@@ -201,7 +245,9 @@ function App() {
   const [sheetSaving, setSheetSaving] = useState(false)
   const [editingSheet, setEditingSheet] = useState(false)
 
-  const [activePage, setActivePage] = useState<'inventory' | 'sheets' | 'characters' | 'campaigns'>('inventory')
+  const [activePage, setActivePage] = useState<
+  'inventory' | 'sheets' | 'characters' | 'campaigns' | 'shops'
+>('inventory')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
@@ -380,6 +426,82 @@ function App() {
     setSeasonNameDraft(season?.name ?? '')
     setSeasonDescriptionDraft(season?.description ?? '')
   }, [selectedSeasonId, seasons])
+
+useEffect(() => {
+  if (!selectedCampaignId) {
+    setShops([])
+    setShopItems([])
+    setSelectedShopId('')
+    return
+  }
+
+  let cancelled = false
+
+  async function loadShops() {
+    setShopLoading(true)
+
+    const { data: shopData, error: shopError } = await supabase
+      .from('campaign_shops')
+      .select('id, campaign_id, name, description, is_visible')
+      .eq('campaign_id', selectedCampaignId)
+      .order('created_at', { ascending: true })
+
+    if (cancelled) return
+
+    if (shopError) {
+      setError(`Erro ao carregar lojas: ${shopError.message}`)
+      setShops([])
+      setShopItems([])
+      setShopLoading(false)
+      return
+    }
+
+const loadedShops = (shopData ?? []) as CampaignShop[]
+
+const accessibleShops = isMaster
+  ? loadedShops
+  : loadedShops.filter(shop => shop.is_visible)
+
+setShops(accessibleShops)
+
+setSelectedShopId(current =>
+  accessibleShops.some(shop => shop.id === current)
+    ? current
+    : accessibleShops[0]?.id ?? ''
+)
+
+if (accessibleShops.length === 0) {
+      setShopItems([])
+      setShopLoading(false)
+      return
+    }
+
+    const shopIds = accessibleShops.map(shop => shop.id)
+
+    const { data: itemData, error: itemError } = await supabase
+      .from('campaign_shop_items')
+      .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+      .in('shop_id', shopIds)
+      .order('created_at', { ascending: true })
+
+    if (cancelled) return
+
+    if (itemError) {
+      setError(`Erro ao carregar produtos das lojas: ${itemError.message}`)
+      setShopItems([])
+    } else {
+      setShopItems((itemData ?? []) as CampaignShopItem[])
+    }
+
+    setShopLoading(false)
+  }
+
+  void loadShops()
+
+  return () => {
+    cancelled = true
+  }
+}, [selectedCampaignId, isMaster])
 
   useEffect(() => {
     if (!selectedCharacterId || !selectedSeasonId) { setSheet(null); setSheetDraft('{}'); return }
@@ -596,6 +718,404 @@ function App() {
     }
   }, [selectedCharacterId])
 
+async function saveShop() {
+  if (!selectedCampaignId || !shopName.trim() || shopLoading) return
+
+  setShopLoading(true)
+  setError('')
+  setNotice('')
+
+  const payload = {
+    campaign_id: selectedCampaignId,
+    name: shopName.trim(),
+    description: shopDescription.trim() || null,
+  }
+
+  try {
+    if (editingShopId) {
+      const { data, error: updateError } = await supabase
+        .from('campaign_shops')
+        .update({
+          name: payload.name,
+          description: payload.description,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingShopId)
+        .select('id, campaign_id, name, description, is_visible')
+        .single()
+
+      if (updateError) throw updateError
+
+      setShops(current =>
+        current.map(shop => shop.id === editingShopId
+          ? data as CampaignShop
+          : shop
+        )
+      )
+
+      setNotice('Loja atualizada com sucesso!')
+    } else {
+      const { data, error: insertError } = await supabase
+        .from('campaign_shops')
+        .insert({
+  ...payload,
+  is_visible: false,
+})
+        .select('id, campaign_id, name, description, is_visible')
+        .single()
+
+      if (insertError) throw insertError
+
+      const newShop = data as CampaignShop
+      setShops(current => [...current, newShop])
+      setSelectedShopId(newShop.id)
+      setNotice('Loja criada com sucesso!')
+    }
+
+    setShopName('')
+    setShopDescription('')
+    setEditingShopId(null)
+    setShowShopForm(false)
+  } catch (err) {
+    setError(`Não foi possível salvar a loja: ${
+      err instanceof Error ? err.message : String(err)
+    }`)
+  } finally {
+    setShopLoading(false)
+  }
+}
+
+async function toggleShopVisibility(shop: CampaignShop) {
+  if (!isMaster || !selectedCampaignId || shopLoading) return
+
+  const nextVisibility = !shop.is_visible
+
+  setShopLoading(true)
+  setError('')
+  setNotice('')
+
+  try {
+    const { data, error: updateError } = await supabase
+      .from('campaign_shops')
+      .update({
+        is_visible: nextVisibility,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', shop.id)
+      .eq('campaign_id', selectedCampaignId)
+      .select('id, campaign_id, name, description, is_visible')
+      .single()
+
+    if (updateError) throw updateError
+
+    setShops(current =>
+      current.map(entry =>
+        entry.id === shop.id
+          ? data as CampaignShop
+          : entry
+      )
+    )
+
+    setNotice(
+      nextVisibility
+        ? `A loja "${shop.name}" agora está visível para os jogadores.`
+        : `A loja "${shop.name}" agora está oculta para os jogadores.`
+    )
+  } catch (err) {
+    setError(`Não foi possível alterar a visibilidade: ${
+      err instanceof Error ? err.message : String(err)
+    }`)
+  } finally {
+    setShopLoading(false)
+  }
+}
+
+function editShop(shop: CampaignShop) {
+  setEditingShopId(shop.id)
+  setShopName(shop.name)
+  setShopDescription(shop.description ?? '')
+  setShowShopForm(true)
+}
+
+async function deleteShop(shop: CampaignShop) {
+  if (!window.confirm(
+    `Deseja excluir a loja "${shop.name}" e todos os seus produtos?`
+  )) return
+
+  setShopLoading(true)
+  setError('')
+  setNotice('')
+
+  const { error: deleteError } = await supabase
+    .from('campaign_shops')
+    .delete()
+    .eq('id', shop.id)
+
+  if (deleteError) {
+    setError(`Não foi possível excluir a loja: ${deleteError.message}`)
+    setShopLoading(false)
+    return
+  }
+
+  setShops(current => current.filter(entry => entry.id !== shop.id))
+  setShopItems(current => current.filter(item => item.shop_id !== shop.id))
+
+  if (selectedShopId === shop.id) {
+    const remaining = shops.filter(entry => entry.id !== shop.id)
+    setSelectedShopId(remaining[0]?.id ?? '')
+  }
+
+  setNotice('Loja excluída com sucesso.')
+  setShopLoading(false)
+}
+
+
+async function saveShopItem() {
+  if (!selectedShopId || !shopItemName.trim() || shopLoading) return
+
+  const price = Number(shopItemPrice.replace(',', '.'))
+  const weight = Number(shopItemWeight.replace(',', '.'))
+  const stockText = shopItemStock.trim()
+  const stock = stockText === '' ? null : Number(stockText)
+
+  if (!Number.isFinite(price) || price < 0) {
+    setError('Informe um preço válido, igual ou maior que zero.')
+    return
+  }
+
+  if (!Number.isFinite(weight) || weight < 0) {
+    setError('Informe um peso válido, igual ou maior que zero.')
+    return
+  }
+
+  if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
+    setError('O estoque deve ser um número inteiro igual ou maior que zero.')
+    return
+  }
+
+  if (price > 0 && !shopItemCurrencyId) {
+    setError('Selecione a moeda utilizada neste produto.')
+    return
+  }
+
+  setShopLoading(true)
+  setError('')
+  setNotice('')
+
+  const payload = {
+    shop_id: selectedShopId,
+    name: shopItemName.trim(),
+    description: shopItemDescription.trim() || null,
+    category: shopItemCategory.trim() || 'Diversos',
+    weight,
+    unit_price: price,
+    currency_id: price > 0 ? shopItemCurrencyId : null,
+    quantity: stock,
+    metadata: { icon: shopItemEmoji.trim() || '📦' },
+  }
+
+  try {
+    if (editingShopItemId) {
+      const { data, error: updateError } = await supabase
+        .from('campaign_shop_items')
+        .update({
+          name: payload.name,
+          description: payload.description,
+          category: payload.category,
+          weight: payload.weight,
+          unit_price: payload.unit_price,
+          currency_id: payload.currency_id,
+          quantity: payload.quantity,
+          metadata: payload.metadata,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingShopItemId)
+        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+        .single()
+
+      if (updateError) throw updateError
+
+      setShopItems(current =>
+        current.map(item =>
+          item.id === editingShopItemId
+            ? data as CampaignShopItem
+            : item
+        )
+      )
+
+      setNotice('Produto atualizado com sucesso!')
+    } else {
+      const { data, error: insertError } = await supabase
+        .from('campaign_shop_items')
+        .insert(payload)
+        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+        .single()
+
+      if (insertError) throw insertError
+
+      setShopItems(current => [...current, data as CampaignShopItem])
+      setNotice('Produto cadastrado com sucesso!')
+    }
+
+    setEditingShopItemId(null)
+    setShopItemName('')
+    setShopItemDescription('')
+    setShopItemCategory('Diversos')
+    setShopItemWeight('0')
+    setShopItemPrice('0')
+    setShopItemCurrencyId('')
+    setShopItemStock('')
+    setShopItemEmoji('📦')
+    setShowShopItemForm(false)
+  } catch (err) {
+    setError(`Não foi possível salvar o produto: ${
+      err instanceof Error ? err.message : String(err)
+    }`)
+  } finally {
+    setShopLoading(false)
+  }
+}
+
+function editShopItem(item: CampaignShopItem) {
+  setEditingShopItemId(item.id)
+  setShopItemName(item.name)
+  setShopItemDescription(item.description ?? '')
+  setShopItemCategory(item.category)
+  setShopItemWeight(String(item.weight))
+  setShopItemPrice(String(item.unit_price))
+  setShopItemCurrencyId(item.currency_id ?? '')
+  setShopItemStock(item.quantity === null ? '' : String(item.quantity))
+  setShopItemEmoji(
+    typeof item.metadata?.icon === 'string'
+      ? item.metadata.icon
+      : '📦'
+  )
+  setShowShopItemForm(true)
+}
+
+async function deleteShopItem(item: CampaignShopItem) {
+  if (!window.confirm(`Deseja excluir o produto "${item.name}"?`)) return
+
+  setShopLoading(true)
+  setError('')
+  setNotice('')
+
+  const { error: deleteError } = await supabase
+    .from('campaign_shop_items')
+    .delete()
+    .eq('id', item.id)
+
+  if (deleteError) {
+    setError(`Não foi possível excluir o produto: ${deleteError.message}`)
+    setShopLoading(false)
+    return
+  }
+
+  setShopItems(current =>
+    current.filter(entry => entry.id !== item.id)
+  )
+
+  setNotice('Produto excluído com sucesso.')
+  setShopLoading(false)
+}
+
+
+async function purchaseShopItem(
+  item: CampaignShopItem,
+  quantity: number = 1,
+) {
+  if (!shopPurchaseCharacterId || shopPurchaseLoading) {
+    setError('Selecione um personagem antes de comprar.')
+    return
+  }
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    setError('Informe uma quantidade válida.')
+    return
+  }
+
+  if (item.quantity !== null && item.quantity < quantity) {
+    setError('Não há estoque suficiente deste produto.')
+    return
+  }
+
+  setShopPurchaseLoading(item.id)
+  setError('')
+  setNotice('')
+
+  try {
+    const { data, error: purchaseError } = await supabase.rpc(
+      'purchase_campaign_shop_item',
+      {
+        p_shop_item_id: item.id,
+        p_character_id: shopPurchaseCharacterId,
+        p_quantity: quantity,
+      },
+    )
+
+    if (purchaseError) throw purchaseError
+
+    // Atualiza o inventário do personagem
+    const { data: inventoryData, error: inventoryError } = await supabase
+      .from('inventory_items')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+      .eq('character_id', shopPurchaseCharacterId)
+      .order('created_at', { ascending: true })
+
+    if (inventoryError) throw inventoryError
+
+    setItems((inventoryData ?? []) as Item[])
+
+    // Atualiza a carteira
+    const { data: balanceData, error: balanceError } = await supabase.rpc(
+      'get_character_currency',
+      { p_character_id: shopPurchaseCharacterId },
+    )
+
+    if (balanceError) throw balanceError
+
+    setCurrencyBalances(
+      balanceData && typeof balanceData === 'object'
+        ? balanceData as Record<string, number>
+        : {},
+    )
+
+    // Atualiza o estoque do produto
+    const { data: updatedItem, error: stockError } = await supabase
+      .from('campaign_shop_items')
+      .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+      .eq('id', item.id)
+      .maybeSingle()
+
+    if (stockError) throw stockError
+
+    if (updatedItem) {
+      setShopItems(current =>
+        current.map(entry =>
+          entry.id === item.id
+            ? updatedItem as CampaignShopItem
+            : entry
+        )
+      )
+    }
+
+    const result = data as {
+      item_name?: string
+      quantity?: number
+      total_price?: number
+    }
+
+    setNotice(
+      `${result.quantity ?? quantity}x ${result.item_name ?? item.name} comprado com sucesso!`,
+    )
+  } catch (err) {
+    setError(`Não foi possível concluir a compra: ${
+      err instanceof Error ? err.message : String(err)
+    }`)
+  } finally {
+    setShopPurchaseLoading(null)
+  }
+}
 
 async function loadCurrencyHistory() {
   if (!selectedCharacterId || currencyHistoryLoading) return
@@ -1696,6 +2216,23 @@ async function deleteCharacter(character: Character) {
           <button className={`nav-link ${activePage === 'inventory' ? 'active' : ''}`} onClick={() => setActivePage('inventory')}>
             <span>▤</span> Inventário <span className="nav-count">{items.length}</span>
           </button>
+          
+<button
+  className={`nav-link ${activePage === 'shops' ? 'active' : ''}`}
+  onClick={() => setActivePage('shops')}
+  disabled={!selectedCampaignId}
+>
+  <span>♜</span> Lojas
+  <span className="nav-count">{shops.length}</span>
+</button>
+
+          <button
+  className={`nav-link ${activePage === 'shops' ? 'active' : ''}`}
+  onClick={() => setActivePage('shops')}
+  disabled={!selectedCampaignId}
+>
+  <span>⚒</span> Lojas
+</button>
           <button className={`nav-link ${activePage === 'sheets' ? 'active' : ''}`} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }} disabled={!selectedCampaignId}>
             <span>▧</span> Fichas <span className="nav-count">{characters.length}</span>
           </button>
@@ -1781,6 +2318,13 @@ async function deleteCharacter(character: Character) {
 
         <div className={`page-content page-${activePage}`}>
           <style>{`
+          .page-content.page-shops > * {
+  display: none !important;
+}
+
+.page-content.page-shops > .shops-page-panel {
+  display: block !important;
+}
             .page-content.page-sheets > * { display: none !important; }
             .page-content.page-sheets > .sheet-page-panel { display: block !important; }
             .page-content.page-characters > * { display: none !important; }
@@ -1794,12 +2338,32 @@ async function deleteCharacter(character: Character) {
               <div className="eyebrow">
                 <span /> SUA JORNADA COMEÇA AQUI
               </div>
-              <h1>
-                {activePage === 'inventory' ? 'Seu inventário' : activePage === 'sheets' ? 'Fichas de personagens' : activePage === 'characters' ? 'Personagens' : 'Campanhas'}<span className="title-period">.</span>
-              </h1>
-              <p className="page-description">
-                {activePage === 'inventory' ? 'Organize os itens e acompanhe a carga do personagem.' : activePage === 'sheets' ? 'Consulte e atualize as fichas por temporada.' : activePage === 'characters' ? 'Crie personagens e gerencie quem pode acessá-los.' : 'Organize suas campanhas e escolha qual deseja administrar.'}
-              </p>
+
+<h1>
+  {activePage === 'inventory'
+    ? 'Seu inventário'
+    : activePage === 'shops'
+      ? 'Lojas da campanha'
+      : activePage === 'sheets'
+        ? 'Fichas de personagens'
+        : activePage === 'characters'
+          ? 'Personagens'
+          : 'Campanhas'}
+  <span className="title-period">.</span>
+</h1>
+
+<p className="page-description">
+  {activePage === 'inventory'
+    ? 'Organize os itens e acompanhe a carga do personagem.'
+    : activePage === 'shops'
+      ? 'Explore os estabelecimentos e encontre novos itens para sua aventura.'
+      : activePage === 'sheets'
+        ? 'Consulte e atualize as fichas por temporada.'
+        : activePage === 'characters'
+          ? 'Crie personagens e gerencie quem pode acessá-los.'
+          : 'Organize suas campanhas e escolha qual deseja administrar.'}
+</p>
+
             </div>
 
             {activePage === 'campaigns' && (
@@ -2789,6 +3353,509 @@ async function deleteCharacter(character: Character) {
 )}
 </section>
 )}
+
+{activePage === 'shops' && (
+  <section className="inventory-section shops-page-panel">
+    {!selectedCampaignId ? (
+      <div className="empty-state">
+        <h3>Nenhuma campanha selecionada</h3>
+        <p>Selecione uma campanha para acessar suas lojas.</p>
+      </div>
+    ) : (
+      <>
+        <div className="inventory-heading">
+          <div>
+            <h2>Mercado da campanha</h2>
+            <p>
+              {isMaster
+                ? 'Administre estabelecimentos e seus produtos.'
+                : 'Confira os produtos disponíveis para sua aventura.'}
+            </p>
+          </div>
+
+          {isMaster && (
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => {
+                setEditingShopId(null)
+                setShopName('')
+                setShopDescription('')
+                setShowShopForm(value => !value)
+              }}
+            >
+              + Nova loja
+            </button>
+          )}
+        </div>
+
+        {isMaster && showShopForm && (
+          <form
+            className="add-form"
+            onSubmit={event => {
+              event.preventDefault()
+              void saveShop()
+            }}
+          >
+            <h3>{editingShopId ? 'Editar loja' : 'Criar loja'}</h3>
+
+            <label style={labelStyle}>
+              Nome da loja
+              <input
+                value={shopName}
+                onChange={event => setShopName(event.target.value)}
+                placeholder="Ex.: Mercado de Eldoria"
+                required
+                style={inputStyle}
+              />
+            </label>
+
+            <label style={labelStyle}>
+              Descrição
+              <textarea
+                value={shopDescription}
+                onChange={event => setShopDescription(event.target.value)}
+                placeholder="Conte um pouco sobre este estabelecimento..."
+                style={inputStyle}
+              />
+            </label>
+
+            <div className="form-row">
+              <button
+                className="primary-button"
+                type="submit"
+                disabled={shopLoading}
+              >
+                {shopLoading ? 'Salvando...' : 'Salvar loja'}
+              </button>
+
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  setShowShopForm(false)
+                  setEditingShopId(null)
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+
+        {shopLoading && shops.length === 0 ? (
+          <div className="empty-state">
+            <p>Carregando lojas...</p>
+          </div>
+        ) : shops.length === 0 ? (
+          <div className="empty-state">
+            <h3>Esta campanha ainda não possui lojas</h3>
+            <p>
+              {isMaster
+                ? 'Crie a primeira loja para começar a montar o catálogo.'
+                : 'O mestre ainda não cadastrou nenhum estabelecimento.'}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="shops-list">
+              {shops.map(shop => {
+                const isSelected = selectedShopId === shop.id
+
+                return (
+                  <article
+                    className="item-card"
+                    key={shop.id}
+                    style={{
+                      borderColor: isSelected
+                        ? 'var(--season-primary, #b49aff)'
+                        : undefined,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedShopId(shop.id)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        background: 'transparent',
+                        border: 0,
+                        color: 'inherit',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div className="item-art">🏪</div>
+                      <h3>{shop.name}</h3>
+                      <p className="item-description">
+                        {shop.description || 'Um estabelecimento da campanha.'}
+                      </p>
+                      <small>
+                        {shopItems.filter(item => item.shop_id === shop.id).length}
+                        {' '}produto(s)
+                      </small>
+                    </button>
+
+                    {isMaster && (
+                      <div className="form-row" style={{ marginTop: 12 }}>
+                        <button
+  type="button"
+  className="secondary-button"
+  disabled={shopLoading}
+  onClick={() => void toggleShopVisibility(shop)}
+>
+  {shopLoading
+    ? 'Atualizando...'
+    : shop.is_visible
+      ? 'Ocultar dos jogadores'
+      : 'Revelar aos jogadores'}
+</button>
+<small
+  style={{
+    display: 'block',
+    marginTop: 8,
+    color: 'var(--season-muted, #b9b4c2)',
+  }}
+>
+  {shop.is_visible
+    ? '🌐 Visível para os jogadores'
+    : '🔒 Oculta para os jogadores'}
+</small>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => editShop(shop)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={shopLoading}
+                          onClick={() => void deleteShop(shop)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+
+            {selectedShopId && (
+              <div style={{ marginTop: 28 }}>
+                {(() => {
+                  const selectedShop = shops.find(
+                    shop => shop.id === selectedShopId
+                  )
+
+                  if (!selectedShop) return null
+
+                  const visibleItems = shopItems.filter(
+                    item => item.shop_id === selectedShopId
+                  )
+
+                  return (
+                    <>
+                      <div className="inventory-heading">
+                        <div>
+                          <h2>{selectedShop.name}</h2>
+                          <p>Catálogo de produtos</p>
+                        </div>
+
+                        {isMaster && (
+                          <button
+                            type="button"
+                            className="primary-button"
+                            onClick={() => {
+                              setEditingShopItemId(null)
+                              setShopItemName('')
+                              setShopItemDescription('')
+                              setShopItemCategory('Diversos')
+                              setShopItemWeight('0')
+                              setShopItemPrice('0')
+                              setShopItemCurrencyId('')
+                              setShopItemStock('')
+                              setShopItemEmoji('📦')
+                              setShowShopItemForm(value => !value)
+                            }}
+                          >
+                            + Novo produto
+                          </button>
+                        )}
+                      </div>
+
+                      {isMaster && showShopItemForm && (
+                        <form
+                          className="add-form"
+                          onSubmit={event => {
+                            event.preventDefault()
+                            void saveShopItem()
+                          }}
+                        >
+                          <h3>
+                            {editingShopItemId
+                              ? 'Editar produto'
+                              : 'Cadastrar produto'}
+                          </h3>
+
+                          <div className="form-row">
+                            <label style={labelStyle}>
+                              Nome
+                              <input
+                                value={shopItemName}
+                                onChange={event => setShopItemName(event.target.value)}
+                                required
+                                style={inputStyle}
+                              />
+                            </label>
+
+                            <label style={labelStyle}>
+                              Emoji
+                              <input
+                                value={shopItemEmoji}
+                                onChange={event => setShopItemEmoji(event.target.value)}
+                                style={inputStyle}
+                                maxLength={8}
+                              />
+                            </label>
+                          </div>
+
+                          <label style={labelStyle}>
+                            Descrição
+                            <textarea
+                              value={shopItemDescription}
+                              onChange={event => setShopItemDescription(event.target.value)}
+                              style={inputStyle}
+                            />
+                          </label>
+
+                          <div className="form-row">
+                            <label style={labelStyle}>
+                              Categoria
+                              <input
+                                value={shopItemCategory}
+                                onChange={event => setShopItemCategory(event.target.value)}
+                                style={inputStyle}
+                              />
+                            </label>
+
+                            <label style={labelStyle}>
+                              Peso por unidade (kg)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={shopItemWeight}
+                                onChange={event => setShopItemWeight(event.target.value)}
+                                style={inputStyle}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="form-row">
+                            <label style={labelStyle}>
+                              Preço
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={shopItemPrice}
+                                onChange={event => setShopItemPrice(event.target.value)}
+                                style={inputStyle}
+                              />
+                            </label>
+
+                            <label style={labelStyle}>
+                              Moeda
+                              <select
+                                value={shopItemCurrencyId}
+                                onChange={event => setShopItemCurrencyId(event.target.value)}
+                                style={inputStyle}
+                              >
+                                <option value="">Sem moeda</option>
+                                {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
+                                  <option key={currency.id} value={currency.id}>
+                                    {currency.name} ({currency.symbol})
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          <label style={labelStyle}>
+                            Estoque
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={shopItemStock}
+                              onChange={event => setShopItemStock(event.target.value)}
+                              placeholder="Deixe vazio para estoque ilimitado"
+                              style={inputStyle}
+                            />
+                          </label>
+
+                          <div className="form-row">
+                            <button
+                              type="submit"
+                              className="primary-button"
+                              disabled={shopLoading}
+                            >
+                              {shopLoading ? 'Salvando...' : 'Salvar produto'}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() => {
+                                setShowShopItemForm(false)
+                                setEditingShopItemId(null)
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      )}
+
+                      {visibleItems.length === 0 ? (
+                        <div className="empty-state">
+                          <h3>Catálogo vazio</h3>
+                          <p>Esta loja ainda não possui produtos.</p>
+                        </div>
+                      ) : (
+                        <div className="item-grid">
+                          {visibleItems.map(item => {
+                            const currency = selectedCampaign?.currency_config?.currencies?.find(
+                              entry => entry.id === item.currency_id
+                            )
+
+                            const outOfStock =
+                              item.quantity !== null && item.quantity <= 0
+
+                            return (
+                              <article className="item-card" key={item.id}>
+                                <div className="item-art">
+                                  {typeof item.metadata?.icon === 'string'
+                                    ? item.metadata.icon
+                                    : '📦'}
+                                </div>
+
+                                <div className="item-category">
+                                  {item.category}
+                                </div>
+
+                                <h3>{item.name}</h3>
+
+                                <p className="item-description">
+                                  {item.description || 'Sem descrição.'}
+                                </p>
+
+                                <div className="item-economic-details">
+                                  <div>
+                                    <span>Preço</span>
+                                    <strong>
+                                      {currency?.symbol ?? ''}
+                                      {' '}
+                                      {Number(item.unit_price).toLocaleString('pt-BR')}
+                                    </strong>
+                                  </div>
+
+                                  <div>
+                                    <span>Peso</span>
+                                    <strong>
+                                      {Number(item.weight).toLocaleString('pt-BR')} kg
+                                    </strong>
+                                  </div>
+                                </div>
+
+                                <p>
+                                  {item.quantity === null
+                                    ? 'Estoque ilimitado'
+                                    : outOfStock
+                                      ? 'Esgotado'
+                                      : `Disponível: ${item.quantity}`}
+                                </p>
+
+                                {isMaster ? (
+                                  <div className="form-row">
+                                    <button
+                                      type="button"
+                                      className="secondary-button"
+                                      onClick={() => editShopItem(item)}
+                                    >
+                                      Editar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="secondary-button"
+                                      disabled={shopLoading}
+                                      onClick={() => void deleteShopItem(item)}
+                                    >
+                                      Excluir
+                                    </button>
+                                  </div>
+) : (
+  <>
+    <label style={labelStyle}>
+      Comprar para
+      <select
+        value={shopPurchaseCharacterId}
+        onChange={event => setShopPurchaseCharacterId(event.target.value)}
+        style={inputStyle}
+      >
+        <option value="">Selecione seu personagem</option>
+        {characters
+          .filter(character => character.user_id === session?.user.id)
+          .map(character => (
+            <option key={character.id} value={character.id}>
+              {character.name}
+            </option>
+          ))}
+      </select>
+    </label>
+
+    <button
+      type="button"
+      className="primary-button"
+      disabled={
+        outOfStock ||
+        shopPurchaseLoading !== null ||
+        !shopPurchaseCharacterId ||
+        !characters.some(character =>
+          character.id === shopPurchaseCharacterId &&
+          character.user_id === session?.user.id
+        )
+      }
+      onClick={() => void purchaseShopItem(item, 1)}
+    >
+      {shopPurchaseLoading === item.id
+        ? 'Comprando...'
+        : outOfStock
+          ? 'Esgotado'
+          : 'Comprar 1 unidade'}
+    </button>
+  </>
+)}
+                              </article>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+            )}
+          </>
+        )}
+      </>
+    )}
+  </section>
+)}
+
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
