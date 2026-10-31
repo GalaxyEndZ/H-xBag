@@ -27,6 +27,7 @@ type Character = {
   campaign_id: string
   user_id: string
   name: string
+  emoji?: string | null
   archetype: string | null
   level: number
   strength: number
@@ -175,6 +176,10 @@ function App() {
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const selectedCampaign = campaigns.find(
+    (campaign) => campaign.id === selectedCampaignId,
+  )
+  const isMaster = selectedCampaign?.role === 'master'
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
   const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(null)
@@ -251,6 +256,7 @@ function App() {
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null)
   const [showCharacterForm, setShowCharacterForm] = useState(false)
   const [showCharacterManagement, setShowCharacterManagement] = useState(false)
   const [showItemForm, setShowItemForm] = useState(false)
@@ -261,8 +267,11 @@ function App() {
   const [inviteCode, setInviteCode] = useState('')
   const [inviteLoading, setInviteLoading] = useState(false)
   const [systemName, setSystemName] = useState('')
+  const [campaignSystemChoice, setCampaignSystemChoice] = useState('')
 
   const [characterName, setCharacterName] = useState('')
+  const [characterEmoji, setCharacterEmoji] = useState('⚔️')
+  const [characterRanks, setCharacterRanks] = useState<Record<string, string>>({})
   const [archetype, setArchetype] = useState('')
   const [primaryArchetype, setPrimaryArchetype] = useState('')
   const [secondaryArchetype, setSecondaryArchetype] = useState('')
@@ -281,6 +290,7 @@ function App() {
 
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [emojiPickerItem, setEmojiPickerItem] = useState<Item | null>(null)
+  const [emojiPickerCharacter, setEmojiPickerCharacter] = useState<Character | null>(null)
   const [favoriteOnly, setFavoriteOnly] = useState(false)
   const [sortBy, setSortBy] = useState('created')
   const [updatingQuantityItemId, setUpdatingQuantityItemId] = useState<string | null>(null)
@@ -519,6 +529,28 @@ if (accessibleShops.length === 0) {
   }, [selectedCharacterId, selectedSeasonId])
 
   useEffect(() => {
+    if (!selectedSeasonId || !characters.length || !String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai')) {
+      setCharacterRanks({})
+      return
+    }
+    let cancelled = false
+    async function loadCharacterRanks() {
+      const ids = characters.map(character => character.id)
+      const { data } = await supabase.from('character_sheets').select('character_id,sheet_data').eq('season_id', selectedSeasonId).in('character_id', ids)
+      if (cancelled) return
+      const ranks: Record<string, string> = {}
+      for (const row of data ?? []) {
+        const sheetData = (row.sheet_data ?? {}) as Record<string, any>
+        const progression = sheetData.progression ?? {}
+        ranks[row.character_id] = String(progression.rankName || KISATSUTAI_RANKS.find(rank => rank.id === progression.rankId)?.name || 'Graduação não definida')
+      }
+      setCharacterRanks(ranks)
+    }
+    void loadCharacterRanks()
+    return () => { cancelled = true }
+  }, [selectedSeasonId, selectedCampaign?.system_name, characters])
+
+  useEffect(() => {
     if (!selectedCampaignId) {
       setCharacters([])
       setSelectedCharacterId('')
@@ -534,7 +566,7 @@ if (accessibleShops.length === 0) {
       const { data, error: characterError } = await supabase
         .from('characters')
         .select(
-          'id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at',
+          'id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, created_at',
         )
         .eq('campaign_id', selectedCampaignId)
         .order('created_at', { ascending: true })
@@ -1210,6 +1242,44 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     }
   }
 
+  async function saveCampaignDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!editingCampaignId || !isMaster || !campaignName.trim()) return
+
+    setLoading(true)
+    setError('')
+    setNotice('')
+
+    const { data, error: updateError } = await supabase
+      .from('campaigns')
+      .update({
+        name: campaignName.trim(),
+        description: campaignDescription.trim() || null,
+        system_name: systemName.trim() || null,
+      })
+      .eq('id', editingCampaignId)
+      .select('id, name, description, system_name, currency_config, created_by')
+      .maybeSingle()
+
+    if (updateError || !data) {
+      setError(`Não foi possível atualizar a campanha: ${updateError?.message ?? 'nenhum registro atualizado. Verifique as permissões RLS.'}`)
+      setLoading(false)
+      return
+    }
+
+    setCampaigns(current => current.map(campaign =>
+      campaign.id === editingCampaignId ? { ...campaign, ...data } : campaign
+    ))
+    setCampaignName('')
+    setCampaignDescription('')
+    setSystemName('')
+    setCampaignSystemChoice('')
+    setEditingCampaignId(null)
+    setShowCampaignForm(false)
+    setNotice('Campanha atualizada com sucesso!')
+    setLoading(false)
+  }
+
   async function createCampaign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -1274,6 +1344,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     setCampaignName('')
     setCampaignDescription('')
     setSystemName('')
+    setCampaignSystemChoice('')
     setShowCampaignForm(false)
     setNotice('Campanha criada e salva!')
     setLoading(false)
@@ -1528,7 +1599,10 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
       return
     }
 
-    const createdCharacter = data as Character
+    let createdCharacter = data as Character
+    const { data: emojiUpdated, error: emojiError } = await supabase.from('characters').update({ emoji: characterEmoji }).eq('id', createdCharacter.id).select('id,campaign_id,user_id,name,emoji,archetype,level,strength,visibility,created_at').single()
+    if (emojiError) { setError(`Personagem criado, mas não foi possível salvar o emoji: ${emojiError.message}. Execute a migração SQL fornecida.`); setLoading(false); return }
+    createdCharacter = emojiUpdated as Character
     if (kisatsutaiCampaign && selectedSeasonId) {
 const initialSheetData = {
   identity: {
@@ -1571,6 +1645,7 @@ const initialSheetData = {
     )
     setSelectedCharacterId(createdCharacter.id)
 setCharacterName('')
+setCharacterEmoji('⚔️')
 setArchetype('')
 setPrimaryArchetype('')
 setSecondaryArchetype('')
@@ -1580,6 +1655,35 @@ setCharacterRank('zaidan')
     setNotice('Personagem criado e salvo!')
     setLoading(false)
   }
+
+function openCharacterEmojiPicker(character: Character) {
+  setError('')
+  setEmojiPickerCharacter(character)
+}
+
+async function changeCharacterEmoji(character: Character, emoji: string) {
+  if (!availableEmojis.includes(emoji)) {
+    setError('Selecione um emoji disponível na lista.')
+    return
+  }
+
+  const { data, error: updateError } = await supabase
+    .from('characters')
+    .update({ emoji })
+    .eq('id', character.id)
+    .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, created_at')
+    .single()
+
+  if (updateError || !data) {
+    setError(`Não foi possível atualizar o emoji: ${updateError?.message ?? 'personagem não encontrado'}`)
+    return
+  }
+
+  setCharacters(current => current.map(entry => entry.id === character.id ? data as Character : entry))
+  setEmojiPickerCharacter(null)
+  setError('')
+  setNotice(`Emoji de ${character.name} atualizado.`)
+}
 
 async function deleteCharacter(character: Character) {
   if (!isMaster || deletingCharacterId) return
@@ -2008,16 +2112,9 @@ async function deleteCharacter(character: Character) {
     session?.user.email?.split('@')[0] ||
     'Aventureiro'
 
-  const selectedCampaign = campaigns.find(
-    (campaign) => campaign.id === selectedCampaignId,
-  )
-
   const selectedCharacter = characters.find(
     (character) => character.id === selectedCharacterId,
   )
-
-  const isMaster = selectedCampaign?.role === 'master'
-
 
   async function changeMemberRole(member: CampaignMember) {
     if (!selectedCampaignId || !isMaster || memberActionLoading) return
@@ -2226,13 +2323,6 @@ async function deleteCharacter(character: Character) {
   <span className="nav-count">{shops.length}</span>
 </button>
 
-          <button
-  className={`nav-link ${activePage === 'shops' ? 'active' : ''}`}
-  onClick={() => setActivePage('shops')}
-  disabled={!selectedCampaignId}
->
-  <span>⚒</span> Lojas
-</button>
           <button className={`nav-link ${activePage === 'sheets' ? 'active' : ''}`} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }} disabled={!selectedCampaignId}>
             <span>▧</span> Fichas <span className="nav-count">{characters.length}</span>
           </button>
@@ -2410,7 +2500,7 @@ async function deleteCharacter(character: Character) {
 )}
               {!sheetCharacterView ? <>
                 <div className="inventory-heading"><div><h2>Fichas de personagens</h2><p>Escolha um personagem para abrir sua ficha.</p></div></div>
-                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">▧</div><div className="item-category">NÍVEL {character.level}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p><button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
+                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">{character.emoji || '⚔️'}</div><div className="item-category">{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? 'KISATSUTAI' : `NÍVEL ${character.level}`}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p>{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}<button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
               </> : <>
                 <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · Kisatsutai RPG</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
                 <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
@@ -2899,206 +2989,6 @@ async function deleteCharacter(character: Character) {
   </section>
 ) : null}
 
-<section className="inventory-section" style={{ marginTop: 20 }}>
-  <div className="inventory-heading">
-    <div>
-      <small>INVENTÁRIO DO PERSONAGEM</small>
-      <h2>Mochila</h2>
-      <p>Pertences de {selectedCharacter?.name || 'Personagem'}.</p>
-    </div>
-  </div>
-
-  <div className="stats-grid">
-    <div className="stat-card">
-      <div className="stat-top">
-        <span>OBJETOS</span>
-      </div>
-      <div className="stat-number">
-        {totalObjects}<small> unidades</small>
-      </div>
-    </div>
-
-    <div className="stat-card">
-      <div className="stat-top">
-        <span>PESO TOTAL</span>
-      </div>
-      <div className="stat-number">
-        {totalWeight.toFixed(1)}<small> kg</small>
-      </div>
-    </div>
-
-    <div className="stat-card">
-      <div className="stat-top">
-        <span>CAPACIDADE</span>
-      </div>
-      <div className="stat-number">
-        {maxCapacity}<small> kg</small>
-      </div>
-    </div>
-  </div>
-
-  <div className="banner-stat" style={{ marginBottom: 20 }}>
-    <div className="progress-track">
-      <div
-        style={{
-          width: `${capacityPercent}%`,
-          background: totalWeight > maxCapacity ? '#e66b78' : undefined,
-        }}
-      />
-    </div>
-    <small className="stat-caption">
-      {remainingCapacity >= 0
-        ? `${remainingCapacity.toFixed(1)} kg disponíveis`
-        : `${Math.abs(remainingCapacity).toFixed(1)} kg acima do limite`}
-    </small>
-  </div>
-
-  {itemsLoading ? (
-    <div className="empty-state">
-      <p>Carregando mochila...</p>
-    </div>
-  ) : items.length === 0 ? (
-    <div className="empty-state">
-      <span>▤</span>
-      <h3>Mochila vazia</h3>
-      <p>Este personagem ainda não possui itens.</p>
-    </div>
-  ) : (
-    <div className="item-grid">
-      {items.map(item => (
-        <article className="item-card" key={item.id}>
-          <div className="item-art">
-            {typeof item.metadata?.icon === 'string'
-              ? item.metadata.icon
-              : '📦'}
-          </div>
-
-          <div className="item-category">{item.category}</div>
-          <h3>{item.name}</h3>
-
-          <p className="item-description">
-            {item.description || 'Sem descrição.'}
-          </p>
-
-          <div className="item-footer">
-            <span>
-              ⚖ {Number(item.weight).toFixed(1)} kg / un.
-            </span>
-
-            <div className="quantity-controls">
-              <button
-                type="button"
-                className="quantity-button"
-                onClick={() =>
-                  void changeItemQuantity(
-                    item,
-                    Number(item.quantity) - 1
-                  )
-                }
-                disabled={
-                  Number(item.quantity) <= 1 ||
-                  updatingQuantityItemId === item.id
-                }
-              >
-                −
-              </button>
-
-              <span className="quantity">{item.quantity}</span>
-
-              <button
-                type="button"
-                className="quantity-button"
-                onClick={() =>
-                  void changeItemQuantity(
-                    item,
-                    Number(item.quantity) + 1
-                  )
-                }
-                disabled={
-                  Number(item.quantity) >= 999 ||
-                  updatingQuantityItemId === item.id
-                }
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </article>
-      ))}
-    </div>
-  )}
-</section>
-
-                <section className="inventory-section" style={{ marginTop: 20 }}>
-  <div className="inventory-heading">
-    <div>
-      <h2>🎒 Mochila</h2>
-      <p>Itens disponíveis no inventário da campanha.</p>
-    </div>
-  </div>
-
-  {items.length === 0 ? (
-    <div className="empty-state">
-      <p>A mochila está vazia.</p>
-    </div>
-  ) : (
-    <div className="item-grid">
-      {items.map(item => (
-        <article className="item-card" key={item.id}>
-          <div className="item-card-top">
-            <div className="item-art">
-              {typeof item.metadata?.icon === 'string'
-                ? item.metadata.icon
-                : '📦'}
-            </div>
-            <div className="item-category">{item.category}</div>
-          </div>
-
-          <h3>{item.name}</h3>
-          <p className="item-description">
-            {item.description || 'Sem descrição.'}
-          </p>
-
-          <div className="item-footer">
-            <span>⚖ {Number(item.weight).toFixed(1)} kg / un.</span>
-
-            <div className="quantity-controls">
-              <button
-                type="button"
-                className="quantity-button"
-                onClick={() =>
-                  void changeItemQuantity(item, Number(item.quantity) - 1)
-                }
-                disabled={
-                  Number(item.quantity) <= 1 ||
-                  updatingQuantityItemId === item.id
-                }
-              >
-                −
-              </button>
-
-              <span className="quantity">{item.quantity}</span>
-
-              <button
-                type="button"
-                className="quantity-button"
-                onClick={() =>
-                  void changeItemQuantity(item, Number(item.quantity) + 1)
-                }
-                disabled={
-                  Number(item.quantity) >= 999 ||
-                  updatingQuantityItemId === item.id
-                }
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </article>
-      ))}
-    </div>
-  )}
-</section>
                 </>}
               </>}
             </section>
@@ -3156,6 +3046,15 @@ async function deleteCharacter(character: Character) {
             style={inputStyle}
           />
         </label>
+        <div className="emoji-field">
+          <label>Emoji do personagem</label>
+          <div className="emoji-grid">
+            {availableEmojis.map((emoji) => (
+              <button key={emoji} type="button" className={characterEmoji === emoji ? 'emoji-option selected' : 'emoji-option'} onClick={() => setCharacterEmoji(emoji)} aria-label={`Selecionar emoji ${emoji}`} aria-pressed={characterEmoji === emoji}>{emoji}</button>
+            ))}
+          </div>
+          <small>Selecione um dos emojis disponíveis para representar o personagem.</small>
+        </div>
 
 {String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
   <>
@@ -3291,10 +3190,13 @@ async function deleteCharacter(character: Character) {
   <div className="item-grid">
     {characters.map(character => (
       <article className="item-card" key={character.id}>
+        <div className="item-art">{character.emoji || '⚔️'}</div>
         <h3>{character.name}</h3>
         <p>
-          {character.archetype || 'Arquétipo não definido'} · Nível {character.level}
+          {character.archetype || 'Arquétipo não definido'}{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && <> · Nível {character.level}</>}
         </p>
+        {String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+        <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
 
         <button
           className="primary-button"
@@ -3313,10 +3215,13 @@ async function deleteCharacter(character: Character) {
   <div className="item-grid">
     {characters.map(character => (
       <article className="item-card" key={character.id}>
+        <div className="item-art">{character.emoji || '⚔️'}</div>
         <h3>{character.name}</h3>
         <p>
-          {character.archetype || 'Arquétipo não definido'} · Nível {character.level}
+          {character.archetype || 'Arquétipo não definido'}{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && <> · Nível {character.level}</>}
         </p>
+        {String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+        <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
 
         <button
           className="primary-button"
@@ -3859,8 +3764,8 @@ async function deleteCharacter(character: Character) {
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
-            {showCampaignForm&&<form className="add-form" onSubmit={createCampaign}><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} style={inputStyle}/></label><label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="submit" disabled={loading}>Criar campanha</button></form>}
-            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('inventory')}}>Selecionar campanha</button></article>)}</div>
+            {showCampaignForm&&<form className="add-form" onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<select value={campaignSystemChoice} onChange={e=>{const choice=e.target.value;setCampaignSystemChoice(choice);if(choice==='kisatsutai')setSystemName('Kisatsutai');else if(choice==='other')setSystemName('')}} style={inputStyle}><option value=''>Selecione um sistema</option><option value='kisatsutai'>Kisatsutai</option><option value='other'>Outro sistema</option></select></label>{campaignSystemChoice==='other'&&<label>Nome do sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} placeholder='Ex.: Dungeons & Dragons 5e' required style={inputStyle}/></label>}<label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="submit" disabled={loading}>{loading ? 'Salvando…' : editingCampaignId ? 'Salvar alterações' : 'Criar campanha'}</button><button className="secondary-button" type="button" onClick={()=>{setShowCampaignForm(false);setEditingCampaignId(null);setCampaignName('');setCampaignDescription('');setSystemName('');setCampaignSystemChoice('')}}>Cancelar</button></div></form>}
+            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('inventory')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':campaign.system_name.toLowerCase().includes('kisatsutai')?'kisatsutai':'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
             {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
           </section>}
 
@@ -4132,7 +4037,7 @@ async function deleteCharacter(character: Character) {
                               : undefined,
                         }}
                       >
-                        <div className="item-art">♙</div>
+                        <div className="item-art">{character.emoji || '⚔️'}</div>
 <div className="item-category">
   {String(selectedCampaign?.system_name || '')
     .toLowerCase()
@@ -4144,9 +4049,11 @@ async function deleteCharacter(character: Character) {
                         <p className="item-description">
                           {character.archetype || 'Arquétipo não definido'}
                         </p>
+                        {String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
                         <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', margin: '8px 0' }}>
                           {character.visibility === 'campaign' ? '🌐 Toda a campanha' : character.visibility === 'selected' ? '👥 Jogadores selecionados' : '🔒 Privado'}
                         </small>
+                        <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
                         <button
                           className="primary-button"
                           onClick={() => {
@@ -4427,8 +4334,8 @@ async function deleteCharacter(character: Character) {
   <option value="incomum">Incomum</option>
   <option value="raro">Raro</option>
   <option value="épico">Épico</option>
-  <option value="lendário">Lendário</option>
   <option value="mítico">Mítico</option>
+  <option value="relíquia">Relíquia</option>
 </select>
 
                       <label>
@@ -4707,6 +4614,26 @@ async function deleteCharacter(character: Character) {
 
           {loading && <p role="status">Salvando ou carregando...</p>}
 
+          {emojiPickerCharacter && (
+            <div className="emoji-modal-backdrop" onClick={() => setEmojiPickerCharacter(null)}>
+              <section className="emoji-modal" role="dialog" aria-modal="true" aria-labelledby="character-emoji-modal-title" onClick={(event) => event.stopPropagation()}>
+                <div className="emoji-modal-heading">
+                  <div>
+                    <h3 id="character-emoji-modal-title">Escolher emoji</h3>
+                    <p>{emojiPickerCharacter.name}</p>
+                  </div>
+                  <button type="button" className="item-menu" onClick={() => setEmojiPickerCharacter(null)} aria-label="Fechar seletor de emoji">×</button>
+                </div>
+                <div className="emoji-grid">
+                  {availableEmojis.map((emoji) => (
+                    <button key={emoji} type="button" className={emojiPickerCharacter.emoji === emoji ? 'emoji-option selected' : 'emoji-option'} onClick={() => void changeCharacterEmoji(emojiPickerCharacter, emoji)} aria-label={`Usar emoji ${emoji}`} aria-pressed={emojiPickerCharacter.emoji === emoji}>{emoji}</button>
+                  ))}
+                </div>
+                <button type="button" className="secondary-button" onClick={() => setEmojiPickerCharacter(null)}>Cancelar</button>
+              </section>
+            </div>
+          )}
+
           {emojiPickerItem && (
             <div
               className="emoji-modal-backdrop"
@@ -4788,12 +4715,11 @@ async function deleteCharacter(character: Character) {
 
 <small>{selectedItemDetails.category}</small>
 
-<p>
-  **Raridade:** {
-    typeof selectedItemDetails.metadata?.rarity === 'string'
-      ? selectedItemDetails.metadata.rarity
-      : 'Comum'
-  }
+<p className="item-rarity">
+  <strong>Raridade:</strong>{' '}
+  {typeof selectedItemDetails.metadata?.rarity === 'string'
+    ? selectedItemDetails.metadata.rarity.charAt(0).toLocaleUpperCase('pt-BR') + selectedItemDetails.metadata.rarity.slice(1)
+    : 'Comum'}
 </p>
       <h2>{selectedItemDetails.name}</h2>
 
