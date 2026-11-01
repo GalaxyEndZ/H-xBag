@@ -4902,3 +4902,43 @@ button:disabled { opacity: .58; }
   align-self: stretch;
   margin-left: 0;
 }
+
+.restriction-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  border: 2px solid var(--season-line, currentColor);
+  border-radius: 6px;
+  background: var(--season-surface, transparent);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: all 0.2s ease;
+}
+
+.restriction-checkbox:hover {
+  border-color: var(--season-primary);
+  box-shadow: 0 0 0 3px var(--season-glow);
+}
+
+.restriction-checkbox:checked {
+  background: var(--season-primary);
+  border-color: var(--season-primary);
+}
+
+.restriction-checkbox:checked::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid var(--season-on-primary, white);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin-top: -2px;
+}
+
+.restriction-checkbox:focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 3px;
+}

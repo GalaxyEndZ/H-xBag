@@ -58,6 +58,7 @@ type Item = {
   unit_price: number
   currency_id: string | null
   metadata: Record<string, unknown> | null
+  sale_blocked: boolean
 }
 
 type CampaignShop = {
@@ -79,6 +80,7 @@ type CampaignShopItem = {
   currency_id: string | null
   quantity: number | null
   metadata: Record<string, unknown> | null
+  purchase_blocked: boolean
 }
 
 function displayNameForMembers(session: Session | null) {
@@ -203,10 +205,15 @@ function App() {
   const [currencyConfigSaving, setCurrencyConfigSaving] = useState(false)
   const [itemsLoading, setItemsLoading] = useState(false)
   const [selectedItemDetails, setSelectedItemDetails] = useState<Item | null>(null)
+  const [saleQuantity, setSaleQuantity] = useState('1')
+  const [shopSaleQuantities, setShopSaleQuantities] = useState<Record<string, string>>({})
+  const [saleShopId, setSaleShopId] = useState('')
+  const [saleLoading, setSaleLoading] = useState(false)
   const [shops, setShops] = useState<CampaignShop[]>([])
   const [shopItems, setShopItems] = useState<CampaignShopItem[]>([])
   const [selectedShopId, setSelectedShopId] = useState('')
   const [shopPurchaseCharacterId, setShopPurchaseCharacterId] = useState('')
+  const [shopPurchaseQuantities, setShopPurchaseQuantities] = useState<Record<string, string>>({})
 
   const [showShopForm, setShowShopForm] = useState(false)
   const [editingShopId, setEditingShopId] = useState<string | null>(null)
@@ -233,14 +240,14 @@ function App() {
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
   const seasonThemes = {
-    default: { label: 'Padrão HäxBag', primary: '#c8b5ff', secondary: '#7958cf', glow: 'rgba(190,170,255,.20)', bg: '#0e0b17', surface: '#181323', surfaceAlt: '#251b36', line: '#493765' },
-    crimson: { label: 'Lua de Sangue', primary: '#ff334f', secondary: '#b5122e', glow: 'rgba(255,35,65,.22)', bg: '#080809', surface: '#111114', surfaceAlt: '#1b1115', line: '#64202e' },
-    forest: { label: 'Floresta Esquecida', primary: '#9be8b7', secondary: '#397b58', glow: 'rgba(139,224,178,.19)', bg: '#09130f', surface: '#122019', surfaceAlt: '#1c3024', line: '#3b6249' },
-    frost: { label: 'Inverno Eterno', primary: '#b9e8ff', secondary: '#4b88b5', glow: 'rgba(169,222,248,.20)', bg: '#09131d', surface: '#121f2c', surfaceAlt: '#1b3041', line: '#3c617c' },
-    arcane: { label: 'Arcano', primary: '#e7c5ff', secondary: '#8754c5', glow: 'rgba(223,184,255,.20)', bg: '#120b1b', surface: '#1c1428', surfaceAlt: '#2b1c40', line: '#5a3d78' },
-    ghost_vale: { label: 'Vale Fantasma', primary: '#ffc078', secondary: '#c85d27', glow: 'rgba(255,158,75,.19)', bg: '#080a0d', surface: '#11161b', surfaceAlt: '#1b252d', line: '#46535d' },
-    crimson_vale: { label: 'Vale Carmesim', primary: '#ff5268', secondary: '#a91f38', glow: 'rgba(255,55,85,.20)', bg: '#09090c', surface: '#151216', surfaceAlt: '#24151c', line: '#653044' },  
-    celestial_sands: {  label: 'Areias Celestes',  primary: '#5865F2',  secondary: '#7289DA',  glow: 'rgba(88, 101, 242, 0.28)',  bg: '#1E1F22',  surface: '#2B2D31',  surfaceAlt: '#313338',  line: '#404249' },
+    default: { label: 'Padrão HäxBag', primary: '#c8b5ff', secondary: '#7958cf', glow: 'rgba(190,170,255,.20)', bg: '#0e0b17', surface: '#181323', surfaceAlt: '#251b36', line: '#493765', onPrimary: '#ffffff' },
+    crimson: { label: 'Lua de Sangue', primary: '#ff334f', secondary: '#b5122e', glow: 'rgba(255,35,65,.22)', bg: '#080809', surface: '#111114', surfaceAlt: '#1b1115', line: '#64202e', onPrimary: '#ffffff' },
+    forest: { label: 'Floresta Esquecida', primary: '#9be8b7', secondary: '#397b58', glow: 'rgba(139,224,178,.19)', bg: '#09130f', surface: '#122019', surfaceAlt: '#1c3024', line: '#3b6249', onPrimary: '#ffffff' },
+    frost: { label: 'Inverno Eterno', primary: '#b9e8ff', secondary: '#4b88b5', glow: 'rgba(169,222,248,.20)', bg: '#09131d', surface: '#121f2c', surfaceAlt: '#1b3041', line: '#3c617c', onPrimary: '#ffffff' },
+    arcane: { label: 'Arcano', primary: '#e7c5ff', secondary: '#8754c5', glow: 'rgba(223,184,255,.20)', bg: '#120b1b', surface: '#1c1428', surfaceAlt: '#2b1c40', line: '#5a3d78', onPrimary: '#ffffff' },
+    ghost_vale: { label: 'Vale Fantasma', primary: '#ffc078', secondary: '#c85d27', glow: 'rgba(255,158,75,.19)', bg: '#080a0d', surface: '#11161b', surfaceAlt: '#1b252d', line: '#46535d', onPrimary: '#ffffff' },
+    crimson_vale: { label: 'Vale Carmesim', primary: '#ff5268', secondary: '#a91f38', glow: 'rgba(255,55,85,.20)', bg: '#09090c', surface: '#151216', surfaceAlt: '#24151c', line: '#653044', onPrimary: '#ffffff' },
+    celestial_sands: { label: 'Areias Celestes', primary: '#5865F2', secondary: '#7289DA', glow: 'rgba(88, 101, 242, 0.28)', bg: '#1E1F22', surface: '#2B2D31', surfaceAlt: '#313338', line: '#404249', onPrimary: '#ffffff' },
   } as const
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
@@ -496,7 +503,7 @@ if (accessibleShops.length === 0) {
 
     const { data: itemData, error: itemError } = await supabase
       .from('campaign_shop_items')
-      .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+      .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata, purchase_blocked')
       .in('shop_id', shopIds)
       .order('created_at', { ascending: true })
 
@@ -739,7 +746,7 @@ if (accessibleShops.length === 0) {
 
       const { data, error: itemsError } = await supabase
         .from('inventory_items')
-        .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+        .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
         .eq('character_id', selectedCharacterId)
         .order('created_at', { ascending: true })
 
@@ -991,7 +998,7 @@ async function saveShopItem() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', editingShopItemId)
-        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata, purchase_blocked')
         .single()
 
       if (updateError) throw updateError
@@ -1009,7 +1016,7 @@ async function saveShopItem() {
       const { data, error: insertError } = await supabase
         .from('campaign_shop_items')
         .insert(payload)
-        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata, purchase_blocked')
         .single()
 
       if (insertError) throw insertError
@@ -1097,7 +1104,7 @@ async function purchaseShopItem(
     return
   }
 
-  if (!Number.isInteger(quantity) || quantity < 1) {
+  if (!Number.isSafeInteger(quantity) || quantity < 1) {
     setError('Informe uma quantidade válida.')
     return
   }
@@ -1126,7 +1133,7 @@ async function purchaseShopItem(
     // Atualiza o inventário do personagem
     const { data: inventoryData, error: inventoryError } = await supabase
       .from('inventory_items')
-      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
       .eq('character_id', shopPurchaseCharacterId)
       .order('created_at', { ascending: true })
 
@@ -1151,7 +1158,7 @@ async function purchaseShopItem(
     // Atualiza o estoque do produto
     const { data: updatedItem, error: stockError } = await supabase
       .from('campaign_shop_items')
-      .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata')
+      .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata, purchase_blocked')
       .eq('id', item.id)
       .maybeSingle()
 
@@ -1176,6 +1183,10 @@ async function purchaseShopItem(
     setNotice(
       `${result.quantity ?? quantity}x ${result.item_name ?? item.name} comprado com sucesso!`,
     )
+    setShopPurchaseQuantities(current => ({
+  ...current,
+  [item.id]: '1',
+}))
   } catch (err) {
     setError(`Não foi possível concluir a compra: ${
       err instanceof Error ? err.message : String(err)
@@ -1183,6 +1194,199 @@ async function purchaseShopItem(
   } finally {
     setShopPurchaseLoading(null)
   }
+}
+
+async function setItemRestriction(
+  type: 'inventory' | 'shop',
+  itemId: string,
+  blocked: boolean,
+) {
+  setError('')
+  setNotice('')
+
+  try {
+    const { error: restrictionError } = await supabase.rpc(
+      'set_item_restriction',
+      {
+        p_target_type: type,
+        p_target_id: itemId,
+        p_blocked: blocked,
+      },
+    )
+
+    if (restrictionError) throw restrictionError
+
+    if (type === 'inventory') {
+      setItems(current =>
+        current.map(item =>
+          item.id === itemId
+            ? { ...item, sale_blocked: blocked }
+            : item
+        )
+      )
+
+      setSelectedItemDetails(current =>
+        current?.id === itemId
+          ? { ...current, sale_blocked: blocked }
+          : current
+      )
+
+      setNotice(
+        blocked
+          ? 'Venda do item bloqueada pelo mestre.'
+          : 'Venda do item liberada.'
+      )
+    } else {
+      setShopItems(current =>
+        current.map(item =>
+          item.id === itemId
+            ? { ...item, purchase_blocked: blocked }
+            : item
+        )
+      )
+
+      setNotice(
+        blocked
+          ? 'Compra do item bloqueada pelo mestre.'
+          : 'Compra do item liberada.'
+      )
+    }
+  } catch (err) {
+    setError(
+      `Não foi possível alterar o bloqueio: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    )
+  }
+}
+
+async function sellInventoryItem(item: Item, requestedQuantity?: number) {
+  const quantity = requestedQuantity ?? Number(saleQuantity)
+
+  if (!Number.isSafeInteger(quantity) || quantity < 1) {
+    setError('Informe uma quantidade válida.')
+    return
+  }
+
+  if (quantity > item.quantity) {
+    setError('Você não possui essa quantidade do item.')
+    return
+  }
+
+  if (saleLoading) return
+
+  const isShopItem = Boolean(
+    item.metadata?.shop_id && item.metadata?.shop_item_id
+  )
+
+const destinationShopId = selectedShopId || saleShopId
+
+if (!isShopItem && !destinationShopId) {
+  setError('Selecione a loja que receberá o item.')
+  return
+}
+
+  const total = Number(item.unit_price) * quantity
+
+  const confirmed = window.confirm(
+    `Vender ${quantity}x ${item.name} por ${total.toLocaleString('pt-BR')}?`
+  )
+
+  if (!confirmed) return
+
+  setSaleLoading(true)
+  setError('')
+  setNotice('')
+
+  // Primeira etapa: realizar a venda no banco.
+  const { data, error: saleError } = await supabase.rpc(
+    'sell_character_inventory_item',
+    {
+      p_inventory_item_id: item.id,
+      p_shop_id: isShopItem ? null : destinationShopId,
+      p_quantity: quantity,
+    },
+  )
+
+  if (saleError) {
+    setError(`Não foi possível vender o item: ${saleError.message}`)
+    setSaleLoading(false)
+    return
+  }
+
+  // A venda já foi concluída. Não devemos desfazer esse sucesso
+  // visualmente caso alguma consulta de atualização falhe.
+  const result = data as {
+    item_name?: string
+    quantity?: number
+    total_price?: number
+  }
+
+  setNotice(
+    `${result.quantity ?? quantity}x ${result.item_name ?? item.name} vendido(s) por ${Number(result.total_price ?? total).toLocaleString('pt-BR')}.`
+  )
+
+  setSelectedItemDetails(null)
+  setSaleQuantity('1')
+  setSaleShopId('')
+
+  // Segunda etapa: atualizar os dados exibidos na página.
+  const refreshErrors: string[] = []
+
+  try {
+    const { data: inventoryData, error: inventoryError } = await supabase
+      .from('inventory_items')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
+      .eq('character_id', item.character_id)
+      .order('created_at', { ascending: true })
+
+    if (inventoryError) throw inventoryError
+
+    setItems((inventoryData ?? []) as Item[])
+  } catch (err) {
+    refreshErrors.push('inventário')
+  }
+
+  try {
+    const { data: balanceData, error: balanceError } = await supabase.rpc(
+      'get_character_currency',
+      { p_character_id: item.character_id },
+    )
+
+    if (balanceError) throw balanceError
+
+    setCurrencyBalances(
+      balanceData && typeof balanceData === 'object'
+        ? balanceData as Record<string, number>
+        : {},
+    )
+  } catch (err) {
+    refreshErrors.push('carteira')
+  }
+
+  if (shops.length > 0) {
+    try {
+      const { data: shopData, error: shopError } = await supabase
+        .from('campaign_shop_items')
+        .select('id, shop_id, name, description, category, weight, unit_price, currency_id, quantity, metadata, purchase_blocked')
+        .in('shop_id', shops.map(shop => shop.id))
+        .order('created_at', { ascending: true })
+
+      if (shopError) throw shopError
+
+      setShopItems((shopData ?? []) as CampaignShopItem[])
+    } catch (err) {
+      refreshErrors.push('estoque das lojas')
+    }
+  }
+
+  if (refreshErrors.length > 0) {
+    setError(
+      `A venda foi realizada, mas não foi possível atualizar: ${refreshErrors.join(', ')}. Recarregue a página para sincronizar os dados.`
+    )
+  }
+
+  setSaleLoading(false)
 }
 
 async function loadCurrencyHistory() {
@@ -2288,7 +2492,7 @@ async function deleteCharacter(character: Character) {
       .update({ quantity })
       .eq('id', item.id)
       .eq('character_id', item.character_id)
-      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
       .maybeSingle()
 
     setUpdatingQuantityItemId(null)
@@ -2317,7 +2521,7 @@ async function deleteCharacter(character: Character) {
       .update({ metadata })
       .eq('id', item.id)
       .eq('character_id', item.character_id)
-      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
       .maybeSingle()
 
     if (updateError) {
@@ -2350,7 +2554,7 @@ async function deleteCharacter(character: Character) {
         currency_id: item.currency_id ?? null,
         metadata: { ...(item.metadata ?? {}), favorite: false },
       })
-      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
       .single()
 
     if (insertError) {
@@ -2578,7 +2782,7 @@ async function deleteCharacter(character: Character) {
   if (!session) return <Auth />
 
   return (
-    <div className={`app-shell theme-${activeThemeKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.bg,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
+    <div className={`app-shell theme-${activeThemeKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
       <aside className="sidebar">
         <a className="brand" href="#inicio" aria-label="HäxBag, início">
           <span className="brand-mark">H</span>
@@ -3362,6 +3566,98 @@ async function deleteCharacter(character: Character) {
         <div><span>Valor unitário</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{Number(selectedItemDetails.unit_price ?? 0).toLocaleString('pt-BR')}</strong></div>
         <div><span>Valor total</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{(Number(selectedItemDetails.unit_price ?? 0) * Number(selectedItemDetails.quantity ?? 0)).toLocaleString('pt-BR')}</strong></div>
       </div>
+      <div className="item-sale-section">
+  <h3>Vender para uma loja</h3>
+
+  {isMaster && (
+  <label
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      margin: '12px 0',
+      fontSize: 13,
+    }}
+  >
+    <input
+      type="checkbox"
+      className="restriction-checkbox"
+      checked={!!selectedItemDetails.sale_blocked}
+      onChange={event =>
+        void setItemRestriction(
+          'inventory',
+          selectedItemDetails.id,
+          event.target.checked
+        )
+      }
+    />
+    Bloquear venda deste item
+  </label>
+)}
+
+{selectedItemDetails.sale_blocked && (
+  <p style={{ color: '#e6a36d', fontSize: 13 }}>
+    🔒 A venda deste item foi bloqueada pelo mestre.
+  </p>
+)}
+
+  {!(selectedItemDetails.metadata?.shop_id &&
+     selectedItemDetails.metadata?.shop_item_id) && (
+    <label style={labelStyle}>
+      Loja que receberá o item
+
+      <select
+        value={saleShopId}
+        onChange={event => setSaleShopId(event.target.value)}
+        style={inputStyle}
+      >
+        <option value="">Selecione uma loja</option>
+
+        {shops.map(shop => (
+          <option key={shop.id} value={shop.id}>
+            {shop.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  )}
+
+  <label style={labelStyle}>
+    Quantidade para vender
+
+    <input
+      type="number"
+      min="1"
+      max={selectedItemDetails.quantity}
+      value={saleQuantity}
+      onChange={event => setSaleQuantity(event.target.value)}
+      style={inputStyle}
+    />
+  </label>
+
+  <p>
+    Valor da venda:{' '}
+    <strong>
+      {(
+        Number(selectedItemDetails.unit_price) *
+        Number(saleQuantity || 0)
+      ).toLocaleString('pt-BR')}
+    </strong>
+  </p>
+
+  <button
+    type="button"
+    className="primary-button"
+    disabled={saleLoading || !!selectedItemDetails.sale_blocked}
+    onClick={() => void sellInventoryItem(selectedItemDetails)}
+  >
+    {saleLoading
+    ? 'Vendendo...'
+    : selectedItemDetails.sale_blocked
+      ? 'Venda bloqueada'
+      : 'Vender item'}
+  </button>
+</div>
       <p>Quantidade: {selectedItemDetails.quantity}</p>
       <p>Peso por unidade: {Number(selectedItemDetails.weight).toFixed(1)} kg</p>
       <p>Peso total: {(Number(selectedItemDetails.weight) * Number(selectedItemDetails.quantity)).toFixed(1)} kg</p>
@@ -4277,6 +4573,89 @@ async function deleteCharacter(character: Character) {
                         )}
                       </div>
 
+{true && (
+  <section className="inventory-section" style={{ marginBottom: 24 }}>
+    <div className="inventory-heading">
+      <div>
+        <h2>Vender itens</h2>
+        <p>Venda itens do inventário do seu personagem para esta loja.</p>
+      </div>
+    </div>
+
+    <label style={labelStyle}>
+      Personagem
+      <select
+        value={selectedCharacterId}
+        onChange={event => setSelectedCharacterId(event.target.value)}
+        style={inputStyle}
+      >
+        {characters
+          .filter(character => character.user_id === session?.user.id)
+          .map(character => (
+            <option key={character.id} value={character.id}>
+              {character.name}
+            </option>
+          ))}
+      </select>
+    </label>
+
+    <div className="item-grid">
+      {items
+        .filter(item => item.character_id === selectedCharacterId)
+        .map(item => (
+          <article className="item-card" key={item.id}>
+            <div className="item-art">
+              {typeof item.metadata?.icon === 'string'
+                ? item.metadata.icon
+                : '📦'}
+            </div>
+
+            <h3>{item.name}</h3>
+            <p>Disponível: {item.quantity}</p>
+            <p>
+              Valor unitário: {Number(item.unit_price).toLocaleString('pt-BR')}
+            </p>
+
+            <label style={labelStyle}>
+              Quantidade
+              <input
+                type="number"
+                min="1"
+                max={item.quantity}
+                value={shopSaleQuantities[item.id] ?? '1'}
+                onChange={event =>
+                  setShopSaleQuantities(current => ({
+                    ...current,
+                    [item.id]: event.target.value,
+                  }))
+                }
+                style={inputStyle}
+              />
+            </label>
+
+            <button
+              type="button"
+              className="primary-button"
+              disabled={saleLoading || !!item.sale_blocked}
+              onClick={() =>
+                void sellInventoryItem(
+                  item,
+                  Number(shopSaleQuantities[item.id] ?? '1')
+                )
+              }
+            >
+              {item.sale_blocked
+                ? 'Venda bloqueada'
+                : saleLoading
+                  ? 'Vendendo...'
+                  : 'Vender'}
+            </button>
+          </article>
+        ))}
+    </div>
+  </section>
+)}
+
                       {isMaster && showShopItemForm && (
                         <form
                           className="add-form shop-item-editor"
@@ -4588,66 +4967,124 @@ async function deleteCharacter(character: Character) {
                                       : `Disponível: ${item.quantity}`}
                                 </p>
 
-                                {isMaster ? (
-                                  <div className="form-row">
-                                    <button
-                                      type="button"
-                                      className="secondary-button"
-                                      onClick={() => editShopItem(item)}
-                                    >
-                                      Editar
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="secondary-button"
-                                      disabled={shopLoading}
-                                      onClick={() => void deleteShopItem(item)}
-                                    >
-                                      Excluir
-                                    </button>
-                                  </div>
-) : (
-  <>
-    <label style={labelStyle}>
-      Comprar para
-      <select
-        value={shopPurchaseCharacterId}
-        onChange={event => setShopPurchaseCharacterId(event.target.value)}
-        style={inputStyle}
-      >
-        <option value="">Selecione seu personagem</option>
-        {characters
-          .filter(character => character.user_id === session?.user.id)
-          .map(character => (
-            <option key={character.id} value={character.id}>
-              {character.name}
-            </option>
-          ))}
-      </select>
-    </label>
+{isMaster && (
+  <div className="form-row">
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={() => editShopItem(item)}
+    >
+      Editar
+    </button>
 
     <button
       type="button"
-      className="primary-button"
-      disabled={
-        outOfStock ||
-        shopPurchaseLoading !== null ||
-        !shopPurchaseCharacterId ||
-        !characters.some(character =>
-          character.id === shopPurchaseCharacterId &&
-          character.user_id === session?.user.id
-        )
-      }
-      onClick={() => void purchaseShopItem(item, 1)}
+      className="secondary-button"
+      disabled={shopLoading}
+      onClick={() => void deleteShopItem(item)}
     >
-      {shopPurchaseLoading === item.id
-        ? 'Comprando...'
-        : outOfStock
-          ? 'Esgotado'
-          : 'Comprar 1 unidade'}
+      Excluir
     </button>
-  </>
+
+    <label
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 10,
+        color: 'var(--season-text, #f4f0fa)',
+        fontSize: 13,
+      }}
+    >
+      <input
+        type="checkbox"
+        className="restriction-checkbox"
+        checked={!!item.purchase_blocked}
+        onChange={event =>
+          void setItemRestriction(
+            'shop',
+            item.id,
+            event.target.checked
+          )
+        }
+      />
+      Bloquear compra pelos jogadores
+    </label>
+  </div>
 )}
+
+<label style={labelStyle}>
+  Comprar para
+  <select
+    value={shopPurchaseCharacterId}
+    onChange={event => setShopPurchaseCharacterId(event.target.value)}
+    style={inputStyle}
+  >
+    <option value="">Selecione seu personagem</option>
+    {characters
+      .filter(character => character.user_id === session?.user.id)
+      .map(character => (
+        <option key={character.id} value={character.id}>
+          {character.name}
+        </option>
+      ))}
+  </select>
+</label>
+
+<label style={labelStyle}>
+  Quantidade
+  <input
+    type="number"
+    min="1"
+    max={item.quantity === null ? undefined : item.quantity}
+    value={shopPurchaseQuantities[item.id] ?? '1'}
+    onChange={event =>
+      setShopPurchaseQuantities(current => ({
+        ...current,
+        [item.id]: event.target.value,
+      }))
+    }
+    style={inputStyle}
+  />
+  {item.quantity !== null && (
+    <small>Disponível: {item.quantity} unidade(s)</small>
+  )}
+</label>
+
+{item.purchase_blocked && (
+  <p style={{ color: '#e6a36d', fontSize: 13 }}>
+    🔒 Compra bloqueada pelo mestre.
+  </p>
+)}
+
+<button
+  type="button"
+  className="primary-button"
+  disabled={
+    outOfStock ||
+    !!item.purchase_blocked ||
+    shopPurchaseLoading !== null ||
+    !shopPurchaseCharacterId ||
+    !characters.some(character =>
+      character.id === shopPurchaseCharacterId &&
+      character.user_id === session?.user.id
+    )
+  }
+  onClick={() =>
+    void purchaseShopItem(
+      item,
+      Number(shopPurchaseQuantities[item.id] ?? '1')
+    )
+  }
+>
+  {shopPurchaseLoading === item.id
+    ? 'Comprando...'
+    : item.purchase_blocked
+      ? 'Compra bloqueada'
+      : outOfStock
+        ? 'Esgotado'
+        : `Comprar ${shopPurchaseQuantities[item.id] ?? '1'} unidade(s)`}
+</button>
                               </article>
                             )
                           })}
