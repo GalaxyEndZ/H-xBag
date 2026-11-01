@@ -4520,3 +4520,385 @@ button:disabled { opacity: .58; }
     transition: none;
   }
 }
+.currency-history-page {
+  margin-top: 18px;
+  padding: 24px;
+  border: 1px solid rgba(220, 135, 65, .2);
+  border-radius: 20px;
+  background: var(--season-surface, #171717);
+  animation: currencyHistoryEnter .25s ease;
+}
+
+.currency-history-page-header {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--season-line, rgba(255,255,255,.1));
+}
+
+.currency-history-page-header h3 {
+  margin: 22px 0 6px;
+  font-size: 22px;
+}
+
+.currency-history-page-header p {
+  margin: 0;
+  color: var(--season-muted, #aaa);
+}
+
+.currency-history-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid rgba(220, 135, 65, .22);
+  border-radius: 14px;
+  background: rgba(220, 135, 65, .06);
+  color: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.currency-history-toggle:hover {
+  background: rgba(220, 135, 65, .13);
+  transform: translateY(-2px);
+}
+.currency-history-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 22px;
+  background: #171717;
+  border: 1px solid #35302a;
+  border-radius: 16px;
+}
+
+.currency-history-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.currency-history-title,
+.currency-history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.currency-section-eyebrow {
+  color: #d98743;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.currency-history-title h3 {
+  margin: 6px 0;
+  color: #f4eee7;
+  font-size: 1.35rem;
+}
+
+.currency-history-title p {
+  margin: 0;
+  color: #aaa29a;
+  font-size: 0.9rem;
+}
+
+.currency-back-button {
+  border-color: #59412e;
+  color: #e6a15e;
+}
+
+.currency-history-summary {
+  padding: 15px 18px;
+  background: #20201e;
+  border: 1px solid #39342e;
+  border-radius: 12px;
+}
+
+.currency-history-summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.currency-history-summary span {
+  color: #aaa29a;
+  font-size: 0.8rem;
+}
+
+.currency-history-summary strong {
+  color: #f5e9da;
+  font-size: 1.35rem;
+}
+
+.currency-clear-button {
+  padding: 9px 13px;
+  border: 1px solid #713c35;
+  border-radius: 9px;
+  background: #30201e;
+  color: #f09a8d;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.currency-clear-button:hover:not(:disabled) {
+  background: #492824;
+}
+
+.currency-clear-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.currency-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.currency-history-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px;
+  background: #20201e;
+  border: 1px solid #39342e;
+  border-radius: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.currency-history-entry:hover {
+  background: #272522;
+  border-color: #725234;
+}
+
+.currency-history-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.currency-history-entry.is-entry .currency-history-icon {
+  background: #26352a;
+  color: #8bc99a;
+}
+
+.currency-history-entry.is-withdrawal .currency-history-icon {
+  background: #392725;
+  color: #ee9689;
+}
+
+.currency-history-info,
+.currency-history-values {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.currency-history-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.currency-history-info strong {
+  color: #f1e8dd;
+}
+
+.currency-history-info span,
+.currency-history-values small {
+  color: #b0a79d;
+  font-size: 0.85rem;
+}
+
+.currency-history-info small {
+  color: #827b73;
+  font-size: 0.75rem;
+}
+
+.currency-history-values {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.currency-history-values strong {
+  font-size: 1.05rem;
+}
+
+.is-entry .currency-history-values strong {
+  color: #8bc99a;
+}
+
+.is-withdrawal .currency-history-values strong {
+  color: #ee9689;
+}
+
+.currency-history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 25px;
+  text-align: center;
+  background: #20201e;
+  border: 1px dashed #514638;
+  border-radius: 12px;
+}
+
+.currency-history-empty > span {
+  font-size: 2rem;
+}
+
+.currency-history-empty strong {
+  color: #eee3d7;
+}
+
+.currency-history-empty p {
+  margin: 0;
+  color: #aaa29a;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 600px) {
+  .currency-history-page {
+    padding: 14px;
+  }
+
+  .currency-history-entry {
+    flex-wrap: wrap;
+  }
+
+  .currency-history-values {
+    width: 100%;
+    padding-left: 54px;
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+
+/* HäxBag — Abas da carteira */
+.currency-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 22px;
+  padding: 5px;
+  border: 1px solid var(--season-line, #454545);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.20);
+}
+
+.currency-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 19px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--season-muted, #aaa);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease,
+              border-color .2s ease, box-shadow .2s ease;
+}
+
+.currency-tab:hover {
+  background: rgba(230, 145, 65, 0.09);
+  color: var(--season-text, #f5f5f5);
+}
+
+.currency-tab.active {
+  border-color: rgba(230, 145, 65, 0.38);
+  background: linear-gradient(
+    135deg,
+    rgba(230, 145, 65, 0.22),
+    rgba(190, 100, 40, 0.12)
+  );
+  color: #f2a45e;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+}
+
+.currency-tab:focus-visible {
+  outline: 2px solid #f2a45e;
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .currency-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .currency-tab {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+}
+
+
+/* HäxBag — Interação dos cartões de saldo */
+.currency-balances-grid {
+  perspective: 900px;
+}
+
+.currency-balance {
+  cursor: default;
+  transition:
+    transform .22s ease,
+    border-color .22s ease,
+    box-shadow .22s ease !important;
+}
+
+.currency-balance:hover {
+  transform: translateY(-4px);
+  border-color: rgba(235, 151, 75, .55) !important;
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, .24),
+    0 0 16px rgba(225, 135, 60, .09),
+    inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .currency-balance {
+    transition: none !important;
+  }
+
+  .currency-balance:hover {
+    transform: none;
+  }
+}
+
+.currency-tab + .currency-tab {
+  margin-left: 0 !important;
+}
+
+/* HäxBag — Corrige o alinhamento do histórico */
+.currency-history-page {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  align-self: stretch;
+  margin-left: 0;
+}

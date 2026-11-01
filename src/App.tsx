@@ -196,6 +196,11 @@ function App() {
   const [showCurrencyHistory, setShowCurrencyHistory] = useState(false)
   const [currencyTransactions, setCurrencyTransactions] = useState<CurrencyTransaction[]>([])
   const [currencyHistoryLoading, setCurrencyHistoryLoading] = useState(false)
+  const [currencyDraftName, setCurrencyDraftName] = useState('')
+  const [currencyDraftSymbol, setCurrencyDraftSymbol] = useState('')
+  const [currencyDraftRate, setCurrencyDraftRate] = useState('1')
+  const [editingCurrencyId, setEditingCurrencyId] = useState<string | null>(null)
+  const [currencyConfigSaving, setCurrencyConfigSaving] = useState(false)
   const [itemsLoading, setItemsLoading] = useState(false)
   const [selectedItemDetails, setSelectedItemDetails] = useState<Item | null>(null)
   const [shops, setShops] = useState<CampaignShop[]>([])
@@ -213,6 +218,7 @@ function App() {
   const [shopItemName, setShopItemName] = useState('')
   const [shopItemDescription, setShopItemDescription] = useState('')
   const [shopItemCategory, setShopItemCategory] = useState('Diversos')
+  const [shopItemRarity, setShopItemRarity] = useState('comum')
   const [shopItemWeight, setShopItemWeight] = useState('0')
   const [shopItemPrice, setShopItemPrice] = useState('0')
   const [shopItemCurrencyId, setShopItemCurrencyId] = useState('')
@@ -643,19 +649,25 @@ if (accessibleShops.length === 0) {
   }, [selectedCampaignId, session?.user.id])
 
   useEffect(() => {
-    const currentCampaign = campaigns.find((campaign) => campaign.id === selectedCampaignId)
-    if (!selectedCharacterId || currentCampaign?.role !== 'master') {
+    if (!selectedCharacterId || !session?.user?.id) {
       setCharacterGrants([])
       return
     }
 
     let cancelled = false
     async function loadCharacterGrants() {
-      const { data, error: grantsError } = await supabase
+      let query = supabase
         .from('character_visibility')
         .select('user_id')
         .eq('character_id', selectedCharacterId)
 
+      // Mestres precisam da lista completa para administrar acessos;
+      // jogadores só precisam confirmar a própria concessão.
+      if (campaigns.find(campaign => campaign.id === selectedCampaignId)?.role !== 'master') {
+        query = query.eq('user_id', session!.user.id)
+      }
+
+      const { data, error: grantsError } = await query
       if (cancelled) return
       if (grantsError) {
         setError(`Erro ao carregar permissões do personagem: ${grantsError.message}`)
@@ -666,7 +678,7 @@ if (accessibleShops.length === 0) {
     }
     void loadCharacterGrants()
     return () => { cancelled = true }
-  }, [selectedCharacterId, selectedCampaignId, campaigns])
+  }, [selectedCharacterId, selectedCampaignId, campaigns, session?.user?.id])
 
   // CARREGAMENTO DA CARTEIRA
   useEffect(() => {
@@ -903,7 +915,20 @@ async function deleteShop(shop: CampaignShop) {
 
 
 async function saveShopItem() {
-  if (!selectedShopId || !shopItemName.trim() || shopLoading) return
+  if (!selectedShopId) {
+    setError('Selecione uma loja antes de cadastrar o produto.')
+    return
+  }
+
+  if (!shopItemName.trim()) {
+    setError('Informe o nome do produto.')
+    return
+  }
+
+  if (shopLoading) {
+    setError('Aguarde a operação atual terminar antes de salvar o produto.')
+    return
+  }
 
   const price = Number(shopItemPrice.replace(',', '.'))
   const weight = Number(shopItemWeight.replace(',', '.'))
@@ -943,7 +968,11 @@ async function saveShopItem() {
     unit_price: price,
     currency_id: price > 0 ? shopItemCurrencyId : null,
     quantity: stock,
-    metadata: { icon: shopItemEmoji.trim() || '📦' },
+    metadata: {
+      ...(editingShopItemId ? shopItems.find(item => item.id === editingShopItemId)?.metadata ?? {} : {}),
+      icon: shopItemEmoji.trim() || '📦',
+      rarity: shopItemRarity,
+    },
   }
 
   try {
@@ -993,6 +1022,7 @@ async function saveShopItem() {
     setShopItemName('')
     setShopItemDescription('')
     setShopItemCategory('Diversos')
+    setShopItemRarity('comum')
     setShopItemWeight('0')
     setShopItemPrice('0')
     setShopItemCurrencyId('')
@@ -1000,9 +1030,14 @@ async function saveShopItem() {
     setShopItemEmoji('📦')
     setShowShopItemForm(false)
   } catch (err) {
-    setError(`Não foi possível salvar o produto: ${
-      err instanceof Error ? err.message : String(err)
-    }`)
+    const dbError = err as { message?: string; code?: string; details?: string; hint?: string }
+    const reason = [
+      dbError?.message ?? (err instanceof Error ? err.message : String(err)),
+      dbError?.code ? `Código: ${dbError.code}` : '',
+      dbError?.details ? `Detalhes: ${dbError.details}` : '',
+      dbError?.hint ? `Sugestão do banco: ${dbError.hint}` : '',
+    ].filter(Boolean).join(' · ')
+    setError(`Não foi possível salvar o produto: ${reason}`)
   } finally {
     setShopLoading(false)
   }
@@ -1013,6 +1048,7 @@ function editShopItem(item: CampaignShopItem) {
   setShopItemName(item.name)
   setShopItemDescription(item.description ?? '')
   setShopItemCategory(item.category)
+  setShopItemRarity(typeof item.metadata?.rarity === 'string' ? item.metadata.rarity.toLocaleLowerCase('pt-BR') : 'comum')
   setShopItemWeight(String(item.weight))
   setShopItemPrice(String(item.unit_price))
   setShopItemCurrencyId(item.currency_id ?? '')
@@ -1181,6 +1217,109 @@ async function toggleCurrencyHistory() {
   }
 }
 
+async function clearCurrencyHistory() {
+  if (!selectedCharacterId || currencyHistoryLoading) return
+
+  const confirmed = window.confirm(
+    'Tem certeza que deseja apagar todo o histórico de transações deste personagem? Os saldos das moedas NÃO serão alterados. Esta ação não pode ser desfeita.'
+  )
+
+  if (!confirmed) return
+
+  setCurrencyHistoryLoading(true)
+  setError('')
+  setNotice('')
+
+  const { data, error: deleteError } = await supabase
+    .from('character_currency_transactions')
+    .delete()
+    .eq('character_id', selectedCharacterId)
+    .select('id')
+
+  if (deleteError) {
+    setError(`Não foi possível limpar o histórico: ${deleteError.message}`)
+  } else if (!data || data.length === 0) {
+    setError('Nenhuma transação foi apagada. Verifique as permissões.')
+  } else {
+    setCurrencyTransactions([])
+    setNotice('Histórico de transações apagado com sucesso.')
+  }
+
+  setCurrencyHistoryLoading(false)
+}
+
+async function saveCampaignCurrencyConfig(nextCurrencies: NonNullable<Campaign['currency_config']>['currencies']) {
+  if (!selectedCampaign || !isMaster || currencyConfigSaving) return
+  setCurrencyConfigSaving(true)
+  setError('')
+  setNotice('')
+  const nextConfig = { currencies: nextCurrencies }
+  const { data, error: updateError } = await supabase
+    .from('campaigns')
+    .update({ currency_config: nextConfig })
+    .eq('id', selectedCampaign.id)
+    .select('id, name, description, system_name, currency_config, created_by')
+    .maybeSingle()
+  if (updateError || !data) {
+    setError(`Não foi possível salvar as moedas: ${updateError?.message ?? 'nenhum registro atualizado; verifique as permissões da campanha.'}`)
+    setCurrencyConfigSaving(false)
+    return false
+  }
+  setCampaigns(current => current.map(campaign => campaign.id === selectedCampaign.id ? { ...campaign, currency_config: data.currency_config } : campaign))
+  setNotice('Configuração de moedas salva. A primeira moeda da lista é a moeda do sistema.')
+  setCurrencyConfigSaving(false)
+  return true
+}
+
+async function addCampaignCurrency() {
+  if (!selectedCampaign || !currencyDraftName.trim() || !currencyDraftSymbol.trim()) {
+    setError('Informe o nome e o símbolo da moeda.')
+    return
+  }
+  const rate = Number(currencyDraftRate.replace(',', '.'))
+  if (!Number.isFinite(rate) || rate <= 0) {
+    setError('A taxa de conversão deve ser maior que zero.')
+    return
+  }
+  const current = selectedCampaign.currency_config?.currencies ?? []
+  const next = [...current, { id: crypto.randomUUID(), name: currencyDraftName.trim(), symbol: currencyDraftSymbol.trim(), conversionRate: rate }]
+  await saveCampaignCurrencyConfig(next)
+  if (!currencyConfigSaving) {
+    setCurrencyDraftName('')
+    setCurrencyDraftSymbol('')
+    setCurrencyDraftRate('1')
+  }
+}
+
+function beginEditingCampaignCurrency(currency: NonNullable<Campaign['currency_config']>['currencies'][number]) {
+  setEditingCurrencyId(currency.id)
+  setCurrencyDraftName(currency.name)
+  setCurrencyDraftSymbol(currency.symbol)
+  setCurrencyDraftRate(String(currency.conversionRate))
+}
+
+async function saveEditedCampaignCurrency() {
+  if (!selectedCampaign || !editingCurrencyId || !currencyDraftName.trim() || !currencyDraftSymbol.trim()) {
+    setError('Informe o nome e o símbolo da moeda.')
+    return
+  }
+  const rate = Number(currencyDraftRate.replace(',', '.'))
+  if (!Number.isFinite(rate) || rate <= 0) {
+    setError('A taxa de conversão deve ser maior que zero.')
+    return
+  }
+  const current = selectedCampaign.currency_config?.currencies ?? []
+  const next = current.map(currency => currency.id === editingCurrencyId
+    ? { ...currency, name: currencyDraftName.trim(), symbol: currencyDraftSymbol.trim(), conversionRate: rate }
+    : currency)
+  const saved = await saveCampaignCurrencyConfig(next)
+  if (!saved) return
+  setEditingCurrencyId(null)
+  setCurrencyDraftName('')
+  setCurrencyDraftSymbol('')
+  setCurrencyDraftRate('1')
+}
+
 async function handleCurrencyAdjustment(action: 'add' | 'remove') {
   if (!selectedCharacterId || !selectedCampaign || currencyActionLoading) return
 
@@ -1250,13 +1389,19 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     setError('')
     setNotice('')
 
+    const normalizedSystemName = systemName.trim() || null
+    const existingCurrencies = campaigns.find(campaign => campaign.id === editingCampaignId)?.currency_config?.currencies ?? []
+    const shouldAddDefaultYen = Boolean(normalizedSystemName?.toLowerCase().includes('kisatsutai')) && existingCurrencies.length === 0
+    const campaignUpdate: Record<string, unknown> = {
+      name: campaignName.trim(),
+      description: campaignDescription.trim() || null,
+      system_name: normalizedSystemName,
+      ...(shouldAddDefaultYen ? { currency_config: { currencies: [{ id: crypto.randomUUID(), name: 'Iene', symbol: '¥', conversionRate: 1 }] } } : {}),
+    }
+
     const { data, error: updateError } = await supabase
       .from('campaigns')
-      .update({
-        name: campaignName.trim(),
-        description: campaignDescription.trim() || null,
-        system_name: systemName.trim() || null,
-      })
+      .update(campaignUpdate)
       .eq('id', editingCampaignId)
       .select('id, name, description, system_name, currency_config, created_by')
       .maybeSingle()
@@ -1333,9 +1478,25 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
       return
     }
 
+    let campaignToUse = campaign
+    if (String(campaign.system_name ?? '').toLowerCase().includes('kisatsutai') && !(campaign.currency_config?.currencies?.length)) {
+      const defaultCurrencyConfig = { currencies: [{ id: crypto.randomUUID(), name: 'Iene', symbol: '¥', conversionRate: 1 }] }
+      const { data: updatedCampaign, error: currencyInitError } = await supabase
+        .from('campaigns')
+        .update({ currency_config: defaultCurrencyConfig })
+        .eq('id', newCampaignId)
+        .select('id, name, description, system_name, currency_config, created_by')
+        .single()
+      if (currencyInitError || !updatedCampaign) {
+        setError(`Campanha criada, mas não foi possível configurar o Iene automaticamente: ${currencyInitError?.message ?? 'erro desconhecido'}. Você pode adicioná-lo nas configurações de moedas.`)
+      } else {
+        campaignToUse = updatedCampaign
+      }
+    }
+
     setCampaigns((current) => [
       ...current,
-      { ...campaign, role: membership.role },
+      { ...campaignToUse, role: membership.role },
     ])
     setSelectedCampaignId(newCampaignId)
     setCharacters([])
@@ -1492,10 +1653,38 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
   }
 
   async function saveCharacterSheet() {
-    if (!selectedCharacterId || !selectedSeasonId || !isMaster) return
+    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
     let parsed: Record<string, unknown>
     try { const value: unknown = JSON.parse(sheetDraft); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('A ficha precisa ser um objeto JSON.'); parsed = value as Record<string, unknown> }
     catch (e) { setError(e instanceof Error ? e.message : 'JSON inválido.'); return }
+    // O salvamento geral da ficha não deve alterar PV, PS ou PR atuais.
+    // Esses três campos são persistidos exclusivamente por saveCharacterConditions().
+    if (sheet) {
+      const persistedStatus = sheet.sheet_data.status && typeof sheet.sheet_data.status === 'object' && !Array.isArray(sheet.sheet_data.status)
+        ? sheet.sheet_data.status as Record<string, unknown>
+        : {}
+      const persistedCurrent = persistedStatus.current && typeof persistedStatus.current === 'object' && !Array.isArray(persistedStatus.current)
+        ? persistedStatus.current as Record<string, unknown>
+        : {}
+      const draftStatus = parsed.status && typeof parsed.status === 'object' && !Array.isArray(parsed.status)
+        ? parsed.status as Record<string, unknown>
+        : {}
+      const draftCurrent = draftStatus.current && typeof draftStatus.current === 'object' && !Array.isArray(draftStatus.current)
+        ? draftStatus.current as Record<string, unknown>
+        : {}
+
+      parsed = {
+        ...parsed,
+        status: {
+          ...draftStatus,
+          current: {
+            ...draftCurrent,
+            ...persistedCurrent,
+          },
+        },
+      }
+    }
+
     setSheetSaving(true); setError('')
     if (sheet) {
       const { data, error: updateError } = await supabase.from('character_sheets').update({ sheet_data: parsed }).eq('id', sheet.id).select('id,character_id,season_id,sheet_data').single()
@@ -1525,6 +1714,107 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     setSheetDraft(JSON.stringify(parsed, null, 2));
     if (!strengthSyncFailed) setNotice('Ficha salva.');
     setSheetSaving(false)
+  }
+
+  async function saveCharacterConditions() {
+    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
+
+    let parsed: Record<string, unknown>
+    try {
+      const value: unknown = JSON.parse(sheetDraft)
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('A ficha precisa ser um objeto JSON.')
+      }
+      parsed = value as Record<string, unknown>
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'JSON inválido.')
+      return
+    }
+
+    const status = parsed.status && typeof parsed.status === 'object' && !Array.isArray(parsed.status)
+      ? parsed.status as Record<string, unknown>
+      : {}
+    const current = status.current && typeof status.current === 'object' && !Array.isArray(status.current)
+      ? status.current as Record<string, unknown>
+      : {}
+
+    const rawValues = [current.pv, current.ps, current.pr]
+    const values = rawValues.map(value => value === null || value === undefined || String(value).trim() === '' ? NaN : Number(value))
+    if (values.some(value => !Number.isFinite(value))) {
+      setError('PV, PS e PR precisam ter valores numéricos válidos antes de salvar.')
+      return
+    }
+    if (values.some(value => value < 0)) {
+      setError('PV, PS e PR não podem ser negativos.')
+      return
+    }
+
+    setSheetSaving(true)
+    setError('')
+    setNotice('')
+
+    try {
+      let targetSheet = sheet
+
+      // Uma ficha nova precisa ser criada uma única vez; depois disso, as
+      // alterações de condições passam exclusivamente pela RPC.
+      if (!targetSheet) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('character_sheets')
+          .insert({
+            character_id: selectedCharacterId,
+            season_id: selectedSeasonId,
+            sheet_data: parsed,
+            created_by: session!.user.id,
+          })
+          .select('id,character_id,season_id,sheet_data')
+          .single()
+
+        if (insertError || !inserted) {
+          throw new Error(`Não foi possível criar a ficha: ${insertError?.message ?? 'resposta vazia'}`)
+        }
+        targetSheet = inserted as CharacterSheet
+        setSheet(targetSheet)
+      }
+
+      const { data, error: rpcError } = await supabase.rpc('update_character_conditions', {
+        p_sheet_id: targetSheet.id,
+        p_pv: values[0],
+        p_ps: values[1],
+        p_pr: values[2],
+      })
+
+      if (rpcError || !data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error(`Não foi possível salvar as condições: ${rpcError?.message ?? 'resposta vazia'}`)
+      }
+
+      const savedSheetData = data as Record<string, unknown>
+      const savedStatus = savedSheetData.status && typeof savedSheetData.status === 'object'
+        ? savedSheetData.status as Record<string, unknown>
+        : status
+
+      setSheet({ ...targetSheet, sheet_data: savedSheetData })
+      // Mantém eventuais alterações locais de outros campos no rascunho,
+      // mas substitui status.current pelos valores efetivamente gravados.
+      setSheetDraft(JSON.stringify({
+        ...parsed,
+        status: {
+          ...status,
+          ...savedStatus,
+          current: {
+            ...current,
+            ...(savedStatus.current && typeof savedStatus.current === 'object'
+              ? savedStatus.current as Record<string, unknown>
+              : {}),
+          },
+        },
+      }, null, 2))
+      setNotice('PV, PS e PR atualizados com sucesso!')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao salvar as condições.')
+    } finally {
+      setSheetSaving(false)
+    }
   }
 
   async function createSheetMilestone() {
@@ -1810,7 +2100,7 @@ async function deleteCharacter(character: Character) {
     setNewItemQuantity('1')
     setNewItemWeight('0')
     setNewItemUnitPrice('0')
-    setNewItemCurrencyId('')
+    setNewItemCurrencyId(selectedCampaign?.currency_config?.currencies?.[0]?.id ?? '')
     setNewItemEmoji('📦')
   }
 
@@ -1879,7 +2169,7 @@ async function deleteCharacter(character: Character) {
         .eq('id', editingItem.id)
         .eq('character_id', editingItem.character_id)
         .select(
-          'id, character_id, name, description, category, quantity, weight, metadata',
+          'id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id',
         )
         .maybeSingle()
 
@@ -1906,7 +2196,7 @@ async function deleteCharacter(character: Character) {
           ...itemData,
         })
         .select(
-          'id, character_id, name, description, category, quantity, weight, metadata',
+          'id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id',
         )
         .single()
 
@@ -2115,6 +2405,25 @@ async function deleteCharacter(character: Character) {
   const selectedCharacter = characters.find(
     (character) => character.id === selectedCharacterId,
   )
+  // O acesso explícito registrado em character_visibility é uma concessão
+  // válida por si só; não deve depender do valor atual de visibility.
+  // A campanha também é uma fonte de acesso para personagens compartilhados.
+  const hasExplicitCharacterGrant = Boolean(
+    session?.user?.id && characterGrants.some(
+      grant => grant.user_id === session.user.id,
+    ),
+  )
+  const canAccessSelectedCharacter = Boolean(
+    selectedCharacter && session?.user?.id && (
+      isMaster ||
+      selectedCharacter.user_id === session.user.id ||
+      selectedCharacter.visibility === 'campaign' ||
+      hasExplicitCharacterGrant
+    ),
+  )
+  // Quem recebeu acesso ao personagem pode consultar a carteira e ajustar
+  // as condições atuais da ficha; o banco continua validando a permissão.
+  const canEditSelectedSheet = canAccessSelectedCharacter
 
   async function changeMemberRole(member: CampaignMember) {
     if (!selectedCampaignId || !isMaster || memberActionLoading) return
@@ -2513,7 +2822,7 @@ async function deleteCharacter(character: Character) {
                 {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',margin:'14px 0'}}>
                     <p style={{color:'var(--season-muted, #b9b4c2)',margin:0}}>Consulte os dados calculados da ficha. As alterações ficam concentradas no modo de edição.</p>
-                    {isMaster && <button className="primary-button" type="button" onClick={()=>setEditingSheet(value=>!value)}>{editingSheet?'Fechar edição':'Editar ficha'}</button>}
+                    {canEditSelectedSheet && <button className="primary-button" type="button" onClick={()=>setEditingSheet(value=>!value)}>{editingSheet?'Fechar edição':'Editar ficha'}</button>}
                   </div>
                   {(() => {
                     let data: Record<string, any> = {}
@@ -2599,17 +2908,46 @@ async function deleteCharacter(character: Character) {
                     return (
                       <>
   {isKisatsutaiSheet && (
-    <section className="inventory-section" style={{ marginBottom: 16 }}>
-      <div className="inventory-heading">
-        <div>
-          <small>GRADUAÇÃO ATUAL</small>
-          <h2>{rankName}</h2>
+    <section
+      aria-label="Graduação atual"
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+        padding: '18px 20px',
+        margin: '0 0 18px',
+        border: '1px solid var(--season-line, rgba(255,255,255,.12))',
+        borderRadius: 16,
+        background: 'linear-gradient(115deg, var(--season-surface, #19151d) 0%, var(--season-bg, #100e19) 100%)',
+        boxShadow: '0 8px 24px rgba(0,0,0,.16)',
+      }}
+    >
+      <div style={{ position: 'absolute', inset: '0 auto 0 0', width: 4, background: 'var(--season-accent, #e58a36)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+        <div style={{
+          width: 46, height: 46, flex: '0 0 46px', display: 'grid', placeItems: 'center',
+          borderRadius: 13, border: '1px solid var(--season-line, rgba(255,255,255,.14))',
+          background: 'var(--season-surface-alt, rgba(255,255,255,.06))',
+          color: 'var(--season-accent, #e58a36)', fontSize: 22, fontWeight: 800,
+        }}>✦</div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+            <small style={{ color: 'var(--season-muted, #b9b4c2)', fontSize: 10, fontWeight: 800, letterSpacing: '1.5px' }}>GRADUAÇÃO ATUAL</small>
+            <span style={{ width: 4, height: 4, borderRadius: 99, background: 'var(--season-accent, #e58a36)' }} />
+            <small style={{ color: 'var(--season-muted, #b9b4c2)', fontSize: 10, fontWeight: 700, letterSpacing: '.7px' }}>KISATSUTAI</small>
+          </div>
+          <h2 style={{ margin: 0, color: 'var(--season-text, inherit)', fontSize: 'clamp(20px, 3vw, 26px)', lineHeight: 1.15, fontWeight: 850, overflowWrap: 'anywhere' }}>{rankName}</h2>
+          <div style={{ marginTop: 5, color: 'var(--season-muted, #b9b4c2)', fontSize: 12 }}>Hierarquia do caçador</div>
         </div>
       </div>
+      <div style={{ flex: '0 0 auto', alignSelf: 'stretch', display: 'flex', alignItems: 'center', paddingLeft: 12, borderLeft: '1px solid var(--season-line, rgba(255,255,255,.12))', color: 'var(--season-accent, #e58a36)', fontSize: 11, fontWeight: 800, letterSpacing: '.8px', textAlign: 'right' }}>RANK<br/>ATUAL</div>
     </section>
   )}
-                      {editingSheet && isMaster ? (<fieldset
-                        disabled={!editingSheet || !isMaster}
+                      {editingSheet && canEditSelectedSheet ? (<fieldset
+                        disabled={!editingSheet || !canEditSelectedSheet}
                         className="character-sheet-editor"
                         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
                       >
@@ -2788,8 +3126,28 @@ async function deleteCharacter(character: Character) {
                           const rawCurrent = Number(read(currentPath, value))
                           const current = Math.max(0, key === 'pv' ? (Number.isFinite(rawCurrent) ? rawCurrent : value) : Math.min(value, Number.isFinite(rawCurrent) ? rawCurrent : value))
                           const adjust = (delta: number) => {
-                            if (!isMaster) return
-                            const next = { ...data, status: { ...(data.status || {}), current: { ...((data.status || {}).current || {}), [key]: Math.max(0, key === 'pv' ? current + delta : Math.min(value, current + delta)) } } }
+                            if (!canEditSelectedSheet) return
+                            // Fichas antigas podem ainda não ter status.current.
+                            // Inicializa os três valores com os máximos calculados,
+                            // preservando qualquer valor atual já registrado.
+                            const existingCurrent = (data.status?.current && typeof data.status.current === 'object')
+                              ? data.status.current
+                              : {}
+                            const currentDefaults = {
+                              pv: Number(existingCurrent.pv ?? derived[0][1]),
+                              ps: Number(existingCurrent.ps ?? derived[1][1]),
+                              pr: Number(existingCurrent.pr ?? derived[2][1]),
+                            }
+                            const next = {
+                              ...data,
+                              status: {
+                                ...(data.status || {}),
+                                current: {
+                                  ...currentDefaults,
+                                  [key]: Math.max(0, key === 'pv' ? current + delta : Math.min(value, current + delta)),
+                                },
+                              },
+                            }
                             setSheetDraft(JSON.stringify(next, null, 2))
                           }
                           const applyTypedAdjustment = () => {
@@ -2813,12 +3171,12 @@ async function deleteCharacter(character: Character) {
                             {extraPV > 0 && <><div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'0 0 6px'}}><div style={{height:'100%',width:`${extraPercent}%`,borderRadius:99,background:'linear-gradient(90deg,#f6b84a,#ff7b45)',boxShadow:'0 0 12px rgba(246,184,74,.3)',transition:'width .2s ease'}}/></div><small style={{display:'block',color:'#ffc875',marginBottom:6}}>＋{extraPV} PV excedentes · barra extra</small></>}
                             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                               <small style={{opacity:.7}}>{Math.round(percent)}% disponível</small>
-                              {isMaster && <div style={{display:'flex',gap:6}}>
+                              {canEditSelectedSheet && <div style={{display:'flex',gap:6}}>
                                 <button type="button" aria-label={`Diminuir ${key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
                                 <button type="button" aria-label={`Aumentar ${key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
                               </div>}
                             </div>
-                            {isMaster && <div style={{display:'flex',gap:7,marginTop:10}}>
+                            {canEditSelectedSheet && <div style={{display:'flex',gap:7,marginTop:10}}>
                               <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
                               <button type="button" onClick={applyTypedAdjustment} style={{whiteSpace:'nowrap',padding:'7px 11px',borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontWeight:700,cursor:'pointer'}}>Aplicar</button>
                             </div>}
@@ -2837,7 +3195,7 @@ async function deleteCharacter(character: Character) {
                                 const recovery = Math.floor(value / (success ? 4 : 8))
                                 const applied = Math.min(recovery, Math.max(0, value - current))
                                 setBreathingTestResult({ rolls, best, total, dt, success, recovery, applied, group })
-                                if (isMaster && applied > 0) {
+                                if (canEditSelectedSheet && applied > 0) {
                                   const next = { ...data, status: { ...(data.status || {}), current: { ...((data.status || {}).current || {}), pr: current + applied } } }
                                   setSheetDraft(JSON.stringify(next, null, 2))
                                   setNotice(`Teste de Respiração: ${success ? 'sucesso' : 'falha'}. ${applied} PR recuperados no rascunho; salve os status para confirmar.`)
@@ -2848,52 +3206,433 @@ async function deleteCharacter(character: Character) {
                                 {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o teste de Respiração.</small> : <>
                                   <small style={{display:'block',marginTop:5,opacity:.8}}>{1 + breathing}d20 · maior resultado + Vigor ({vigor})</small>
                                   <button type="button" onClick={runBreathingTest} style={{marginTop:9,padding:'8px 12px',borderRadius:9,border:'1px solid rgba(117,201,238,.55)',background:'rgba(117,201,238,.16)',color:'inherit',fontWeight:700,cursor:'pointer'}}>Rolar teste</button>
-                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} PR ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} PR</strong></div>{isMaster && <small style={{opacity:.75}}>O valor aplicado fica no rascunho. Use “Salvar status” para confirmar.</small>}</div>}
+                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} PR ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} PR</strong></div>{canEditSelectedSheet && <small style={{opacity:.75}}>O valor aplicado fica no rascunho. Use “Salvar status” para confirmar.</small>}</div>}
                                 </>}
                               </div>
                             })()}
                           </article>
                         })}</div>
-                        {isMaster && <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar status'}</button></div>}
+                        {canEditSelectedSheet && <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterConditions()}>{sheetSaving?'Salvando…':'Salvar status'}</button></div>}
                         <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],['Respiração',breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
                         <div className="sheet-summary-grid">
                           <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
-                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',read('combat.extraDamage','—')],['Deslocamento',movementActions*dexterity],['Ações',movementActions+extraActions],['Reações',reactions],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
+                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',read('combat.extraDamage','—')],['Deslocamento',movementActions*dexterity],['Ações',movementActions+extraActions],['Reações',reactions],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor],...(isKisatsutaiSheet ? [['Essência',read('combat.essence','—')]] : [])].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
                         </div>
                         <div className="sheet-summary-notes"><h3>Resumo do personagem</h3><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
-                        <p className="sheet-summary-hint">Esta é uma visão resumida. {isMaster ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Somente o mestre pode editar a ficha.'}</p>
+                        <p className="sheet-summary-hint">Esta é uma visão resumida. {canEditSelectedSheet ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Você não tem permissão para editar esta ficha.'}</p>
                       </section>)}
                     </>
                     )
 
                   })()}
-                  {editingSheet && isMaster && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>}
+                  {editingSheet && canEditSelectedSheet && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>}
                 
-{selectedCampaign?.currency_config?.currencies?.length ? (
-  <section className="inventory-section currency-wallet">
+
+{canAccessSelectedCharacter && selectedCharacter && (
+  <section className="inventory-section sheet-inventory-section" id="ficha-inventario">
     <div className="inventory-heading">
       <div>
-        <h3>Carteira</h3>
-        <p>Saldo atual do personagem</p>
+        <h3>Inventário</h3>
+      </div>
+      <button
+        type="button"
+        className="primary-button"
+        onClick={() => {
+          setActivePage('inventory')
+          resetItemForm()
+          setShowItemForm(true)
+        }}
+        disabled={loading}
+      >
+        + Adicionar item
+      </button>
+    </div>
+
+    <div className="sheet-capacity-overview" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:12,margin:'4px 0 18px'}}>
+      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>▤</span> Objetos</div>
+        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{totalObjects}</div>
+        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>{totalObjects === 1 ? 'item na mochila' : 'itens na mochila'}</div>
+      </div>
+      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>⚖</span> Peso carregado</div>
+        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{totalWeight.toFixed(1)}<span style={{fontSize:14,fontWeight:650,marginLeft:4}}>kg</span></div>
+        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>peso total dos itens</div>
+      </div>
+      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>🎒</span> Capacidade livre</div>
+        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:remainingCapacity < 0 ? '#ff8b8b' : 'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{remainingCapacity.toFixed(1)}<span style={{fontSize:14,fontWeight:650,marginLeft:4}}>kg</span></div>
+        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>{remainingCapacity < 0 ? 'acima do limite de carga' : 'disponíveis para carregar'}</div>
+      </div>
+      <div style={{gridColumn:'1 / -1',padding:'12px 15px',borderRadius:12,border:'1px solid var(--season-line,rgba(160,140,190,.16))',background:'var(--season-bg,rgba(10,9,15,.28))'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:8,fontSize:12}}><span style={{color:'var(--season-muted,#aaa2b5)',fontWeight:650}}>Uso da capacidade</span><strong style={{color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{capacityPercent.toFixed(0)}%</strong></div>
+        <div role="progressbar" aria-label="Capacidade utilizada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,Math.max(0,capacityPercent))} style={{height:8,overflow:'hidden',borderRadius:99,background:'var(--season-line,rgba(160,140,190,.22))'}}><div style={{height:'100%',width:`${Math.min(100,Math.max(0,capacityPercent))}%`,borderRadius:99,background:remainingCapacity < 0 ? 'linear-gradient(90deg,#e78b62,#e45f70)' : 'linear-gradient(90deg,var(--season-secondary,#8d70cf),var(--season-primary,#c8b5ff))',transition:'width .25s ease'}} /></div>
       </div>
     </div>
 
-    {selectedCampaign.currency_config.currencies.map(currency => (
-      <div className="currency-balance" key={currency.id}>
-        <span>{currency.name}</span>
-        <strong>
-          {currency.symbol}{' '}
-          {(currencyBalances[currency.id] ?? 0).toLocaleString('pt-BR')}
-        </strong>
+    <div className="inventory-toolbar">
+      <div className="category-tabs">
+        {categories.map(category => (
+          <button key={category} className={activeCategory === category ? 'category-tab selected' : 'category-tab'} onClick={() => setActiveCategory(category)}>
+            {category}
+          </button>
+        ))}
       </div>
-    ))}
+      <div className="inventory-extra-controls">
+        <label className="search-box">
+          <span>⌕</span>
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar item..." aria-label="Buscar item" />
+          <kbd>/</kbd>
+        </label>
+        <button type="button" className={favoriteOnly ? 'category-tab selected' : 'category-tab'} onClick={() => setFavoriteOnly(current => !current)} aria-pressed={favoriteOnly}>
+          {favoriteOnly ? '★ Favoritos' : '☆ Favoritos'}
+        </button>
+        <label className="inventory-sort-label">
+          <span>Ordenar:</span>
+          <select value={sortBy} onChange={event => setSortBy(event.target.value)} aria-label="Ordenar itens">
+            <option value="created">Adicionados</option>
+            <option value="name">Nome</option>
+            <option value="category">Categoria</option>
+            <option value="weight">Maior peso</option>
+            <option value="quantity">Maior quantidade</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    {itemsLoading ? (
+      <div className="empty-state"><p>Carregando inventário...</p></div>
+    ) : filteredItems.length === 0 ? (
+      <div className="empty-state">
+        <span>▤</span>
+        <h3>{items.length === 0 ? 'Mochila vazia' : 'Nenhum item encontrado'}</h3>
+        <p>{items.length === 0 ? 'Adicione o primeiro item deste personagem.' : 'Tente outra busca ou selecione outra categoria.'}</p>
+        {items.length === 0 ? (
+          <button type="button" onClick={() => { setActivePage('inventory'); resetItemForm(); setShowItemForm(true) }}>Adicionar primeiro item</button>
+        ) : (
+          <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setFavoriteOnly(false) }}>Limpar filtros</button>
+        )}
+      </div>
+    ) : (
+      <div className="item-grid">
+        {filteredItems.map(item => (
+          <article className="item-card" key={item.id} onClick={() => setSelectedItemDetails(item)} style={{cursor:'pointer'}}>
+            <div className="item-card-top">
+              <button type="button" className="item-art" onClick={event => { event.stopPropagation(); setEmojiPickerItem(item) }} title="Clique para alterar o emoji" aria-label={`Alterar emoji de ${item.name}`} style={{cursor:'pointer',font:'inherit',fontSize:28}}>
+                {typeof item.metadata?.icon === 'string' ? item.metadata.icon : '📦'}
+              </button>
+              <div className="item-actions">
+                <button type="button" className="item-menu" title={item.metadata?.favorite === true ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} aria-label={item.metadata?.favorite === true ? `Remover ${item.name} dos favoritos` : `Adicionar ${item.name} aos favoritos`} aria-pressed={item.metadata?.favorite === true} onClick={event => { event.stopPropagation(); void toggleFavorite(item) }}>{item.metadata?.favorite === true ? '★' : '☆'}</button>
+                <button type="button" className="item-menu" title="Duplicar item" aria-label={`Duplicar ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void duplicateItem(item) }}>⧉</button>
+                <button type="button" className="item-menu" title="Editar item" aria-label={`Editar ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); startEditingItem(item); setActivePage('inventory') }}>✎</button>
+                <button type="button" className="item-menu" title="Remover item" aria-label={`Remover ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void removeItem(item) }}>×</button>
+              </div>
+            </div>
+            <div className="item-category">{item.category}</div>
+            <h3>{item.name}</h3>
+            <p className="item-description">{item.description || 'Sem descrição.'}</p>
+            <div className="item-footer">
+              <span>⚖ {Number(item.weight).toFixed(1)} kg / un.</span>
+              <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
+                <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)-1) }} disabled={Number(item.quantity)<=1 || updatingQuantityItemId===item.id} aria-label={`Diminuir quantidade de ${item.name}`}>−</button>
+                <span className="quantity" aria-live="polite">{item.quantity}</span>
+                <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)+1) }} disabled={Number(item.quantity)>=999 || updatingQuantityItemId===item.id} aria-label={`Aumentar quantidade de ${item.name}`}>+</button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+    <small style={{display:'block',marginTop:12,color:'var(--season-muted, #b9b4c2)'}}>
+      Esta é a mesma lista de itens da aba Inventário. Favoritar, filtrar, ordenar, alterar quantidade, emoji, editar, duplicar ou remover aqui reflete no inventário completo.
+    </small>
+  </section>
+)}
+
+{selectedItemDetails && (
+  <div className="modal-overlay" onClick={() => setSelectedItemDetails(null)} style={{position:'fixed',inset:0,zIndex:10000,display:'grid',placeItems:'center',padding:20,background:'rgba(5,5,9,.78)',backdropFilter:'blur(7px)'}}>
+    <div className="item-details-modal" role="dialog" aria-modal="true" aria-label={`Detalhes de ${selectedItemDetails.name}`} onClick={event => event.stopPropagation()} style={{position:'relative',width:'min(100%,520px)',maxHeight:'min(85vh,760px)',overflowY:'auto',padding:28,borderRadius:20,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'var(--season-surface,#17151f)',color:'var(--season-text,#f4f0fa)',boxShadow:'0 24px 80px rgba(0,0,0,.5)'}}>
+      <button type="button" className="item-menu" onClick={() => setSelectedItemDetails(null)} aria-label="Fechar detalhes" style={{position:'absolute',right:16,top:16,width:36,height:36,borderRadius:10,fontSize:20}}>✕</button>
+      <div className="item-art" style={{width:76,height:76,display:'grid',placeItems:'center',borderRadius:18,fontSize:42,marginBottom:18,background:'var(--season-surface-alt,rgba(255,255,255,.06))'}}>{typeof selectedItemDetails.metadata?.icon === 'string' ? selectedItemDetails.metadata.icon : '📦'}</div>
+      <small>{selectedItemDetails.category}</small>
+      <p className="item-rarity"><strong>Raridade:</strong> {typeof selectedItemDetails.metadata?.rarity === 'string' ? selectedItemDetails.metadata.rarity.charAt(0).toLocaleUpperCase('pt-BR') + selectedItemDetails.metadata.rarity.slice(1) : 'Comum'}</p>
+      <h2>{selectedItemDetails.name}</h2>
+      <p>{selectedItemDetails.description || 'Sem descrição.'}</p>
+      <div className="item-economic-details">
+        <div><span>Valor unitário</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{Number(selectedItemDetails.unit_price ?? 0).toLocaleString('pt-BR')}</strong></div>
+        <div><span>Valor total</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{(Number(selectedItemDetails.unit_price ?? 0) * Number(selectedItemDetails.quantity ?? 0)).toLocaleString('pt-BR')}</strong></div>
+      </div>
+      <p>Quantidade: {selectedItemDetails.quantity}</p>
+      <p>Peso por unidade: {Number(selectedItemDetails.weight).toFixed(1)} kg</p>
+      <p>Peso total: {(Number(selectedItemDetails.weight) * Number(selectedItemDetails.quantity)).toFixed(1)} kg</p>
+    </div>
+  </div>
+)}
+
+{canAccessSelectedCharacter && selectedCampaign?.currency_config?.currencies?.length && (
+  <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
+    <style>{`
+      .currency-wallet > .inventory-heading { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+      .currency-wallet > .currency-balances-grid { grid-column: 1; width: 100%; min-width: 0; align-self: stretch; }
+      .currency-wallet > .currency-actions { grid-column: 2; width: 100%; min-width: 0; align-self: stretch; }
+      @media (max-width: 760px) {
+        .currency-wallet { grid-template-columns: minmax(0, 1fr) !important; }
+        .currency-wallet > .inventory-heading,
+        .currency-wallet > .currency-balances-grid,
+        .currency-wallet > .currency-actions { grid-column: 1 !important; }
+      }
+      .currency-wallet .currency-balance { min-width: 0; }
+      .currency-wallet .currency-actions input { max-width: 100%; }
+      /* Refinamento visual da carteira */
+
+/* Cartões das moedas */
+.currency-wallet .currency-balance {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 20px !important;
+  transition: transform .22s ease,
+              border-color .22s ease,
+              box-shadow .22s ease;
+}
+
+.currency-wallet .currency-balance::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at top right,
+    var(--season-accent-soft, rgba(220,135,65,.16)),
+    transparent 65%
+  );
+  pointer-events: none;
+}
+
+.currency-wallet .currency-balance:hover {
+  transform: translateY(-4px);
+  border-color: var(--season-accent, currentColor) !important;
+  box-shadow: 0 14px 30px rgba(0,0,0,.20) !important;
+}
+
+/* Painel de movimentações */
+.currency-wallet .currency-actions {
+  border-radius: 20px !important;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 12px 28px rgba(0,0,0,.12);
+}
+
+/* Campos */
+.currency-wallet input,
+.currency-wallet select,
+.currency-wallet textarea {
+  transition: border-color .2s ease,
+              box-shadow .2s ease;
+}
+
+.currency-wallet input:focus,
+.currency-wallet select:focus,
+.currency-wallet textarea:focus {
+  outline: none;
+  border-color: var(--season-accent, currentColor) !important;
+  box-shadow: 0 0 0 3px var(--season-accent-soft, rgba(220,135,65,.15));
+}
+
+/* Histórico */
+.currency-wallet .currency-history-entry {
+  border-radius: 14px;
+  transition: background .2s ease,
+              transform .2s ease;
+}
+
+.currency-wallet .currency-history-entry:hover {
+  transform: translateX(3px);
+  background: var(--season-surface-alt, rgba(255,255,255,.07));
+}
+
+/* Botões */
+.currency-wallet button {
+  transition: transform .18s ease,
+              filter .18s ease;
+}
+
+.currency-wallet button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.currency-wallet button:active:not(:disabled) {
+  transform: scale(.97);
+}
+
+/* Telas menores */
+@media (max-width: 760px) {
+  .currency-wallet {
+    padding: 18px !important;
+  }
+}
+
+/* Respeita preferência por movimento reduzido */
+@media (prefers-reduced-motion: reduce) {
+  .currency-wallet * {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+  /* ===== HÄXBAG — CARTEIRA PREMIUM ===== */
+
+.currency-wallet {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(220, 135, 65, .16);
+  border-radius: 24px !important;
+  background:
+    radial-gradient(
+      ellipse at 100% 0%,
+      rgba(220, 135, 65, .09),
+      transparent 42%
+    ),
+    var(--season-surface, #171717);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, .20),
+    inset 0 1px 0 rgba(255, 255, 255, .035);
+}
+
+/* Cabeçalho */
+.currency-wallet h2,
+.currency-wallet h3 {
+  letter-spacing: -.035em;
+}
+
+/* Cartões de saldo */
+.currency-wallet .currency-balance {
+  border: 1px solid rgba(255, 255, 255, .075) !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, .055),
+      rgba(255, 255, 255, .012)
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .055),
+    0 8px 22px rgba(0, 0, 0, .13);
+}
+
+.currency-wallet .currency-balance:hover {
+  border-color: rgba(220, 135, 65, .38) !important;
+}
+
+/* Valores monetários */
+.currency-wallet .currency-balance strong,
+.currency-wallet .currency-balance b {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.045em;
+}
+
+/* Painel de movimentações */
+.currency-wallet .currency-actions {
+  border: 1px solid rgba(220, 135, 65, .13) !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(220, 135, 65, .055),
+      rgba(255, 255, 255, .018)
+    ) !important;
+}
+
+/* Histórico */
+.currency-wallet .currency-history-entry {
+  border: 1px solid rgba(255, 255, 255, .045);
+  background: rgba(255, 255, 255, .018);
+  padding: 12px;
+}
+
+.currency-wallet .currency-history-entry:hover {
+  border-color: rgba(220, 135, 65, .22);
+}
+
+/* Campos */
+.currency-wallet input,
+.currency-wallet select,
+.currency-wallet textarea {
+  border-radius: 12px !important;
+  background-color: rgba(0, 0, 0, .16) !important;
+}
+
+/* Botões */
+.currency-wallet button {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.currency-wallet button:hover:not(:disabled) {
+  box-shadow: 0 5px 16px rgba(220, 135, 65, .12);
+}
+
+/* Responsividade */
+@media (max-width: 760px) {
+  .currency-wallet {
+    border-radius: 18px !important;
+  }
+}
+    `}</style>
+    <div className="inventory-heading" style={{position:'relative',alignItems:'center',gap:16,marginBottom:24,paddingBottom:18,borderBottom:'1px solid var(--season-line,rgba(255,255,255,.12))'}}>
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <div aria-hidden="true" style={{width:58,height:58,flex:'0 0 58px',display:'grid',placeItems:'center',borderRadius:19,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'linear-gradient(145deg,var(--season-accent-soft,rgba(220,135,65,.20)),var(--season-surface-alt,rgba(255,255,255,.04)))',fontSize:28,boxShadow:'0 10px 28px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.12)'}}>👛</div>
+        <div>
+          <h3 style={{margin:'0 0 5px',fontSize:24,fontWeight:850,letterSpacing:'-.04em'}}>Carteira</h3>
+          <p style={{margin:0,fontSize:13}}>Recursos de <strong>{selectedCharacter?.name ?? 'este personagem'}</strong></p>
+          <small style={{display:'block',marginTop:5,opacity:.68}}>Saldos e histórico de movimentações</small>
+        </div>
+      </div>
+      <span style={{marginLeft:'auto',padding:'6px 10px',borderRadius:999,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'var(--season-surface-alt,rgba(255,255,255,.05))',fontSize:11,fontWeight:750,letterSpacing:'.08em',textTransform:'uppercase',whiteSpace:'nowrap'}}>Finanças</span>
+    </div>
+
+<div className="currency-tabs">
+  <button
+    type="button"
+    className={!showCurrencyHistory ? 'currency-tab active' : 'currency-tab'}
+    onClick={() => {
+      if (showCurrencyHistory) void toggleCurrencyHistory()
+    }}
+  >
+    👛 Carteira
+  </button>
+
+  <button
+    type="button"
+    className={showCurrencyHistory ? 'currency-tab active' : 'currency-tab'}
+    onClick={() => {
+      if (!showCurrencyHistory) void toggleCurrencyHistory()
+    }}
+  >
+    ▤ Histórico
+  </button>
+</div>
+
+
+{!showCurrencyHistory ? (
+  <>
+    <div className="currency-balances-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,210px),1fr))',gap:14,marginBottom:24}}>
+      {selectedCampaign.currency_config.currencies.map((currency, index) => (
+        <div className="currency-balance" key={currency.id} style={{position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',gap:14,minHeight:132,padding:19,borderRadius:19,border:'1px solid var(--season-line,rgba(255,255,255,.16))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.09)),var(--season-surface,rgba(0,0,0,.10)))',boxShadow:'0 12px 28px rgba(0,0,0,.13),inset 0 1px 0 rgba(255,255,255,.07)'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+            <span style={{fontSize:12,fontWeight:700,letterSpacing:'.045em',color:'var(--season-muted, #aaa)'}}>{currency.name}</span>
+            <span aria-hidden="true" style={{width:34,height:34,display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-accent-soft,rgba(220,135,65,.16))',color:'var(--season-accent,currentColor)',fontSize:16}}>{index===0?'◈':'◇'}</span>
+          </div>
+          <strong style={{fontSize:'clamp(25px,3.4vw,33px)',lineHeight:1.12,fontWeight:850,letterSpacing:'-.035em',fontVariantNumeric:'tabular-nums',overflowWrap:'anywhere'}}><span style={{fontSize:'.78em',opacity:.8,marginRight:5}}>{currency.symbol}</span>{(currencyBalances[currency.id] ?? 0).toLocaleString('pt-BR')}</strong>
+          <span style={{fontSize:11,color:'var(--season-muted, #aaa)',opacity:.8}}>Saldo disponível</span>
+        </div>
+      ))}
+    </div>
 
     {currencyLoading ? (
       <p>Carregando carteira...</p>
     ) : (
-      <div className="currency-actions">
-        <label>
-          Valor
+      <div className="currency-actions" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,230px),1fr))',gap:14,alignItems:'end',padding:18,borderRadius:18,border:'1px solid var(--season-line,rgba(255,255,255,.12))',background:'var(--season-surface-alt,rgba(255,255,255,.035))'}}>
+        <label style={{display:'grid',gap:8,fontSize:12,fontWeight:750,letterSpacing:'.035em',color:'var(--season-muted, #aaa)'}}>
+          VALOR
           <input
             type="number"
             min="0.01"
@@ -2901,93 +3640,139 @@ async function deleteCharacter(character: Character) {
             value={currencyAmount}
             onChange={event => setCurrencyAmount(event.target.value)}
             placeholder="Quanto deseja movimentar?"
+            style={{width:'100%',minHeight:46,boxSizing:'border-box',padding:'11px 13px',borderRadius:12,border:'1px solid var(--season-line,rgba(255,255,255,.16))',background:'var(--season-surface,rgba(0,0,0,.16))',color:'var(--season-text,inherit)',outlineColor:'var(--season-accent,currentColor)'}}
           />
         </label>
 
-        <label>
-          Descrição (opcional)
+        <label style={{display:'grid',gap:8,fontSize:12,fontWeight:750,letterSpacing:'.035em',color:'var(--season-muted, #aaa)'}}>
+          DESCRIÇÃO (OPCIONAL)
           <input
             type="text"
             value={currencyDescription}
             onChange={event => setCurrencyDescription(event.target.value)}
             placeholder="Ex.: Recompensa de missão"
+            style={{width:'100%',minHeight:46,boxSizing:'border-box',padding:'11px 13px',borderRadius:12,border:'1px solid var(--season-line,rgba(255,255,255,.16))',background:'var(--season-surface,rgba(0,0,0,.16))',color:'var(--season-text,inherit)',outlineColor:'var(--season-accent,currentColor)'}}
           />
         </label>
 
-        <div className="currency-buttons">
+        <div className="currency-buttons" style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',gridColumn:'1 / -1'}}>
           <button
             type="button"
-            disabled={currencyActionLoading}
+            className="currency-action-button currency-action-add"
+            style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:9,minHeight:44,padding:'10px 16px',borderRadius:12,border:'1px solid rgba(94,205,145,.42)',background:'linear-gradient(135deg, rgba(55,174,112,.22), rgba(55,174,112,.10))',color:'var(--text-primary, inherit)',fontWeight:700,letterSpacing:'.01em',boxShadow:'0 3px 12px rgba(30,140,85,.10)',cursor:'pointer',transition:'transform .18s ease, box-shadow .18s ease'}}
+            disabled={currencyActionLoading || !canAccessSelectedCharacter}
             onClick={() => void handleCurrencyAdjustment('add')}
           >
-            Adicionar
+            <span className="currency-action-icon" aria-hidden="true" style={{display:'grid',placeItems:'center',width:23,height:23,borderRadius:8,background:'rgba(65,190,125,.18)',fontSize:18,lineHeight:1}}>＋</span>
+            <span>{currencyActionLoading ? 'Processando…' : 'Adicionar saldo'}</span>
           </button>
 
           <button
             type="button"
-            disabled={currencyActionLoading}
+            className="currency-action-button currency-action-remove"
+            style={{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:9,minHeight:44,padding:'10px 16px',borderRadius:12,border:'1px solid rgba(224,117,117,.38)',background:'linear-gradient(135deg, rgba(205,82,82,.17), rgba(205,82,82,.07))',color:'var(--text-primary, inherit)',fontWeight:700,letterSpacing:'.01em',boxShadow:'0 3px 12px rgba(150,50,50,.08)',cursor:'pointer',transition:'transform .18s ease, box-shadow .18s ease'}}
+            disabled={currencyActionLoading || !canAccessSelectedCharacter}
             onClick={() => void handleCurrencyAdjustment('remove')}
           >
-            Retirar
+            <span className="currency-action-icon" aria-hidden="true" style={{display:'grid',placeItems:'center',width:23,height:23,borderRadius:8,background:'rgba(220,105,105,.16)',fontSize:18,lineHeight:1}}>−</span>
+            <span>Retirar saldo</span>
           </button>
         </div>
-        <button
-  type="button"
-  className="currency-history-toggle"
-  onClick={() => void toggleCurrencyHistory()}
->
-  {showCurrencyHistory ? 'Ocultar histórico' : 'Histórico de transações'}
-</button>
-{showCurrencyHistory && (
-  <div className="currency-history">
-    <h4>Histórico de transações</h4>
-
-    {currencyHistoryLoading ? (
-      <p>Carregando histórico...</p>
-    ) : currencyTransactions.length === 0 ? (
-      <p>Nenhuma transação registrada ainda.</p>
-    ) : (
-      <div className="currency-history-list">
-        {currencyTransactions.map(transaction => {
-          const currency = selectedCampaign?.currency_config?.currencies
-            ?.find(item => item.id === transaction.currency_id)
-
-          return (
-            <div className="currency-history-entry" key={transaction.id}>
-              <div>
-                <strong>
-                  {transaction.amount_delta > 0 ? 'Entrada' : 'Retirada'}
-                </strong>
-                <span>
-                  {transaction.description || 'Sem descrição'}
-                </span>
-                <small>
-                  {new Date(transaction.created_at).toLocaleString('pt-BR')}
-                </small>
-              </div>
-
-              <div>
-                <strong>
-                  {transaction.amount_delta > 0 ? '+' : ''}
-                  {currency?.symbol ?? ''}
-                  {Math.abs(transaction.amount_delta).toLocaleString('pt-BR')}
-                </strong>
-                <small>
-                  Saldo: {currency?.symbol ?? ''}
-                  {transaction.balance_after.toLocaleString('pt-BR')}
-                </small>
-              </div>
-            </div>
-          )
-        })}
       </div>
     )}
+  </>
+) : (
+<div className="currency-history-page">
+  <div className="currency-history-page-header">
+    <div className="currency-history-title">
+      <div>
+        <span className="currency-section-eyebrow">FINANÇAS DA CAMPANHA</span>
+        <h3>Histórico de transações</h3>
+        <p>Acompanhe todas as movimentações desta carteira.</p>
+      </div>
+
+      <button
+        type="button"
+        className="secondary-button currency-back-button"
+        onClick={() => void toggleCurrencyHistory()}
+      >
+        ← Voltar à carteira
+      </button>
+    </div>
+
+    <div className="currency-history-summary">
+      <div>
+        <span>Movimentações registradas</span>
+        <strong>{currencyTransactions.length}</strong>
+      </div>
+
+      <button
+        type="button"
+        className="currency-clear-button"
+        disabled={currencyHistoryLoading || currencyTransactions.length === 0}
+        onClick={() => void clearCurrencyHistory()}
+      >
+        <span>🗑</span> Limpar histórico
+      </button>
+    </div>
   </div>
+
+  {currencyHistoryLoading ? (
+    <div className="currency-history-empty">
+      <p>Carregando histórico...</p>
+    </div>
+  ) : currencyTransactions.length === 0 ? (
+    <div className="currency-history-empty">
+      <span>📜</span>
+      <strong>Nenhuma movimentação encontrada</strong>
+      <p>Quando uma moeda for adicionada ou retirada, ela aparecerá aqui.</p>
+    </div>
+  ) : (
+    <div className="currency-history-list">
+      {currencyTransactions.map(transaction => {
+        const currency = selectedCampaign?.currency_config?.currencies
+          ?.find(item => item.id === transaction.currency_id)
+
+        const isEntry = transaction.amount_delta > 0
+
+        return (
+          <article
+            className={`currency-history-entry ${isEntry ? 'is-entry' : 'is-withdrawal'}`}
+            key={transaction.id}
+          >
+            <div className="currency-history-icon">
+              {isEntry ? '↙' : '↗'}
+            </div>
+
+            <div className="currency-history-info">
+              <strong>{isEntry ? 'Entrada' : 'Retirada'}</strong>
+              <span>{transaction.description || 'Sem descrição'}</span>
+              <small>
+                {new Date(transaction.created_at).toLocaleString('pt-BR')}
+              </small>
+            </div>
+
+            <div className="currency-history-values">
+              <strong>
+                {isEntry ? '+' : '−'}
+                {currency?.symbol ?? ''}
+                {Math.abs(transaction.amount_delta).toLocaleString('pt-BR')}
+              </strong>
+              <small>
+                Saldo após movimentação: {currency?.symbol ?? ''}
+                {transaction.balance_after.toLocaleString('pt-BR')}
+              </small>
+            </div>
+          </article>
+        )
+      })}
+    </div>
+  )}
+</div>
 )}
-      </div>
-    )}
+
   </section>
-) : null}
+)}
 
                 </>}
               </>}
@@ -3478,9 +4263,10 @@ async function deleteCharacter(character: Character) {
                               setShopItemName('')
                               setShopItemDescription('')
                               setShopItemCategory('Diversos')
+                              setShopItemRarity('comum')
                               setShopItemWeight('0')
                               setShopItemPrice('0')
-                              setShopItemCurrencyId('')
+                              setShopItemCurrencyId(selectedCampaign?.currency_config?.currencies?.[0]?.id ?? '')
                               setShopItemStock('')
                               setShopItemEmoji('📦')
                               setShowShopItemForm(value => !value)
@@ -3493,135 +4279,253 @@ async function deleteCharacter(character: Character) {
 
                       {isMaster && showShopItemForm && (
                         <form
-                          className="add-form"
+                          className="add-form shop-item-editor"
                           onSubmit={event => {
                             event.preventDefault()
                             void saveShopItem()
                           }}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(0, 1.5fr) minmax(220px, .8fr)',
+                            gap: 22,
+                            alignItems: 'start',
+                          }}
                         >
-                          <h3>
-                            {editingShopItemId
-                              ? 'Editar produto'
-                              : 'Cadastrar produto'}
-                          </h3>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ marginBottom: 20 }}>
+                              <h3 style={{ marginBottom: 6 }}>
+                                {editingShopItemId ? 'Editar produto' : 'Novo produto'}
+                              </h3>
+                              <p style={{ margin: 0, color: 'var(--season-muted, #aaa)' }}>
+                                Preencha as informações para adicionar este item ao catálogo de {selectedShop.name}.
+                              </p>
+                            </div>
 
-                          <div className="form-row">
-                            <label style={labelStyle}>
-                              Nome
-                              <input
-                                value={shopItemName}
-                                onChange={event => setShopItemName(event.target.value)}
-                                required
-                                style={inputStyle}
-                              />
-                            </label>
+                            <div style={{ marginBottom: 20 }}>
+                              <strong style={{ display: 'block', marginBottom: 12 }}>Identificação</strong>
+                              <label style={labelStyle}>
+                                Nome do produto
+                                <input
+                                  value={shopItemName}
+                                  onChange={event => setShopItemName(event.target.value)}
+                                  placeholder="Ex.: Poção de cura menor"
+                                  required
+                                  maxLength={80}
+                                  style={inputStyle}
+                                />
+                              </label>
 
-                            <label style={labelStyle}>
-                              Emoji
-                              <input
-                                value={shopItemEmoji}
-                                onChange={event => setShopItemEmoji(event.target.value)}
-                                style={inputStyle}
-                                maxLength={8}
-                              />
-                            </label>
-                          </div>
+                              <label style={labelStyle}>
+                                Descrição
+                                <textarea
+                                  value={shopItemDescription}
+                                  onChange={event => setShopItemDescription(event.target.value)}
+                                  placeholder="Descreva os efeitos, a aparência ou alguma característica..."
+                                  rows={3}
+                                  maxLength={500}
+                                  style={{ ...inputStyle, resize: 'vertical' }}
+                                />
+                                <small style={{ color: 'var(--season-muted, #aaa)' }}>
+                                  {shopItemDescription.length}/500 caracteres
+                                </small>
+                              </label>
 
-                          <label style={labelStyle}>
-                            Descrição
-                            <textarea
-                              value={shopItemDescription}
-                              onChange={event => setShopItemDescription(event.target.value)}
-                              style={inputStyle}
-                            />
-                          </label>
+                              <label style={labelStyle}>
+                                Categoria
+                                <select
+                                  value={categories.includes(shopItemCategory) && shopItemCategory !== 'Todos' ? shopItemCategory : 'Diversos'}
+                                  onChange={event => setShopItemCategory(event.target.value)}
+                                  style={inputStyle}
+                                >
+                                  {categories.filter(category => category !== 'Todos').map(category => (
+                                    <option key={category} value={category}>{category}</option>
+                                  ))}
+                                </select>
+                                <small style={{ color: 'var(--season-muted, #aaa)' }}>
+                                  A categoria organiza o produto nos filtros do inventário e do catálogo.
+                                </small>
+                              </label>
+                              <label style={{ ...labelStyle, marginTop: 12 }}>
+                                Raridade
+                                <select value={shopItemRarity} onChange={event => setShopItemRarity(event.target.value)} style={inputStyle}>
+                                  <option value="comum">Comum</option>
+                                  <option value="incomum">Incomum</option>
+                                  <option value="raro">Raro</option>
+                                  <option value="épico">Épico</option>
+                                  <option value="mítico">Mítico</option>
+                                  <option value="relíquia">Relíquia</option>
+                                </select>
+                                <small style={{ color: 'var(--season-muted, #aaa)' }}>A mesma raridade usada nos itens do inventário.</small>
+                              </label>
+                            </div>
 
-                          <div className="form-row">
-                            <label style={labelStyle}>
-                              Categoria
-                              <input
-                                value={shopItemCategory}
-                                onChange={event => setShopItemCategory(event.target.value)}
-                                style={inputStyle}
-                              />
-                            </label>
+                            <div style={{ marginBottom: 20 }}>
+                              <strong style={{ display: 'block', marginBottom: 12 }}>Preço e inventário</strong>
+                              <div className="form-row">
+                                <label style={{ ...labelStyle, flex: 1, minWidth: 130 }}>
+                                  Preço por unidade
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={shopItemPrice}
+                                    onChange={event => setShopItemPrice(event.target.value)}
+                                    style={inputStyle}
+                                  />
+                                </label>
+                                <label style={{ ...labelStyle, flex: 1, minWidth: 130 }}>
+                                  Moeda
+                                  <select
+                                    value={shopItemCurrencyId}
+                                    onChange={event => setShopItemCurrencyId(event.target.value)}
+                                    style={inputStyle}
+                                  >
+                                    <option value="">Sem moeda definida</option>
+                                    {(selectedCampaign?.currency_config?.currencies ?? []).map((currency, index) => (
+                                      <option key={currency.id} value={currency.id}>
+                                        {index === 0 ? '★ Moeda do sistema — ' : ''}{currency.name} ({currency.symbol})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </div>
+                              <div className="form-row">
+                                <label style={{ ...labelStyle, flex: 1, minWidth: 130 }}>
+                                  Estoque disponível
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={shopItemStock}
+                                    onChange={event => setShopItemStock(event.target.value)}
+                                    placeholder="Ilimitado"
+                                    style={inputStyle}
+                                  />
+                                  <small style={{ color: 'var(--season-muted, #aaa)' }}>
+                                    Deixe vazio para não limitar a quantidade.
+                                  </small>
+                                </label>
+                                <label style={{ ...labelStyle, flex: 1, minWidth: 130 }}>
+                                  Peso por unidade (kg)
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={shopItemWeight}
+                                    onChange={event => setShopItemWeight(event.target.value)}
+                                    style={inputStyle}
+                                  />
+                                </label>
+                              </div>
+                            </div>
 
-                            <label style={labelStyle}>
-                              Peso por unidade (kg)
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={shopItemWeight}
-                                onChange={event => setShopItemWeight(event.target.value)}
-                                style={inputStyle}
-                              />
-                            </label>
-                          </div>
-
-                          <div className="form-row">
-                            <label style={labelStyle}>
-                              Preço
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={shopItemPrice}
-                                onChange={event => setShopItemPrice(event.target.value)}
-                                style={inputStyle}
-                              />
-                            </label>
-
-                            <label style={labelStyle}>
-                              Moeda
-                              <select
-                                value={shopItemCurrencyId}
-                                onChange={event => setShopItemCurrencyId(event.target.value)}
-                                style={inputStyle}
-                              >
-                                <option value="">Sem moeda</option>
-                                {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
-                                  <option key={currency.id} value={currency.id}>
-                                    {currency.name} ({currency.symbol})
-                                  </option>
+                            <div>
+                              <strong style={{ display: 'block', marginBottom: 10 }}>Ícone do produto</strong>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                                {availableEmojis.map(emoji => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    aria-label={`Usar ícone ${emoji}`}
+                                    aria-pressed={shopItemEmoji === emoji}
+                                    onClick={() => setShopItemEmoji(emoji)}
+                                    style={{
+                                      width: 38,
+                                      height: 38,
+                                      borderRadius: 10,
+                                      border: `1px solid ${shopItemEmoji === emoji ? 'var(--season-primary, #b49aff)' : 'var(--season-line, #44375f)'}`,
+                                      background: shopItemEmoji === emoji ? 'var(--season-surface-alt, rgba(180,154,255,.16))' : 'var(--season-surface, transparent)',
+                                      color: 'inherit',
+                                      fontSize: 19,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    {emoji}
+                                  </button>
                                 ))}
-                              </select>
-                            </label>
+                              </div>
+                              <label style={{ ...labelStyle, marginTop: 12 }}>
+                                Ou informe outro emoji
+                                <input
+                                  value={shopItemEmoji}
+                                  onChange={event => setShopItemEmoji(event.target.value)}
+                                  placeholder="📦"
+                                  style={{ ...inputStyle, maxWidth: 150 }}
+                                  maxLength={8}
+                                />
+                              </label>
+                            </div>
+
+                            <div className="form-row" style={{ marginTop: 24 }}>
+                              <button
+                                type="button"
+                                className="primary-button"
+                                disabled={shopLoading}
+                                onClick={() => void saveShopItem()}
+                              >
+                                {shopLoading ? 'Salvando...' : editingShopItemId ? 'Salvar alterações' : 'Adicionar ao catálogo'}
+                              </button>
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                disabled={shopLoading}
+                                onClick={() => {
+                                  setShowShopItemForm(false)
+                                  setEditingShopItemId(null)
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
                           </div>
 
-                          <label style={labelStyle}>
-                            Estoque
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={shopItemStock}
-                              onChange={event => setShopItemStock(event.target.value)}
-                              placeholder="Deixe vazio para estoque ilimitado"
-                              style={inputStyle}
-                            />
-                          </label>
-
-                          <div className="form-row">
-                            <button
-                              type="submit"
-                              className="primary-button"
-                              disabled={shopLoading}
-                            >
-                              {shopLoading ? 'Salvando...' : 'Salvar produto'}
-                            </button>
-
-                            <button
-                              type="button"
-                              className="secondary-button"
-                              onClick={() => {
-                                setShowShopItemForm(false)
-                                setEditingShopItemId(null)
-                              }}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
+                          <aside
+                            aria-label="Prévia do produto"
+                            style={{
+                              position: 'sticky',
+                              top: 18,
+                              padding: 18,
+                              borderRadius: 16,
+                              border: '1px solid var(--season-line, rgba(180,154,255,.25))',
+                              background: 'var(--season-surface, rgba(20,18,30,.7))',
+                              minWidth: 0,
+                            }}
+                          >
+                            <small style={{ color: 'var(--season-muted, #aaa)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                              Prévia no catálogo
+                            </small>
+                            <div style={{ textAlign: 'center', padding: '22px 8px 18px' }}>
+                              <div style={{ fontSize: 52, lineHeight: 1.2, marginBottom: 12 }}>
+                                {shopItemEmoji || '📦'}
+                              </div>
+                              <div className="item-category">{shopItemCategory.trim() || 'Diversos'}</div>
+                              <div style={{ display: 'inline-flex', marginTop: 7, padding: '3px 9px', borderRadius: 999, border: '1px solid var(--season-line)', color: 'var(--season-primary)', fontSize: 11, textTransform: 'capitalize' }}>{shopItemRarity}</div>
+                              <h3 style={{ margin: '8px 0' }}>{shopItemName.trim() || 'Nome do produto'}</h3>
+                              <p className="item-description" style={{ minHeight: 42 }}>
+                                {shopItemDescription.trim() || 'A descrição do produto aparecerá aqui.'}
+                              </p>
+                            </div>
+                            <div style={{ borderTop: '1px solid var(--season-line, rgba(180,154,255,.2))', paddingTop: 14, display: 'grid', gap: 10 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ color: 'var(--season-muted, #aaa)' }}>Preço</span>
+                                <strong>
+                                  {(() => {
+                                    const currency = selectedCampaign?.currency_config?.currencies?.find(item => item.id === shopItemCurrencyId)
+                                    const price = Number(shopItemPrice.replace(',', '.'))
+                                    return price > 0 ? `${currency?.symbol ?? ''}${price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${currency ? ` · ${currency.name}` : ''}` : 'Gratuito'
+                                  })()}
+                                </strong>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ color: 'var(--season-muted, #aaa)' }}>Estoque</span>
+                                <strong>{shopItemStock.trim() === '' ? 'Ilimitado' : `${shopItemStock} un.`}</strong>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ color: 'var(--season-muted, #aaa)' }}>Peso</span>
+                                <strong>{shopItemWeight || '0'} kg</strong>
+                              </div>
+                            </div>
+                          </aside>
                         </form>
                       )}
 
@@ -3767,61 +4671,30 @@ async function deleteCharacter(character: Character) {
             {showCampaignForm&&<form className="add-form" onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<select value={campaignSystemChoice} onChange={e=>{const choice=e.target.value;setCampaignSystemChoice(choice);if(choice==='kisatsutai')setSystemName('Kisatsutai');else if(choice==='other')setSystemName('')}} style={inputStyle}><option value=''>Selecione um sistema</option><option value='kisatsutai'>Kisatsutai</option><option value='other'>Outro sistema</option></select></label>{campaignSystemChoice==='other'&&<label>Nome do sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} placeholder='Ex.: Dungeons & Dragons 5e' required style={inputStyle}/></label>}<label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="submit" disabled={loading}>{loading ? 'Salvando…' : editingCampaignId ? 'Salvar alterações' : 'Criar campanha'}</button><button className="secondary-button" type="button" onClick={()=>{setShowCampaignForm(false);setEditingCampaignId(null);setCampaignName('');setCampaignDescription('');setSystemName('');setCampaignSystemChoice('')}}>Cancelar</button></div></form>}
             <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('inventory')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':campaign.system_name.toLowerCase().includes('kisatsutai')?'kisatsutai':'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
             {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
-          </section>}
-
-
-          {error && (
-            <div className="notice" role="alert">
-              <span>!</span> {error}
-              <button
-                onClick={() => setError('')}
-                aria-label="Fechar aviso"
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          {notice && (
-            <div className="notice" role="status">
-              <span>✓</span> {notice}
-              <button
-                onClick={() => setNotice('')}
-                aria-label="Fechar aviso"
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          {/* O formulário de campanha fica somente na página Campanhas. */}
-
-          {selectedCampaign && (
-            <section className="character-banner">
-              <div className="banner-art">
-                <span>✧</span>
-                <div className="rune rune-one">ᚱ</div>
-                <div className="rune rune-two">ᚨ</div>
-                <div className="banner-orb" />
-              </div>
-
-              <div className="character-info">
-                <div className="character-tag">
-                  <span /> CAMPANHA ATIVA
-                </div>
-                <h2>{selectedCampaign.name}</h2>
-                <p>
-                  {selectedCampaign.system_name || 'Sistema não definido'}
-                  <span> · </span>
-                  {isMaster ? 'Mestre' : 'Jogador'}
-                </p>
-                <div className="character-meta">
-                  <span>{characters.length} personagem(ns)</span>
-                </div>
-              </div>
-            </section>
-          )}
-
+            {selectedCampaign && isMaster && (
+  <section className="inventory-section" style={{ marginBottom: 16 }}>
+    <div className="inventory-heading"><div><h3>Moedas da campanha</h3><p>A primeira moeda é a moeda do sistema, usada por padrão na carteira e nos novos produtos.</p></div></div>
+    {(selectedCampaign.currency_config?.currencies ?? []).map((currency, index) => (
+      <div key={currency.id} className="currency-balance" style={{ gap: 10 }}>
+        <span>{currency.name} ({currency.symbol}) {index === 0 ? '· Moeda do sistema' : ''}</span>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="secondary-button" disabled={currencyConfigSaving} onClick={() => beginEditingCampaignCurrency(currency)}>Editar</button>
+          {index > 0 && <button type="button" className="secondary-button" disabled={currencyConfigSaving} onClick={() => void saveCampaignCurrencyConfig([currency, ...(selectedCampaign.currency_config?.currencies ?? []).filter(item => item.id !== currency.id)])}>Definir como principal</button>}
+          <button type="button" className="secondary-button" disabled={currencyConfigSaving} onClick={() => { if (window.confirm(`Remover ${currency.name}? Produtos e registros antigos que usam essa moeda podem ficar sem correspondência.`)) void saveCampaignCurrencyConfig((selectedCampaign.currency_config?.currencies ?? []).filter(item => item.id !== currency.id)) }}>Remover</button>
+        </div>
+      </div>
+    ))}
+    <div className="form-row" style={{ marginTop: 12 }}>
+      <label style={{ ...labelStyle, flex: 2, minWidth: 130 }}>Nome<input value={currencyDraftName} onChange={event => setCurrencyDraftName(event.target.value)} placeholder="Ex.: Iene" style={inputStyle} /></label>
+      <label style={{ ...labelStyle, flex: 1, minWidth: 90 }}>Símbolo<input value={currencyDraftSymbol} onChange={event => setCurrencyDraftSymbol(event.target.value)} placeholder="¥" style={inputStyle} /></label>
+      <label style={{ ...labelStyle, flex: 1, minWidth: 110 }}>Conversão<input type="number" min="0.000001" step="any" value={currencyDraftRate} onChange={event => setCurrencyDraftRate(event.target.value)} style={inputStyle} /></label>
+    </div>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+      <button type="button" className="primary-button" disabled={currencyConfigSaving} onClick={() => void (editingCurrencyId ? saveEditedCampaignCurrency() : addCampaignCurrency())}>{currencyConfigSaving ? 'Salvando…' : editingCurrencyId ? 'Salvar edição da moeda' : 'Adicionar moeda'}</button>
+      {editingCurrencyId && <button type="button" className="secondary-button" onClick={() => { setEditingCurrencyId(null); setCurrencyDraftName(''); setCurrencyDraftSymbol(''); setCurrencyDraftRate('1') }}>Cancelar edição</button>}
+    </div>
+  </section>
+)}
           {selectedCampaign && isMaster && (
             <section className="inventory-section">
               <div className="inventory-heading">
@@ -3893,6 +4766,61 @@ async function deleteCharacter(character: Character) {
                   })}
                 </div>
               )}
+            </section>
+          )}
+
+          </section>}
+
+
+          {error && (
+            <div className="notice" role="alert">
+              <span>!</span> {error}
+              <button
+                onClick={() => setError('')}
+                aria-label="Fechar aviso"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {notice && (
+            <div className="notice" role="status">
+              <span>✓</span> {notice}
+              <button
+                onClick={() => setNotice('')}
+                aria-label="Fechar aviso"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {/* O formulário de campanha fica somente na página Campanhas. */}
+
+          {selectedCampaign && (
+            <section className="character-banner">
+              <div className="banner-art">
+                <span>✧</span>
+                <div className="rune rune-one">ᚱ</div>
+                <div className="rune rune-two">ᚨ</div>
+                <div className="banner-orb" />
+              </div>
+
+              <div className="character-info">
+                <div className="character-tag">
+                  <span /> CAMPANHA ATIVA
+                </div>
+                <h2>{selectedCampaign.name}</h2>
+                <p>
+                  {selectedCampaign.system_name || 'Sistema não definido'}
+                  <span> · </span>
+                  {isMaster ? 'Mestre' : 'Jogador'}
+                </p>
+                <div className="character-meta">
+                  <span>{characters.length} personagem(ns)</span>
+                </div>
+              </div>
             </section>
           )}
 
@@ -4388,9 +5316,9 @@ async function deleteCharacter(character: Character) {
     onChange={event => setNewItemCurrencyId(event.target.value)}
   >
     <option value="">Sem moeda definida</option>
-    {selectedCampaign?.currency_config?.currencies?.map(currency => (
+    {selectedCampaign?.currency_config?.currencies?.map((currency, index) => (
       <option key={currency.id} value={currency.id}>
-        {currency.name} ({currency.symbol})
+        {index === 0 ? '★ Moeda do sistema — ' : ''}{currency.name} ({currency.symbol})
       </option>
     ))}
   </select>
@@ -4555,7 +5483,10 @@ async function deleteCharacter(character: Character) {
                               title="Editar item"
                               aria-label={`Editar ${item.name}`}
                               disabled={loading}
-                              onClick={() => startEditingItem(item)}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                startEditingItem(item)
+                              }}
                             >
                               ✎
                             </button>
@@ -4694,73 +5625,7 @@ async function deleteCharacter(character: Character) {
             </div>
           )}
 
-{selectedItemDetails && (
-  <div className="modal-overlay" onClick={() => setSelectedItemDetails(null)}>
-    <div
-      className="item-details-modal"
-      onClick={event => event.stopPropagation()}
-    >
-      <button
-        type="button"
-        onClick={() => setSelectedItemDetails(null)}
-      >
-        ✕
-      </button>
 
-      <div className="item-art">
-        {typeof selectedItemDetails.metadata?.icon === 'string'
-          ? selectedItemDetails.metadata.icon
-          : '📦'}
-      </div>
-
-<small>{selectedItemDetails.category}</small>
-
-<p className="item-rarity">
-  <strong>Raridade:</strong>{' '}
-  {typeof selectedItemDetails.metadata?.rarity === 'string'
-    ? selectedItemDetails.metadata.rarity.charAt(0).toLocaleUpperCase('pt-BR') + selectedItemDetails.metadata.rarity.slice(1)
-    : 'Comum'}
-</p>
-      <h2>{selectedItemDetails.name}</h2>
-
-      <p>
-        {selectedItemDetails.description || 'Sem descrição.'}
-      </p>
-
-<div className="item-economic-details">
-  <div>
-    <span>Valor unitário</span>
-    <strong>
-      {selectedItemDetails.currency_id
-        ? `${selectedCampaign?.currency_config?.currencies?.find(
-            currency => currency.id === selectedItemDetails.currency_id,
-          )?.symbol ?? ''} `
-        : ''}
-      {selectedItemDetails.unit_price.toLocaleString('pt-BR')}
-    </strong>
-  </div>
-
-  <div>
-    <span>Valor total</span>
-    <strong>
-      {selectedItemDetails.currency_id
-        ? `${selectedCampaign?.currency_config?.currencies?.find(
-            currency => currency.id === selectedItemDetails.currency_id,
-          )?.symbol ?? ''} `
-        : ''}
-      {(Number(selectedItemDetails.unit_price ?? 0) * Number(selectedItemDetails.quantity ?? 0)).toLocaleString('pt-BR')}
-    </strong>
-  </div>
-</div>
-
-      <p>Quantidade: {selectedItemDetails.quantity}</p>
-      <p>Peso por unidade: {Number(selectedItemDetails.weight).toFixed(1)} kg</p>
-      <p>
-        Peso total: {(Number(selectedItemDetails.weight) * Number(selectedItemDetails.quantity)).toFixed(1)} kg
-      </p>
-    </div>
-  </div>
-)}
 
           <footer className="page-footer">
             <span>
