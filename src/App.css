@@ -4946,3 +4946,2372 @@ button:disabled { opacity: .58; }
 .page-content.page-sheets > .modal-overlay {
   display: grid !important;
 }
+
+/* Escudo do mestre — resumo da party */
+.master-shield{margin:22px 0;padding:22px;border:1px solid var(--season-line,#34303d);border-radius:16px;background:linear-gradient(145deg,var(--season-surface,#17151d),var(--season-bg,#100e19))}.master-shield-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.master-shield-heading h2{margin:5px 0}.master-shield-heading p{margin:0;color:var(--muted,#a5a0ad)}.master-shield-eyebrow{font-size:11px;letter-spacing:.14em;font-weight:800;color:var(--season-primary,#f08a32)}.master-shield-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--season-surface-alt,#24202b);color:var(--season-primary,#f08a32);font-size:24px}.master-shield-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.master-shield-stat{min-width:0;padding:13px;border:1px solid var(--season-line,#34303d);border-radius:11px;background:var(--season-surface-alt,#201d27)}.master-shield-stat span,.master-shield-columns small{display:block;color:var(--muted,#a5a0ad);font-size:12px}.master-shield-stat strong{display:block;margin-top:5px;overflow-wrap:anywhere;font-size:17px}.master-shield-description{margin-top:14px;padding:13px;border-radius:11px;background:var(--season-surface-alt,#201d27)}.master-shield-description p{margin:6px 0 0;white-space:pre-wrap}.master-shield-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:18px}.master-shield-columns h3{margin:0 0 9px;font-size:15px}.master-shield-columns ul{list-style:none;padding:0;margin:0;display:grid;gap:7px}.master-shield-columns li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid var(--season-line,#34303d);border-radius:9px}.master-shield-columns li span{min-width:0;overflow-wrap:anywhere}.master-shield-columns li small{flex-shrink:0;text-align:right}.master-shield-empty{color:var(--muted,#a5a0ad);font-size:13px}@media(max-width:560px){.master-shield{padding:15px}.master-shield-columns li{align-items:flex-start;flex-direction:column;gap:3px}.master-shield-columns li small{text-align:left}}
+
+.equipment-rules-preview {
+  margin: 12px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.14));
+  border-radius: 12px;
+  background: var(--season-surface-alt, rgba(255,255,255,.045));
+  color: var(--season-text, inherit);
+}
+.equipment-rules-preview h3,
+.equipment-rules-preview strong { margin-top: 0; }
+.equipment-rules-preview p { margin: 6px 0; font-size: 13px; color: var(--season-muted, inherit); }
+
+.master-shield-character-list{display:grid;gap:10px;margin-top:12px}
+.master-shield-character{display:block;width:100%;padding:13px;text-align:left;color:inherit;background:var(--season-surface-alt);border:1px solid var(--season-line);border-radius:12px;cursor:pointer}
+.master-shield-character:hover{border-color:var(--season-primary);transform:translateY(-1px)}
+.master-shield-character-title{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.master-shield-character-title strong{font-size:14px}.master-shield-character-title small,.master-shield-open-hint{color:var(--season-muted);font-size:11px}
+.master-shield-bars{display:grid;gap:8px}.master-shield-bar-row{display:grid;grid-template-columns:28px 75px 1fr;align-items:center;gap:8px;font-size:11px}.master-shield-bar-row strong{text-align:right;font-variant-numeric:tabular-nums}.master-shield-bar{height:7px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}.master-shield-bar i{display:block;height:100%;border-radius:99px;background:var(--season-primary)}.master-shield-open-hint{display:block;margin-top:9px;text-align:right}
+
+/* Escudo do mestre — painel visual aprimorado */
+.master-shield-page-panel{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.master-shield{position:relative;isolation:isolate;overflow:hidden;margin:10px 0 26px;padding:clamp(18px,3vw,30px);border:1px solid color-mix(in srgb,var(--season-primary,#c47a36) 28%,var(--season-line,#34303d));border-radius:22px;background:radial-gradient(ellipse at 92% 0%,color-mix(in srgb,var(--season-primary,#c47a36) 16%,transparent),transparent 34%),linear-gradient(145deg,var(--season-surface,#17151d) 0%,var(--season-bg,#100e19) 78%);box-shadow:0 18px 50px rgba(0,0,0,.18)}
+.master-shield:before{content:"";position:absolute;z-index:-1;top:-95px;right:-65px;width:250px;height:250px;border:1px solid color-mix(in srgb,var(--season-primary,#c47a36) 16%,transparent);border-radius:50%;box-shadow:0 0 0 22px color-mix(in srgb,var(--season-primary,#c47a36) 4%,transparent),0 0 0 48px color-mix(in srgb,var(--season-primary,#c47a36) 3%,transparent)}
+.master-shield-heading{position:relative;align-items:center;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--season-line,#34303d)}
+.master-shield-heading h2{font-size:clamp(23px,3vw,30px);letter-spacing:-.035em}.master-shield-heading p{margin-top:7px;font-size:13px;line-height:1.5}.master-shield-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.19em}.master-shield-eyebrow:before{content:"";width:18px;height:2px;border-radius:2px;background:var(--season-primary,#f08a32)}
+.master-shield-icon{width:58px;height:58px;border:1px solid color-mix(in srgb,var(--season-primary,#f08a32) 36%,var(--season-line,#34303d));border-radius:17px;background:color-mix(in srgb,var(--season-primary,#f08a32) 12%,var(--season-surface-alt,#24202b));font-size:30px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.master-shield-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.master-shield-stat{position:relative;overflow:hidden;min-height:88px;padding:16px;border-radius:15px;background:linear-gradient(145deg,var(--season-surface-alt,#201d27),color-mix(in srgb,var(--season-surface-alt,#201d27) 70%,transparent));transition:transform .18s,border-color .18s}.master-shield-stat:after{content:"";position:absolute;right:-18px;bottom:-30px;width:76px;height:76px;border-radius:50%;background:color-mix(in srgb,var(--season-primary,#f08a32) 8%,transparent)}.master-shield-stat span{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:800}.master-shield-stat strong{position:relative;z-index:1;margin-top:9px;font-size:clamp(16px,2vw,20px);letter-spacing:-.025em}
+.master-shield-description{margin-top:13px;padding:16px 18px;border:1px solid var(--season-line,#34303d);border-radius:14px;background:color-mix(in srgb,var(--season-surface-alt,#201d27) 75%,transparent)}.master-shield-description>strong{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--season-primary,#f08a32)}.master-shield-description p{font-size:13px;line-height:1.65;color:var(--season-text,inherit)}
+.master-shield-columns{grid-template-columns:minmax(220px,.78fr) minmax(0,1.6fr);gap:16px;margin-top:18px;align-items:start}.master-shield-columns>div{min-width:0;padding:17px;border:1px solid var(--season-line,#34303d);border-radius:16px;background:color-mix(in srgb,var(--season-surface-alt,#201d27) 58%,transparent)}.master-shield-columns h3{display:flex;align-items:center;gap:9px;margin:0 0 15px;font-size:14px;letter-spacing:-.01em}.master-shield-columns h3:before{content:"";width:4px;height:17px;border-radius:4px;background:var(--season-primary,#f08a32)}.master-shield-columns ul{gap:8px}.master-shield-columns li{padding:12px 13px;border-radius:11px;background:var(--season-surface,#17151d);border-color:color-mix(in srgb,var(--season-line,#34303d) 80%,transparent)}.master-shield-columns li span{font-size:12px;font-weight:700}.master-shield-columns li small{padding:4px 8px;border-radius:20px;background:color-mix(in srgb,var(--season-primary,#f08a32) 12%,transparent);color:var(--season-primary,#f08a32);font-size:10px;font-weight:800}
+.master-shield-columns label{display:block;margin-bottom:12px;font-size:11px;font-weight:800;letter-spacing:.04em}.master-shield-columns label select{display:block;width:100%;margin-top:7px;min-height:42px;border-radius:10px!important;border:1px solid var(--season-line,#34303d)!important;background:var(--season-surface,#17151d)!important}
+.master-shield-character-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:11px;margin-top:14px}.master-shield-character{position:relative;overflow:hidden;min-width:0;padding:15px;border-radius:15px;border:1px solid var(--season-line,#34303d);background:linear-gradient(150deg,var(--season-surface,#17151d),color-mix(in srgb,var(--season-surface-alt,#201d27) 72%,transparent));transition:transform .18s,border-color .18s,box-shadow .18s}.master-shield-character:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--season-primary,#f08a32);opacity:.7}.master-shield-character:hover{transform:translateY(-3px);border-color:var(--season-primary,#f08a32);box-shadow:0 10px 26px rgba(0,0,0,.2)}.master-shield-character-title{align-items:flex-start;flex-direction:column;gap:5px;margin-bottom:14px;padding-left:3px}.master-shield-character-title strong{font-size:15px;line-height:1.35}.master-shield-character-title small{font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--season-primary,#f08a32)}
+.master-shield-bars{gap:11px}.master-shield-bar-row{grid-template-columns:25px 70px minmax(35px,1fr);gap:8px;font-size:10px}.master-shield-bar-row>span{font-weight:900;letter-spacing:.04em}.master-shield-bar-row strong{font-size:10px;color:var(--season-text,inherit)}.master-shield-bar{height:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.09)}.master-shield-bar-row:nth-child(1) .master-shield-bar i{background:linear-gradient(90deg,#b94b48,#ed7770)}.master-shield-bar-row:nth-child(2) .master-shield-bar i{background:linear-gradient(90deg,#3975b9,#65a9ed)}.master-shield-bar-row:nth-child(3) .master-shield-bar i{background:linear-gradient(90deg,#398d68,#68c995)}.master-shield-open-hint{margin-top:14px;padding-top:10px;border-top:1px solid var(--season-line,#34303d);font-size:10px;font-weight:800;letter-spacing:.04em;color:var(--season-muted,#a5a0ad)}
+.master-shield-empty{padding:14px;border:1px dashed var(--season-line,#34303d);border-radius:11px;text-align:center;line-height:1.5}
+@media(max-width:760px){.master-shield-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.master-shield-columns{grid-template-columns:1fr}.master-shield-character-list{grid-template-columns:1fr}}
+@media(max-width:420px){.master-shield-heading{align-items:flex-start}.master-shield-icon{width:46px;height:46px;font-size:24px}.master-shield-grid{gap:8px}.master-shield-stat{min-height:78px;padding:12px}.master-shield-bar-row{grid-template-columns:23px 65px minmax(25px,1fr);gap:6px}}
+
+.season-participation-toggle{display:flex;align-items:flex-start;gap:12px;margin:14px 0;padding:15px 17px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:14px;background:var(--season-surface,rgba(255,255,255,.035));cursor:pointer}
+.season-participation-toggle input{width:18px;height:18px;margin-top:2px;accent-color:var(--season-primary,#c8b5ff);flex:0 0 auto}
+.season-participation-toggle span{display:grid;gap:4px}
+.season-participation-toggle strong{color:var(--text-primary,#fff);font-size:.94rem}
+.season-participation-toggle small{color:var(--text-muted,#aaa);line-height:1.45}
+
+/* Participação do personagem na temporada */
+.season-participation-toggle{position:relative;display:flex;align-items:center;gap:14px;margin:18px 0;padding:18px 20px;border:1px solid var(--season-line,rgba(255,255,255,.16));border-radius:16px;background:linear-gradient(120deg,var(--season-surface,rgba(255,255,255,.045)),rgba(255,255,255,.018));box-shadow:0 8px 24px rgba(0,0,0,.12);cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.season-participation-toggle:hover{border-color:var(--season-primary, #c8b5ff);transform:translateY(-1px)}
+.season-participation-toggle.is-participating{border-color:var(--season-primary,#c8b5ff);background:linear-gradient(120deg,color-mix(in srgb,var(--season-primary,#c8b5ff) 14%,transparent),rgba(255,255,255,.025))}
+.season-participation-toggle input{width:21px;height:21px;margin:0;accent-color:var(--season-primary,#c8b5ff);flex:0 0 auto;cursor:pointer}
+.season-participation-toggle input:disabled{cursor:not-allowed;opacity:.6}
+.season-participation-toggle span{display:grid;gap:5px;min-width:0;flex:1}
+.season-participation-toggle strong{color:var(--text-primary,#fff);font-size:1rem;font-weight:700}
+.season-participation-toggle small{color:var(--text-muted,#aaa);line-height:1.5}
+.season-participation-status{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--text-muted,#aaa);font-size:.68rem;letter-spacing:.08em}
+.season-participation-toggle.is-participating .season-participation-status{background:color-mix(in srgb,var(--season-primary,#c8b5ff) 20%,transparent);color:var(--text-primary,#fff)}
+@media(max-width:560px){.season-participation-toggle{align-items:flex-start;padding:15px;gap:11px}.season-participation-status{font-size:.6rem;padding:5px 7px}}
+
+/* Edição da ficha: seções expansíveis */
+.sheet-editor-accordion > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--season-text, inherit);
+  font-weight: 800;
+  font-size: 15px;
+  user-select: none;
+}
+.sheet-editor-accordion > summary::-webkit-details-marker { display: none; }
+.sheet-editor-accordion > summary::after {
+  content: '+';
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 8px;
+  background: var(--season-surface-alt, rgba(255,255,255,.08));
+  color: var(--season-primary, currentColor);
+  font-size: 19px;
+}
+.sheet-editor-accordion[open] > summary::after { content: '−'; }
+
+/* Painel de ações de combate */
+.combat-actions-panel{margin:18px 0;padding:22px;border:1px solid var(--season-line,var(--season-surface-alt,#332b40));border-radius:18px;background:linear-gradient(145deg,color-mix(in srgb,var(--season-surface-alt,#211c31) 72%,var(--season-bg,#100e19)),var(--season-bg,#100e19) 72%);box-shadow:0 12px 32px rgba(0,0,0,.16)}
+.combat-actions-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.combat-actions-heading h3{margin:4px 0 5px;font:800 24px Manrope,sans-serif;letter-spacing:-.6px;color:var(--season-primary,#b49aff)}
+.combat-actions-heading p{margin:0;color:var(--season-muted,#b9b4c2);font-size:13px}
+.combat-eyebrow{font-size:9px;font-weight:800;letter-spacing:1.6px;color:var(--season-secondary,#9b82cf)}
+.combat-d20-mark{display:grid;place-items:center;width:52px;height:52px;flex:0 0 52px;border:1px solid color-mix(in srgb,var(--season-primary,#b49aff) 45%,transparent);border-radius:15px;background:color-mix(in srgb,var(--season-primary,#b49aff) 12%,transparent);color:var(--season-primary,#b49aff);font:800 15px Manrope,sans-serif;transform:rotate(3deg)}
+.combat-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.combat-action-card{display:flex;min-width:0;min-height:126px;flex-direction:column;align-items:flex-start;justify-content:center;gap:7px;padding:14px;border:1px solid var(--season-line,var(--season-surface-alt,#332b40));border-radius:13px;background:color-mix(in srgb,var(--season-bg,#100e19) 78%,var(--season-surface-alt,#211c31));text-align:left;transition:transform .18s,border-color .18s,background .18s}
+.combat-action-card:hover{transform:translateY(-3px);border-color:var(--season-primary,#b49aff);background:color-mix(in srgb,var(--season-primary,#b49aff) 10%,var(--season-bg,#100e19))}
+.combat-action-icon{display:grid;place-items:center;width:31px;height:31px;border-radius:9px;background:color-mix(in srgb,var(--season-primary,#b49aff) 15%,transparent);color:var(--season-primary,#b49aff);font-size:19px}
+.combat-action-card strong{font-size:13px;color:var(--season-text,#f2eef8)}
+.combat-action-card small{font-size:10px;line-height:1.4;color:var(--season-muted,#b9b4c2)}
+.combat-action-result{margin-top:14px;padding:15px 16px;border:1px solid color-mix(in srgb,var(--season-primary,#b49aff) 25%,var(--season-line,#332b40));border-radius:13px;background:color-mix(in srgb,var(--season-primary,#b49aff) 7%,var(--season-bg,#100e19))}
+.combat-result-title{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--season-primary,#b49aff);text-transform:uppercase}
+.combat-result-die{padding:3px 7px;border-radius:6px;background:color-mix(in srgb,var(--season-primary,#b49aff) 15%,transparent);font-size:9px}
+.combat-action-result p{margin:8px 0 0;color:var(--season-text,#eeeaf4);font-size:13px;line-height:1.65;overflow-wrap:anywhere}
+.combat-rules{margin-top:13px;border:1px solid var(--season-line,var(--season-surface-alt,#332b40));border-radius:11px;background:color-mix(in srgb,var(--season-bg,#100e19) 80%,var(--season-surface-alt,#211c31))}
+.combat-rules summary{padding:12px 14px;cursor:pointer;color:var(--season-primary,#b49aff);font-size:12px;font-weight:700}
+.combat-rules-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 12px 12px}
+.combat-rules-grid p{display:flex;flex-direction:column;gap:4px;margin:0;padding:10px;border-radius:8px;background:var(--season-surface-alt,#211c31);font-size:11px;line-height:1.5}
+.combat-rules-grid strong{color:var(--season-primary,#b49aff)}
+.combat-rules-grid span{color:var(--season-muted,#c3bdcd)}
+.combat-counter-panel{display:flex;align-items:end;gap:12px;margin-top:13px;padding:14px;border:1px solid var(--season-line,var(--season-surface-alt,#332b40));border-radius:12px;background:color-mix(in srgb,var(--season-surface-alt,#211c31) 55%,var(--season-bg,#100e19))}
+.combat-counter-panel>div{display:flex;flex:1;flex-direction:column;gap:5px}
+.combat-counter-panel>div strong{font-size:13px}
+.combat-counter-panel>div small{color:var(--season-muted,#b9b4c2);font-size:11px}
+.combat-counter-panel>div b{color:var(--season-primary,#b49aff)}
+.combat-counter-panel label{display:flex;min-width:130px;flex-direction:column;gap:5px;color:var(--season-muted,#b9b4c2);font-size:10px;font-weight:700}
+.combat-counter-panel input{width:100%;min-height:38px;padding:8px 10px;border:1px solid var(--season-line,var(--season-surface-alt,#332b40));border-radius:8px;background:var(--season-bg,#100e19);color:var(--season-text,#f2eef8)}
+.combat-counter-button{min-height:38px;padding:8px 13px;border:1px solid var(--season-primary,#b49aff);border-radius:8px;background:var(--season-primary,#b49aff);color:var(--season-bg,#100e19);font-size:11px;font-weight:800;white-space:nowrap}
+@media(max-width:900px){.combat-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.combat-actions-panel{padding:15px}.combat-action-grid{gap:8px}.combat-action-card{min-height:112px;padding:11px}.combat-rules-grid{grid-template-columns:1fr}.combat-counter-panel{align-items:stretch;flex-direction:column}.combat-counter-panel label{min-width:0}.combat-counter-button{width:100%}}
+
+/* Participação na temporada: controle de seleção com check visual próprio */
+.season-participation-toggle{
+  position:relative;isolation:isolate;overflow:hidden;min-height:86px;padding:18px 20px 18px 66px;
+  border:1px solid var(--season-line,rgba(255,255,255,.14));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--season-surface,#211d29) 92%,transparent),color-mix(in srgb,var(--season-primary,#c8b5ff) 5%,var(--season-bg,#100e19)));
+  box-shadow:0 10px 28px rgba(0,0,0,.16);transition:border-color .2s,background .2s,box-shadow .2s,transform .2s;
+}
+.season-participation-toggle:before{
+  content:"";position:absolute;left:20px;top:50%;width:27px;height:27px;transform:translateY(-50%);
+  border:2px solid var(--season-muted,#85808d);border-radius:8px;background:var(--season-bg,#100e19);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.25);transition:all .2s;
+}
+.season-participation-toggle:after{
+  content:"";position:absolute;left:29px;top:50%;width:7px;height:13px;
+  border:solid #fff;border-width:0 2.5px 2.5px 0;transform:translateY(-62%) rotate(45deg) scale(0);opacity:0;transition:transform .18s,opacity .18s;
+}
+.season-participation-toggle:has(input:checked):before{border-color:var(--season-primary,#c8b5ff);background:var(--season-primary,#c8b5ff);box-shadow:0 0 0 5px color-mix(in srgb,var(--season-primary,#c8b5ff) 13%,transparent),0 0 20px color-mix(in srgb,var(--season-primary,#c8b5ff) 25%,transparent)}
+.season-participation-toggle:has(input:checked):after{transform:translateY(-62%) rotate(45deg) scale(1);opacity:1}
+.season-participation-toggle input{position:absolute;left:20px;top:50%;width:27px;height:27px;margin:0;transform:translateY(-50%);opacity:0;cursor:pointer;z-index:2}
+.season-participation-toggle:has(input:focus-visible){outline:2px solid var(--season-primary,#c8b5ff);outline-offset:3px}
+.season-participation-toggle.is-participating{border-color:var(--season-primary,#c8b5ff);box-shadow:0 10px 30px color-mix(in srgb,var(--season-primary,#c8b5ff) 10%,transparent)}
+.season-participation-toggle .season-participation-status{padding:7px 11px;border:1px solid var(--season-line,rgba(255,255,255,.12));font-size:9px;font-weight:900;letter-spacing:.12em}
+.season-participation-toggle.is-participating .season-participation-status{border-color:color-mix(in srgb,var(--season-primary,#c8b5ff) 45%,transparent)}
+@media(max-width:560px){.season-participation-toggle{padding:16px 14px 16px 56px}.season-participation-toggle:before{left:15px}.season-participation-toggle:after{left:24px}.season-participation-toggle input{left:15px}}
+
+
+/* Entrada de dano após bloqueio */
+.combat-block-damage-entry {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.16));
+  border-radius: 12px;
+  background: var(--season-surface-alt, rgba(255,255,255,.045));
+}
+.combat-block-damage-entry label {
+  display: grid;
+  gap: 7px;
+  font-weight: 700;
+}
+.combat-block-damage-entry input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.2));
+  border-radius: 9px;
+  color: inherit;
+  background: var(--season-bg, rgba(0,0,0,.2));
+  font: inherit;
+}
+.combat-block-damage-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 13px;
+  color: var(--season-muted, #b9b4c2);
+}
+.combat-block-damage-preview strong { color: var(--season-primary, #ffc078); }
+.combat-block-damage-entry button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Controle compacto e destacado para informar a DT do inimigo */
+.combat-dodge-control {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  min-width: 0;
+}
+.combat-dodge-control .combat-action-card {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.combat-dodge-target-inline {
+  position: relative;
+  display: flex;
+  flex: 0 0 116px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #ffc078) 42%, var(--season-line, #393244));
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--season-primary, #ffc078) 15%, transparent), transparent 70%), linear-gradient(155deg, var(--season-surface-alt, #211c31), var(--season-bg, #100e19));
+  color: var(--season-text, #f2eef8);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 5px 16px rgba(0,0,0,.12);
+}
+.combat-dodge-target-inline::before {
+  content: 'ALVO DO INIMIGO';
+  color: var(--season-primary, #ffc078);
+  font-size: 8px;
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+.combat-dodge-target-inline input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 6px;
+  border: 1px solid var(--season-line, #51435c);
+  border-radius: 11px;
+  outline: none;
+  background: rgba(0,0,0,.28);
+  color: var(--season-text, #fff);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: .02em;
+  text-align: center;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease, transform .18s ease;
+}
+.combat-dodge-target-inline input:hover { border-color: var(--season-primary, #ffc078); }
+.combat-dodge-target-inline input:focus {
+  border-color: var(--season-primary, #ffc078);
+  background: rgba(0,0,0,.42);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary, #ffc078) 22%, transparent);
+}
+.combat-dodge-target-inline input::placeholder {
+  color: var(--season-muted, #b9b4c2);
+  opacity: .7;
+  font-size: 13px;
+}
+@media (max-width: 560px) {
+  .combat-dodge-control { gap: 7px; }
+  .combat-dodge-target-inline { flex-basis: 88px; padding: 8px; }
+  .combat-dodge-target-inline input { font-size: 16px; }
+}
+
+/* Refinamento visual do restante do painel de Ações */
+.combat-actions-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--season-primary, #ffc078) 28%, var(--season-line, #393244));
+  background: radial-gradient(ellipse at 8% 0%, color-mix(in srgb, var(--season-primary, #ffc078) 9%, transparent), transparent 42%), linear-gradient(145deg, color-mix(in srgb, var(--season-surface-alt, #211c31) 78%, var(--season-bg, #100e19)), var(--season-bg, #100e19) 78%);
+}
+.combat-actions-heading { position: relative; padding-bottom: 15px; border-bottom: 1px solid color-mix(in srgb, var(--season-primary, #ffc078) 18%, transparent); }
+.combat-actions-heading h3 { color: var(--season-primary, #ffc078); }
+.combat-eyebrow { color: color-mix(in srgb, var(--season-primary, #ffc078) 78%, white); }
+.combat-d20-mark { border-color: color-mix(in srgb, var(--season-primary, #ffc078) 48%, transparent); background: color-mix(in srgb, var(--season-primary, #ffc078) 13%, transparent); color: var(--season-primary, #ffc078); }
+.combat-action-card { position: relative; overflow: hidden; min-height: 132px; border-color: color-mix(in srgb, var(--season-primary, #ffc078) 17%, var(--season-line, #393244)); background: linear-gradient(155deg, color-mix(in srgb, var(--season-surface-alt, #211c31) 58%, transparent), color-mix(in srgb, var(--season-bg, #100e19) 92%, transparent)); }
+.combat-action-card::after { content: ''; position: absolute; inset: auto 12px 0; height: 2px; border-radius: 99px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--season-primary, #ffc078) 65%, transparent), transparent); opacity: .45; }
+.combat-action-card:hover { border-color: var(--season-primary, #ffc078); background: linear-gradient(155deg, color-mix(in srgb, var(--season-primary, #ffc078) 13%, var(--season-surface-alt, #211c31)), var(--season-bg, #100e19)); }
+.combat-action-icon { width: 36px; height: 36px; border: 1px solid color-mix(in srgb, var(--season-primary, #ffc078) 25%, transparent); border-radius: 11px; background: color-mix(in srgb, var(--season-primary, #ffc078) 12%, transparent); color: var(--season-primary, #ffc078); }
+.combat-action-card strong { font-size: 14px; letter-spacing: -.1px; }
+.combat-action-card small { font-size: 11px; }
+.combat-action-result { border-color: color-mix(in srgb, var(--season-primary, #ffc078) 34%, var(--season-line, #393244)); background: linear-gradient(135deg, color-mix(in srgb, var(--season-primary, #ffc078) 9%, var(--season-bg, #100e19)), var(--season-bg, #100e19)); box-shadow: inset 3px 0 0 color-mix(in srgb, var(--season-primary, #ffc078) 75%, transparent); }
+.combat-result-title { color: var(--season-primary, #ffc078); letter-spacing: .09em; }
+.combat-result-die { border: 1px solid color-mix(in srgb, var(--season-primary, #ffc078) 28%, transparent); background: color-mix(in srgb, var(--season-primary, #ffc078) 12%, transparent); }
+.combat-action-result p { font-size: 13px; line-height: 1.7; }
+.combat-rules { overflow: hidden; border-color: color-mix(in srgb, var(--season-primary, #ffc078) 22%, var(--season-line, #393244)); background: color-mix(in srgb, var(--season-surface-alt, #211c31) 32%, var(--season-bg, #100e19)); }
+.combat-rules summary { padding: 14px 16px; color: var(--season-primary, #ffc078); transition: background .18s ease; }
+.combat-rules summary:hover { background: color-mix(in srgb, var(--season-primary, #ffc078) 8%, transparent); }
+.combat-rules-grid { gap: 9px; padding: 0 12px 12px; }
+.combat-rules-grid p { min-height: 76px; padding: 12px; border: 1px solid color-mix(in srgb, var(--season-primary, #ffc078) 12%, transparent); border-radius: 10px; background: linear-gradient(145deg, color-mix(in srgb, var(--season-surface-alt, #211c31) 82%, transparent), color-mix(in srgb, var(--season-bg, #100e19) 88%, transparent)); }
+.combat-rules-grid strong { color: var(--season-primary, #ffc078); font-size: 11px; letter-spacing: .02em; }
+.combat-rules-grid span { font-size: 11px; line-height: 1.6; }
+.combat-counter-panel { align-items: end; padding: 16px; border-color: color-mix(in srgb, var(--season-primary, #ffc078) 25%, var(--season-line, #393244)); border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, var(--season-primary, #ffc078) 7%, var(--season-surface-alt, #211c31)), var(--season-bg, #100e19)); }
+.combat-counter-panel>div strong { color: var(--season-text, #fff); font-size: 14px; }
+.combat-counter-panel>div small { font-size: 11px; }
+.combat-counter-panel>div b { color: var(--season-primary, #ffc078); font-size: 15px; }
+.combat-counter-panel label { gap: 7px; color: var(--season-muted, #b9b4c2); font-size: 10px; letter-spacing: .04em; }
+.combat-counter-panel input, .combat-block-damage-entry input { min-height: 42px; border-color: color-mix(in srgb, var(--season-primary, #ffc078) 25%, var(--season-line, #393244)); border-radius: 10px; background: rgba(0,0,0,.24); transition: border-color .18s ease, box-shadow .18s ease; }
+.combat-counter-panel input:focus, .combat-block-damage-entry input:focus { outline: none; border-color: var(--season-primary, #ffc078); box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary, #ffc078) 17%, transparent); }
+.combat-counter-button { min-height: 42px; border-color: var(--season-primary, #ffc078); border-radius: 10px; background: var(--season-primary, #ffc078); color: #21170d; font-size: 11px; font-weight: 850; transition: filter .18s ease, transform .18s ease; }
+.combat-counter-button:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.combat-block-damage-entry { border-color: color-mix(in srgb, var(--season-primary, #ffc078) 25%, var(--season-line, #393244)); border-radius: 13px; background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #ffc078) 7%, var(--season-surface-alt, #211c31)), var(--season-bg, #100e19)); }
+.combat-block-damage-entry label { color: var(--season-muted, #b9b4c2); font-size: 11px; }
+.combat-block-damage-preview { padding: 10px 12px; border-radius: 9px; background: rgba(0,0,0,.18); line-height: 1.6; }
+.combat-block-damage-preview strong { color: var(--season-primary, #ffc078); }
+.combat-dodge-target-inline { border-color: color-mix(in srgb, var(--season-primary, #ffc078) 42%, var(--season-line, #393244)); }
+@media(max-width:560px) {
+  .combat-actions-heading { align-items: flex-start; }
+  .combat-actions-heading h3 { font-size: 21px; }
+  .combat-action-card { min-height: 116px; }
+  .combat-rules-grid p { min-height: 0; }
+}
+
+/* Editor de itens da mochila */
+.item-editor-form {
+  gap: 20px;
+  padding: clamp(16px, 2.5vw, 26px);
+  border: 1px solid var(--season-line, var(--hx-border));
+  border-radius: 18px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--season-surface, #171b20) 94%, transparent), var(--season-bg, #090b0e));
+  box-shadow: 0 16px 42px rgba(0,0,0,.18);
+}
+.item-editor-form .form-heading {
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--season-line, var(--hx-border));
+}
+.item-editor-form .form-heading h3 { margin: 0 0 5px; font-size: 19px; letter-spacing: -.025em; }
+.item-editor-form .form-heading p { margin: 0; color: var(--season-muted, #a8adb3); line-height: 1.5; }
+.item-editor-form label { gap: 8px; font-weight: 600; }
+.item-editor-form input:not([type="checkbox"]),
+.item-editor-form select { min-height: 43px; border-radius: 11px; }
+.item-editor-form .emoji-field,
+.item-editor-form .equipment-rules-preview,
+.item-editor-form [style*="grid-column: 1 / -1"] {
+  border: 1px solid var(--season-line, var(--hx-border)) !important;
+  border-radius: 13px !important;
+  background: color-mix(in srgb, var(--season-surface, #171b20) 72%, transparent);
+}
+.item-editor-form .primary-button { min-height: 44px; padding-inline: 22px; border-radius: 11px; font-weight: 750; }
+.scarcity-editor-card {
+  display: grid; gap: 14px; grid-column: 1 / -1;
+  padding: 17px; border: 1px solid color-mix(in srgb, var(--season-primary, #ff9d55) 38%, var(--season-line, #454545));
+  border-radius: 15px; background: linear-gradient(135deg, color-mix(in srgb, var(--season-primary, #ff9d55) 9%, var(--season-surface, #171b20)), var(--season-bg, #090b0e));
+}
+.scarcity-editor-heading { display: flex; align-items: center; gap: 12px; }
+.scarcity-editor-icon { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px; background: color-mix(in srgb, var(--season-primary, #ff9d55) 17%, transparent); color: var(--season-primary, #ff9d55); font-size: 23px; }
+.scarcity-editor-heading strong { display: block; color: var(--text, #f4f4f4); font-size: 14px; }
+.scarcity-editor-heading p, .scarcity-editor-note { margin: 4px 0 0; color: var(--season-muted, #a8adb3); font-size: 12px; line-height: 1.55; }
+.scarcity-level-preview { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.scarcity-level-preview > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 13px; border: 1px solid var(--season-line, #454545); border-radius: 11px; background: color-mix(in srgb, var(--season-bg, #090b0e) 70%, transparent); }
+.scarcity-level-preview span { color: var(--season-muted, #a8adb3); font-size: 11px; }
+.scarcity-level-preview strong { color: var(--season-primary, #ff9d55); font-size: 17px; }
+@media (max-width: 600px) { .item-editor-form { padding: 14px; } .scarcity-level-preview { grid-template-columns: 1fr 1fr; } }
+
+/* Uso e acompanhamento do sistema de escassez dos consumíveis */
+.scarcity-use-card {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #e58a35) 42%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #e58a35) 12%, var(--season-surface, #17151f)), var(--season-surface, #17151f));
+}
+.scarcity-use-heading { display: flex; align-items: center; gap: 12px; }
+.scarcity-use-heading > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: color-mix(in srgb, var(--season-primary, #e58a35) 18%, transparent); font-size: 23px; }
+.scarcity-use-heading h3 { margin: 0; font-size: 16px; }
+.scarcity-use-heading p, .scarcity-use-card > p { margin: 4px 0 0; color: var(--season-muted, #aaa); font-size: 12px; line-height: 1.5; }
+.scarcity-use-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.scarcity-use-stats > div { display: grid; gap: 5px; padding: 11px; border-radius: 11px; background: rgba(0,0,0,.18); }
+.scarcity-use-stats small { color: var(--season-muted, #aaa); font-size: 11px; }
+.scarcity-use-stats strong { font-size: 14px; }
+.scarcity-use-card .primary-button { width: 100%; }
+.scarcity-use-card .primary-button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 480px) { .scarcity-use-card { padding: 14px; } .scarcity-use-stats { grid-template-columns: 1fr; } }
+
+
+/* Classificações substituem o antigo seletor de categoria no editor */
+.item-editor-form .item-classifications-panel {
+  grid-column: 1 / -1; min-width: 0; padding: 18px;
+  border: 1px solid var(--season-line, #454545); border-radius: 15px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #ff9d55) 7%, var(--season-surface, #171b20)), var(--season-bg, #090b0e));
+}
+.item-classifications-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:15px; }
+.item-classifications-heading strong { display:block; font-size:15px; color:var(--season-text, #f4f4f4); }
+.item-classifications-heading p { margin:5px 0 0; color:var(--season-muted, #a8adb3); font-size:12px; line-height:1.5; }
+.item-classifications-heading > span { flex:0 0 auto; padding:6px 9px; border-radius:999px; color:var(--season-primary, #ff9d55); background:color-mix(in srgb, var(--season-primary, #ff9d55) 13%, transparent); font-size:11px; font-weight:750; }
+.item-classifications-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:9px; }
+.item-classification-option { display:flex; align-items:center; gap:9px; min-height:45px; padding:9px 11px; border:1px solid var(--season-line, #454545); border-radius:11px; background:color-mix(in srgb, var(--season-surface, #171b20) 82%, transparent); color:var(--season-text, #f4f4f4); font-size:13px; cursor:pointer; transition:border-color .18s, background .18s, transform .18s; }
+.item-classification-option:hover { border-color:var(--season-primary, #ff9d55); transform:translateY(-1px); }
+.item-classification-option.selected { border-color:var(--season-primary, #ff9d55); background:color-mix(in srgb, var(--season-primary, #ff9d55) 13%, var(--season-surface, #171b20)); }
+.item-classification-option input { position:absolute; opacity:0; width:1px; height:1px; }
+.item-classification-check { display:grid; place-items:center; width:22px; height:22px; flex:0 0 22px; border:1px solid var(--season-line, #666); border-radius:7px; color:var(--season-muted, #aaa); font-weight:800; }
+.item-classification-option.selected .item-classification-check { border-color:var(--season-primary, #ff9d55); background:var(--season-primary, #ff9d55); color:#17120e; }
+.item-classifications-hint { margin:12px 0 0; color:var(--season-primary, #ff9d55); font-size:12px; }
+@media(max-width:520px) { .item-classifications-panel { padding:13px !important; } .item-classifications-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; } .item-classification-option { padding:8px; font-size:12px; } .item-classifications-heading { flex-direction:column; } }
+
+/* Refinamento do editor e da ficha de detalhes da mochila */
+.item-editor-form {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--season-line, rgba(255,255,255,.13));
+  border-radius: 20px;
+  background: linear-gradient(145deg, var(--season-surface, #17191d), var(--season-surface-alt, #202329));
+  box-shadow: 0 18px 48px rgba(0,0,0,.2);
+}
+.item-editor-form > .form-heading,
+.item-editor-form > .item-classifications-panel,
+.item-editor-form > .scarcity-editor-card,
+.item-editor-form > .emoji-field,
+.item-editor-form > .equipment-rules-preview,
+.item-editor-form > button[type="submit"] { grid-column: 1 / -1; }
+.item-editor-form .form-heading { padding-bottom: 16px; border-bottom: 1px solid var(--season-line, rgba(255,255,255,.12)); }
+.item-editor-form label { min-width: 0; display: flex; flex-direction: column; gap: 8px; color: var(--season-text, #f4f0fa); }
+.item-editor-form input:not([type="checkbox"]), .item-editor-form select { width: 100%; box-sizing: border-box; }
+.scarcity-exhausted-toggle { display:flex !important; flex-direction:row !important; align-items:center; gap:12px !important; padding:14px 16px; margin-top:14px; border:1px solid rgba(225,145,75,.35); border-radius:13px; background:rgba(225,145,75,.08); cursor:pointer; }
+.scarcity-exhausted-toggle input { width:18px; height:18px; accent-color:#e18f4b; }
+.scarcity-exhausted-toggle span { display:grid; gap:3px; }
+.scarcity-exhausted-toggle small { color:var(--season-muted,#a8adb3); font-weight:400; line-height:1.4; }
+.item-details-redesigned { display:flex; flex-direction:column; gap:16px; }
+.item-details-redesigned > .item-art { flex:0 0 auto; width:88px !important; height:88px !important; border:1px solid var(--season-line,rgba(255,255,255,.14)); background:linear-gradient(145deg,rgba(230,145,75,.16),rgba(255,255,255,.035)) !important; box-shadow:0 10px 30px rgba(0,0,0,.2); }
+.item-details-redesigned > small { color:var(--season-muted,#aaa); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.item-details-redesigned > h2 { margin: -8px 42px 0 0; font-size:clamp(25px,4vw,32px); letter-spacing:-.04em; line-height:1.1; }
+.item-details-redesigned > p:not(.item-rarity) { color:var(--season-muted,#b2b4ba); line-height:1.65; margin:0; }
+.item-details-redesigned .item-rarity { display:inline-flex; align-self:flex-start; margin:0; padding:7px 11px; border-radius:999px; background:rgba(225,145,75,.1); color:#e6a36d; font-size:12px; }
+.item-details-redesigned .item-economic-details { margin:0; }
+.item-details-redesigned .scarcity-use-card, .item-details-redesigned .item-sale-section, .item-details-redesigned .equipment-rules-preview { padding:18px; border:1px solid var(--season-line,rgba(255,255,255,.12)); border-radius:16px; background:var(--season-surface-alt,rgba(255,255,255,.035)); }
+.item-details-redesigned .item-sale-section h3, .item-details-redesigned .equipment-rules-preview h3 { margin-top:0; }
+.item-details-redesigned > p:last-child { margin-bottom:0; }
+@media (max-width:650px) { .item-editor-form { grid-template-columns:1fr; } .item-editor-form > * { grid-column:1 / -1; } .item-details-redesigned { padding:20px !important; gap:13px; } }
+
+/* HäxBag — reconstrução visual do formulário de edição da mochila */
+.inventory-section .item-editor-form {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch;
+  gap: 22px !important;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 22px 0 28px;
+  padding: clamp(18px, 3vw, 30px) !important;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #e99a55) 24%, var(--season-line, #34383d)) !important;
+  border-radius: 22px !important;
+  background: linear-gradient(155deg, color-mix(in srgb, var(--season-surface, #191c20) 96%, #29221d), var(--season-bg, #101215)) !important;
+  box-shadow: 0 22px 60px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.035);
+}
+.inventory-section .item-editor-form > .form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  padding: 0 0 20px !important;
+  border-bottom: 1px solid var(--season-line, #34383d) !important;
+}
+.inventory-section .item-editor-form > .form-heading h3 {
+  margin: 0 0 7px !important;
+  color: var(--season-text, #f5f1ec);
+  font-size: clamp(21px, 3vw, 27px) !important;
+  font-weight: 850;
+  letter-spacing: -.04em;
+}
+.inventory-section .item-editor-form > .form-heading p {
+  margin: 0;
+  color: var(--season-muted, #a9adb2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.inventory-section .item-editor-form > .form-heading > span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #e99a55) 35%, transparent);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--season-primary, #e99a55) 12%, transparent);
+  color: var(--season-primary, #e99a55);
+  font-size: 23px;
+}
+.inventory-section .item-editor-form > label,
+.inventory-section .item-editor-form > .form-row > label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+  min-width: 0;
+  color: var(--season-text, #f1eee9);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .015em;
+}
+.inventory-section .item-editor-form input:not([type="checkbox"]),
+.inventory-section .item-editor-form select {
+  width: 100%;
+  min-width: 0;
+  min-height: 47px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid var(--season-line, #3b4046);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--season-bg, #101215) 86%, #25292e);
+  color: var(--season-text, #f5f1ec);
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.inventory-section .item-editor-form input:not([type="checkbox"]):focus,
+.inventory-section .item-editor-form select:focus {
+  border-color: var(--season-primary, #e99a55);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary, #e99a55) 16%, transparent);
+}
+.inventory-section .item-editor-form > .form-row {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 17px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+.inventory-section .item-editor-form .emoji-field,
+.inventory-section .item-editor-form .item-classifications-panel,
+.inventory-section .item-editor-form .scarcity-editor-card,
+.inventory-section .item-editor-form .equipment-rules-preview {
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 18px !important;
+  border: 1px solid var(--season-line, #383d43) !important;
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--season-surface, #191c20) 76%, var(--season-bg, #101215)) !important;
+}
+.inventory-section .item-editor-form .emoji-field,
+.inventory-section .item-editor-form .item-classifications-panel,
+.inventory-section .item-editor-form .scarcity-editor-card,
+.inventory-section .item-editor-form .equipment-rules-preview {
+  grid-column: 1 / -1;
+}
+.inventory-section .item-editor-form .emoji-field > label {
+  display: block;
+  margin: 0 0 13px;
+  color: var(--season-text, #f1eee9);
+  font-size: 13px;
+  font-weight: 800;
+}
+.inventory-section .item-editor-form .emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.inventory-section .item-editor-form .emoji-option {
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  border: 1px solid var(--season-line, #3b4046);
+  border-radius: 12px;
+  background: var(--season-bg, #101215);
+  font-size: 21px;
+  transition: .18s ease;
+}
+.inventory-section .item-editor-form .emoji-option.selected {
+  border-color: var(--season-primary, #e99a55);
+  background: color-mix(in srgb, var(--season-primary, #e99a55) 15%, var(--season-bg, #101215));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--season-primary, #e99a55) 13%, transparent);
+}
+.inventory-section .item-editor-form .emoji-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 13px 0 0;
+  color: var(--season-muted, #a9adb2);
+  font-size: 12px;
+}
+.inventory-section .item-editor-form .emoji-preview-icon { font-size: 25px; }
+.inventory-section .item-editor-form .item-classifications-heading { align-items: center; }
+.inventory-section .item-editor-form .item-classifications-grid { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); }
+.inventory-section .item-editor-form .item-classification-option { min-height: 48px; }
+.inventory-section .item-editor-form .scarcity-editor-card {
+  border-color: color-mix(in srgb, var(--season-primary, #e99a55) 42%, var(--season-line, #383d43)) !important;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #e99a55) 9%, var(--season-surface, #191c20)), var(--season-bg, #101215)) !important;
+}
+.inventory-section .item-editor-form .scarcity-editor-card > label:not(.scarcity-exhausted-toggle) {
+  display: grid;
+  gap: 8px;
+}
+.inventory-section .item-editor-form .scarcity-exhausted-toggle {
+  margin: 0;
+}
+.inventory-section .item-editor-form .equipment-rules-preview {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  color: var(--season-muted, #a9adb2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.inventory-section .item-editor-form .equipment-rules-preview strong {
+  margin-bottom: 3px;
+  color: var(--season-primary, #e99a55);
+  font-size: 13px;
+}
+.inventory-section .item-editor-form .equipment-rules-preview p { margin: 0; }
+.inventory-section .item-editor-form > .form-row > label[style] {
+  color: var(--season-text, #f1eee9) !important;
+}
+.inventory-section .item-editor-form > .form-row > select[style] {
+  grid-column: 1 / -1;
+  margin-top: -12px;
+}
+.inventory-section .item-editor-form > .primary-button[type="submit"] {
+  align-self: stretch;
+  min-height: 51px;
+  margin-top: 2px;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: .01em;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--season-primary, #e99a55) 15%, transparent);
+}
+@media (max-width: 680px) {
+  .inventory-section .item-editor-form { gap: 17px !important; padding: 16px !important; border-radius: 17px !important; }
+  .inventory-section .item-editor-form > .form-row { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .inventory-section .item-editor-form > .form-row > * { grid-column: 1 / -1; }
+  .inventory-section .item-editor-form .emoji-field,
+  .inventory-section .item-editor-form .item-classifications-panel,
+  .inventory-section .item-editor-form .scarcity-editor-card,
+  .inventory-section .item-editor-form .equipment-rules-preview { padding: 14px !important; }
+  .inventory-section .item-editor-form .item-classifications-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 390px) {
+  .inventory-section .item-editor-form .item-classifications-grid { grid-template-columns: 1fr; }
+  .inventory-section .item-editor-form .item-classification-option { min-height: 42px; }
+}
+
+/* Defesa e aplicação de dano na ficha resumida */
+.sheet-dexterity-with-armor { align-items: center; flex-wrap: wrap; }
+.armor-dexterity-value { color: var(--season-primary, #ffad62); font-size: 11px; font-weight: 800; margin-left: 7px; padding: 3px 7px; border: 1px solid color-mix(in srgb, var(--season-primary, #ffad62) 38%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--season-primary, #ffad62) 10%, transparent); }
+.sheet-damage-controls { margin: 16px 0; padding: 18px; border: 1px solid var(--season-line, rgba(255,255,255,.12)); border-radius: 16px; background: linear-gradient(145deg, var(--season-surface, #17151f), var(--season-bg, #101014)); }
+.sheet-damage-heading h3 { margin: 0 0 5px; }
+.sheet-damage-heading p { margin: 0 0 14px; color: var(--season-muted, #aaa); font-size: 12px; }
+.sheet-damage-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.sheet-damage-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--season-line, rgba(255,255,255,.12)); border-radius: 12px; background: var(--season-surface-alt, rgba(255,255,255,.035)); }
+.sheet-damage-card label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 700; }
+.sheet-damage-card input,.sheet-damage-card select { width: 100%; min-width: 0; padding: 10px 11px; border-radius: 9px; border: 1px solid var(--season-line, rgba(255,255,255,.16)); color: var(--season-text, #f4f0fa); background: var(--season-bg, #101014); }
+.sheet-damage-card small { color: var(--season-muted, #b9b4c2); font-size: 11px; }
+.sheet-damage-card button,.equipment-toggle-button { border: 1px solid var(--season-primary, #c8b5ff); border-radius: 9px; padding: 10px 12px; color: var(--season-text, #fff); background: color-mix(in srgb, var(--season-primary, #c8b5ff) 16%, transparent); font-weight: 800; cursor: pointer; }
+.sheet-damage-card button:disabled { opacity: .45; cursor: not-allowed; }
+.equipment-toggle-button { width: 100%; margin: 12px 0; }
+@media (max-width: 620px) { .sheet-damage-grid { grid-template-columns: 1fr; } }
+
+/* Cartões do inventário: acabamento visual e estados de equipamento */
+.inventory-item-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 190px;
+  padding: 17px !important;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 17%, var(--border, #393342)) !important;
+  border-radius: 17px !important;
+  background: linear-gradient(150deg,
+    color-mix(in srgb, var(--season-surface, #17151f) 94%, var(--season-primary, #b49aff) 6%),
+    var(--season-bg, #100e19)) !important;
+  box-shadow: 0 7px 20px rgba(0,0,0,.12);
+}
+.inventory-item-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--season-primary, #b49aff) 65%, transparent), transparent);
+  opacity: .65;
+  pointer-events: none;
+}
+.inventory-item-card:hover {
+  transform: translateY(-4px) !important;
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 48%, var(--border, #393342)) !important;
+  box-shadow: 0 13px 30px rgba(0,0,0,.22);
+}
+.inventory-item-card .item-art {
+  width: 49px;
+  height: 49px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 23%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 10%, var(--season-surface, #17151f));
+}
+.inventory-item-card .item-category {
+  margin-top: 13px;
+  color: var(--season-primary, #b49aff);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.inventory-item-card h3 { font-size: 15px !important; line-height: 1.35; }
+.inventory-item-card .item-description {
+  min-height: 34px;
+  color: var(--season-muted, #aaa3b5);
+  line-height: 1.5;
+}
+.inventory-item-card .item-footer {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--border, #393342) 65%, transparent);
+}
+.inventory-item-card .equipment-card-icon {
+  width: 29px;
+  height: 29px;
+  border-radius: 9px;
+  font-size: 15px;
+  opacity: .9;
+}
+.inventory-item-card .armor-card-icon { color: #f0b66b; }
+.inventory-item-card .armor-card-icon:hover,
+.inventory-item-card .armor-card-icon.is-equipped {
+  color: #ffd18e;
+  border-color: color-mix(in srgb, #e8a84f 55%, transparent);
+  background: color-mix(in srgb, #e8a84f 17%, transparent);
+  opacity: 1;
+}
+
+
+/* Ações de equipamento sempre visíveis nos cartões do inventário */
+.inventory-item-card .item-actions {
+  display: flex !important;
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none !important;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
+.inventory-item-card .item-actions .item-menu {
+  display: inline-grid !important;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  visibility: visible !important;
+  opacity: 1;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent);
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 12%, var(--season-surface, #17151f));
+}
+.inventory-item-card .weapon-card-icon { color: #9bc8ff; }
+.inventory-item-card .protection-card-icon { color: #9de0c1; }
+.inventory-item-card .weapon-card-icon.is-equipped,
+.inventory-item-card .protection-card-icon.is-equipped {
+  color: #fff;
+  border-color: var(--season-primary, #b49aff);
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 28%, transparent);
+}
+
+/* Controles de equipamento em faixa própria: não dependem do espaço dos ícones superiores */
+.inventory-item-card .inventory-equipment-controls {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: 100%;
+  margin: 12px 0 2px;
+  position: relative;
+  z-index: 3;
+}
+.inventory-item-card .inventory-equipment-label {
+  flex: 0 0 100%;
+  color: var(--season-muted, #aaa3b5);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+.inventory-item-card .inventory-equip-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 42%, var(--season-line, #393342));
+  border-radius: 10px;
+  color: var(--season-text, #f5f1ff);
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 12%, var(--season-surface, #17151f));
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.inventory-item-card .inventory-equip-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--season-primary, #b49aff);
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 23%, var(--season-surface, #17151f));
+}
+.inventory-item-card .inventory-equip-button.is-equipped {
+  border-color: color-mix(in srgb, #69c99a 70%, transparent);
+  color: #a9f0c8;
+  background: rgba(54, 157, 105, .16);
+}
+.inventory-item-card .inventory-equip-symbol { font-size: 14px; }
+
+/* Labels e metadados dos cartões com aparência de pequenos chips */
+.inventory-item-card .item-category {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 9px;
+  margin-top: 11px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 10%, transparent);
+  color: var(--season-primary, #c8b5ff);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+.inventory-item-card .item-footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--season-line, #393342) 75%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--season-surface-alt, #24202d) 70%, transparent);
+  color: var(--season-muted, #b9b4c2);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+
+/* Mercado da campanha — apresentação visual */
+.shops-page-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.shops-heading {
+  align-items: center;
+  padding: 22px 24px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 32%, var(--season-line, #393342));
+  border-radius: 18px;
+  background: radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent), transparent 38%), var(--season-surface, #17151f);
+  box-shadow: 0 12px 32px rgba(0,0,0,.14);
+}
+.shops-eyebrow {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: var(--season-primary, #c8b5ff);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+.shops-heading h2, .shop-catalog-heading h2 { margin-top: 0; }
+.shop-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 15px;
+}
+.shop-card {
+  position: relative;
+  min-width: 0;
+  padding: 17px;
+  overflow: hidden;
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 16px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #b49aff) 7%, var(--season-surface, #17151f)), var(--season-surface, #17151f) 65%);
+  box-shadow: 0 7px 20px rgba(0,0,0,.12);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.shop-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 58%, var(--season-line, #393342));
+  box-shadow: 0 13px 28px rgba(0,0,0,.2);
+}
+.shop-card.is-selected {
+  border-color: var(--season-primary, #b49aff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent), 0 12px 28px rgba(0,0,0,.2);
+}
+.shop-card > button:first-child { min-height: 145px; }
+.shop-card .item-art {
+  display: grid;
+  width: 54px; height: 54px;
+  place-items: center;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 30%, transparent);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 13%, var(--season-surface, #17151f));
+  font-size: 27px;
+}
+.shop-card h3 { margin: 0 0 7px; font-size: 17px; font-weight: 850; }
+.shop-card .item-description { min-height: 38px; color: var(--season-muted, #b9b4c2); line-height: 1.5; }
+.shop-card small { color: var(--season-primary, #c8b5ff); font-weight: 800; }
+.shop-card > .form-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding-top: 13px; margin-top: 12px !important;
+  border-top: 1px solid color-mix(in srgb, var(--season-line, #393342) 75%, transparent);
+}
+.shop-card > .form-row button { flex: 1 1 auto; min-width: 90px; }
+.shop-catalog-heading {
+  padding: 18px 20px;
+  margin-top: 6px;
+  border-left: 3px solid var(--season-primary, #b49aff);
+  border-radius: 0 13px 13px 0;
+  background: color-mix(in srgb, var(--season-surface, #17151f) 85%, var(--season-primary, #b49aff));
+}
+@media (max-width: 640px) {
+  .shops-heading { align-items: stretch; padding: 17px; }
+  .shop-cards-grid { grid-template-columns: 1fr; }
+}
+
+/* Cartões de produtos do catálogo das lojas */
+.shop-product-card {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid color-mix(in srgb, var(--season-line, #393342) 82%, var(--season-primary, #b49aff));
+  border-radius: 18px;
+  background: linear-gradient(155deg, color-mix(in srgb, var(--season-primary, #b49aff) 8%, var(--season-surface, #17151f)), var(--season-surface, #17151f) 48%);
+  box-shadow: 0 8px 22px rgba(0,0,0,.13);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.shop-product-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 62%, var(--season-line, #393342));
+  box-shadow: 0 14px 30px rgba(0,0,0,.2);
+}
+.shop-product-art {
+  width: 62px !important; height: 62px !important;
+  display: grid; place-items: center;
+  margin: 0 0 3px !important;
+  border-radius: 18px !important;
+  font-size: 31px !important;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 15%, var(--season-surface, #17151f)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+.shop-product-category {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent);
+  font-size: 10px; font-weight: 850; letter-spacing: .04em;
+}
+.shop-product-title { margin: 2px 0 0 !important; font-size: 18px !important; line-height: 1.25; }
+.shop-product-card .item-description { min-height: 42px; margin: 0; color: var(--season-muted, #b9b4c2); line-height: 1.5; }
+.shop-product-economics {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
+  margin: 5px 0 0; padding: 11px;
+  border: 1px solid var(--season-line, #393342); border-radius: 13px;
+  background: color-mix(in srgb, var(--season-surface, #17151f) 80%, var(--season-primary, #b49aff));
+}
+.shop-product-economics > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.shop-product-economics span { color: var(--season-muted, #b9b4c2); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
+.shop-product-economics strong { color: var(--season-text, #f4f0fa); font-size: 15px; overflow-wrap: anywhere; }
+.shop-product-economics > div:first-child strong { color: var(--season-primary, #c8b5ff); }
+.shop-product-stock { display: flex; align-items: center; gap: 8px; margin: 1px 0 4px; color: var(--season-muted, #b9b4c2); font-size: 12px; font-weight: 750; }
+.shop-stock-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #62c995; box-shadow: 0 0 0 3px rgba(98,201,149,.12); }
+.shop-product-stock.is-empty { color: #e69b9b; }
+.shop-product-stock.is-empty .shop-stock-dot { background: #df7777; box-shadow: 0 0 0 3px rgba(223,119,119,.12); }
+.shop-purchase-field { gap: 7px !important; margin: 0 !important; font-size: 12px !important; font-weight: 800; }
+.shop-purchase-field select, .shop-purchase-field input { min-height: 40px; border-radius: 10px !important; }
+.shop-buy-button { width: 100%; min-height: 43px; margin-top: 2px; border-radius: 12px !important; font-weight: 850; }
+.shop-product-card > .form-row { padding: 12px; border: 1px solid var(--season-line, #393342); border-radius: 12px; background: rgba(0,0,0,.08); }
+@media (max-width: 640px) { .shop-product-card { padding: 15px; } }
+
+/* Controles de dano integrados aos cartões de status correspondentes */
+.status-card-damage-control{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:11px;border:1px solid rgba(242,139,155,.28);border-radius:12px;background:rgba(242,139,155,.07);text-align:left;}
+.status-card-damage-control.sanity{border-color:color-mix(in srgb,var(--season-primary,#c8b5ff) 35%,transparent);background:color-mix(in srgb,var(--season-primary,#c8b5ff) 8%,transparent);}
+.status-card-damage-control>strong{font-size:12px;letter-spacing:.02em;}
+.status-card-damage-control label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700;}
+.status-card-damage-control input,.status-card-damage-control select{box-sizing:border-box;width:100%;min-width:0;padding:8px 9px;border:1px solid var(--season-line,rgba(255,255,255,.16));border-radius:8px;background:var(--season-bg,#101014);color:var(--season-text,#f4f0fa);font:inherit;}
+.status-card-damage-control small{font-size:10px;color:var(--season-muted,#b9b4c2);}
+.status-card-damage-control button{padding:8px 10px;border:1px solid var(--season-primary,#c8b5ff);border-radius:8px;background:color-mix(in srgb,var(--season-primary,#c8b5ff) 17%,transparent);color:var(--season-text,#fff);font-size:11px;font-weight:800;cursor:pointer;}
+.status-card-damage-control button:disabled{opacity:.45;cursor:not-allowed;}
+.armor-dexterity-value{display:inline-flex;align-items:center;justify-content:center;margin-right:7px;padding:2px 6px;border:1px solid rgba(117,201,238,.45);border-radius:6px;background:rgba(117,201,238,.12);color:#75c9ee;font-size:12px;font-weight:800;vertical-align:middle;}
+
+/* Refinamento visual dos cartões PV, PS e PR e seus controles de dano */
+.app-shell .sheet-summary-status-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 18px !important;
+  border-radius: 20px !important;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 22%, var(--season-line, #393342)) !important;
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--season-primary, #b49aff) 13%, transparent), transparent 52%),
+    linear-gradient(155deg, color-mix(in srgb, var(--season-surface, #191720) 92%, white 8%), var(--season-surface, #191720)) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.035);
+}
+.app-shell .sheet-summary-status-card > span {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 30%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 10%, transparent);
+  color: var(--season-text, #f4f0fa);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.app-shell .sheet-summary-status-card > strong {
+  font-size: clamp(25px, 3vw, 31px) !important;
+  line-height: 1.15;
+  letter-spacing: -.045em;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell .sheet-summary-status-card > strong small { margin-left: 3px; letter-spacing: 0; }
+.app-shell .sheet-summary-status-card > div[style*="height: 6px"] {
+  height: 8px !important;
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: 999px !important;
+}
+.app-shell .sheet-summary-status-card .status-card-damage-control {
+  gap: 11px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid rgba(242,139,155,.24);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(242,139,155,.095), rgba(242,139,155,.025));
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+}
+.app-shell .sheet-summary-status-card .status-card-damage-control.sanity {
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 32%, transparent);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent), color-mix(in srgb, var(--season-primary, #b49aff) 3%, transparent));
+}
+.app-shell .status-card-damage-control > strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+.app-shell .status-card-damage-control > strong::before {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(242,139,155,.16);
+  content: '⚔';
+  font-size: 13px;
+}
+.app-shell .status-card-damage-control.sanity > strong::before {
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent);
+  content: '✧';
+}
+.app-shell .status-card-damage-control label {
+  gap: 6px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.app-shell .status-card-damage-control input,
+.app-shell .status-card-damage-control select {
+  min-height: 41px;
+  padding: 9px 11px;
+  border: 1px solid color-mix(in srgb, var(--season-line, #393342) 78%, white 8%);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--season-bg, #101014) 88%, var(--season-surface, #191720));
+  color: var(--season-text, #f4f0fa);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: none;
+}
+.app-shell .status-card-damage-control input:focus,
+.app-shell .status-card-damage-control select:focus {
+  border-color: var(--season-primary, #b49aff);
+  outline: 3px solid color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent);
+}
+.app-shell .status-card-damage-control small {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 9px;
+  background: rgba(0,0,0,.12);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.app-shell .status-card-damage-control button {
+  min-height: 40px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .025em;
+  box-shadow: 0 5px 14px rgba(0,0,0,.12);
+}
+.app-shell .status-card-damage-control:not(.sanity) button {
+  border-color: rgba(242,139,155,.45);
+  background: linear-gradient(135deg, rgba(242,139,155,.23), rgba(242,139,155,.11));
+}
+@media (max-width: 760px) {
+  .app-shell .sheet-summary-status-card { padding: 15px !important; border-radius: 17px !important; }
+  .app-shell .sheet-summary-status-card .status-card-damage-control { padding: 12px; }
+}
+
+/* HäxBag — refinamento visual geral da ficha */
+.app-shell .character-sheet-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.app-shell .sheet-summary-header {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 28%, var(--season-line, transparent));
+  border-radius: 22px;
+  background: radial-gradient(ellipse at 92% 8%, color-mix(in srgb, var(--season-primary, #b49aff) 19%, transparent), transparent 42%), linear-gradient(145deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f));
+  box-shadow: 0 14px 34px rgba(0,0,0,.16);
+}
+.app-shell .sheet-summary-header h2 { margin: 5px 0 8px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.7px; }
+.app-shell .sheet-summary-progression { display: grid; grid-template-columns: repeat(auto-fit,minmax(135px,1fr)); gap: 9px; margin-top: 16px; }
+.app-shell .sheet-summary-progression > div,
+.app-shell .sheet-summary-attributes article,
+.app-shell .sheet-summary-values > div {
+  border: 1px solid var(--season-line, rgba(255,255,255,.1));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--season-surface, #17151f) 78%, transparent);
+}
+.app-shell .sheet-summary-progression > div { padding: 11px 13px; }
+.app-shell .sheet-summary-progression span,
+.app-shell .sheet-summary-values span,
+.app-shell .sheet-summary-attributes span { color: var(--season-muted, #aaa); font-size: 11px; font-weight: 750; letter-spacing: .55px; text-transform: uppercase; }
+.app-shell .sheet-summary-progression strong { display:block; margin-top:4px; font-size:15px; }
+.app-shell .sheet-summary-attributes { display:grid; grid-template-columns:repeat(auto-fit,minmax(115px,1fr)); gap:10px; }
+.app-shell .sheet-summary-attributes article { padding:15px; transition: transform .18s ease,border-color .18s ease; }
+.app-shell .sheet-summary-attributes article:hover { transform: translateY(-2px); border-color: color-mix(in srgb,var(--season-primary,#b49aff) 45%,var(--season-line,transparent)); }
+.app-shell .sheet-summary-attributes strong { display:block; margin-top:7px; font-size:27px; line-height:1; }
+.app-shell .sheet-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.app-shell .sheet-summary-card { padding:18px; border:1px solid var(--season-line,rgba(255,255,255,.1)); border-radius:18px; background:linear-gradient(150deg,var(--season-surface-alt,#211c31),var(--season-surface,#17151f)); box-shadow:0 10px 24px rgba(0,0,0,.12); }
+.app-shell .sheet-summary-card h3,.app-shell .sheet-summary-notes h3 { margin:0 0 14px; font-size:15px; letter-spacing:.2px; }
+.app-shell .sheet-summary-values { display:grid; gap:8px; }
+.app-shell .sheet-summary-values > div { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; }
+.app-shell .sheet-summary-values strong { font-size:16px; }
+.app-shell .sheet-summary-notes { padding:18px; border:1px solid var(--season-line,rgba(255,255,255,.1)); border-radius:18px; background:var(--season-surface, #17151f); }
+.app-shell .sheet-summary-notes p { color:var(--season-muted,#aaa); line-height:1.65; }
+.app-shell .sheet-summary-hint { margin:0; color:var(--season-muted,#aaa); font-size:12px; }
+
+/* Editor: campos, seções e accordions */
+.app-shell .character-sheet-editor { display:flex; flex-direction:column; gap:12px; }
+.app-shell .character-sheet-editor > section,
+.app-shell .character-sheet-editor > div[style*="border-radius"] {
+  border-color: var(--season-line,rgba(255,255,255,.12)) !important;
+  border-radius:18px !important;
+  background:linear-gradient(150deg,var(--season-surface-alt,#211c31),var(--season-surface,#17151f)) !important;
+  box-shadow:0 9px 22px rgba(0,0,0,.11);
+}
+.app-shell .sheet-editor-accordion { border:1px solid var(--season-line,rgba(255,255,255,.12)) !important; border-radius:17px !important; background:linear-gradient(145deg,var(--season-surface-alt,#211c31),var(--season-surface,#17151f)) !important; box-shadow:0 8px 20px rgba(0,0,0,.1); }
+.app-shell .sheet-editor-accordion > summary { padding:15px 17px; border-radius:15px; font-weight:850; letter-spacing:.15px; }
+.app-shell .sheet-editor-accordion[open] > summary { color:var(--season-primary,#d0baff); border-bottom:1px solid var(--season-line,rgba(255,255,255,.1)); }
+.app-shell .character-sheet-editor label { color:var(--season-text,#f4f0fa); font-weight:700; }
+.app-shell .character-sheet-editor input:not([type="checkbox"]):not([type="radio"]),
+.app-shell .character-sheet-editor select,
+.app-shell .character-sheet-editor textarea {
+  border:1px solid var(--season-line,rgba(255,255,255,.14)) !important;
+  border-radius:11px !important;
+  background:var(--season-bg,#101014) !important;
+  color:var(--season-text,#f4f0fa) !important;
+  transition:border-color .18s ease,box-shadow .18s ease;
+}
+.app-shell .character-sheet-editor input:focus,
+.app-shell .character-sheet-editor select:focus,
+.app-shell .character-sheet-editor textarea:focus { outline:none; border-color:var(--season-primary,#b49aff) !important; box-shadow:0 0 0 3px color-mix(in srgb,var(--season-primary,#b49aff) 16%,transparent); }
+.app-shell .character-sheet-editor textarea { resize:vertical; line-height:1.55; }
+@media (max-width:720px) {
+  .app-shell .sheet-summary-grid { grid-template-columns:1fr; }
+  .app-shell .sheet-summary-card { padding:14px; }
+  .app-shell .sheet-summary-attributes { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+/* ===== HäxBag — Janela flutuante de itens ===== */
+
+.item-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10050 !important;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 5, 9, 0.78);
+  backdrop-filter: blur(7px);
+  overflow-y: auto;
+  animation: itemModalFade 0.2s ease;
+}
+
+.item-modal-content {
+  position: relative;
+  width: min(100%, 760px);
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 22px;
+  background: var(--season-surface, #19171d);
+  border: 1px solid var(--season-line, rgba(255, 255, 255, 0.14));
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.48);
+  animation: itemModalEnter 0.22s ease;
+}
+
+.item-modal-content .item-editor-form {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 22px;
+}
+
+.item-modal-content .form-heading {
+  position: sticky;
+  top: -1px;
+  z-index: 2;
+  padding: 18px;
+  background: var(--season-surface, #19171d);
+  border-bottom: 1px solid var(--season-line, rgba(255, 255, 255, 0.12));
+}
+
+.item-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.item-editor-actions button {
+  min-height: 44px;
+}
+
+@keyframes itemModalFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes itemModalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 600px) {
+  .item-modal-overlay {
+    padding: 10px;
+  }
+
+  .item-modal-content {
+    max-height: 88vh;
+    border-radius: 16px;
+  }
+}
+/* ===== HäxBag — Correção do layout do editor flutuante ===== */
+
+.item-modal-overlay {
+  align-items: center;
+  justify-content: center;
+}
+
+.item-modal-content {
+  width: min(760px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.item-modal-content .item-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.item-modal-content .item-editor-form > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.item-modal-content .item-editor-form .form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+.item-modal-content .item-editor-form input,
+.item-modal-content .item-editor-form select,
+.item-modal-content .item-editor-form textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.item-modal-content .item-editor-form .emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.item-modal-content .item-editor-form .item-classifications-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.item-modal-content .item-editor-form .form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  .item-modal-content .item-editor-form {
+    padding: 16px;
+  }
+
+  .item-modal-content .item-editor-form .item-classifications-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mais espaço para o editor de itens */
+.item-modal-content {
+  width: min(860px, 96vw);
+  max-width: 860px;
+}
+
+.item-modal-content .item-editor-form {
+  padding: 28px;
+}
+
+.item-modal-content .item-editor-form label {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.item-modal-content .item-editor-form input,
+.item-modal-content .item-editor-form select {
+  min-height: 44px;
+}
+
+@media (max-width: 600px) {
+  .item-modal-content .item-editor-form {
+    padding: 18px;
+  }
+}
+
+/* Ajuste do seletor de emoji no modal */
+.item-modal-content .emoji-field {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+  border-radius: 14px;
+  background: var(--season-bg, rgba(0, 0, 0, 0.12));
+  border: 1px solid var(--season-line, rgba(255, 255, 255, 0.12));
+}
+
+.item-modal-content .emoji-field > label {
+  display: block;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.item-modal-content .emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 9px;
+  width: 100%;
+}
+
+.item-modal-content .emoji-option {
+  min-width: 42px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+}
+
+.item-modal-content .emoji-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 4px 0 0;
+}
+
+/* ===== HäxBag — Detalhes do item ===== */
+
+.item-details-redesigned {
+  width: min(100%, 620px) !important;
+  padding: 28px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.item-details-header {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 8px 0 22px;
+  border-bottom: 1px solid var(--season-line);
+}
+
+.item-details-header .item-art {
+  width: 88px !important;
+  height: 88px !important;
+  display: grid;
+  place-items: center;
+  margin: 0 !important;
+  border-radius: 22px !important;
+  font-size: 48px !important;
+  background: var(--season-surface-alt) !important;
+  border: 1px solid var(--season-line);
+}
+
+.item-details-heading {
+  min-width: 0;
+}
+
+.item-details-heading > small {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: var(--season-primary);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.item-details-heading .item-rarity {
+  margin: 0 0 7px;
+  color: var(--season-muted);
+  font-size: 13px;
+}
+
+.item-details-heading h2 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.item-details-heading > p:last-child {
+  margin: 0;
+  color: var(--season-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.item-basic-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.item-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 15px;
+  border-radius: 14px;
+  background: var(--season-surface-alt);
+  border: 1px solid var(--season-line);
+}
+
+.item-stat-card small {
+  color: var(--season-muted);
+  font-size: 12px;
+}
+
+.item-stat-card strong {
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.item-details-redesigned .item-economic-details {
+  gap: 10px;
+}
+
+.item-details-redesigned .item-economic-details > div,
+.item-details-redesigned .equipment-rules-preview,
+.item-details-redesigned .scarcity-use-card,
+.item-details-redesigned .item-sale-section {
+  border-radius: 15px;
+}
+
+.item-details-redesigned .equipment-rules-preview,
+.item-details-redesigned .scarcity-use-card,
+.item-details-redesigned .item-sale-section {
+  padding: 18px;
+  background: var(--season-surface-alt);
+  border: 1px solid var(--season-line);
+}
+
+.item-details-redesigned .item-sale-section h3,
+.item-details-redesigned .equipment-rules-preview h3 {
+  margin-top: 0;
+}
+
+.item-details-redesigned .equipment-rules-preview p {
+  line-height: 1.6;
+}
+
+.item-details-redesigned .equipment-toggle-button,
+.item-details-redesigned .primary-button {
+  border-radius: 11px;
+}
+
+@media (max-width: 520px) {
+  .item-details-redesigned {
+    padding: 20px !important;
+  }
+
+  .item-details-header {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .item-details-header .item-art {
+    width: 64px !important;
+    height: 64px !important;
+    font-size: 36px !important;
+  }
+
+  .item-details-heading h2 {
+    font-size: 21px;
+  }
+
+  .item-basic-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Separação entre os rótulos e seus valores */
+.item-details-redesigned .item-rarity {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 7px;
+  row-gap: 4px;
+  margin: 0 0 9px;
+}
+
+.item-details-redesigned .item-rarity strong {
+  color: var(--season-muted);
+  font-weight: 600;
+}
+
+.item-details-redesigned .item-rarity span {
+  color: var(--season-primary);
+  font-weight: 700;
+}
+
+
+/* ===== HäxBag — Padronização da janela de detalhes ===== */
+
+/* Estrutura geral */
+.item-details-redesigned {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  text-align: left;
+}
+
+/* Cabeçalho */
+.item-details-redesigned .item-details-header {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  justify-items: stretch;
+  gap: 18px;
+  width: 100%;
+  text-align: left;
+}
+
+.item-details-redesigned .item-details-heading {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+}
+
+.item-details-redesigned .item-details-heading h2,
+.item-details-redesigned .item-details-heading p,
+.item-details-redesigned .item-details-heading small {
+  text-align: left;
+}
+
+/* Painéis e seções */
+.item-details-redesigned .item-economic-details,
+.item-details-redesigned .item-sale-section,
+.item-details-redesigned .equipment-rules-preview,
+.item-details-redesigned .scarcity-use-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* Cartões econômicos */
+.item-details-redesigned .item-economic-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.item-details-redesigned .item-economic-details > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.item-details-redesigned .item-economic-details span,
+.item-details-redesigned .item-economic-details strong {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+/* Características */
+.item-details-redesigned .item-basic-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.item-details-redesigned .item-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+}
+
+/* Regras de equipamento */
+.item-details-redesigned .equipment-rules-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.item-details-redesigned .equipment-rules-preview h3,
+.item-details-redesigned .equipment-rules-preview p {
+  width: 100%;
+  margin: 0;
+  text-align: left;
+}
+
+/* Escassez */
+.item-details-redesigned .scarcity-use-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.item-details-redesigned .scarcity-use-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.item-details-redesigned .scarcity-use-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  text-align: left;
+}
+
+/* Comércio */
+.item-details-redesigned .item-sale-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.item-details-redesigned .item-sale-section h3,
+.item-details-redesigned .item-sale-section p {
+  width: 100%;
+  margin-top: 0;
+  text-align: left;
+}
+
+.item-details-redesigned .item-sale-section label {
+  width: 100%;
+  text-align: left;
+}
+
+.item-details-redesigned .item-sale-section input,
+.item-details-redesigned .item-sale-section select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Botões com largura consistente */
+.item-details-redesigned .equipment-toggle-button,
+.item-details-redesigned .item-sale-section .primary-button,
+.item-details-redesigned .scarcity-use-card .primary-button {
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* Responsividade */
+@media (max-width: 520px) {
+  .item-details-redesigned .item-basic-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .item-details-redesigned .item-economic-details {
+    grid-template-columns: 1fr;
+  }
+
+  .item-details-redesigned .scarcity-use-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Campo de raridade */
+.item-editor-form .item-rarity-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  justify-items: stretch;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.item-editor-form .item-rarity-field label {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.item-editor-form .item-rarity-field select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 43px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   HäxBag — Editor de itens redesenhado
+   ========================================= */
+
+/* Janela */
+.item-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(5, 5, 9, .78);
+  backdrop-filter: blur(8px);
+  overflow-y: auto;
+}
+
+.item-modal-content {
+  width: min(100%, 680px);
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--season-line);
+  border-radius: 22px;
+  background: var(--season-surface);
+  color: var(--season-text);
+  box-shadow: 0 25px 90px rgba(0, 0, 0, .48);
+}
+
+/* Formulário principal */
+.item-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  padding: 28px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+/* Cabeçalho */
+.item-editor-form .form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--season-line);
+}
+
+.item-editor-form .form-heading h3 {
+  margin: 0;
+  color: var(--season-text);
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+}
+
+.item-editor-form .form-heading p {
+  margin: 7px 0 0;
+  color: var(--season-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.item-editor-form .form-heading > span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--season-line);
+  border-radius: 14px;
+  background: var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 23px;
+}
+
+/* Organização dos campos */
+.item-editor-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.item-editor-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--season-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.item-editor-form input:not([type="checkbox"]),
+.item-editor-form select,
+.item-editor-form textarea {
+  width: 100%;
+  min-height: 43px;
+  padding: 11px 13px !important;
+  border: 1px solid var(--season-line) !important;
+  border-radius: 11px !important;
+  background: var(--season-bg) !important;
+  color: var(--season-text) !important;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.item-editor-form input::placeholder {
+  color: var(--season-muted);
+  opacity: .65;
+}
+
+.item-editor-form input:not([type="checkbox"]):focus,
+.item-editor-form select:focus,
+.item-editor-form textarea:focus {
+  outline: none;
+  border-color: var(--season-primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary) 15%, transparent);
+}
+
+/* Seletor de emoji */
+.item-editor-form .emoji-field {
+  padding: 17px;
+  border: 1px solid var(--season-line);
+  border-radius: 16px;
+  background: var(--season-surface-alt);
+}
+
+.item-editor-form .emoji-field > label {
+  margin-bottom: 13px;
+  color: var(--season-text);
+  font-size: 13px;
+}
+
+.item-editor-form .emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 8px;
+}
+
+.item-editor-form .emoji-option {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  border: 1px solid var(--season-line);
+  border-radius: 10px;
+  background: var(--season-bg);
+  font-size: 21px;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.item-editor-form .emoji-option:hover {
+  transform: translateY(-2px);
+  border-color: var(--season-primary);
+}
+
+.item-editor-form .emoji-option.selected {
+  border-color: var(--season-primary);
+  background: color-mix(in srgb, var(--season-primary) 17%, var(--season-bg));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--season-primary) 20%, transparent);
+}
+
+.item-editor-form .emoji-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--season-line);
+}
+
+.item-editor-form .emoji-preview-label {
+  color: var(--season-muted);
+  font-size: 11px;
+}
+
+.item-editor-form .emoji-preview-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--season-line);
+  border-radius: 11px;
+  background: var(--season-bg);
+  font-size: 22px;
+}
+
+/* Classificações */
+.item-editor-form .item-classifications-panel {
+  padding: 18px;
+  border: 1px solid var(--season-line);
+  border-radius: 16px;
+  background: var(--season-surface-alt);
+}
+
+.item-editor-form .item-classifications-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.item-editor-form .item-classifications-heading strong {
+  color: var(--season-text);
+  font-size: 14px;
+}
+
+.item-editor-form .item-classifications-heading p {
+  margin: 5px 0 0;
+  color: var(--season-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.item-editor-form .item-classifications-heading > span {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border: 1px solid var(--season-line);
+  border-radius: 20px;
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.item-editor-form .item-classifications-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.item-editor-form .item-classification-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--season-line);
+  border-radius: 10px;
+  background: var(--season-bg);
+  color: var(--season-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.item-editor-form .item-classification-option.selected {
+  border-color: var(--season-primary);
+  background: color-mix(in srgb, var(--season-primary) 12%, var(--season-bg));
+  color: var(--season-text);
+}
+
+.item-editor-form .item-classification-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.item-editor-form .item-classification-check {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--season-line);
+  border-radius: 6px;
+  color: var(--season-muted);
+  font-size: 12px;
+}
+
+.item-editor-form .item-classification-option.selected .item-classification-check {
+  border-color: var(--season-primary);
+  background: var(--season-primary);
+  color: white;
+}
+
+.item-editor-form .item-classifications-hint {
+  margin: 12px 0 0;
+  color: var(--season-muted);
+  font-size: 11px;
+}
+
+/* Escassez */
+.item-editor-form .scarcity-editor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 19px;
+  border: 1px solid var(--season-line);
+  border-radius: 16px;
+  background: var(--season-surface-alt);
+}
+
+.item-editor-form .scarcity-editor-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.item-editor-form .scarcity-editor-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--season-bg);
+  color: var(--season-primary);
+  font-size: 21px;
+}
+
+.item-editor-form .scarcity-editor-heading strong {
+  color: var(--season-text);
+  font-size: 14px;
+}
+
+.item-editor-form .scarcity-editor-heading p,
+.item-editor-form .scarcity-editor-note {
+  margin: 5px 0 0;
+  color: var(--season-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.item-editor-form .scarcity-level-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.item-editor-form .scarcity-level-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px;
+  border: 1px solid var(--season-line);
+  border-radius: 11px;
+  background: var(--season-bg);
+}
+
+.item-editor-form .scarcity-level-preview span {
+  color: var(--season-muted);
+  font-size: 11px;
+}
+
+.item-editor-form .scarcity-level-preview strong {
+  color: var(--season-primary);
+  font-size: 20px;
+}
+
+.item-editor-form .scarcity-exhausted-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid var(--season-line);
+  border-radius: 11px;
+  background: var(--season-bg);
+  cursor: pointer;
+}
+
+.item-editor-form .scarcity-exhausted-toggle input {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  accent-color: var(--season-primary);
+}
+
+.item-editor-form .scarcity-exhausted-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-editor-form .scarcity-exhausted-toggle strong {
+  color: var(--season-text);
+  font-size: 12px;
+}
+
+.item-editor-form .scarcity-exhausted-toggle small {
+  color: var(--season-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* Prévia das regras de equipamento */
+.item-editor-form .equipment-rules-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 17px;
+  border: 1px solid var(--season-line);
+  border-radius: 14px;
+  background: var(--season-surface-alt);
+}
+
+.item-editor-form .equipment-rules-preview strong {
+  margin-bottom: 3px;
+  color: var(--season-primary);
+  font-size: 13px;
+}
+
+.item-editor-form .equipment-rules-preview p {
+  margin: 0;
+  color: var(--season-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Botões de ação */
+.item-editor-form .item-editor-actions {
+  position: sticky;
+  bottom: -28px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+  margin: 5px -28px -28px;
+  padding: 17px 28px;
+  border-top: 1px solid var(--season-line);
+  background: var(--season-surface);
+}
+
+.item-editor-form .item-editor-actions button {
+  min-height: 42px;
+  padding: 10px 18px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform .18s, filter .18s;
+}
+
+.item-editor-form .item-editor-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.item-editor-form .item-editor-actions button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+/* Telas menores */
+@media (max-width: 600px) {
+  .item-modal-overlay {
+    padding: 10px;
+  }
+
+  .item-modal-content {
+    max-height: 94vh;
+    border-radius: 17px;
+  }
+
+  .item-editor-form {
+    padding: 19px;
+    gap: 18px;
+  }
+
+  .item-editor-form .form-heading h3 {
+    font-size: 20px;
+  }
+
+  .item-editor-form .item-classifications-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .item-editor-form .item-editor-actions {
+    bottom: -19px;
+    margin: 5px -19px -19px;
+    padding: 14px 19px;
+  }
+
+  .item-editor-form .item-editor-actions button {
+    flex: 1;
+    padding-inline: 10px;
+  }
+}
+
+/* Campo de raridade */
+.item-editor-form .item-rarity-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.item-editor-form .item-rarity-field select {
+  display: block;
+  width: 100%;
+  min-height: 43px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* HäxBag — Checkbox de bloqueio de venda */
+.item-details-redesigned .item-sale-section label:has(.restriction-checkbox) {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 5px 0 8px !important;
+  padding: 12px 16px;
+  border: 1px solid var(--season-line);
+  border-radius: 14px;
+  background: var(--season-surface-alt);
+  color: var(--season-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.item-details-redesigned .item-sale-section label:has(.restriction-checkbox):hover {
+  border-color: var(--season-primary);
+  background: color-mix(in srgb, var(--season-primary) 8%, var(--season-surface-alt));
+}
+
+.item-details-redesigned .restriction-checkbox {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 21px;
+  width: 21px !important;
+  height: 21px !important;
+  min-height: 21px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1.5px solid var(--season-muted);
+  border-radius: 7px;
+  background: var(--season-bg);
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.item-details-redesigned .restriction-checkbox:checked {
+  border-color: var(--season-primary);
+  background: var(--season-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary) 16%, transparent);
+}
+
+.item-details-redesigned .restriction-checkbox::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  margin-top: -2px;
+  transition: transform .15s ease;
+}
+
+.item-details-redesigned .restriction-checkbox:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.item-details-redesigned .restriction-checkbox:focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 3px;
+}

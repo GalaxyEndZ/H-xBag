@@ -1,5 +1,6 @@
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import Auth from './Auth'
@@ -32,6 +33,7 @@ type Character = {
   level: number
   strength: number
   visibility: 'private' | 'campaign' | 'selected'
+  current_player_id: string | null
   created_at: string
 }
 
@@ -236,6 +238,10 @@ function App() {
   const [shopPurchaseLoading, setShopPurchaseLoading] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
+  const [masterShieldSeasonId, setMasterShieldSeasonId] = useState('')
+  const [masterShieldSheets, setMasterShieldSheets] = useState<Record<string, Record<string, any>>>({})
+  const [, setMasterShieldGrantRows] = useState<Array<{ character_id: string; user_id: string }>>([])
+  const [masterShieldLoading, setMasterShieldLoading] = useState(false)
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
@@ -259,13 +265,20 @@ function App() {
   const [sheetDraft, setSheetDraft] = useState('{}')
   const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
   const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
+  const [combatActionResult, setCombatActionResult] = useState<string>('')
+  const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
+  const [blockIncomingDamage, setBlockIncomingDamage] = useState('')
+  const [physicalDamageType, setPhysicalDamageType] = useState<'cortante_perfurante' | 'especial_bruto'>('cortante_perfurante')
+  const [physicalDamageAmount, setPhysicalDamageAmount] = useState('')
+  const [sanityDamageAmount, setSanityDamageAmount] = useState('')
+  const [dodgeTarget, setDodgeTarget] = useState('')
   const [sheetLoading, setSheetLoading] = useState(false)
   const [sheetSaving, setSheetSaving] = useState(false)
   const [editingSheet, setEditingSheet] = useState(false)
 
   const [activePage, setActivePage] = useState<
-  'inventory' | 'sheets' | 'characters' | 'campaigns' | 'shops'
->('inventory')
+  'sheets' | 'characters' | 'campaigns' | 'shops' | 'master-shield'
+>('campaigns')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
@@ -295,11 +308,20 @@ function App() {
   const [newItemDescription, setNewItemDescription] = useState('')
   const [newItemRarity, setNewItemRarity] = useState('comum')
   const [newItemCategory, setNewItemCategory] = useState('Diversos')
+  const [newItemCategories, setNewItemCategories] = useState<string[]>(['Diversos'])
+  const [newWeaponClass, setNewWeaponClass] = useState('improvised')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemWeight, setNewItemWeight] = useState('0')
   const [newItemUnitPrice, setNewItemUnitPrice] = useState('0')
   const [newItemCurrencyId, setNewItemCurrencyId] = useState('')
   const [newItemEmoji, setNewItemEmoji] = useState('📦')
+  const [newEquipmentType, setNewEquipmentType] = useState<'none' | 'armor' | 'protection'>('none')
+  const [newArmorClass, setNewArmorClass] = useState<'leve' | 'media' | 'pesada'>('leve')
+  const [newArmorCoverage, setNewArmorCoverage] = useState<'cortante_perfurante' | 'especial_bruto' | 'todos'>('cortante_perfurante')
+  const [newProtectionTier, setNewProtectionTier] = useState<'basica' | 'moderada' | 'avancada'>('basica')
+  const [newProtectionMode, setNewProtectionMode] = useState<'resistencia' | 'sanidade'>('resistencia')
+  const [newScarcityLevel, setNewScarcityLevel] = useState<'1' | '2' | '3' | '4'>('1')
+  const [newScarcityExhausted, setNewScarcityExhausted] = useState(false)
 
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [emojiPickerItem, setEmojiPickerItem] = useState<Item | null>(null)
@@ -307,6 +329,7 @@ function App() {
   const [favoriteOnly, setFavoriteOnly] = useState(false)
   const [sortBy, setSortBy] = useState('created')
   const [updatingQuantityItemId, setUpdatingQuantityItemId] = useState<string | null>(null)
+  const [usingScarcityItemId, setUsingScarcityItemId] = useState<string | null>(null)
 
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [search, setSearch] = useState('')
@@ -445,6 +468,44 @@ function App() {
   }, [selectedCampaignId])
 
   useEffect(() => {
+    if (!selectedCampaignId || !masterShieldSeasonId || !characters.length) { setMasterShieldSheets({}); setMasterShieldGrantRows([]); return }
+    let cancelled = false
+    async function loadMasterShieldSheets() {
+      setMasterShieldLoading(true)
+      const ids = characters.map(character => character.id)
+      const [{ data, error: loadError }, { data: grants, error: grantsError }] = await Promise.all([
+        supabase.from('character_sheets').select('character_id,sheet_data').eq('season_id', masterShieldSeasonId).in('character_id', ids),
+        supabase.from('character_visibility').select('character_id,user_id').in('character_id', ids),
+      ])
+      if (cancelled) return
+      if (loadError || grantsError) { setError(`Erro ao carregar dados do Escudo do mestre: ${(loadError || grantsError)?.message}`); setMasterShieldSheets({}); setMasterShieldGrantRows([]) }
+      else {
+        const result: Record<string, Record<string, any>> = {}
+        for (const row of data ?? []) result[row.character_id] = (row.sheet_data ?? {}) as Record<string, any>
+        setMasterShieldSheets(result)
+        setMasterShieldGrantRows((grants ?? []) as Array<{ character_id: string; user_id: string }>)
+      }
+      setMasterShieldLoading(false)
+    }
+    void loadMasterShieldSheets()
+    const channel = supabase
+      .channel(`master-shield-${masterShieldSeasonId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'character_sheets', filter: `season_id=eq.${masterShieldSeasonId}` }, payload => {
+        const row = (payload.new && Object.keys(payload.new).length ? payload.new : payload.old) as { character_id?: string; sheet_data?: Record<string, any> } | undefined
+        if (row?.character_id && payload.eventType !== 'DELETE' && row.sheet_data) {
+          setMasterShieldSheets(current => ({ ...current, [row.character_id!]: row.sheet_data! }))
+        }
+        if (payload.eventType === 'DELETE' && row?.character_id) {
+          setMasterShieldSheets(current => { const next = { ...current }; delete next[row.character_id!]; return next })
+        }
+        // Reconsulta para manter o painel consistente também em inclusões e alterações de participação.
+        void loadMasterShieldSheets()
+      })
+      .subscribe()
+    return () => { cancelled = true; void supabase.removeChannel(channel) }
+  }, [selectedCampaignId, masterShieldSeasonId, characters])
+
+  useEffect(() => {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
     setSeasonNameDraft(season?.name ?? '')
     setSeasonDescriptionDraft(season?.description ?? '')
@@ -579,7 +640,7 @@ if (accessibleShops.length === 0) {
       const { data, error: characterError } = await supabase
         .from('characters')
         .select(
-          'id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, created_at',
+          'id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at',
         )
         .eq('campaign_id', selectedCampaignId)
         .order('created_at', { ascending: true })
@@ -1856,6 +1917,42 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`)
   }
 
+  async function toggleSeasonParticipation(participates: boolean) {
+    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet || sheetSaving) return
+    let parsed: Record<string, unknown>
+    try {
+      const value: unknown = JSON.parse(sheetDraft || '{}')
+      parsed = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+    } catch {
+      setError('Não foi possível atualizar a participação porque os dados da ficha estão inválidos. Salve ou corrija a edição primeiro.')
+      return
+    }
+    parsed = { ...parsed, seasonParticipation: participates }
+    setSheetSaving(true)
+    setError('')
+    if (sheet) {
+      const { data, error: updateError } = await supabase.from('character_sheets').update({ sheet_data: parsed }).eq('id', sheet.id).select('id,character_id,season_id,sheet_data').single()
+      if (updateError || !data) {
+        setError(`Não foi possível salvar a participação: ${updateError?.message ?? 'resposta vazia'}`)
+        setSheetSaving(false)
+        return
+      }
+      setSheet(data as CharacterSheet)
+    } else {
+      const { data, error: insertError } = await supabase.from('character_sheets').insert({ character_id: selectedCharacterId, season_id: selectedSeasonId, sheet_data: parsed, created_by: session!.user.id }).select('id,character_id,season_id,sheet_data').single()
+      if (insertError || !data) {
+        setError(`Não foi possível salvar a participação: ${insertError?.message ?? 'resposta vazia'}`)
+        setSheetSaving(false)
+        return
+      }
+      setSheet(data as CharacterSheet)
+    }
+    setSheetDraft(JSON.stringify(parsed, null, 2))
+    setMasterShieldSheets(current => ({ ...current, [selectedCharacterId]: parsed as Record<string, any> }))
+    setNotice(participates ? 'Personagem incluído nesta temporada.' : 'Personagem removido desta temporada. A ficha e o histórico foram preservados.')
+    setSheetSaving(false)
+  }
+
   async function saveCharacterSheet() {
     if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
     let parsed: Record<string, unknown>
@@ -1906,7 +2003,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
         .from('characters')
         .update({ strength: sheetStrength })
         .eq('id', selectedCharacterId)
-        .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at')
+        .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, current_player_id, created_at')
         .maybeSingle()
       if (strengthError) {
         strengthSyncFailed = true
@@ -1920,12 +2017,12 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     setSheetSaving(false)
   }
 
-  async function saveCharacterConditions() {
+  async function saveCharacterConditions(draftOverride?: Record<string, unknown>) {
     if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
 
     let parsed: Record<string, unknown>
     try {
-      const value: unknown = JSON.parse(sheetDraft)
+      const value: unknown = draftOverride ?? JSON.parse(sheetDraft)
       if (!value || typeof value !== 'object' || Array.isArray(value)) {
         throw new Error('A ficha precisa ser um objeto JSON.')
       }
@@ -2094,7 +2191,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     }
 
     let createdCharacter = data as Character
-    const { data: emojiUpdated, error: emojiError } = await supabase.from('characters').update({ emoji: characterEmoji }).eq('id', createdCharacter.id).select('id,campaign_id,user_id,name,emoji,archetype,level,strength,visibility,created_at').single()
+    const { data: emojiUpdated, error: emojiError } = await supabase.from('characters').update({ emoji: characterEmoji }).eq('id', createdCharacter.id).select('id,campaign_id,user_id,name,emoji,archetype,level,strength,visibility,current_player_id,created_at').single()
     if (emojiError) { setError(`Personagem criado, mas não foi possível salvar o emoji: ${emojiError.message}. Execute a migração SQL fornecida.`); setLoading(false); return }
     createdCharacter = emojiUpdated as Character
     if (kisatsutaiCampaign && selectedSeasonId) {
@@ -2165,7 +2262,7 @@ async function changeCharacterEmoji(character: Character, emoji: string) {
     .from('characters')
     .update({ emoji })
     .eq('id', character.id)
-    .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, created_at')
+    .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at')
     .single()
 
   if (updateError || !data) {
@@ -2231,6 +2328,26 @@ async function deleteCharacter(character: Character) {
   }
 }
 
+  async function changeCharacterPlayer(userId: string) {
+    if (!selectedCharacter || !isMaster) return
+    setVisibilitySaving(true)
+    setError('')
+    setNotice('')
+    const { data, error: updateError } = await supabase
+      .from('characters')
+      .update({ current_player_id: userId || null })
+      .eq('id', selectedCharacter.id)
+      .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at')
+      .maybeSingle()
+    setVisibilitySaving(false)
+    if (updateError || !data) {
+      setError(`Não foi possível definir o jogador atual: ${updateError?.message ?? 'permissão negada'}`)
+      return
+    }
+    setCharacters(current => current.map(character => character.id === selectedCharacter.id ? data as Character : character))
+    setNotice('Jogador atual do personagem atualizado.')
+  }
+
   async function changeCharacterVisibility(visibility: Character['visibility']) {
     if (!selectedCharacter || !isMaster) return
     setVisibilitySaving(true)
@@ -2241,7 +2358,7 @@ async function deleteCharacter(character: Character) {
       .from('characters')
       .update({ visibility })
       .eq('id', selectedCharacter.id)
-      .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, created_at')
+      .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, current_player_id, created_at')
       .maybeSingle()
 
     setVisibilitySaving(false)
@@ -2296,25 +2413,94 @@ async function deleteCharacter(character: Character) {
     setNotice('Permissões do personagem atualizadas.')
   }
 
+  async function useScarcityItem(item: Item) {
+    const metadata = item.metadata ?? {}
+    const categories = Array.isArray(metadata.categories) ? metadata.categories : [item.category]
+    if (!categories.includes('Consumíveis') || metadata.scarcityExhausted === true || usingScarcityItemId) return
+
+    const currentLevel = Math.min(4, Math.max(1, Number(metadata.scarcityLevel) || 1))
+    const diceByLevel: Record<number, number> = { 1: 12, 2: 8, 3: 6, 4: 4 }
+    const chargeByLevel: Record<number, number> = { 1: 7, 2: 5, 3: 3, 4: 1 }
+    const die = diceByLevel[currentLevel]
+    const roll = Math.floor(Math.random() * die) + 1
+    const exhausted = roll === 1 && currentLevel === 4
+    const nextLevel = roll === 1 && currentLevel < 4 ? currentLevel + 1 : currentLevel
+    const nextMetadata = {
+      ...metadata,
+      scarcityLevel: nextLevel,
+      scarcityDie: `d${diceByLevel[nextLevel]}`,
+      scarcityCharge: chargeByLevel[nextLevel],
+      scarcityLastRoll: roll,
+      scarcityLastDie: `d${die}`,
+      scarcityUses: (Number(metadata.scarcityUses) || 0) + 1,
+      scarcityExhausted: exhausted,
+    }
+
+    setUsingScarcityItemId(item.id)
+    const { data, error: updateError } = await supabase
+      .from('inventory_items')
+      .update({ metadata: nextMetadata })
+      .eq('id', item.id)
+      .eq('character_id', item.character_id)
+      .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+      .maybeSingle()
+    setUsingScarcityItemId(null)
+
+    if (updateError || !data) {
+      setError(`Não foi possível registrar o uso: ${updateError?.message || 'sem retorno do banco'}`)
+      return
+    }
+
+    const updatedItem = data as Item
+    setItems(current => current.map(entry => entry.id === updatedItem.id ? updatedItem : entry))
+    setSelectedItemDetails(updatedItem)
+    setNotice(exhausted
+      ? `${item.name}: saiu 1 no d4. O item está esgotado!`
+      : roll === 1
+        ? `${item.name}: saiu 1 no d${die}. Escassez avançou para o nível ${nextLevel} (${nextMetadata.scarcityDie}).`
+        : `${item.name}: ${roll} no d${die}. O nível de escassez permanece em ${currentLevel}.`)
+  }
+
   function resetItemForm() {
     setEditingItem(null)
     setNewItemName('')
     setNewItemDescription('')
     setNewItemCategory('Diversos')
+    setNewItemCategories(['Diversos'])
+    setNewWeaponClass('improvised')
     setNewItemQuantity('1')
     setNewItemWeight('0')
     setNewItemUnitPrice('0')
     setNewItemCurrencyId(selectedCampaign?.currency_config?.currencies?.[0]?.id ?? '')
     setNewItemEmoji('📦')
+    setNewEquipmentType('none')
+    setNewArmorClass('leve')
+    setNewArmorCoverage('cortante_perfurante')
+    setNewProtectionTier('basica')
+    setNewProtectionMode('resistencia')
+    setNewScarcityLevel('1')
+    setNewScarcityExhausted(false)
+    setNewItemRarity('comum')
   }
 
   function startEditingItem(item: Item) {
+    setSelectedCharacterId(item.character_id)
     setEditingItem(item)
     setNewItemUnitPrice(String(item.unit_price ?? 0))
     setNewItemCurrencyId(item.currency_id ?? '')
     setNewItemName(item.name)
     setNewItemDescription(item.description ?? '')
     setNewItemCategory(item.category)
+    setNewItemRarity(typeof item.metadata?.rarity === 'string' ? item.metadata.rarity : 'comum')
+    setNewScarcityLevel(['1', '2', '3', '4'].includes(String(item.metadata?.scarcityLevel ?? '1')) ? String(item.metadata?.scarcityLevel ?? '1') as '1' | '2' | '3' | '4' : '1')
+    setNewScarcityExhausted(item.metadata?.scarcityExhausted === true)
+    setNewItemCategories(Array.isArray(item.metadata?.categories) ? item.metadata.categories.filter((value): value is string => typeof value === 'string') : [item.category])
+    setNewWeaponClass(typeof item.metadata?.weaponClass === 'string' ? item.metadata.weaponClass : 'improvised')
+    setNewEquipmentType(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' ? item.metadata.equipmentType : 'none')
+    setNewArmorClass(item.metadata?.armorClass === 'media' || item.metadata?.armorClass === 'pesada' ? item.metadata.armorClass : 'leve')
+    setNewArmorCoverage(item.metadata?.armorCoverage === 'especial_bruto' || item.metadata?.armorCoverage === 'todos' ? item.metadata.armorCoverage : 'cortante_perfurante')
+    setNewProtectionTier(item.metadata?.protectionTier === 'moderada' || item.metadata?.protectionTier === 'avancada' ? item.metadata.protectionTier : 'basica')
+    setNewProtectionMode(item.metadata?.protectionMode === 'sanidade' ? 'sanidade' : 'resistencia')
     setNewItemQuantity(String(item.quantity))
     setNewItemWeight(String(item.weight))
     setNewItemEmoji(
@@ -2330,10 +2516,11 @@ async function deleteCharacter(character: Character) {
   async function createItem(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!selectedCharacterId || !newItemName.trim()) return
+    if ((!selectedCharacterId && !editingItem) || !newItemName.trim()) return
 
     const quantity = Number(newItemQuantity)
-    const weight = Number(newItemWeight)
+    const weaponWeightByClass: Record<string, number> = { improvised: 0.5, advanced: 1, special: 1, black_red: 1.5, mutable: 2 }
+    const weight = newItemCategories.includes('Armas') ? (weaponWeightByClass[newWeaponClass] ?? 0.5) : Number(newItemWeight)
 
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
       setError('A quantidade deve ser um número inteiro entre 1 e 999.')
@@ -2352,7 +2539,7 @@ async function deleteCharacter(character: Character) {
     const itemData = {
       name: newItemName.trim(),
       description: newItemDescription.trim() || null,
-      category: newItemCategory,
+      category: newItemCategories[0] ?? newItemCategory,
       quantity,
       weight,
       unit_price: Number(newItemUnitPrice.replace(',', '.')) || 0,
@@ -2361,6 +2548,19 @@ async function deleteCharacter(character: Character) {
   ...(editingItem?.metadata ?? {}),
   icon: newItemEmoji,
   rarity: newItemRarity,
+  categories: newItemCategories.length ? newItemCategories : [newItemCategory],
+  equipmentType: newEquipmentType,
+  armorClass: newEquipmentType === 'armor' ? newArmorClass : null,
+  armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : newArmorCoverage) : null,
+  protectionTier: newEquipmentType === 'protection' ? newProtectionTier : null,
+  protectionMode: newEquipmentType === 'protection' ? newProtectionMode : null,
+  scarcityLevel: newItemCategories.includes('Consumíveis') ? Number(newScarcityLevel) : null,
+  scarcityDie: newItemCategories.includes('Consumíveis') ? ({ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' } as Record<string, string>)[newScarcityLevel] : null,
+  scarcityCharge: newItemCategories.includes('Consumíveis') ? ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel] : null,
+  scarcityExhausted: newItemCategories.includes('Consumíveis') ? newScarcityExhausted : false,
+  weaponClass: newItemCategories.includes('Armas') ? newWeaponClass : null,
+  weaponDamage: newItemCategories.includes('Armas') ? ({ improvised: '1d4', advanced: '1d6', special: '1d8', black_red: '1d10', mutable: '1d12' } as Record<string,string>)[newWeaponClass] || '1d4' : null,
+  weaponWeight: newItemCategories.includes('Armas') ? ({ improvised: 0.5, advanced: 1, special: 1, black_red: 1.5, mutable: 2 } as Record<string,number>)[newWeaponClass] ?? 0.5 : null,
 },
     }
 
@@ -2595,11 +2795,43 @@ async function deleteCharacter(character: Character) {
       return
     }
 
+    let removalDamageMessage = ''
+    if (item.metadata?.equipmentType === 'protection' && sheet?.id && selectedCharacterId === item.character_id) {
+      const tier = item.metadata?.protectionTier
+      const rolls = tier === 'avancada' ? [12, 12, 4] : tier === 'moderada' ? [8, 8] : [8]
+      const results = rolls.map(sides => Math.floor(Math.random() * sides) + 1)
+      const damage = results.reduce((sum, value) => sum + value, 0)
+      const sheetData = sheet.sheet_data as Record<string, any>
+      const status = sheetData.status && typeof sheetData.status === 'object' ? sheetData.status : {}
+      const current = status.current && typeof status.current === 'object' ? status.current : {}
+      const currentPS = Number(current.ps ?? ((Number(sheetData.skills && (sheetData.skills as any).mental) || 0) * 10))
+      const nextData = { ...sheetData, status: { ...status, current: { ...current, ps: Math.max(0, currentPS - damage) } } }
+      const { error: statusError } = await supabase.from('character_sheets').update({ sheet_data: nextData }).eq('id', sheet.id)
+      if (!statusError) {
+        setSheet({ ...sheet, sheet_data: nextData })
+        setSheetDraft(JSON.stringify(nextData, null, 2))
+        removalDamageMessage = ` Dano de sanidade pela perda da proteção: ${results.join(' + ')} = ${damage}.`
+      } else {
+        setError(`O item foi removido, mas não foi possível aplicar o dano de sanidade: ${statusError.message}`)
+      }
+    }
+
     setItems((current) =>
       current.filter((entry) => entry.id !== item.id),
     )
-    setNotice(`${item.name} foi removido do inventário.`)
+    setNotice(`${item.name} foi removido do inventário.${removalDamageMessage}`)
   }
+
+  const seasonPartyCharacters = characters.filter(character => masterShieldSheets[character.id]?.seasonParticipation === true)
+  // A party inclui sempre o mestre da campanha e os jogadores atribuídos
+  // aos personagens participantes da temporada.
+  const masterShieldPartyUserIds = new Set(
+    seasonPartyCharacters.map(character => character.current_player_id).filter((id): id is string => Boolean(id)),
+  )
+  campaignMembers.filter(member => member.role === 'master').forEach(member => {
+    masterShieldPartyUserIds.add(member.user_id)
+  })
+  const masterShieldPartyMembers = campaignMembers.filter(member => masterShieldPartyUserIds.has(member.user_id))
 
   const displayName =
     session?.user.user_metadata?.display_name ||
@@ -2739,7 +2971,7 @@ async function deleteCharacter(character: Character) {
   const filteredItems = items
     .filter((item) => {
       const matchesCategory =
-        activeCategory === 'Todos' || item.category === activeCategory
+        activeCategory === 'Todos' || item.category === activeCategory || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes(activeCategory))
       const term = search.trim().toLowerCase()
       const matchesSearch =
         item.name.toLowerCase().includes(term) ||
@@ -2820,27 +3052,18 @@ async function deleteCharacter(character: Character) {
         <div className="nav-label">MENU PRINCIPAL</div>
 
         <nav className="navigation">
-          <a className="nav-link" href="#inicio">
-            <span>◫</span> Visão geral
-          </a>
-          <button className={`nav-link ${activePage === 'inventory' ? 'active' : ''}`} onClick={() => setActivePage('inventory')}>
-            <span>▤</span> Inventário <span className="nav-count">{items.length}</span>
-          </button>
-          
-<button
-  className={`nav-link ${activePage === 'shops' ? 'active' : ''}`}
-  onClick={() => setActivePage('shops')}
-  disabled={!selectedCampaignId}
->
-  <span>♜</span> Lojas
-  <span className="nav-count">{shops.length}</span>
-</button>
-
+          <a className="nav-link" href="#inicio"><span>◫</span> Visão geral</a>
+          {isMaster && <button className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId}>
+            <span>♜</span> Escudo do mestre
+          </button>}
           <button className={`nav-link ${activePage === 'sheets' ? 'active' : ''}`} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }} disabled={!selectedCampaignId}>
             <span>▧</span> Fichas <span className="nav-count">{characters.length}</span>
           </button>
           <button className={`nav-link ${activePage === 'characters' ? 'active' : ''}`} onClick={() => setActivePage('characters')} disabled={!selectedCampaignId}>
             <span>♙</span> Personagens <span className="nav-count">{characters.length}</span>
+          </button>
+          <button className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId}>
+            <span>♜</span> Lojas <span className="nav-count">{shops.length}</span>
           </button>
           <button className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }}>
             <span>⚑</span> Campanhas
@@ -2860,13 +3083,10 @@ async function deleteCharacter(character: Character) {
               type="button"
               className="secondary-button"
               style={{ marginTop: 10, width: '100%' }}
-              onClick={() => {
-                if (selectedCampaignId && isMaster) {
-                  void createCampaignInvite()
-                } else {
-                  setActivePage('campaigns')
-                }
-              }}
+onClick={() => {
+  resetItemForm()
+  setShowItemForm(true)
+}}
               disabled={inviteLoading}
             >
               {inviteLoading ? 'Gerando convite…' : selectedCampaignId && isMaster ? 'Gerar convite' : 'Ver campanhas'}
@@ -2928,12 +3148,17 @@ async function deleteCharacter(character: Character) {
 .page-content.page-shops > .shops-page-panel {
   display: block !important;
 }
+            .page-content.page-master-shield > * { display: none !important; }
+            .page-content.page-master-shield > .master-shield-page-panel { display: block !important; }
             .page-content.page-sheets > * { display: none !important; }
             .page-content.page-sheets > .sheet-page-panel { display: block !important; }
             .page-content.page-characters > * { display: none !important; }
             .page-content.page-characters > .characters-page-panel { display: block !important; }
             .page-content.page-campaigns > * { display: none !important; }
             .page-content.page-campaigns > .campaigns-page-panel { display: block !important; }
+            .page-content.page-campaigns > #inventario {
+              display: block !important;
+            }
             .page-content.page-inventory > .season-sheet-section { display: none !important; }
           `}</style>
           <section className="welcome-row">
@@ -2943,9 +3168,7 @@ async function deleteCharacter(character: Character) {
               </div>
 
 <h1>
-  {activePage === 'inventory'
-    ? 'Seu inventário'
-    : activePage === 'shops'
+  {activePage === 'shops'
       ? 'Lojas da campanha'
       : activePage === 'sheets'
         ? 'Fichas de personagens'
@@ -2956,9 +3179,7 @@ async function deleteCharacter(character: Character) {
 </h1>
 
 <p className="page-description">
-  {activePage === 'inventory'
-    ? 'Organize os itens e acompanhe a carga do personagem.'
-    : activePage === 'shops'
+  {activePage === 'shops'
       ? 'Explore os estabelecimentos e encontre novos itens para sua aventura.'
       : activePage === 'sheets'
         ? 'Consulte e atualize as fichas por temporada.'
@@ -2978,6 +3199,44 @@ async function deleteCharacter(character: Character) {
               </button>
             )}
           </section>
+
+          {activePage === 'master-shield' && selectedCampaign && isMaster && (
+            <section className="inventory-section master-shield-page-panel">
+              <section className="master-shield" aria-labelledby="master-shield-title">
+                <div className="master-shield-heading"><div><span className="master-shield-eyebrow">PAINEL DO MESTRE</span><h2 id="master-shield-title">Escudo do mestre</h2><p>Resumo rápido das informações básicas da party.</p></div><span className="master-shield-icon" aria-hidden="true">♜</span></div>
+                <div className="master-shield-grid">
+                  <article className="master-shield-stat"><span>Campanha</span><strong>{selectedCampaign.name}</strong></article>
+                  <article className="master-shield-stat"><span>Sistema</span><strong>{selectedCampaign.system_name || 'Não definido'}</strong></article>
+                  <article className="master-shield-stat"><span>Integrantes da party</span><strong>{masterShieldPartyMembers.length}</strong></article>
+                  <article className="master-shield-stat"><span>Personagens</span><strong>{characters.length}</strong></article>
+                </div>
+                {selectedCampaign.description && <div className="master-shield-description"><strong>Descrição da campanha</strong><p>{selectedCampaign.description}</p></div>}
+                <div className="master-shield-columns">
+                  <div><h3>Integrantes da party</h3>{masterShieldPartyMembers.length ? <ul>{masterShieldPartyMembers.map(member => <li key={member.user_id}><span>{member.display_name}</span><small>{member.role === 'master' ? 'Mestre' : 'Jogador'}</small></li>)}</ul> : <p className="master-shield-empty">Nenhum integrante encontrado.</p>}</div>
+                  <div>
+                    <h3>Personagens da temporada</h3>
+                    <label style={labelStyle}>Temporada<select value={masterShieldSeasonId} onChange={e => setMasterShieldSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name}</option>)}</select></label>
+                    {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{characters.map(character => {
+                      const data = masterShieldSheets[character.id]
+                      if (!data || data.seasonParticipation !== true) return null
+                      const family = KISATSUTAI_FAMILY_TIERS[String(data.family?.tier ?? '5') as keyof typeof KISATSUTAI_FAMILY_TIERS] || KISATSUTAI_FAMILY_TIERS['5']
+                      const rankId = String(data.progression?.rankId ?? 'zaidan')
+                      const rank = KISATSUTAI_RANK_STATUS[rankId] || { pv: 0, ps: 0, pr: 0 }
+                      const n = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0
+                      const allocations = data.progression?.allocations ?? {}
+                      const allocated = (key: string) => ['family','class','progression'].reduce((sum, source) => sum + Math.max(0,n(allocations[source]?.[key])),0)
+                      const attr = (key: string, bonus: number) => Math.min(5,Math.max(0,n(data.attributes?.[key])+allocated(key)+bonus))
+                      const skill = (key: string) => Math.min(12,Math.max(0,n(data.skills?.[key])+allocated(key)))
+                      const maxes = { pv: skill('vigor')*10+family.pv+rank.pv+n(data.progression?.classStatus?.pv)+n(data.progression?.statusBonuses?.pv), ps: skill('mental')*10+family.ps+rank.ps+n(data.progression?.classStatus?.ps)+n(data.progression?.statusBonuses?.ps), pr: (attr('breathing',family.breathing)+skill('ability'))*10+family.pr+rank.pr+n(data.progression?.classStatus?.pr)+n(data.progression?.statusBonuses?.pr) }
+                      const current = data.status?.current ?? {}
+                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],['PR',maxes.pr]] as const).map(([key,max]) => { const id=key.toLowerCase() as 'pv'|'ps'|'pr'; const value=Math.max(0,Math.min(max,n(current[id] ?? max))); return {key,max,value,pct:max>0?Math.min(100,value/max*100):0} })
+                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || KISATSUTAI_RANKS.find(entry=>entry.id===rankId)?.name || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div></div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
+                    })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
+                  </div>
+                </div>
+              </section>
+            </section>
+          )}
 
           {activePage === 'sheets' && selectedCampaignId && (
             <section className="inventory-section sheet-page-panel">
@@ -3017,6 +3276,7 @@ async function deleteCharacter(character: Character) {
               </> : <>
                 <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · Kisatsutai RPG</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
                 <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
+                {selectedSeasonId && !sheetLoading && <label className={`season-participation-toggle ${(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'is-participating' : ''}`}><input type="checkbox" checked={(() => { try { return (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() } catch { return false } })()} disabled={!canEditSelectedSheet || sheetSaving} onChange={e => { void toggleSeasonParticipation(e.target.checked) }} /><span><strong>{(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'Participando desta temporada' : 'Não participa desta temporada'}</strong><small>{sheetSaving ? 'Salvando participação…' : 'Altere esta opção para incluir ou retirar o personagem. A ficha e o histórico permanecem preservados.'}</small></span><b className="season-participation-status">{sheetSaving ? '…' : (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'ATIVO' : 'INATIVO'}</b></label>}
                 {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
                 {selectedSeasonId && <div className="season-theme-panel">
                   <div className="season-theme-heading"><div><strong>Identidade visual</strong><small>Tema desta temporada: <b>{activeTheme.label}</b></small></div><span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} /></div>
@@ -3088,6 +3348,87 @@ async function deleteCharacter(character: Character) {
     KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.name || 'Zaidan'
   )
 )
+                    const hierarchyGroup = KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.group || 'Carpa'
+                    const baseDamageByGroup: Record<string,string> = { Carpa:'1d4', Raposa:'1d6', Tigre:'1d8', Dragão:'1d10', Corvo:'1d12' }
+                    const equippedWeapon = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))
+                    const equippedWeaponDamage = equippedWeapon ? String(equippedWeapon.metadata?.weaponDamage || '—') : '—'
+                    const equippedArmor = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'armor')
+                    const equippedProtection = items.filter(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'protection')
+                    const armorClass = String(equippedArmor?.metadata?.armorClass || 'leve')
+                    const armorDexterity = !equippedArmor ? dexterity : armorClass === 'pesada' ? 0 : armorClass === 'media' ? Math.floor(dexterity / 2) : dexterity
+                    const armorResistance = armorClass === 'pesada' ? resistance * 2 + 8 : armorClass === 'media' ? resistance + 6 : Math.floor(resistance / 2) + 4
+                    const armorCovers = (type: 'cortante_perfurante' | 'especial_bruto') => !!equippedArmor && (armorClass === 'pesada' || equippedArmor.metadata?.armorCoverage === type)
+                    const protectionFraction = (item: Item) => item.metadata?.protectionTier === 'avancada' ? 1 : item.metadata?.protectionTier === 'moderada' ? 0.5 : 0.25
+                    const physicalProtection = equippedProtection.filter(item => item.metadata?.protectionMode !== 'sanidade').reduce((sum, item) => sum + Math.floor(resistance * protectionFraction(item)), 0)
+                    const sanityProtection = equippedProtection.filter(item => item.metadata?.protectionMode === 'sanidade').reduce((sum, item) => sum + Math.floor(mental * protectionFraction(item)), 0)
+                    const baseDamage = baseDamageByGroup[hierarchyGroup] || '—'
+                    const rollD20 = () => Math.floor(Math.random()*20)+1
+                    const performCombatRoll = (kind: 'Ataque bruto'|'Ataque ágil'|'Bloqueio'|'Esquiva', dodgeDt?: string) => {
+                      const dt = combat + dexterity
+                      const constitution = Number(read('attributes.constitution', 0)) || resistance + vigor
+                      const attribute = kind === 'Ataque bruto' ? strength : kind === 'Bloqueio' ? defense : agility
+                      const bonus = kind === 'Bloqueio' ? constitution : kind === 'Esquiva' ? dexterity : combat
+                      const diceCount = Math.max(1, Math.floor(attribute))
+                      const dice = Array.from({ length: diceCount }, () => rollD20())
+                      const diceTotal = dice.reduce((sum, value) => sum + value, 0)
+                      const total = 1 + diceTotal + bonus
+                      const diceDescription = `${diceCount}d20 = [${dice.join(', ')}] (soma ${diceTotal})`
+
+                      if (kind === 'Bloqueio') {
+                        const critical = dice.includes(20)
+                        const outcome = critical
+                          ? 'Crítico: nega 100% do dano.'
+                          : total >= dt
+                            ? 'Sucesso: nega 50% do dano.'
+                            : 'Falha: nega 25% do dano.'
+                        setBlockIncomingDamage('')
+                        setBlockDamageReduction(critical ? null : total >= dt ? 0.5 : 0.25)
+                        setCombatActionResult(`Bloqueio: ${diceDescription}; 1 + ${diceTotal} + Constituição (${bonus}) = ${total}. ${outcome}`)
+                      } else if (kind === 'Esquiva') {
+                        const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
+                        const validTarget = target !== null && Number.isFinite(target) && target >= 0
+                        const outcome = validTarget ? (total >= target! ? `Sucesso contra DT ${target}: nega o dano completamente.` : `Falha contra DT ${target}: não evita o dano.`) : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
+                        setCombatActionResult(`Esquiva: ${diceDescription}; 1 + ${diceTotal} + Destreza (${bonus}) = ${total}. ${outcome}`)
+                      } else {
+                        setCombatActionResult(`${kind}: ${diceDescription}; 1 + ${diceTotal} + Combate (${bonus}) = ${total}.`)
+                      }
+                      return total
+                    }
+                    const applyBlockedDamage = () => {
+                      const incoming = Number(blockIncomingDamage)
+                      if (!Number.isFinite(incoming) || incoming < 0 || blockDamageReduction === null) {
+                        setError('Informe um dano inimigo válido (zero ou maior).')
+                        return
+                      }
+                      const prevented = Math.floor(incoming * blockDamageReduction)
+                      const remaining = incoming - prevented
+                      const currentStatus = data.status && typeof data.status === 'object' && !Array.isArray(data.status)
+                        ? data.status as Record<string, any> : {}
+                      const currentValues = currentStatus.current && typeof currentStatus.current === 'object'
+                        ? currentStatus.current as Record<string, any> : {}
+                      const maxPV = Number(derived[0][1]) || 0
+                      const currentPVValue = Number(currentValues.pv ?? maxPV)
+                      const currentPV = Number.isFinite(currentPVValue) ? Math.max(0, currentPVValue) : maxPV
+                      const nextPV = Math.max(0, currentPV - remaining)
+                      const next = {
+                        ...data,
+                        status: {
+                          ...currentStatus,
+                          current: {
+                            ...currentValues,
+                            pv: nextPV,
+                            ps: Number(currentValues.ps ?? derived[1][1]),
+                            pr: Number(currentValues.pr ?? derived[2][1]),
+                          },
+                        },
+                      }
+                      setSheetDraft(JSON.stringify(next, null, 2))
+                      void saveCharacterConditions(next)
+                      setCombatActionResult(previous => `${previous} Dano recebido: ${incoming}. Dano negado: ${prevented}. Dano aplicado aos PV: ${remaining}. PV restantes: ${nextPV}.`)
+                      setBlockDamageReduction(null)
+                      setBlockIncomingDamage('')
+                      setError('')
+                    }
                     const rankStatus = isKisatsutaiSheet ? (KISATSUTAI_RANK_STATUS[rankIdForStatus] || { pv: 0, ps: 0, pr: 0 }) : { pv: 0, ps: 0, pr: 0 }
                     const customClassPV = num('progression.classStatus.pv')
                     const customClassPS = num('progression.classStatus.ps')
@@ -3108,7 +3449,7 @@ async function deleteCharacter(character: Character) {
                     ] as const
                     const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => { const limit = path.startsWith('attributes.') ? 5 : path.startsWith('skills.') ? 12 : undefined; return <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<input type={type} min={type === 'number' ? 0 : undefined} max={type === 'number' ? limit : undefined} step="1" value={String(read(path, type === 'number' ? 0 : ''))} onChange={e => write(path, type === 'number' ? Math.min(limit ?? 999, Math.max(0, e.target.value === '' ? 0 : Number(e.target.value))) : e.target.value)} style={inputStyle}/>{hint && <small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}{limit ? ` · máximo ${limit}` : ''}</small>}</label> }
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
-                    const panel = (title: string, children: any) => <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>{title}</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12}}>{children}</div></section>
+                    const panel = (title: string, children: any) => <details className="sheet-editor-accordion" style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><summary>{title}</summary><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:14}}>{children}</div></details>
                     return (
                       <>
   {isKisatsutaiSheet && (
@@ -3307,9 +3648,10 @@ async function deleteCharacter(character: Character) {
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
                       <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Efetivo com família: '+strength+' · Capacidade: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Efetivo com família: '+defense+' · Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Efetivo com família: '+breathing+' · Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Efetivo com família: '+intellect+' · Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
                       <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base')}{field('combat.extraDamage','Dano extra')}{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions*dexterity}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
-                      {panel('6. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
-                      {panel('7. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
+                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('combat.baseDamage','Dano base personalizado (opcional)')}<div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>DESLOCAMENTO</small><div style={{fontSize:24,fontWeight:800}}>{Math.max(1, movementActions * dexterity)}</div><small>Ações de Movimento × Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
+
+                      {panel('7. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
+                      {panel('8. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary">
                         <header className="sheet-summary-header">
@@ -3353,6 +3695,7 @@ async function deleteCharacter(character: Character) {
                               },
                             }
                             setSheetDraft(JSON.stringify(next, null, 2))
+                            void saveCharacterConditions(next)
                           }
                           const applyTypedAdjustment = () => {
                             const raw = (statusAdjustments[key] ?? '').trim()
@@ -3362,7 +3705,7 @@ async function deleteCharacter(character: Character) {
                             }
                             adjust(Number(raw))
                             setError('')
-                            setNotice(`${key.toUpperCase()} ajustado em ${raw}. Clique em “Salvar status” para confirmar.`)
+                            setNotice(`${key.toUpperCase()} ajustado em ${raw} e salvo automaticamente.`)
                           }
                           const colors = [{accent:'#f28b9b',glow:'rgba(242,139,155,.18)'},{accent:'var(--season-primary)',glow:'var(--season-glow)'},{accent:'#75c9ee',glow:'rgba(117,201,238,.18)'}][index]
                           const percent = value > 0 ? Math.min(current / value * 100, 100) : 0
@@ -3384,6 +3727,8 @@ async function deleteCharacter(character: Character) {
                               <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
                               <button type="button" onClick={applyTypedAdjustment} style={{whiteSpace:'nowrap',padding:'7px 11px',borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontWeight:700,cursor:'pointer'}}>Aplicar</button>
                             </div>}
+                            {key === 'pv' && <div className="status-card-damage-control"><strong>Aplicar dano físico</strong><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${physicalProtection}` : `Proteção: ${physicalProtection}`}</small><button type="button" disabled={!canEditSelectedSheet || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const armorBlock=armorCovers(physicalDamageType)?armorResistance:0;const reduced=Math.max(0,incoming-armorBlock-physicalProtection);const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div>}
+                            {key === 'ps' && <div className="status-card-damage-control sanity"><strong>Aplicar dano de sanidade</strong><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!canEditSelectedSheet || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div>}
                             {key === 'pr' && isKisatsutaiSheet && (() => {
                               const rank = KISATSUTAI_RANKS.find(entry => entry.id === rankIdForStatus) || KISATSUTAI_RANKS[0]
                               const group = rank.group
@@ -3402,7 +3747,8 @@ async function deleteCharacter(character: Character) {
                                 if (canEditSelectedSheet && applied > 0) {
                                   const next = { ...data, status: { ...(data.status || {}), current: { ...((data.status || {}).current || {}), pr: current + applied } } }
                                   setSheetDraft(JSON.stringify(next, null, 2))
-                                  setNotice(`Teste de Respiração: ${success ? 'sucesso' : 'falha'}. ${applied} PR recuperados no rascunho; salve os status para confirmar.`)
+                                  void saveCharacterConditions(next)
+                                  setNotice(`Teste de Respiração: ${success ? 'sucesso' : 'falha'}. ${applied} PR recuperados e salvos automaticamente.`)
                                 }
                               }
                               return <div style={{marginTop:12,padding:12,borderRadius:10,background:'rgba(117,201,238,.08)',border:'1px solid rgba(117,201,238,.22)'}}>
@@ -3410,21 +3756,33 @@ async function deleteCharacter(character: Character) {
                                 {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o teste de Respiração.</small> : <>
                                   <small style={{display:'block',marginTop:5,opacity:.8}}>{1 + breathing}d20 · maior resultado + Vigor ({vigor})</small>
                                   <button type="button" onClick={runBreathingTest} style={{marginTop:9,padding:'8px 12px',borderRadius:9,border:'1px solid rgba(117,201,238,.55)',background:'rgba(117,201,238,.16)',color:'inherit',fontWeight:700,cursor:'pointer'}}>Rolar teste</button>
-                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} PR ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} PR</strong></div>{canEditSelectedSheet && <small style={{opacity:.75}}>O valor aplicado fica no rascunho. Use “Salvar status” para confirmar.</small>}</div>}
+                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} PR ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} PR</strong></div></div>}
                                 </>}
                               </div>
                             })()}
                           </article>
                         })}</div>
-                        {canEditSelectedSheet && <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterConditions()}>{sheetSaving?'Salvando…':'Salvar status'}</button></div>}
                         <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],['Respiração',breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
                         <div className="sheet-summary-grid">
-                          <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
-                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',read('combat.extraDamage','—')],['Deslocamento',movementActions*dexterity],['Ações',movementActions+extraActions],['Reações',reactions],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor],...(isKisatsutaiSheet ? [['Essência',read('combat.essence','—')]] : [])].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
+                          <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)} className={String(label)==='Destreza'?'sheet-dexterity-with-armor':''}><span>{label}</span><strong>{String(label)==='Destreza' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value}</> : value}</strong></div>)}</div></article>
+                          <article className="sheet-summary-card"><h3>Combate</h3><div className="sheet-summary-values">{[['Dano base',read('combat.baseDamage','—')],['Dano extra',equippedWeaponDamage],['Deslocamento', Math.max(1, movementActions * dexterity)],['Ações',movementActions+extraActions],['Reações',reactions],['Contra-ataque',combat+dexterity],['Constituição',resistance+vigor],...(isKisatsutaiSheet ? [['Essência',read('combat.essence','—')]] : [])].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div></article>
                         </div>
+
                         <div className="sheet-summary-notes"><h3>Resumo do personagem</h3><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
                         <p className="sheet-summary-hint">Esta é uma visão resumida. {canEditSelectedSheet ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Você não tem permissão para editar esta ficha.'}</p>
                       </section>)}
+                        <section className="combat-actions-panel">
+                          <div className="combat-actions-heading"><div><span className="combat-eyebrow">TURNO DO PERSONAGEM</span><h3>Ações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div><div className="combat-d20-mark">D20</div></div>
+                          <div className="combat-action-grid">
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque bruto')}><span className="combat-action-icon">⚔</span><strong>Ataque Bruto</strong><small>1 + {strength}d20 + Combate</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque ágil')}><span className="combat-action-icon">➶</span><strong>Ataque Ágil</strong><small>1 + {agility}d20 + Combate</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio')}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense}d20 + Constituição</small></button>
+                            <div className="combat-dodge-control"><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility}d20 + Destreza</small></button><label className="combat-dodge-target-inline" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label></div>
+                          </div>
+                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">Será negado: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction) : '—'}</strong> · Será descontado dos PV: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.max(0, Number(blockIncomingDamage) - Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction)) : '—'}</strong></div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
+                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p><strong>Contra-ataque</strong><span>O resultado do inimigo precisa ser menor que sua DT de Contra-ataque (valor do contra-ataque: {combat+dexterity}).</span></p></div></details>
+                          <div className="combat-counter-panel"><div><strong>Contra-ataque</strong><small>Sua DT na ficha: <b>{combat+dexterity}</b></small></div><label>Resultado do inimigo<input type="number" min="0" value={String(read('combat.enemyResult',0))} onChange={e=>write('combat.enemyResult',Math.max(0,Number(e.target.value)||0))} style={inputStyle}/></label><button type="button" className="combat-counter-button" onClick={()=>{const enemy=Number(read('combat.enemyResult',0))||0;const dt=combat+dexterity;setCombatActionResult(`Contra-ataque: resultado do inimigo ${enemy} ${enemy<dt?'<':'≥'} sua DT ${dt}. ${enemy<dt?'Contra-ataque bem-sucedido.':'Contra-ataque não sucedido.'}`)}}>Verificar</button></div>
+                        </section>
                     </>
                     )
 
@@ -3442,15 +3800,256 @@ async function deleteCharacter(character: Character) {
         type="button"
         className="primary-button"
         onClick={() => {
-          setActivePage('inventory')
-          resetItemForm()
-          setShowItemForm(true)
-        }}
+  if (showItemForm) {
+    resetItemForm()
+    setShowItemForm(false)
+  } else {
+    resetItemForm()
+    setShowItemForm(true)
+  }
+}}
         disabled={loading}
       >
         + Adicionar item
       </button>
     </div>
+
+{showItemForm &&
+  (selectedCharacterId || editingItem) &&
+  createPortal(
+    <div className="item-modal-overlay">
+      <div
+        className="item-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="item-modal-title"
+      >
+        <form className="add-form item-editor-form" onSubmit={createItem}>
+                    <div className="form-heading">
+                      <div>
+                        <h3>{editingItem ? 'Editar item' : 'Novo item'}</h3>
+                        <p>
+                          {editingItem
+                            ? 'Altere os dados do item e salve as mudanças.'
+                            : 'O item será associado ao personagem selecionado.'}
+                        </p>
+                      </div>
+                      <span>{editingItem ? '✎' : '✧'}</span>
+                    </div>
+
+                    <label>
+                      Nome do item
+                      <input
+                        value={newItemName}
+                        onChange={(event) => setNewItemName(event.target.value)}
+                        placeholder="Ex.: Espada de prata"
+                        maxLength={100}
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Descrição
+                      <input
+                        value={newItemDescription}
+                        onChange={(event) =>
+                          setNewItemDescription(event.target.value)
+                        }
+                        placeholder="Detalhes do item (opcional)"
+                        maxLength={1000}
+                      />
+                    </label>
+
+                    <div className="form-row">
+                      <div className="emoji-field">
+                        <label>Emoji do item</label>
+
+                        <div className="emoji-grid">
+                          {availableEmojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className={
+                                newItemEmoji === emoji
+                                  ? 'emoji-option selected'
+                                  : 'emoji-option'
+                              }
+                              onClick={() => setNewItemEmoji(emoji)}
+                              aria-label={`Selecionar emoji ${emoji}`}
+                              aria-pressed={newItemEmoji === emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+
+<p className="emoji-preview">
+  <span className="emoji-preview-label">Emoji selecionado:</span>
+  <span className="emoji-preview-icon">{newItemEmoji}</span>
+</p>
+                      </div>
+
+                      <section className="item-classifications-panel">
+                        <div className="item-classifications-heading">
+                          <div><strong>Classificações do item</strong><p>Marque todas as opções que se aplicam. Um item pode ter várias classificações.</p></div>
+                          <span>{newItemCategories.length} selecionada{newItemCategories.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <div className="item-classifications-grid">
+                          {categories.filter(category => category !== 'Todos').map(category => (
+                            <label key={category} className={newItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
+                              <input type="checkbox" checked={newItemCategories.includes(category)} onChange={event => {
+                                const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
+                                setNewItemCategories(next)
+                                if (next.length) setNewItemCategory(next[0])
+                              }} />
+                              <span className="item-classification-check">{newItemCategories.includes(category) ? '✓' : '+'}</span>
+                              <span>{category}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {!newItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
+                      </section>
+
+                      {newItemCategories.includes('Consumíveis') && (
+                        <section className="scarcity-editor-card">
+                          <div className="scarcity-editor-heading">
+                            <span className="scarcity-editor-icon">⌛</span>
+                            <div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div>
+                          </div>
+                          <label>Nível inicial de escassez
+                            <select value={newScarcityLevel} onChange={event => setNewScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}>
+                              <option value="1">Nível 1 — d12</option>
+                              <option value="2">Nível 2 — d8</option>
+                              <option value="3">Nível 3 — d6</option>
+                              <option value="4">Nível 4 — d4</option>
+                            </select>
+                          </label>
+                          <div className="scarcity-level-preview">
+                            <div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[newScarcityLevel]}</strong></div>
+                            <div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[newScarcityLevel]}</strong></div>
+                          </div>
+                          <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
+                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => setNewScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
+                        </section>
+                      )}
+
+<label style={labelStyle}>
+  Raridade
+</label>
+
+<select
+  value={newItemRarity}
+  onChange={event => setNewItemRarity(event.target.value)}
+  style={inputStyle}
+>
+  <option value="comum">Comum</option>
+  <option value="incomum">Incomum</option>
+  <option value="raro">Raro</option>
+  <option value="épico">Épico</option>
+  <option value="mítico">Mítico</option>
+  <option value="relíquia">Relíquia</option>
+</select>
+
+                      <label>
+                        Tipo de equipamento
+                        <select value={newEquipmentType} onChange={event => setNewEquipmentType(event.target.value as 'none' | 'armor' | 'protection')}>
+                          <option value="none">Item comum</option>
+                          <option value="armor">Armadura</option>
+                          <option value="protection">Proteção</option>
+                        </select>
+                      </label>
+
+                      {newEquipmentType === 'armor' && <>
+                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => setNewArmorClass(event.target.value as 'leve' | 'media' | 'pesada')}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
+                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
+                        <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}</p><p>Resistência adicional: {newArmorClass === 'leve' ? '½ dos pontos + 4' : newArmorClass === 'media' ? '+6 pontos' : '2× os pontos + 8'}</p><p>Destreza de armadura: {newArmorClass === 'leve' ? 'Destreza integral' : newArmorClass === 'media' ? 'Metade da destreza' : '0'}</p><p>Penalidades: {newArmorClass === 'media' ? '−5 em Reflexo; metade do deslocamento' : newArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade; deslocamento normal'}</p></div>
+                      </>}
+
+                      {newEquipmentType === 'protection' && <>
+                        <label>Nível de proteção<select value={newProtectionTier} onChange={event => setNewProtectionTier(event.target.value as 'basica' | 'moderada' | 'avancada')}><option value="basica">Básica</option><option value="moderada">Moderada</option><option value="avancada">Avançada</option></select></label>
+                        <label>Tipo de resistência<select value={newProtectionMode} onChange={event => setNewProtectionMode(event.target.value as 'resistencia' | 'sanidade')}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
+                        <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0</p><p>Proteção: {newProtectionTier === 'basica' ? '¼' : newProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {newProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {newProtectionTier === 'basica' ? '1d8' : newProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
+                      </>}
+
+                      {newItemCategories.includes('Armas') && <>
+                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => setNewWeaponClass(event.target.value)}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
+                        <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[newWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[newWeaponClass]} kg</p></div>
+                      </>}
+
+                      <label>
+                        Quantidade
+                        <input
+                          type="number"
+                          min="1"
+                          max="999"
+                          step="1"
+                          value={newItemQuantity}
+                          onChange={(event) =>
+                            setNewItemQuantity(event.target.value)
+                          }
+                          required
+                        />
+                      </label>
+
+                      {!newItemCategories.includes('Armas') && <label>
+                        Peso por unidade (kg)
+                        <input
+                          type="number"
+                          min="0"
+                          max="100000"
+                          step="0.1"
+                          value={newItemWeight}
+                          onChange={(event) =>
+                            setNewItemWeight(event.target.value)
+                          }
+                          required
+                        />
+                      </label>}
+                    </div>
+
+<label>
+  Valor unitário
+  <input
+    type="number"
+    min="0"
+    step="0.01"
+    value={newItemUnitPrice}
+    onChange={event => setNewItemUnitPrice(event.target.value)}
+    placeholder="Ex.: 500"
+  />
+</label>
+
+<label>
+  Moeda
+  <select
+    value={newItemCurrencyId}
+    onChange={event => setNewItemCurrencyId(event.target.value)}
+  >
+    <option value="">Sem moeda definida</option>
+    {selectedCampaign?.currency_config?.currencies?.map((currency, index) => (
+      <option key={currency.id} value={currency.id}>
+        {index === 0 ? '★ Moeda do sistema — ' : ''}{currency.name} ({currency.symbol})
+      </option>
+    ))}
+  </select>
+</label>
+
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={loading}
+                    >
+                      {loading
+                        ? 'Salvando...'
+                        : editingItem
+                          ? 'Salvar alterações'
+                          : 'Salvar item'}
+                    </button>
+        </form>
+      </div>
+    </div>,
+    document.body
+  )}
 
     <div className="sheet-capacity-overview" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:12,margin:'4px 0 18px'}}>
       <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
@@ -3512,7 +4111,10 @@ async function deleteCharacter(character: Character) {
         <h3>{items.length === 0 ? 'Mochila vazia' : 'Nenhum item encontrado'}</h3>
         <p>{items.length === 0 ? 'Adicione o primeiro item deste personagem.' : 'Tente outra busca ou selecione outra categoria.'}</p>
         {items.length === 0 ? (
-          <button type="button" onClick={() => { setActivePage('inventory'); resetItemForm(); setShowItemForm(true) }}>Adicionar primeiro item</button>
+          <button type="button" onClick={() => {
+  resetItemForm()
+  setShowItemForm(true)
+}}>Adicionar primeiro item</button>
         ) : (
           <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setFavoriteOnly(false) }}>Limpar filtros</button>
         )}
@@ -3520,9 +4122,12 @@ async function deleteCharacter(character: Character) {
     ) : (
       <div className="item-grid">
         {filteredItems.map(item => (
-          <article className="item-card" key={item.id} onClick={() => {
+          <article className="item-card inventory-item-card" key={item.id} onClickCapture={event => {
+  const target = event.target as HTMLElement
+  if (target.closest('button, input, select, textarea, a, [role=\"button\"]')) return
   setSelectedItemDetails(item)
-}} style={{cursor:'pointer'}}>
+}}
+style={{cursor:'pointer'}}>
             <div className="item-card-top">
               <button type="button" className="item-art" onClick={event => { event.stopPropagation(); setEmojiPickerItem(item) }} title="Clique para alterar o emoji" aria-label={`Alterar emoji de ${item.name}`} style={{cursor:'pointer',font:'inherit',fontSize:28}}>
                 {typeof item.metadata?.icon === 'string' ? item.metadata.icon : '📦'}
@@ -3530,15 +4135,42 @@ async function deleteCharacter(character: Character) {
               <div className="item-actions">
                 <button type="button" className="item-menu" title={item.metadata?.favorite === true ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} aria-label={item.metadata?.favorite === true ? `Remover ${item.name} dos favoritos` : `Adicionar ${item.name} aos favoritos`} aria-pressed={item.metadata?.favorite === true} onClick={event => { event.stopPropagation(); void toggleFavorite(item) }}>{item.metadata?.favorite === true ? '★' : '☆'}</button>
                 <button type="button" className="item-menu" title="Duplicar item" aria-label={`Duplicar ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void duplicateItem(item) }}>⧉</button>
-                <button type="button" className="item-menu" title="Editar item" aria-label={`Editar ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); startEditingItem(item); setActivePage('inventory') }}>✎</button>
+                {item.metadata?.equipmentType === 'armor' && <button type="button" className={`item-menu equipment-card-icon armor-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar armadura' : 'Equipar armadura'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; if(nextEquipped){ const others=items.filter(entry=>entry.character_id===item.character_id && entry.id!==item.id && entry.metadata?.equipmentType==='armor' && entry.metadata?.equipped===true); for(const other of others) await supabase.from('inventory_items').update({metadata:{...(other.metadata||{}),equipped:false}}).eq('id',other.id) } const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a armadura: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.character_id===item.character_id&&entry.metadata?.equipmentType==='armor'&&entry.id!==item.id?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'🛡'}</button>}
+                {item.metadata?.equipmentType === 'protection' && <button type="button" className={`item-menu equipment-card-icon protection-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar proteção' : 'Equipar proteção'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a proteção: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'✧'}</button>}
+                {Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas') && <button type="button" className={`item-menu equipment-card-icon weapon-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar arma' : 'Equipar arma'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped = item.metadata?.equipped !== true; if (nextEquipped) { const otherEquipped = items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas')); for (const other of otherEquipped) { await supabase.from('inventory_items').update({metadata:{...(other.metadata || {}),equipped:false}}).eq('id',other.id) } } const {data,error: equipError}=await supabase.from('inventory_items').update({metadata:{...(item.metadata || {}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if (equipError || !data) { setError(`Não foi possível alterar a arma equipada: ${equipError?.message || 'sem retorno'}`); return } setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.id!==item.id&&entry.character_id===item.character_id&&entry.metadata?.equipped===true&&Array.isArray(entry.metadata?.categories)&&entry.metadata.categories.includes('Armas')?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped === true ? '✓' : '⚔'}</button>}
+                <button type="button" className="item-menu" title="Editar item" aria-label={`Editar ${item.name}`} disabled={loading} onClick={event => {
+  event.stopPropagation()
+  startEditingItem(item)
+}}>✎</button>
                 <button type="button" className="item-menu" title="Remover item" aria-label={`Remover ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void removeItem(item) }}>×</button>
               </div>
             </div>
+            {(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
+              <span className="inventory-equipment-label">EQUIPAMENTO</span>
+              <button type="button" className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => {
+                event.stopPropagation();
+                const isWeapon = Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas');
+                const type = isWeapon ? 'weapon' : item.metadata?.equipmentType;
+                const nextEquipped = item.metadata?.equipped !== true;
+                const others = nextEquipped && (type === 'weapon' || type === 'armor') ? items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && (type === 'weapon' ? Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas') : entry.metadata?.equipmentType === 'armor')) : [];
+                for (const other of others) {
+                  const { error: otherError } = await supabase.from('inventory_items').update({ metadata: { ...(other.metadata || {}), equipped: false } }).eq('id', other.id);
+                  if (otherError) { setError(`Não foi possível atualizar outro equipamento: ${otherError.message}`); return; }
+                }
+                const { data, error: equipError } = await supabase.from('inventory_items').update({ metadata: { ...(item.metadata || {}), equipped: nextEquipped } }).eq('id', item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle();
+                if (equipError || !data) { setError(`Não foi possível alterar o equipamento: ${equipError?.message || 'sem retorno'}`); return; }
+                setItems(current => current.map(entry => entry.id === item.id ? data as Item : others.some(other => other.id === entry.id) ? { ...entry, metadata: { ...(entry.metadata || {}), equipped: false } } : entry));
+                setNotice(nextEquipped ? `${item.name} equipado(a).` : `${item.name} desequipado(a).`);
+              }}>
+                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
+                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
+              </button>
+            </div>}
             <div className="item-category">{item.category}</div>
             <h3>{item.name}</h3>
             <p className="item-description">{item.description || 'Sem descrição.'}</p>
             <div className="item-footer">
-              <span>⚖ {Number(item.weight).toFixed(1)} kg / un.</span>
+              <span>⚖ {`${(item.metadata?.equipmentType === 'armor' ? (item.metadata?.armorClass === 'pesada' ? 6 : item.metadata?.armorClass === 'media' ? 4 : 2) : item.metadata?.equipmentType === 'protection' ? 0 : Number(item.weight) || 0).toFixed(1)} kg / un.`}</span>
               <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
                 <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)-1) }} disabled={Number(item.quantity)<=1 || updatingQuantityItemId===item.id} aria-label={`Diminuir quantidade de ${item.name}`}>−</button>
                 <span className="quantity" aria-live="polite">{item.quantity}</span>
@@ -3550,121 +4182,9 @@ async function deleteCharacter(character: Character) {
       </div>
     )}
     <small style={{display:'block',marginTop:12,color:'var(--season-muted, #b9b4c2)'}}>
-      Esta é a mesma lista de itens da aba Inventário. Favoritar, filtrar, ordenar, alterar quantidade, emoji, editar, duplicar ou remover aqui reflete no inventário completo.
+      Os itens pertencem ao personagem selecionado na campanha. Alterações, equipamentos e quantidades são sincronizados com a ficha.
     </small>
   </section>
-)}
-
-{selectedItemDetails && (
-  <div className="modal-overlay" onClick={() => setSelectedItemDetails(null)} style={{position:'fixed',inset:0,zIndex:10000,display:'grid',placeItems:'center',padding:20,background:'rgba(5,5,9,.78)',backdropFilter:'blur(7px)'}}>
-    <div className="item-details-modal" role="dialog" aria-modal="true" aria-label={`Detalhes de ${selectedItemDetails.name}`} onClick={event => event.stopPropagation()} style={{position:'relative',width:'min(100%,520px)',maxHeight:'min(85vh,760px)',overflowY:'auto',padding:28,borderRadius:20,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'var(--season-surface,#17151f)',color:'var(--season-text,#f4f0fa)',boxShadow:'0 24px 80px rgba(0,0,0,.5)'}}>
-      <button type="button" className="item-menu" onClick={() => setSelectedItemDetails(null)} aria-label="Fechar detalhes" style={{position:'absolute',right:16,top:16,width:36,height:36,borderRadius:10,fontSize:20}}>✕</button>
-      <div className="item-art" style={{width:76,height:76,display:'grid',placeItems:'center',borderRadius:18,fontSize:42,marginBottom:18,background:'var(--season-surface-alt,rgba(255,255,255,.06))'}}>{typeof selectedItemDetails.metadata?.icon === 'string' ? selectedItemDetails.metadata.icon : '📦'}</div>
-      <small>{selectedItemDetails.category}</small>
-      <p className="item-rarity"><strong>Raridade:</strong> {typeof selectedItemDetails.metadata?.rarity === 'string' ? selectedItemDetails.metadata.rarity.charAt(0).toLocaleUpperCase('pt-BR') + selectedItemDetails.metadata.rarity.slice(1) : 'Comum'}</p>
-      <h2>{selectedItemDetails.name}</h2>
-      <p>{selectedItemDetails.description || 'Sem descrição.'}</p>
-      <div className="item-economic-details">
-        <div><span>Valor unitário</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{Number(selectedItemDetails.unit_price ?? 0).toLocaleString('pt-BR')}</strong></div>
-        <div><span>Valor total</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{(Number(selectedItemDetails.unit_price ?? 0) * Number(selectedItemDetails.quantity ?? 0)).toLocaleString('pt-BR')}</strong></div>
-      </div>
-      <div className="item-sale-section">
-  <h3>Vender para uma loja</h3>
-
-  {isMaster && (
-  <label
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      margin: '12px 0',
-      fontSize: 13,
-    }}
-  >
-    <input
-      type="checkbox"
-      className="restriction-checkbox"
-      checked={!!selectedItemDetails.sale_blocked}
-      onChange={event =>
-        void setItemRestriction(
-          'inventory',
-          selectedItemDetails.id,
-          event.target.checked
-        )
-      }
-    />
-    Bloquear venda deste item
-  </label>
-)}
-
-{selectedItemDetails.sale_blocked && (
-  <p style={{ color: '#e6a36d', fontSize: 13 }}>
-    🔒 A venda deste item foi bloqueada pelo mestre.
-  </p>
-)}
-
-  {!(selectedItemDetails.metadata?.shop_id &&
-     selectedItemDetails.metadata?.shop_item_id) && (
-    <label style={labelStyle}>
-      Loja que receberá o item
-
-      <select
-        value={saleShopId}
-        onChange={event => setSaleShopId(event.target.value)}
-        style={inputStyle}
-      >
-        <option value="">Selecione uma loja</option>
-
-        {shops.map(shop => (
-          <option key={shop.id} value={shop.id}>
-            {shop.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  )}
-
-  <label style={labelStyle}>
-    Quantidade para vender
-
-    <input
-      type="number"
-      min="1"
-      max={selectedItemDetails.quantity}
-      value={saleQuantity}
-      onChange={event => setSaleQuantity(event.target.value)}
-      style={inputStyle}
-    />
-  </label>
-
-  <p>
-    Valor da venda:{' '}
-    <strong>
-      {(
-        Number(selectedItemDetails.unit_price) *
-        Number(saleQuantity || 0)
-      ).toLocaleString('pt-BR')}
-    </strong>
-  </p>
-
-  <button
-    type="button"
-    className="primary-button"
-    disabled={saleLoading || !!selectedItemDetails.sale_blocked}
-    onClick={() => void sellInventoryItem(selectedItemDetails)}
-  >
-    {saleLoading
-    ? 'Vendendo...'
-    : selectedItemDetails.sale_blocked
-      ? 'Venda bloqueada'
-      : 'Vender item'}
-  </button>
-</div>
-      <p>Quantidade: {selectedItemDetails.quantity}</p>
-      <p>Peso por unidade: {Number(selectedItemDetails.weight).toFixed(1)} kg</p>
-      <p>Peso total: {(Number(selectedItemDetails.weight) * Number(selectedItemDetails.quantity)).toFixed(1)} kg</p>
-    </div>
-  </div>
 )}
 
 {canAccessSelectedCharacter && selectedCampaign?.currency_config?.currencies?.length && (
@@ -4351,8 +4871,9 @@ async function deleteCharacter(character: Character) {
       </div>
     ) : (
       <>
-        <div className="inventory-heading">
+        <div className="inventory-heading shops-heading">
           <div>
+            <span className="shops-eyebrow">✦ COMÉRCIO DA CAMPANHA</span>
             <h2>Mercado da campanha</h2>
             <p>
               {isMaster
@@ -4446,13 +4967,13 @@ async function deleteCharacter(character: Character) {
           </div>
         ) : (
           <>
-            <div className="shops-list">
+            <div className="shops-list shop-cards-grid">
               {shops.map(shop => {
                 const isSelected = selectedShopId === shop.id
 
                 return (
                   <article
-                    className="item-card"
+                    className={`item-card shop-card ${isSelected ? 'is-selected' : ''}`}
                     key={shop.id}
                     style={{
                       borderColor: isSelected
@@ -4546,8 +5067,9 @@ async function deleteCharacter(character: Character) {
 
                   return (
                     <>
-                      <div className="inventory-heading">
+                      <div className="inventory-heading shop-catalog-heading">
                         <div>
+                          <span className="shops-eyebrow">✦ ESTABELECIMENTO SELECIONADO</span>
                           <h2>{selectedShop.name}</h2>
                           <p>Catálogo de produtos</p>
                         </div>
@@ -4726,18 +5248,24 @@ async function deleteCharacter(character: Character) {
                                   A categoria organiza o produto nos filtros do inventário e do catálogo.
                                 </small>
                               </label>
-                              <label style={{ ...labelStyle, marginTop: 12 }}>
-                                Raridade
-                                <select value={shopItemRarity} onChange={event => setShopItemRarity(event.target.value)} style={inputStyle}>
-                                  <option value="comum">Comum</option>
-                                  <option value="incomum">Incomum</option>
-                                  <option value="raro">Raro</option>
-                                  <option value="épico">Épico</option>
-                                  <option value="mítico">Mítico</option>
-                                  <option value="relíquia">Relíquia</option>
-                                </select>
-                                <small style={{ color: 'var(--season-muted, #aaa)' }}>A mesma raridade usada nos itens do inventário.</small>
-                              </label>
+<div className="item-rarity-field">
+  <label htmlFor="item-rarity">
+    Raridade
+  </label>
+
+  <select
+    id="item-rarity"
+    value={newItemRarity}
+    onChange={event => setNewItemRarity(event.target.value)}
+  >
+    <option value="comum">Comum</option>
+    <option value="incomum">Incomum</option>
+    <option value="raro">Raro</option>
+    <option value="épico">Épico</option>
+    <option value="mítico">Mítico</option>
+    <option value="relíquia">Relíquia</option>
+  </select>
+</div>
                             </div>
 
                             <div style={{ marginBottom: 20 }}>
@@ -4926,24 +5454,24 @@ async function deleteCharacter(character: Character) {
                               item.quantity !== null && item.quantity <= 0
 
                             return (
-                              <article className="item-card" key={item.id}>
-                                <div className="item-art">
+                              <article className="item-card shop-product-card" key={item.id}>
+                                <div className="item-art shop-product-art">
                                   {typeof item.metadata?.icon === 'string'
                                     ? item.metadata.icon
                                     : '📦'}
                                 </div>
 
-                                <div className="item-category">
+                                <div className="item-category shop-product-category">
                                   {item.category}
                                 </div>
 
-                                <h3>{item.name}</h3>
+                                <h3 className="shop-product-title">{item.name}</h3>
 
                                 <p className="item-description">
                                   {item.description || 'Sem descrição.'}
                                 </p>
 
-                                <div className="item-economic-details">
+      <div className="item-economic-details shop-product-economics">
                                   <div>
                                     <span>Preço</span>
                                     <strong>
@@ -4961,12 +5489,13 @@ async function deleteCharacter(character: Character) {
                                   </div>
                                 </div>
 
-                                <p>
+                                <p className={`shop-product-stock ${outOfStock ? 'is-empty' : ''}`}>
+                                  <span className="shop-stock-dot" />
                                   {item.quantity === null
                                     ? 'Estoque ilimitado'
                                     : outOfStock
                                       ? 'Esgotado'
-                                      : `Disponível: ${item.quantity}`}
+                                      : `Disponível: ${item.quantity} unidade(s)`}
                                 </p>
 
 {isMaster && (
@@ -5015,7 +5544,7 @@ async function deleteCharacter(character: Character) {
   </div>
 )}
 
-<label style={labelStyle}>
+<label className="shop-purchase-field" style={labelStyle}>
   Comprar para
   <select
     value={shopPurchaseCharacterId}
@@ -5033,7 +5562,7 @@ async function deleteCharacter(character: Character) {
   </select>
 </label>
 
-<label style={labelStyle}>
+<label className="shop-purchase-field" style={labelStyle}>
   Quantidade
   <input
     type="number"
@@ -5061,7 +5590,7 @@ async function deleteCharacter(character: Character) {
 
 <button
   type="button"
-  className="primary-button"
+  className="primary-button shop-buy-button"
   disabled={
     outOfStock ||
     !!item.purchase_blocked ||
@@ -5108,8 +5637,9 @@ async function deleteCharacter(character: Character) {
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
             {showCampaignForm&&<form className="add-form" onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<select value={campaignSystemChoice} onChange={e=>{const choice=e.target.value;setCampaignSystemChoice(choice);if(choice==='kisatsutai')setSystemName('Kisatsutai');else if(choice==='other')setSystemName('')}} style={inputStyle}><option value=''>Selecione um sistema</option><option value='kisatsutai'>Kisatsutai</option><option value='other'>Outro sistema</option></select></label>{campaignSystemChoice==='other'&&<label>Nome do sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} placeholder='Ex.: Dungeons & Dragons 5e' required style={inputStyle}/></label>}<label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="submit" disabled={loading}>{loading ? 'Salvando…' : editingCampaignId ? 'Salvar alterações' : 'Criar campanha'}</button><button className="secondary-button" type="button" onClick={()=>{setShowCampaignForm(false);setEditingCampaignId(null);setCampaignName('');setCampaignDescription('');setSystemName('');setCampaignSystemChoice('')}}>Cancelar</button></div></form>}
-            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('inventory')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':campaign.system_name.toLowerCase().includes('kisatsutai')?'kisatsutai':'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
+            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':campaign.system_name.toLowerCase().includes('kisatsutai')?'kisatsutai':'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
             {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
+
             {selectedCampaign && isMaster && (
   <section className="inventory-section" style={{ marginBottom: 16 }}>
     <div className="inventory-heading"><div><h3>Moedas da campanha</h3><p>A primeira moeda é a moeda do sistema, usada por padrão na carteira e nos novos produtos.</p></div></div>
@@ -5207,6 +5737,68 @@ async function deleteCharacter(character: Character) {
               )}
             </section>
           )}
+
+            {selectedCharacter && isMaster && (
+              <section className="inventory-section character-access-settings">
+                <div className="inventory-heading"><div><h2>Acesso do personagem</h2><p>Defina quem controla e quem pode visualizar {selectedCharacter.name}.</p></div></div>
+                <div style={{ minWidth: 220, padding: '12px', border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))', borderRadius: 10, background: 'var(--season-bg, var(--season-bg, #100e19))' }}>
+                      <label style={labelStyle} htmlFor="character-current-player">Jogador atual</label>
+                      <select
+                        id="character-current-player"
+                        value={selectedCharacter.current_player_id ?? ''}
+                        onChange={(event) => void changeCharacterPlayer(event.target.value)}
+                        disabled={visibilitySaving}
+                        style={{ ...inputStyle, marginBottom: 12 }}
+                      >
+                        <option value="">Sem jogador atribuído</option>
+                        {campaignMembers.filter(member => member.role !== 'master').map(member => (
+                          <option key={member.user_id} value={member.user_id}>{member.display_name}</option>
+                        ))}
+                      </select>
+                      <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', lineHeight: 1.5, marginBottom: 12 }}>
+                        Este jogador aparecerá como integrante da party no Escudo do mestre quando o personagem participar da temporada.
+                      </small>
+                      <label style={labelStyle} htmlFor="character-visibility">Visibilidade</label>
+                      <select
+                        id="character-visibility"
+                        value={selectedCharacter.visibility ?? 'private'}
+                        onChange={(event) => void changeCharacterVisibility(event.target.value as Character['visibility'])}
+                        disabled={visibilitySaving}
+                        style={inputStyle}
+                      >
+                        <option value="private">Privado</option>
+                        <option value="campaign">Toda a campanha</option>
+                        <option value="selected">Jogadores selecionados</option>
+                      </select>
+                      <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', lineHeight: 1.5 }}>
+                        {selectedCharacter.visibility === 'campaign'
+                          ? 'Todos os membros da campanha podem ver este personagem.'
+                          : selectedCharacter.visibility === 'selected'
+                            ? 'Somente os jogadores autorizados, o proprietário e os mestres podem vê-lo.'
+                            : 'Somente o proprietário e os mestres podem ver este personagem.'}
+                      </small>
+                      {selectedCharacter.visibility === 'selected' && (
+                        <div style={{ marginTop: 12 }}>
+                          <strong style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>Acesso dos jogadores</strong>
+                          {campaignMembers.filter((member) => member.role !== 'master' && member.user_id !== selectedCharacter.user_id).map((member) => (
+                            <label key={member.user_id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, margin: '8px 0', color: '#f4f0fa' }}>
+                              <input
+                                type="checkbox"
+                                checked={characterGrants.some((grant) => grant.user_id === member.user_id)}
+                                disabled={visibilitySaving}
+                                onChange={(event) => void toggleCharacterGrant(member.user_id, event.target.checked)}
+                              />
+                              {member.display_name}
+                            </label>
+                          ))}
+                          {campaignMembers.filter((member) => member.role !== 'master' && member.user_id !== selectedCharacter.user_id).length === 0 && (
+                            <small style={{ color: 'var(--season-muted, #b9b4c2)' }}>Não há outros jogadores na campanha.</small>
+                          )}
+                        </div>
+                      )}
+                    </div>
+              </section>
+            )}
 
           </section>}
 
@@ -5497,49 +6089,6 @@ async function deleteCharacter(character: Character) {
 </p>
                   </div>
 
-                  {isMaster && (
-                    <div style={{ minWidth: 220, padding: '12px', border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))', borderRadius: 10, background: 'var(--season-bg, var(--season-bg, #100e19))' }}>
-                      <label style={labelStyle} htmlFor="character-visibility">Visibilidade</label>
-                      <select
-                        id="character-visibility"
-                        value={selectedCharacter.visibility ?? 'private'}
-                        onChange={(event) => void changeCharacterVisibility(event.target.value as Character['visibility'])}
-                        disabled={visibilitySaving}
-                        style={inputStyle}
-                      >
-                        <option value="private">Privado</option>
-                        <option value="campaign">Toda a campanha</option>
-                        <option value="selected">Jogadores selecionados</option>
-                      </select>
-                      <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', lineHeight: 1.5 }}>
-                        {selectedCharacter.visibility === 'campaign'
-                          ? 'Todos os membros da campanha podem ver este personagem.'
-                          : selectedCharacter.visibility === 'selected'
-                            ? 'Somente os jogadores autorizados, o proprietário e os mestres podem vê-lo.'
-                            : 'Somente o proprietário e os mestres podem ver este personagem.'}
-                      </small>
-                      {selectedCharacter.visibility === 'selected' && (
-                        <div style={{ marginTop: 12 }}>
-                          <strong style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>Acesso dos jogadores</strong>
-                          {campaignMembers.filter((member) => member.role !== 'master' && member.user_id !== selectedCharacter.user_id).map((member) => (
-                            <label key={member.user_id} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, margin: '8px 0', color: '#f4f0fa' }}>
-                              <input
-                                type="checkbox"
-                                checked={characterGrants.some((grant) => grant.user_id === member.user_id)}
-                                disabled={visibilitySaving}
-                                onChange={(event) => void toggleCharacterGrant(member.user_id, event.target.checked)}
-                              />
-                              {member.display_name}
-                            </label>
-                          ))}
-                          {campaignMembers.filter((member) => member.role !== 'master' && member.user_id !== selectedCharacter.user_id).length === 0 && (
-                            <small style={{ color: 'var(--season-muted, #b9b4c2)' }}>Não há outros jogadores na campanha.</small>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   <div className="banner-divider" />
 
                   <div className="banner-stat">
@@ -5576,13 +6125,14 @@ async function deleteCharacter(character: Character) {
                 </section>
               )}
 
+              {false && activePage === 'campaigns' && (
               <section className="inventory-section" id="inventario">
                 <div className="inventory-heading">
                   <div>
                     <h2>Mochila</h2>
                     <p>
                       {selectedCharacter
-                        ? `Pertences de ${selectedCharacter.name}.`
+                        ? `Pertences de ${selectedCharacter?.name}.`
                         : 'Selecione um personagem para gerenciar seus itens.'}
                     </p>
                   </div>
@@ -5604,11 +6154,26 @@ async function deleteCharacter(character: Character) {
                   </button>
                 </div>
 
-                {showItemForm && selectedCharacterId && (
-                  <form className="add-form" onSubmit={createItem}>
+                {showItemForm &&
+                  (selectedCharacterId || editingItem) &&
+                  createPortal(
+                    (
+                      <div className="item-modal-overlay">
+                        <div
+                          className="item-modal-content"
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby="item-modal-title"
+                        >
+                          <form
+                            className="add-form item-editor-form"
+                            onSubmit={createItem}
+                          >
                     <div className="form-heading">
                       <div>
-                        <h3>{editingItem ? 'Editar item' : 'Novo item'}</h3>
+                            <h3 id="item-modal-title">
+                              {editingItem ? 'Editar item' : 'Novo item'}
+                            </h3>
                         <p>
                           {editingItem
                             ? 'Altere os dados do item e salve as mudanças.'
@@ -5670,40 +6235,91 @@ async function deleteCharacter(character: Character) {
 </p>
                       </div>
 
+                      <section className="item-classifications-panel">
+                        <div className="item-classifications-heading">
+                          <div><strong>Classificações do item</strong><p>Marque todas as opções que se aplicam. Um item pode ter várias classificações.</p></div>
+                          <span>{newItemCategories.length} selecionada{newItemCategories.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <div className="item-classifications-grid">
+                          {categories.filter(category => category !== 'Todos').map(category => (
+                            <label key={category} className={newItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
+                              <input type="checkbox" checked={newItemCategories.includes(category)} onChange={event => {
+                                const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
+                                setNewItemCategories(next)
+                                if (next.length) setNewItemCategory(next[0])
+                              }} />
+                              <span className="item-classification-check">{newItemCategories.includes(category) ? '✓' : '+'}</span>
+                              <span>{category}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {!newItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
+                      </section>
+
+                      {newItemCategories.includes('Consumíveis') && (
+                        <section className="scarcity-editor-card">
+                          <div className="scarcity-editor-heading">
+                            <span className="scarcity-editor-icon">⌛</span>
+                            <div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div>
+                          </div>
+                          <label>Nível inicial de escassez
+                            <select value={newScarcityLevel} onChange={event => setNewScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}>
+                              <option value="1">Nível 1 — d12</option>
+                              <option value="2">Nível 2 — d8</option>
+                              <option value="3">Nível 3 — d6</option>
+                              <option value="4">Nível 4 — d4</option>
+                            </select>
+                          </label>
+                          <div className="scarcity-level-preview">
+                            <div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[newScarcityLevel]}</strong></div>
+                            <div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[newScarcityLevel]}</strong></div>
+                          </div>
+                          <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
+                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => setNewScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
+                        </section>
+                      )}
+
+<label className="item-rarity-field">
+  Raridade
+
+  <select
+    value={newItemRarity}
+    onChange={event => setNewItemRarity(event.target.value)}
+  >
+    <option value="comum">Comum</option>
+    <option value="incomum">Incomum</option>
+    <option value="raro">Raro</option>
+    <option value="épico">Épico</option>
+    <option value="mítico">Mítico</option>
+    <option value="relíquia">Relíquia</option>
+  </select>
+</label>
+
                       <label>
-                        Categoria
-                        <select
-                          value={newItemCategory}
-                          onChange={(event) =>
-                            setNewItemCategory(event.target.value)
-                          }
-                        >
-                          {categories
-                            .filter((category) => category !== 'Todos')
-                            .map((category) => (
-                              <option key={category} value={category}>
-                                {category}
-                              </option>
-                            ))}
+                        Tipo de equipamento
+                        <select value={newEquipmentType} onChange={event => setNewEquipmentType(event.target.value as 'none' | 'armor' | 'protection')}>
+                          <option value="none">Item comum</option>
+                          <option value="armor">Armadura</option>
+                          <option value="protection">Proteção</option>
                         </select>
                       </label>
 
-<label style={labelStyle}>
-  Raridade
-</label>
+                      {newEquipmentType === 'armor' && <>
+                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => setNewArmorClass(event.target.value as 'leve' | 'media' | 'pesada')}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
+                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
+                        <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}</p><p>Resistência adicional: {newArmorClass === 'leve' ? '½ dos pontos + 4' : newArmorClass === 'media' ? '+6 pontos' : '2× os pontos + 8'}</p><p>Destreza de armadura: {newArmorClass === 'leve' ? 'Destreza integral' : newArmorClass === 'media' ? 'Metade da destreza' : '0'}</p><p>Penalidades: {newArmorClass === 'media' ? '−5 em Reflexo; metade do deslocamento' : newArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade; deslocamento normal'}</p></div>
+                      </>}
 
-<select
-  value={newItemRarity}
-  onChange={event => setNewItemRarity(event.target.value)}
-  style={inputStyle}
->
-  <option value="comum">Comum</option>
-  <option value="incomum">Incomum</option>
-  <option value="raro">Raro</option>
-  <option value="épico">Épico</option>
-  <option value="mítico">Mítico</option>
-  <option value="relíquia">Relíquia</option>
-</select>
+                      {newEquipmentType === 'protection' && <>
+                        <label>Nível de proteção<select value={newProtectionTier} onChange={event => setNewProtectionTier(event.target.value as 'basica' | 'moderada' | 'avancada')}><option value="basica">Básica</option><option value="moderada">Moderada</option><option value="avancada">Avançada</option></select></label>
+                        <label>Tipo de resistência<select value={newProtectionMode} onChange={event => setNewProtectionMode(event.target.value as 'resistencia' | 'sanidade')}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
+                        <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0</p><p>Proteção: {newProtectionTier === 'basica' ? '¼' : newProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {newProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {newProtectionTier === 'basica' ? '1d8' : newProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
+                      </>}
+
+                      {newItemCategories.includes('Armas') && <>
+                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => setNewWeaponClass(event.target.value)}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
+                        <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[newWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[newWeaponClass]} kg</p></div>
+                      </>}
 
                       <label>
                         Quantidade
@@ -5720,7 +6336,7 @@ async function deleteCharacter(character: Character) {
                         />
                       </label>
 
-                      <label>
+                      {!newItemCategories.includes('Armas') && <label>
                         Peso por unidade (kg)
                         <input
                           type="number"
@@ -5733,7 +6349,7 @@ async function deleteCharacter(character: Character) {
                           }
                           required
                         />
-                      </label>
+                      </label>}
                     </div>
 
 <label>
@@ -5763,19 +6379,37 @@ async function deleteCharacter(character: Character) {
   </select>
 </label>
 
-                    <button
-                      className="primary-button"
-                      type="submit"
-                      disabled={loading}
-                    >
-                      {loading
-                        ? 'Salvando...'
-                        : editingItem
-                          ? 'Salvar alterações'
-                          : 'Salvar item'}
-                    </button>
-                  </form>
-                )}
+                        <div className="item-editor-actions">
+                          <button
+                            type="button"
+                            className="secondary-button"
+                            disabled={loading}
+                            onClick={() => {
+                              resetItemForm()
+                              setShowItemForm(false)
+                            }}
+                          >
+                            Cancelar
+                          </button>
+
+                          <button
+                            className="primary-button"
+                            type="submit"
+                            disabled={loading}
+                          >
+                            {loading
+                              ? 'Salvando...'
+                              : editingItem
+                                ? 'Salvar alterações'
+                                : 'Salvar item'}
+                          </button>
+                        </div>
+                          </form>
+                        </div>
+                      </div>
+                    ),
+                    document.body
+                  )}
 
                 <div className="inventory-toolbar">
                   <div className="category-tabs">
@@ -5870,7 +6504,7 @@ async function deleteCharacter(character: Character) {
                   <div className="item-grid">
                     {filteredItems.map((item) => (
                       <article
-  className="item-card"
+  className="item-card inventory-item-card"
   key={item.id}
   onClick={() => {
     setSelectedItemDetails(item)
@@ -5948,6 +6582,37 @@ async function deleteCharacter(character: Character) {
                           </div>
                         </div>
 
+                        {(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && (
+                          <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
+                            <span className="inventory-equipment-label">EQUIPAMENTO</span>
+                            <button
+                              type="button"
+                              className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`}
+                              aria-pressed={item.metadata?.equipped === true}
+                              onClick={async (event) => {
+                                event.stopPropagation();
+                                const isWeapon = Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas');
+                                const type = isWeapon ? 'weapon' : item.metadata?.equipmentType;
+                                const nextEquipped = item.metadata?.equipped !== true;
+                                const others = nextEquipped && (type === 'weapon' || type === 'armor')
+                                  ? items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && (type === 'weapon' ? Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas') : entry.metadata?.equipmentType === 'armor'))
+                                  : [];
+                                for (const other of others) {
+                                  const { error: otherError } = await supabase.from('inventory_items').update({ metadata: { ...(other.metadata || {}), equipped: false } }).eq('id', other.id);
+                                  if (otherError) { setError(`Não foi possível atualizar outro equipamento: ${otherError.message}`); return; }
+                                }
+                                const { data, error: equipError } = await supabase.from('inventory_items').update({ metadata: { ...(item.metadata || {}), equipped: nextEquipped } }).eq('id', item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle();
+                                if (equipError || !data) { setError(`Não foi possível alterar o equipamento: ${equipError?.message || 'sem retorno'}`); return; }
+                                setItems(current => current.map(entry => entry.id === item.id ? data as Item : others.some(other => other.id === entry.id) ? { ...entry, metadata: { ...(entry.metadata || {}), equipped: false } } : entry));
+                                setNotice(nextEquipped ? `${item.name} equipado(a).` : `${item.name} desequipado(a).`);
+                              }}
+                            >
+                              <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
+                              {item.metadata?.equipped === true ? 'Equipado · Desequipar' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
+                            </button>
+                          </div>
+                        )}
+
                         <div className="item-category">{item.category}</div>
                         <h3>{item.name}</h3>
                         <p className="item-description">
@@ -5956,7 +6621,7 @@ async function deleteCharacter(character: Character) {
 
                         <div className="item-footer">
                           <span>
-                            ⚖ {Number(item.weight).toFixed(1)} kg / un.
+                            ⚖ {`${(item.metadata?.equipmentType === 'armor' ? (item.metadata?.armorClass === 'pesada' ? 6 : item.metadata?.armorClass === 'media' ? 4 : 2) : item.metadata?.equipmentType === 'protection' ? 0 : Number(item.weight) || 0).toFixed(1)} kg / un.`}
                           </span>
                           <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
                             <button
@@ -5981,6 +6646,7 @@ async function deleteCharacter(character: Character) {
                   </div>
                 )}
               </section>
+              )}
             </>
           )}
 
@@ -6066,7 +6732,182 @@ async function deleteCharacter(character: Character) {
             </div>
           )}
 
+{selectedItemDetails && createPortal((
+  <div className="modal-overlay" onClick={() => setSelectedItemDetails(null)} style={{position:'fixed',inset:0,zIndex:10000,display:'grid',placeItems:'center',padding:20,background:'rgba(5,5,9,.78)',backdropFilter:'blur(7px)'}}>
+    <div className="item-details-modal item-details-redesigned" role="dialog" aria-modal="true" aria-label={`Detalhes de ${selectedItemDetails.name}`} onClick={event => event.stopPropagation()} style={{position:'relative',width:'min(100%,520px)',maxHeight:'min(85vh,760px)',overflowY:'auto',padding:28,borderRadius:20,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'var(--season-surface,#17151f)',color:'var(--season-text,#f4f0fa)',boxShadow:'0 24px 80px rgba(0,0,0,.5)'}}>
+      <button type="button" className="item-menu" onClick={() => setSelectedItemDetails(null)} aria-label="Fechar detalhes" style={{position:'absolute',right:16,top:16,width:36,height:36,borderRadius:10,fontSize:20}}>✕</button>
+<div className="item-details-header">
+  <div className="item-art">
+    {typeof selectedItemDetails.metadata?.icon === 'string'
+      ? selectedItemDetails.metadata.icon
+      : '📦'}
+  </div>
 
+  <div className="item-details-heading">
+    <small>{selectedItemDetails.category}</small>
+
+<p className="item-rarity">
+  <strong>Raridade:</strong>
+  <span>
+    {typeof selectedItemDetails.metadata?.rarity === 'string'
+      ? selectedItemDetails.metadata.rarity.charAt(0).toLocaleUpperCase('pt-BR') +
+        selectedItemDetails.metadata.rarity.slice(1)
+      : 'Comum'}
+  </span>
+</p>
+
+    <h2>{selectedItemDetails.name}</h2>
+    <p>{selectedItemDetails.description || 'Sem descrição.'}</p>
+  </div>
+</div>
+      {((selectedItemDetails.metadata?.equipmentType === 'armor' || selectedItemDetails.metadata?.equipmentType === 'protection') || (Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Armas'))) && <button type="button" className="equipment-toggle-button" onClick={async()=>{
+        const isWeapon=Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Armas');
+        const equipmentType=isWeapon?'weapon':selectedItemDetails.metadata?.equipmentType;
+        const nextEquipped=selectedItemDetails.metadata?.equipped!==true;
+        // Uma arma e uma armadura por personagem; proteções podem coexistir.
+        if(nextEquipped && (equipmentType==='armor' || equipmentType==='weapon')) {
+          const others=items.filter(entry=>entry.character_id===selectedItemDetails.character_id && entry.id!==selectedItemDetails.id && entry.metadata?.equipped===true && (equipmentType==='armor' ? entry.metadata?.equipmentType==='armor' : Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas')));
+          for(const other of others) {
+            const {error:unequipError}=await supabase.from('inventory_items').update({metadata:{...(other.metadata||{}),equipped:false}}).eq('id',other.id);
+            if(unequipError){setError(`Não foi possível substituir o equipamento: ${unequipError.message}`);return}
+          }
+          if(others.length) setItems(current=>current.map(entry=>others.some(other=>other.id===entry.id)?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry));
+        }
+        const {data,error}=await supabase.from('inventory_items').update({metadata:{...(selectedItemDetails.metadata||{}),equipped:nextEquipped}}).eq('id',selectedItemDetails.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked').maybeSingle();
+        if(error||!data){setError(`Não foi possível alterar equipamento: ${error?.message||'sem retorno'}`);return}
+        setItems(current=>current.map(entry=>entry.id===selectedItemDetails.id?data as Item:entry));setSelectedItemDetails(data as Item);setNotice(nextEquipped?(isWeapon?'Arma equipada.':equipmentType==='armor'?'Armadura equipada.':'Proteção equipada.'):'Equipamento desativado.');
+      }}>{selectedItemDetails.metadata?.equipped===true?'✓ Equipado · Desequipar':(Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Armas'))?'⚔ Equipar arma':'Equipar item'}</button>}
+
+      {((Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Consumíveis')) || selectedItemDetails.category === 'Consumíveis') && (() => {
+        const level = Math.min(4, Math.max(1, Number(selectedItemDetails.metadata?.scarcityLevel) || 1))
+        const die = ({ 1: 'd12', 2: 'd8', 3: 'd6', 4: 'd4' } as Record<number, string>)[level]
+        const exhausted = selectedItemDetails.metadata?.scarcityExhausted === true
+        return <section className="scarcity-use-card">
+          <div className="scarcity-use-heading"><span>⌛</span><div><h3>Escassez do consumível</h3><p>{exhausted ? 'Este item está esgotado.' : `Nível ${level} · ${die} · Carga ${({ 1: 7, 2: 5, 3: 3, 4: 1 } as Record<number, number>)[level]}`}</p></div></div>
+          <div className="scarcity-use-stats"><div><small>Última rolagem</small><strong>{selectedItemDetails.metadata?.scarcityLastRoll ? `${selectedItemDetails.metadata.scarcityLastRoll} em ${selectedItemDetails.metadata.scarcityLastDie || '—'}` : 'Ainda não usado'}</strong></div><div><small>Usos registrados</small><strong>{Number(selectedItemDetails.metadata?.scarcityUses) || 0}</strong></div></div>
+          <p>Role o dado indicado ao usar. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
+          <button type="button" className="primary-button" disabled={exhausted || usingScarcityItemId === selectedItemDetails.id} onClick={() => void useScarcityItem(selectedItemDetails)}>{usingScarcityItemId === selectedItemDetails.id ? 'Rolando dado...' : exhausted ? 'Item esgotado' : `🎲 Rolar ${die} · Registrar uso`}</button>
+        </section>
+      })()}
+      <div className="item-economic-details">
+        <div><span>Valor unitário</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{Number(selectedItemDetails.unit_price ?? 0).toLocaleString('pt-BR')}</strong></div>
+        <div><span>Valor total</span><strong>{selectedItemDetails.currency_id ? `${selectedCampaign?.currency_config?.currencies?.find(currency => currency.id === selectedItemDetails.currency_id)?.symbol ?? ''} ` : ''}{(Number(selectedItemDetails.unit_price ?? 0) * Number(selectedItemDetails.quantity ?? 0)).toLocaleString('pt-BR')}</strong></div>
+      </div>
+      <div className="item-sale-section">
+  <h3>Vender para uma loja</h3>
+
+  {isMaster && (
+  <label
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      margin: '12px 0',
+      fontSize: 13,
+    }}
+  >
+    <input
+      type="checkbox"
+      className="restriction-checkbox"
+      checked={!!selectedItemDetails.sale_blocked}
+      onChange={event =>
+        void setItemRestriction(
+          'inventory',
+          selectedItemDetails.id,
+          event.target.checked
+        )
+      }
+    />
+    Bloquear venda deste item
+  </label>
+)}
+
+{selectedItemDetails.sale_blocked && (
+  <p style={{ color: '#e6a36d', fontSize: 13 }}>
+    🔒 A venda deste item foi bloqueada pelo mestre.
+  </p>
+)}
+
+  {!(selectedItemDetails.metadata?.shop_id &&
+     selectedItemDetails.metadata?.shop_item_id) && (
+    <label style={labelStyle}>
+      Loja que receberá o item
+
+      <select
+        value={saleShopId}
+        onChange={event => setSaleShopId(event.target.value)}
+        style={inputStyle}
+      >
+        <option value="">Selecione uma loja</option>
+
+        {shops.map(shop => (
+          <option key={shop.id} value={shop.id}>
+            {shop.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  )}
+
+  <label style={labelStyle}>
+    Quantidade para vender
+
+    <input
+      type="number"
+      min="1"
+      max={selectedItemDetails.quantity}
+      value={saleQuantity}
+      onChange={event => setSaleQuantity(event.target.value)}
+      style={inputStyle}
+    />
+  </label>
+
+  <p>
+    Valor da venda:{' '}
+    <strong>
+      {(
+        Number(selectedItemDetails.unit_price) *
+        Number(saleQuantity || 0)
+      ).toLocaleString('pt-BR')}
+    </strong>
+  </p>
+
+  <button
+    type="button"
+    className="primary-button"
+    disabled={saleLoading || !!selectedItemDetails.sale_blocked}
+    onClick={() => void sellInventoryItem(selectedItemDetails)}
+  >
+    {saleLoading
+    ? 'Vendendo...'
+    : selectedItemDetails.sale_blocked
+      ? 'Venda bloqueada'
+      : 'Vender item'}
+  </button>
+</div>
+      {selectedItemDetails.metadata?.equipmentType === 'armor' && <section className="equipment-rules-preview"><h3>Armadura {selectedItemDetails.metadata?.armorClass === 'media' ? 'média' : selectedItemDetails.metadata?.armorClass === 'pesada' ? 'pesada' : 'leve'}</h3><p>Tipos protegidos: {selectedItemDetails.metadata?.armorCoverage === 'todos' ? 'Cortante, perfurante, especial e bruto' : selectedItemDetails.metadata?.armorCoverage === 'especial_bruto' ? 'Especial e bruto' : 'Cortante e perfurante'}</p><p>Carga: {selectedItemDetails.metadata?.armorClass === 'media' ? 4 : selectedItemDetails.metadata?.armorClass === 'pesada' ? 6 : 2}</p><p>Resistência: {selectedItemDetails.metadata?.armorClass === 'media' ? '+6' : selectedItemDetails.metadata?.armorClass === 'pesada' ? 'Dobro dos pontos + 8' : 'Metade dos pontos + 4'}</p><p>Destreza de armadura: {selectedItemDetails.metadata?.armorClass === 'media' ? 'Metade da destreza' : selectedItemDetails.metadata?.armorClass === 'pesada' ? '0' : 'Igual à destreza'}</p><p>Penalidades: {selectedItemDetails.metadata?.armorClass === 'media' ? '−5 em Reflexo; deslocamento pela metade' : selectedItemDetails.metadata?.armorClass === 'pesada' ? '−10 em Reflexo e Corrida; deslocamento a ¼' : 'Nenhuma'}</p></section>}
+      {selectedItemDetails.metadata?.equipmentType === 'protection' && <section className="equipment-rules-preview"><h3>Proteção {selectedItemDetails.metadata?.protectionTier === 'moderada' ? 'moderada' : selectedItemDetails.metadata?.protectionTier === 'avancada' ? 'avançada' : 'básica'}</h3><p>Carga: 0</p><p>Tipo: {selectedItemDetails.metadata?.protectionMode === 'sanidade' ? 'Resistência de sanidade' : 'Resistência contra dano especial e bruto'}</p><p>Valor protegido: {selectedItemDetails.metadata?.protectionTier === 'basica' ? '¼' : selectedItemDetails.metadata?.protectionTier === 'moderada' ? '½' : 'Integral'}</p><p>Dano de sanidade ao perder: {selectedItemDetails.metadata?.protectionTier === 'basica' ? '1d8' : selectedItemDetails.metadata?.protectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}</p></section>}
+<section className="item-basic-stats">
+  <div className="item-stat-card">
+    <small>Quantidade</small>
+    <strong>{selectedItemDetails.quantity}</strong>
+  </div>
+
+  <div className="item-stat-card">
+    <small>Peso por unidade</small>
+    <strong>{Number(selectedItemDetails.weight).toFixed(1)} kg</strong>
+  </div>
+
+  <div className="item-stat-card">
+    <small>Peso total</small>
+    <strong>
+      {(Number(selectedItemDetails.weight) * Number(selectedItemDetails.quantity)).toFixed(1)} kg
+    </strong>
+  </div>
+</section>
+    </div>
+  </div>
+), document.body)}
 
           <footer className="page-footer">
             <span>
