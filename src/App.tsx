@@ -3521,7 +3521,6 @@ async function deleteCharacter(character: Character) {
       <div className="item-grid">
         {filteredItems.map(item => (
           <article className="item-card" key={item.id} onClick={() => {
-  setItemDetailsOrigin('inventory')
   setSelectedItemDetails(item)
 }} style={{cursor:'pointer'}}>
             <div className="item-card-top">
@@ -5874,7 +5873,6 @@ async function deleteCharacter(character: Character) {
   className="item-card"
   key={item.id}
   onClick={() => {
-    setItemDetailsOrigin('sheet')
     setSelectedItemDetails(item)
 }}
   style={{ cursor: 'pointer' }}
