@@ -3520,7 +3520,10 @@ async function deleteCharacter(character: Character) {
     ) : (
       <div className="item-grid">
         {filteredItems.map(item => (
-          <article className="item-card" key={item.id} onClick={() => setSelectedItemDetails(item)} style={{cursor:'pointer'}}>
+          <article className="item-card" key={item.id} onClick={() => {
+  setItemDetailsOrigin('inventory')
+  setSelectedItemDetails(item)
+}} style={{cursor:'pointer'}}>
             <div className="item-card-top">
               <button type="button" className="item-art" onClick={event => { event.stopPropagation(); setEmojiPickerItem(item) }} title="Clique para alterar o emoji" aria-label={`Alterar emoji de ${item.name}`} style={{cursor:'pointer',font:'inherit',fontSize:28}}>
                 {typeof item.metadata?.icon === 'string' ? item.metadata.icon : '📦'}
@@ -5870,7 +5873,10 @@ async function deleteCharacter(character: Character) {
                       <article
   className="item-card"
   key={item.id}
-  onClick={() => setSelectedItemDetails(item)}
+  onClick={() => {
+    setItemDetailsOrigin('sheet')
+    setSelectedItemDetails(item)
+}}
   style={{ cursor: 'pointer' }}
 >
                         <div className="item-card-top">

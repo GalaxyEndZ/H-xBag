@@ -4942,3 +4942,7 @@ button:disabled { opacity: .58; }
   outline: 2px solid var(--season-primary);
   outline-offset: 3px;
 }
+/* Mantém os detalhes do item visíveis também na ficha */
+.page-content.page-sheets > .modal-overlay {
+  display: grid !important;
+}
