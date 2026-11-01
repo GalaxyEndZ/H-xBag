@@ -7315,3 +7315,1625 @@ button:disabled { opacity: .58; }
   outline: 2px solid var(--season-primary);
   outline-offset: 3px;
 }
+/* Deslocamento reduzido pela armadura */
+.sheet-movement-values {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 5px 0;
+}
+
+.sheet-movement-values strong {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.armor-movement-value {
+  color: var(--season-primary, #b99aff) !important;
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+}
+
+.sheet-movement-row strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* =========================================
+   HÄXBAG — FICHA DE ITEM FANTASIA
+   ========================================= */
+
+.item-details-redesigned {
+  --item-gold: #d6b477;
+  --item-gold-soft: rgba(214, 180, 119, 0.18);
+  --item-panel: var(--season-surface-alt, #211c31);
+  --item-border: rgba(214, 180, 119, 0.28);
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--item-gold) transparent;
+}
+
+.item-details-redesigned::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid var(--item-border);
+  border-radius: 14px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.item-details-redesigned::after {
+  content: "✧";
+  position: absolute;
+  top: 10px;
+  left: 18px;
+  color: var(--item-gold);
+  font-size: 17px;
+  pointer-events: none;
+}
+
+/* Cabeçalho */
+
+.item-details-redesigned .item-details-header {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  padding: 18px 12px 24px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--item-border);
+  position: relative;
+}
+
+.item-details-redesigned .item-details-header::after {
+  content: "✦";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 12px;
+  background: var(--season-surface, #17151f);
+  color: var(--item-gold);
+  font-size: 15px;
+}
+
+.item-details-redesigned .item-details-header .item-art {
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--item-gold);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle, var(--item-gold-soft), transparent 72%),
+    var(--item-panel);
+  box-shadow:
+    inset 0 0 20px rgba(214, 180, 119, 0.08),
+    0 5px 20px rgba(0, 0, 0, 0.22);
+  font-size: 54px;
+}
+
+.item-details-redesigned .item-details-heading {
+  min-width: 0;
+}
+
+.item-details-redesigned .item-details-heading > small {
+  display: inline-block;
+  color: var(--item-gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.item-details-redesigned .item-details-heading h2 {
+  margin: 7px 0;
+  font-family: Georgia, serif;
+  font-size: clamp(21px, 4vw, 29px);
+  line-height: 1.15;
+  color: var(--season-text, #f4f0fa);
+  overflow-wrap: anywhere;
+}
+
+.item-details-redesigned .item-details-heading > p:last-child {
+  margin: 8px 0 0;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.item-details-redesigned .item-rarity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.item-details-redesigned .item-rarity strong {
+  color: var(--season-muted, #b9b4c2);
+  font-weight: 500;
+}
+
+.item-details-redesigned .item-rarity span {
+  color: var(--item-gold);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Botão de equipamento */
+
+.item-details-redesigned .equipment-toggle-button {
+  width: 100%;
+  padding: 13px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--item-gold);
+  border-radius: 10px;
+  background: linear-gradient(
+    120deg,
+    rgba(214, 180, 119, 0.18),
+    rgba(214, 180, 119, 0.06)
+  );
+  color: var(--item-gold);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.item-details-redesigned .equipment-toggle-button:hover {
+  background: rgba(214, 180, 119, 0.24);
+  transform: translateY(-1px);
+}
+
+/* Painéis de informação */
+
+.item-details-redesigned .equipment-rules-preview,
+.item-details-redesigned .scarcity-use-card,
+.item-details-redesigned .item-sale-section {
+  padding: 17px;
+  margin: 16px 0;
+  border: 1px solid var(--item-border);
+  border-radius: 13px;
+  background: var(--item-panel);
+}
+
+.item-details-redesigned .equipment-rules-preview h3,
+.item-details-redesigned .item-sale-section h3,
+.item-details-redesigned .scarcity-use-heading h3 {
+  margin: 0 0 12px;
+  color: var(--item-gold);
+  font-family: Georgia, serif;
+  font-size: 16px;
+}
+
+.item-details-redesigned .equipment-rules-preview p {
+  margin: 9px 0;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.item-details-redesigned .equipment-rules-preview p + p {
+  padding-top: 8px;
+  border-top: 1px solid rgba(214, 180, 119, 0.10);
+}
+
+/* Escassez */
+
+.item-details-redesigned .scarcity-use-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.item-details-redesigned .scarcity-use-heading > span {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--item-border);
+  border-radius: 10px;
+  background: var(--item-gold-soft);
+  color: var(--item-gold);
+  font-size: 21px;
+}
+
+.item-details-redesigned .scarcity-use-heading h3 {
+  margin-bottom: 4px;
+}
+
+.item-details-redesigned .scarcity-use-heading p {
+  margin: 0;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+}
+
+.item-details-redesigned .scarcity-use-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.item-details-redesigned .scarcity-use-stats > div {
+  padding: 12px;
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.item-details-redesigned .scarcity-use-stats small,
+.item-details-redesigned .scarcity-use-stats strong {
+  display: block;
+}
+
+.item-details-redesigned .scarcity-use-stats small {
+  color: var(--season-muted, #b9b4c2);
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+
+.item-details-redesigned .scarcity-use-stats strong {
+  color: var(--season-text, #f4f0fa);
+  font-size: 14px;
+}
+
+.item-details-redesigned .scarcity-use-card > p {
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.item-details-redesigned .scarcity-use-card > button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Valores econômicos */
+
+.item-details-redesigned .item-economic-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.item-details-redesigned .item-economic-details > div {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--item-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, var(--item-gold-soft), transparent 85%),
+    var(--item-panel);
+}
+
+.item-details-redesigned .item-economic-details span,
+.item-details-redesigned .item-economic-details strong {
+  display: block;
+}
+
+.item-details-redesigned .item-economic-details span {
+  color: var(--season-muted, #b9b4c2);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.item-details-redesigned .item-economic-details strong {
+  color: var(--item-gold);
+  font-family: Georgia, serif;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+
+/* Venda */
+
+.item-details-redesigned .item-sale-section {
+  margin-top: 20px;
+}
+
+.item-details-redesigned .item-sale-section > p {
+  color: var(--season-muted, #b9b4c2);
+  font-size: 13px;
+}
+
+.item-details-redesigned .item-sale-section > p strong {
+  color: var(--item-gold);
+}
+
+.item-details-redesigned .item-sale-section > button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Estatísticas básicas */
+
+.item-details-redesigned .item-basic-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--item-border);
+}
+
+.item-details-redesigned .item-stat-card {
+  min-width: 0;
+  padding: 13px 8px;
+  text-align: center;
+  border: 1px solid var(--item-border);
+  border-radius: 11px;
+  background: var(--item-panel);
+}
+
+.item-details-redesigned .item-stat-card small {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 10px;
+}
+
+.item-details-redesigned .item-stat-card strong {
+  display: block;
+  color: var(--item-gold);
+  font-family: Georgia, serif;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+/* Botão fechar */
+
+.item-details-redesigned > button[aria-label="Fechar detalhes"] {
+  z-index: 2;
+  border: 1px solid var(--item-border);
+  background: var(--item-panel);
+  color: var(--item-gold);
+  transition: 0.2s ease;
+}
+
+.item-details-redesigned > button[aria-label="Fechar detalhes"]:hover {
+  background: var(--item-gold-soft);
+  transform: rotate(90deg);
+}
+
+/* Responsividade */
+
+@media (max-width: 540px) {
+  .item-details-redesigned .item-details-header {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 14px;
+    padding: 25px 5px 20px;
+  }
+
+  .item-details-redesigned .item-details-header .item-art {
+    width: 78px;
+    height: 78px;
+    font-size: 38px;
+  }
+
+  .item-details-redesigned .item-economic-details {
+    gap: 8px;
+  }
+
+  .item-details-redesigned .item-economic-details > div {
+    padding: 12px;
+  }
+
+  .item-details-redesigned .item-economic-details strong {
+    font-size: 16px;
+  }
+
+  .item-details-redesigned .item-basic-stats {
+    gap: 6px;
+  }
+
+  .item-details-redesigned .item-stat-card {
+    padding: 11px 5px;
+  }
+
+  .item-details-redesigned .item-stat-card small {
+    font-size: 9px;
+  }
+
+  .item-details-redesigned .item-stat-card strong {
+    font-size: 14px;
+  }
+}
+
+
+/* ==========================================
+   HäxBag — Mochila: identidade visual completa
+   ========================================== */
+
+/* Estrutura principal */
+.inventory-section {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+  padding: clamp(16px, 2.5vw, 26px);
+  border: 1px solid color-mix(
+    in srgb,
+    var(--season-primary, #d69b62) 20%,
+    var(--season-line, #343434)
+  );
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      ellipse at 95% 0%,
+      color-mix(in srgb, var(--season-primary, #d69b62) 9%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      155deg,
+      var(--season-surface, #191919),
+      var(--season-bg, #111111)
+    );
+  box-shadow:
+    0 16px 42px rgba(0, 0, 0, .16),
+    inset 0 1px rgba(255, 255, 255, .025);
+}
+
+/* Cabeçalho */
+.inventory-section .inventory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 4px 2px 20px;
+  border-bottom: 1px solid var(--season-line, rgba(255,255,255,.1));
+}
+
+.inventory-section .inventory-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 7px;
+  color: var(--season-text, #f4f0fa);
+  font-size: clamp(25px, 3vw, 32px);
+  font-weight: 900;
+  letter-spacing: -.045em;
+}
+
+.inventory-section .inventory-heading h2::before {
+  content: '⚔';
+  display: grid;
+  place-items: center;
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #d69b62) 35%, transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--season-primary, #d69b62) 11%, transparent);
+  color: var(--season-primary, #d69b62);
+  font-size: 20px;
+}
+
+.inventory-section .inventory-heading p {
+  margin: 0;
+  color: var(--season-muted, #aaa);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Botão de adicionar */
+.inventory-section .inventory-heading > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 17px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #d69b62) 55%, transparent);
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--season-primary, #d69b62) 24%, var(--season-surface, #191919)),
+    color-mix(in srgb, var(--season-primary, #d69b62) 12%, var(--season-bg, #111))
+  );
+  color: var(--season-text, #fff);
+  font-size: 12px;
+  font-weight: 850;
+  transition: .2s ease;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--season-primary, #d69b62) 10%, transparent);
+}
+
+.inventory-section .inventory-heading > button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--season-primary, #d69b62);
+  box-shadow: 0 9px 23px color-mix(in srgb, var(--season-primary, #d69b62) 18%, transparent);
+}
+
+.inventory-section .inventory-heading > button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* Barra de ferramentas */
+.inventory-section .inventory-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.1));
+  border-radius: 17px;
+  background: color-mix(
+    in srgb,
+    var(--season-surface, #191919) 84%,
+    var(--season-bg, #111)
+  );
+  box-shadow: inset 0 1px rgba(255,255,255,.025);
+}
+
+/* Categorias */
+.inventory-section .category-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--season-line, rgba(255,255,255,.08));
+}
+
+.inventory-section .category-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--season-muted, #aaa);
+  font-size: 11px;
+  font-weight: 750;
+  transition: .18s ease;
+}
+
+.inventory-section .category-tab:hover {
+  border-color: var(--season-line, rgba(255,255,255,.14));
+  background: color-mix(in srgb, var(--season-primary, #d69b62) 7%, transparent);
+  color: var(--season-text, #fff);
+}
+
+.inventory-section .category-tab.selected {
+  border-color: color-mix(in srgb, var(--season-primary, #d69b62) 45%, transparent);
+  background: color-mix(in srgb, var(--season-primary, #d69b62) 15%, transparent);
+  color: var(--season-primary, #d69b62);
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--season-primary, #d69b62) 5%, transparent);
+}
+
+/* Busca, favoritos e ordenação */
+.inventory-section .inventory-extra-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.inventory-section .search-box {
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  min-width: 160px;
+  min-height: 41px;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.12));
+  border-radius: 11px;
+  background: var(--season-bg, #111);
+  color: var(--season-muted, #aaa);
+  transition: .2s ease;
+}
+
+.inventory-section .search-box:focus-within {
+  border-color: var(--season-primary, #d69b62);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary, #d69b62) 12%, transparent);
+}
+
+.inventory-section .search-box > span {
+  color: var(--season-primary, #d69b62);
+  font-size: 20px;
+}
+
+.inventory-section .search-box input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--season-text, #f4f0fa);
+  font-size: 12px;
+}
+
+.inventory-section .search-box input::placeholder {
+  color: var(--season-muted, #888);
+}
+
+.inventory-section .search-box kbd {
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.13));
+  border-radius: 5px;
+  color: var(--season-muted, #aaa);
+  font-size: 10px;
+}
+
+.inventory-section .inventory-extra-controls > .category-tab {
+  min-height: 41px;
+  padding-inline: 13px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.12));
+  background: var(--season-bg, #111);
+}
+
+.inventory-section .inventory-sort-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 41px;
+  padding: 0 11px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.12));
+  border-radius: 10px;
+  background: var(--season-bg, #111);
+  color: var(--season-muted, #aaa);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.inventory-section .inventory-sort-label select {
+  max-width: 145px;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--season-text, #f4f0fa);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.inventory-section .inventory-sort-label select option {
+  background: var(--season-surface, #191919);
+  color: var(--season-text, #fff);
+}
+
+/* Grade dos itens */
+.inventory-section .item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr));
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Cartões */
+.inventory-section .inventory-item-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 220px;
+  padding: 18px !important;
+  border-radius: 17px !important;
+  transition:
+    transform .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+.inventory-section .inventory-item-card .item-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.inventory-section .inventory-item-card .item-art {
+  flex: 0 0 49px;
+}
+
+.inventory-section .inventory-item-card h3 {
+  margin: 9px 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.inventory-section .inventory-item-card .item-description {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+/* Estado vazio e carregamento */
+.inventory-section .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 230px;
+  padding: 30px 20px;
+  border: 1px dashed color-mix(in srgb, var(--season-primary, #d69b62) 30%, var(--season-line, #333));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--season-primary, #d69b62) 4%, var(--season-surface, #191919));
+  text-align: center;
+}
+
+.inventory-section .empty-state > span {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-bottom: 13px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #d69b62) 30%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--season-primary, #d69b62) 10%, transparent);
+  color: var(--season-primary, #d69b62);
+  font-size: 25px;
+}
+
+.inventory-section .empty-state h3 {
+  margin: 0 0 7px;
+  color: var(--season-text, #fff);
+  font-size: 17px;
+}
+
+.inventory-section .empty-state p {
+  max-width: 360px;
+  margin: 0;
+  color: var(--season-muted, #aaa);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.inventory-section .empty-state button {
+  margin-top: 17px;
+  padding: 10px 15px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #d69b62) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--season-primary, #d69b62) 13%, transparent);
+  color: var(--season-primary, #d69b62);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Responsividade */
+@media (max-width: 680px) {
+  .inventory-section {
+    gap: 16px;
+    padding: 14px;
+    border-radius: 17px;
+  }
+
+  .inventory-section .inventory-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .inventory-section .inventory-heading > button {
+    width: 100%;
+  }
+
+  .inventory-section .inventory-toolbar {
+    padding: 12px;
+  }
+
+  .inventory-section .inventory-extra-controls {
+    align-items: stretch;
+  }
+
+  .inventory-section .search-box {
+    flex-basis: 100%;
+  }
+
+  .inventory-section .inventory-sort-label {
+    flex: 1 1 auto;
+    justify-content: space-between;
+  }
+
+  .inventory-section .inventory-sort-label select {
+    max-width: 60%;
+  }
+
+  .inventory-section .item-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+    gap: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .inventory-section .category-tabs {
+    gap: 5px;
+  }
+
+  .inventory-section .category-tab {
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+
+  .inventory-section .item-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ==========================================
+   HÄXBAG — MOCHILA DA FICHA
+   Inventário medieval premium
+   ========================================== */
+
+.sheet-inventory-section {
+  --bag-gold: var(--season-accent, #d9a45b);
+  --bag-gold-soft: var(--season-accent-soft, rgba(217,164,91,.13));
+
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 26px;
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(217,164,91,.22);
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(217,164,91,.09), transparent 38%),
+    linear-gradient(145deg, var(--season-surface, #211e25), var(--season-bg, #121116));
+  box-shadow: 0 18px 45px rgba(0,0,0,.20);
+  color: var(--season-text, #eee8dc);
+}
+
+/* Detalhe ornamental superior */
+.sheet-inventory-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 26px;
+  right: 26px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--bag-gold), transparent);
+  opacity: .75;
+  pointer-events: none;
+}
+
+/* Cabeçalho */
+.sheet-inventory-section > .inventory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(217,164,91,.18);
+}
+
+.sheet-inventory-section > .inventory-heading h3 {
+  margin: 0;
+  color: var(--season-text, #f3eadb);
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+.sheet-inventory-section > .inventory-heading h3::before {
+  content: "🎒";
+  margin-right: 11px;
+  font-size: 21px;
+}
+
+.sheet-inventory-section > .inventory-heading .primary-button {
+  border: 1px solid rgba(217,164,91,.45);
+  border-radius: 11px;
+  background: linear-gradient(135deg, #b9823e, #e0b66e);
+  color: #21180f;
+  font-weight: 800;
+  box-shadow: 0 5px 16px rgba(180,125,55,.18);
+  transition: transform .2s ease, filter .2s ease, box-shadow .2s ease;
+}
+
+.sheet-inventory-section > .inventory-heading .primary-button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 8px 22px rgba(180,125,55,.25);
+}
+
+/* Resumo de carga */
+.sheet-inventory-section .sheet-capacity-overview {
+  gap: 12px !important;
+  margin: 0 0 22px !important;
+}
+
+.sheet-inventory-section .sheet-capacity-overview > div {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid rgba(217,164,91,.17) !important;
+  border-radius: 15px !important;
+  background:
+    linear-gradient(145deg, rgba(217,164,91,.07), transparent 65%),
+    var(--season-surface, #211e25) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+  transition: transform .2s ease, border-color .2s ease;
+}
+
+.sheet-inventory-section .sheet-capacity-overview > div:hover {
+  transform: translateY(-2px);
+  border-color: rgba(217,164,91,.4) !important;
+}
+
+.sheet-inventory-section .sheet-capacity-overview > div:last-child {
+  background: rgba(0,0,0,.13) !important;
+}
+
+/* Barra de ferramentas */
+.sheet-inventory-section .inventory-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 17px;
+  margin-bottom: 21px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.10));
+  border-radius: 16px;
+  background: rgba(0,0,0,.15);
+}
+
+/* Categorias */
+.sheet-inventory-section .category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.sheet-inventory-section .category-tab {
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.12));
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  font-weight: 650;
+  transition: all .18s ease;
+}
+
+.sheet-inventory-section .category-tab:hover {
+  border-color: rgba(217,164,91,.45);
+  color: var(--season-text, #fff);
+  background: rgba(217,164,91,.08);
+}
+
+.sheet-inventory-section .category-tab.selected {
+  border-color: rgba(217,164,91,.65);
+  background: linear-gradient(135deg, rgba(217,164,91,.22), rgba(217,164,91,.09));
+  color: #e9bd79;
+  box-shadow: inset 0 0 12px rgba(217,164,91,.05);
+}
+
+/* Busca, favoritos e ordenação */
+.sheet-inventory-section .inventory-extra-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.sheet-inventory-section .search-box {
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  min-width: 0;
+  gap: 9px;
+  padding: 0 12px;
+  min-height: 40px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.12));
+  border-radius: 10px;
+  background: rgba(0,0,0,.2);
+  color: var(--season-muted, #aaa);
+}
+
+.sheet-inventory-section .search-box:focus-within {
+  border-color: var(--bag-gold);
+  box-shadow: 0 0 0 3px var(--bag-gold-soft);
+}
+
+.sheet-inventory-section .search-box input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--season-text, #fff);
+}
+
+.sheet-inventory-section .search-box kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--season-line);
+  border-radius: 5px;
+  opacity: .6;
+}
+
+.sheet-inventory-section .inventory-sort-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--season-muted, #bbb);
+  font-size: 12px;
+}
+
+.sheet-inventory-section .inventory-sort-label select {
+  max-width: 180px;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--season-line);
+  border-radius: 9px;
+  background: var(--season-surface, #211e25);
+  color: var(--season-text, #fff);
+}
+
+/* Grade dos itens */
+.sheet-inventory-section .item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+  align-items: stretch;
+  gap: 16px;
+}
+
+/* Cartões */
+.sheet-inventory-section .inventory-item-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 17px;
+  overflow: hidden;
+  border: 1px solid rgba(217,164,91,.16);
+  border-radius: 17px;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(217,164,91,.065), transparent 55%),
+    linear-gradient(150deg, var(--season-surface-alt, #29252e), var(--season-surface, #1d1a21));
+  box-shadow: 0 7px 20px rgba(0,0,0,.14);
+  transition: transform .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+
+.sheet-inventory-section .inventory-item-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(217,164,91,.48);
+  box-shadow: 0 14px 30px rgba(0,0,0,.24);
+}
+
+/* Parte superior do cartão */
+.sheet-inventory-section .item-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sheet-inventory-section .item-art {
+  display: grid;
+  place-items: center;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(217,164,91,.22);
+  border-radius: 15px;
+  background: linear-gradient(145deg, rgba(217,164,91,.14), rgba(0,0,0,.16));
+  transition: transform .2s ease, background .2s ease;
+}
+
+.sheet-inventory-section .item-art:hover {
+  transform: scale(1.06);
+  background: rgba(217,164,91,.2);
+}
+
+.sheet-inventory-section .item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.sheet-inventory-section .item-menu {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  border: 1px solid var(--season-line, rgba(255,255,255,.1));
+  border-radius: 8px;
+  background: rgba(255,255,255,.035);
+  color: var(--season-muted, #bbb);
+  transition: all .18s ease;
+}
+
+.sheet-inventory-section .item-menu:hover:not(:disabled) {
+  border-color: var(--bag-gold);
+  background: var(--bag-gold-soft);
+  color: #e9bd79;
+}
+
+.sheet-inventory-section .item-menu:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+/* Equipamentos */
+.sheet-inventory-section .inventory-equipment-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 10px;
+  margin-bottom: 13px;
+  border: 1px solid rgba(217,164,91,.16);
+  border-radius: 10px;
+  background: rgba(217,164,91,.055);
+}
+
+.sheet-inventory-section .inventory-equipment-label {
+  color: #d9b779;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .12em;
+}
+
+.sheet-inventory-section .inventory-equip-button {
+  padding: 6px 10px;
+  border: 1px solid rgba(217,164,91,.3);
+  border-radius: 8px;
+  background: rgba(217,164,91,.08);
+  color: var(--season-text, #eee);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+
+.sheet-inventory-section .inventory-equip-button:hover,
+.sheet-inventory-section .inventory-equip-button.is-equipped {
+  border-color: var(--bag-gold);
+  background: rgba(217,164,91,.2);
+  color: #e9bd79;
+}
+
+/* Informações do item */
+.sheet-inventory-section .item-category {
+  align-self: flex-start;
+  padding: 4px 9px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(217,164,91,.2);
+  border-radius: 6px;
+  background: rgba(217,164,91,.08);
+  color: #d8b578;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .04em;
+}
+
+.sheet-inventory-section .inventory-item-card h3 {
+  margin: 0 0 7px;
+  color: var(--season-text, #f4eee4);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.sheet-inventory-section .item-description {
+  flex: 1;
+  margin: 0 0 15px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* Rodapé e quantidade */
+.sheet-inventory-section .item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 12px;
+  margin-top: auto;
+  border-top: 1px solid var(--season-line, rgba(255,255,255,.09));
+}
+
+.sheet-inventory-section .item-footer > span {
+  color: var(--season-muted, #bbb);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.sheet-inventory-section .quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px;
+  border: 1px solid var(--season-line);
+  border-radius: 9px;
+  background: rgba(0,0,0,.16);
+}
+
+.sheet-inventory-section .quantity-button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid rgba(217,164,91,.2);
+  border-radius: 7px;
+  background: rgba(217,164,91,.08);
+  color: #e9bd79;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.sheet-inventory-section .quantity-button:hover:not(:disabled) {
+  background: rgba(217,164,91,.22);
+}
+
+.sheet-inventory-section .quantity-button:disabled {
+  opacity: .3;
+  cursor: not-allowed;
+}
+
+.sheet-inventory-section .quantity {
+  min-width: 18px;
+  color: var(--season-text, #fff);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* Estado vazio e carregamento */
+.sheet-inventory-section .empty-state {
+  padding: 45px 20px;
+  border: 1px dashed rgba(217,164,91,.3);
+  border-radius: 16px;
+  background: rgba(217,164,91,.035);
+  text-align: center;
+}
+
+.sheet-inventory-section .empty-state > span {
+  color: #d9b779;
+  font-size: 34px;
+}
+
+.sheet-inventory-section .empty-state h3 {
+  color: var(--season-text, #fff);
+}
+
+.sheet-inventory-section .empty-state p {
+  color: var(--season-muted, #bbb);
+}
+
+.sheet-inventory-section > small {
+  display: block;
+  padding-top: 15px;
+  margin-top: 20px !important;
+  border-top: 1px solid var(--season-line);
+  line-height: 1.6;
+}
+
+/* Responsividade */
+@media (max-width: 700px) {
+  .sheet-inventory-section {
+    padding: 17px;
+    border-radius: 17px;
+  }
+
+  .sheet-inventory-section > .inventory-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sheet-inventory-section > .inventory-heading .primary-button {
+    width: 100%;
+  }
+
+  .sheet-inventory-section .item-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
+
+  .sheet-inventory-section .inventory-extra-controls {
+    align-items: stretch;
+  }
+
+  .sheet-inventory-section .search-box {
+    flex-basis: 100%;
+  }
+
+  .sheet-inventory-section .inventory-sort-label {
+    flex: 1;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 430px) {
+  .sheet-inventory-section .item-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sheet-inventory-section .inventory-toolbar {
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-inventory-section *,
+  .sheet-inventory-section *::before {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* HäxBag — Ajuste fino dos espaçamentos da mochila */
+.sheet-inventory-section {
+  gap: 14px !important;
+  padding: 20px !important;
+  margin-top: 16px !important;
+}
+
+.sheet-inventory-section > .inventory-heading {
+  padding-bottom: 13px !important;
+  margin-bottom: 0 !important;
+  gap: 12px !important;
+}
+
+.sheet-inventory-section .sheet-capacity-overview {
+  gap: 10px !important;
+  margin: 0 0 4px !important;
+}
+
+.sheet-inventory-section .inventory-toolbar {
+  gap: 11px !important;
+  padding: 13px !important;
+  margin-bottom: 4px !important;
+}
+
+.sheet-inventory-section .item-grid {
+  gap: 13px !important;
+}
+
+.sheet-inventory-section > small {
+  padding-top: 10px !important;
+  margin-top: 4px !important;
+}
+
+@media (max-width: 700px) {
+  .sheet-inventory-section {
+    padding: 15px !important;
+    gap: 12px !important;
+  }
+
+  .sheet-inventory-section > .inventory-heading {
+    padding-bottom: 12px !important;
+  }
+}
+/* HäxBag — Correção do espaçamento entre capacidade, filtros e itens */
+.sheet-inventory-section {
+  gap: 0 !important;
+}
+
+.sheet-inventory-section .sheet-capacity-overview {
+  margin-bottom: 12px !important;
+}
+
+.sheet-inventory-section .inventory-toolbar {
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+  padding: 10px 12px !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+}
+
+.sheet-inventory-section .item-grid {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.sheet-inventory-section > .empty-state {
+  margin-top: 0 !important;
+}
+
+/* HäxBag — correção definitiva da barra de filtros */
+.sheet-inventory-section .inventory-toolbar {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 10px 12px !important;
+  margin-top: 0 !important;
+  margin-bottom: 12px !important;
+  box-sizing: border-box !important;
+}
+
+.sheet-inventory-section .inventory-toolbar > * {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  flex: none !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.sheet-inventory-section .category-tabs {
+  margin-bottom: 8px !important;
+}
+
+
+/* HäxBag — Barra de filtros organizada */
+.sheet-inventory-section .inventory-toolbar {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 14px !important;
+  border-radius: 15px;
+}
+
+/* Categorias em uma linha organizada */
+.sheet-inventory-section .category-tabs {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  width: 100%;
+  padding: 0 0 11px !important;
+  margin: 0 !important;
+  border-bottom: 1px solid var(--season-line);
+}
+
+.sheet-inventory-section .category-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 35px !important;
+  padding: 7px 13px !important;
+  border-radius: 9px !important;
+  white-space: nowrap;
+}
+
+/* Busca, favoritos e ordenação */
+.sheet-inventory-section .inventory-extra-controls {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 9px !important;
+  width: 100%;
+  margin: 0 !important;
+}
+
+.sheet-inventory-section .search-box {
+  flex: 1 1 220px !important;
+  min-width: 180px !important;
+  min-height: 40px !important;
+}
+
+.sheet-inventory-section .inventory-extra-controls > .category-tab {
+  min-height: 40px !important;
+  padding: 8px 13px !important;
+}
+
+.sheet-inventory-section .inventory-sort-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  min-height: 40px !important;
+  padding: 0 11px !important;
+  border: 1px solid var(--season-line) !important;
+  border-radius: 10px !important;
+  background: var(--season-bg) !important;
+}
+
+.sheet-inventory-section .inventory-sort-label select {
+  min-height: 34px !important;
+  max-width: 145px;
+}
+
+/* Telas menores */
+@media (max-width: 600px) {
+  .sheet-inventory-section .inventory-toolbar {
+    padding: 11px !important;
+  }
+
+  .sheet-inventory-section .category-tabs {
+    gap: 5px !important;
+  }
+
+  .sheet-inventory-section .category-tab {
+    padding-inline: 9px !important;
+    font-size: 10px !important;
+  }
+
+  .sheet-inventory-section .inventory-extra-controls {
+    align-items: stretch !important;
+  }
+
+  .sheet-inventory-section .search-box {
+    flex-basis: 100% !important;
+  }
+
+  .sheet-inventory-section .inventory-sort-label {
+    flex: 1 1 100% !important;
+  }
+}
+
+/* HäxBag — Espaço uniforme para controles de equipamento */
+
+.sheet-inventory-section .inventory-item-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet-inventory-section .inventory-item-card .inventory-equipment-controls {
+  min-height: 42px;
+  margin-top: 0 !important;
+  margin-bottom: 14px !important;
+}
+
+.sheet-inventory-section .inventory-item-card:not(:has(.inventory-equipment-controls)) .item-footer {
+  margin-top: 56px !important;
+}
+
+.sheet-inventory-section .inventory-item-card:has(.inventory-equipment-controls) .item-footer {
+  margin-top: 0 !important;
+}
+
+/* HäxBag — Cabeçalho uniforme dos cartões da mochila */
+
+.sheet-inventory-section .inventory-item-card .item-card-top {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-height: 52px !important;
+  height: 52px !important;
+  margin-bottom: 14px !important;
+  flex: 0 0 52px !important;
+  box-sizing: border-box;
+}
+
+.sheet-inventory-section .inventory-item-card .item-art {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+}
+
+.sheet-inventory-section .inventory-item-card .item-actions {
+  align-self: flex-start;
+}
+
+/* HäxBag — Limitar nomes longos nos cartões da mochila */
+
+.sheet-inventory-section .inventory-item-card h3 {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
