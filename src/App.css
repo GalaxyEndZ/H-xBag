@@ -9134,3 +9134,35 @@ button:disabled { opacity: .58; }
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* Escudo do mestre: informação de PV excedente ao lado esquerdo da barra extra */
+.master-shield-bar-row .master-shield-bar-extra {
+  grid-column: 3;
+  grid-row: 2;
+  margin-top: 0;
+}
+.master-shield-bar-row .master-shield-extra-label {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  align-self: center;
+  justify-self: end;
+  margin-top: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Escudo do mestre: rótulo de PV extra abaixo dos PV normais e à esquerda da barra */
+.master-shield-bar-row .master-shield-extra-label {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  align-self: center;
+  justify-self: start;
+  margin-top: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+.master-shield-bar-row .master-shield-bar-extra {
+  grid-column: 3;
+  grid-row: 2;
+  margin-top: 0;
+}
