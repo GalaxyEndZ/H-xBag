@@ -233,6 +233,15 @@ function App() {
   const [shopItemCurrencyId, setShopItemCurrencyId] = useState('')
   const [shopItemStock, setShopItemStock] = useState('')
   const [shopItemEmoji, setShopItemEmoji] = useState('📦')
+  const [shopItemCategories, setShopItemCategories] = useState<string[]>(['Diversos'])
+  const [shopItemEquipmentType, setShopItemEquipmentType] = useState<'none' | 'armor' | 'protection'>('none')
+  const [shopItemArmorClass, setShopItemArmorClass] = useState<'leve' | 'media' | 'pesada'>('leve')
+  const [shopItemArmorCoverage, setShopItemArmorCoverage] = useState<'cortante_perfurante' | 'especial_bruto' | 'todos'>('cortante_perfurante')
+  const [shopItemProtectionTier, setShopItemProtectionTier] = useState<'basica' | 'moderada' | 'avancada'>('basica')
+  const [shopItemProtectionMode, setShopItemProtectionMode] = useState<'resistencia' | 'sanidade'>('resistencia')
+  const [shopItemWeaponClass, setShopItemWeaponClass] = useState('improvised')
+  const [shopItemScarcityLevel, setShopItemScarcityLevel] = useState<'1' | '2' | '3' | '4'>('1')
+  const [shopItemScarcityExhausted, setShopItemScarcityExhausted] = useState(false)
 
   const [shopLoading, setShopLoading] = useState(false)
   const [shopPurchaseLoading, setShopPurchaseLoading] = useState<string | null>(null)
@@ -993,13 +1002,19 @@ async function saveShopItem() {
     return
   }
 
+  if (!shopItemCategories.length) {
+    setError('Selecione pelo menos uma classificação para o produto.')
+    return
+  }
+
   if (shopLoading) {
     setError('Aguarde a operação atual terminar antes de salvar o produto.')
     return
   }
 
   const price = Number(shopItemPrice.replace(',', '.'))
-  const weight = Number(shopItemWeight.replace(',', '.'))
+  const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass)
+  const weight = automaticWeight ?? Number(shopItemWeight.replace(',', '.'))
   const stockText = shopItemStock.trim()
   const stock = stockText === '' ? null : Number(stockText)
 
@@ -1031,7 +1046,7 @@ async function saveShopItem() {
     shop_id: selectedShopId,
     name: shopItemName.trim(),
     description: shopItemDescription.trim() || null,
-    category: shopItemCategory.trim() || 'Diversos',
+    category: shopItemCategories[0] ?? shopItemCategory.trim() ?? 'Diversos',
     weight,
     unit_price: price,
     currency_id: price > 0 ? shopItemCurrencyId : null,
@@ -1040,6 +1055,19 @@ async function saveShopItem() {
       ...(editingShopItemId ? shopItems.find(item => item.id === editingShopItemId)?.metadata ?? {} : {}),
       icon: shopItemEmoji.trim() || '📦',
       rarity: shopItemRarity,
+      categories: shopItemCategories.length ? shopItemCategories : [shopItemCategory],
+      equipmentType: shopItemEquipmentType,
+      armorClass: shopItemEquipmentType === 'armor' ? shopItemArmorClass : null,
+      armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : shopItemArmorCoverage) : null,
+      protectionTier: shopItemEquipmentType === 'protection' ? shopItemProtectionTier : null,
+      protectionMode: shopItemEquipmentType === 'protection' ? shopItemProtectionMode : null,
+      scarcityLevel: shopItemCategories.includes('Consumíveis') ? Number(shopItemScarcityLevel) : null,
+      scarcityDie: shopItemCategories.includes('Consumíveis') ? ({ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' } as Record<string, string>)[shopItemScarcityLevel] : null,
+      scarcityCharge: shopItemCategories.includes('Consumíveis') ? ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[shopItemScarcityLevel] : null,
+      scarcityExhausted: shopItemCategories.includes('Consumíveis') ? shopItemScarcityExhausted : false,
+      weaponClass: shopItemCategories.includes('Armas') ? shopItemWeaponClass : null,
+      weaponDamage: shopItemCategories.includes('Armas') ? ({ improvised: '1d4', advanced: '1d6', special: '1d8', black_red: '1d10', mutable: '1d12' } as Record<string, string>)[shopItemWeaponClass] || '1d4' : null,
+      weaponWeight: shopItemCategories.includes('Armas') ? weight : null,
     },
   }
 
@@ -1096,6 +1124,15 @@ async function saveShopItem() {
     setShopItemCurrencyId('')
     setShopItemStock('')
     setShopItemEmoji('📦')
+    setShopItemCategories(['Diversos'])
+    setShopItemEquipmentType('none')
+    setShopItemArmorClass('leve')
+    setShopItemArmorCoverage('cortante_perfurante')
+    setShopItemProtectionTier('basica')
+    setShopItemProtectionMode('resistencia')
+    setShopItemWeaponClass('improvised')
+    setShopItemScarcityLevel('1')
+    setShopItemScarcityExhausted(false)
     setShowShopItemForm(false)
   } catch (err) {
     const dbError = err as { message?: string; code?: string; details?: string; hint?: string }
@@ -1116,7 +1153,16 @@ function editShopItem(item: CampaignShopItem) {
   setShopItemName(item.name)
   setShopItemDescription(item.description ?? '')
   setShopItemCategory(item.category)
+  setShopItemCategories(Array.isArray(item.metadata?.categories) ? item.metadata.categories.filter((value): value is string => typeof value === 'string') : [item.category])
   setShopItemRarity(typeof item.metadata?.rarity === 'string' ? item.metadata.rarity.toLocaleLowerCase('pt-BR') : 'comum')
+  setShopItemEquipmentType(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' ? item.metadata.equipmentType : 'none')
+  setShopItemArmorClass(item.metadata?.armorClass === 'media' || item.metadata?.armorClass === 'pesada' ? item.metadata.armorClass : 'leve')
+  setShopItemArmorCoverage(item.metadata?.armorCoverage === 'especial_bruto' || item.metadata?.armorCoverage === 'todos' ? item.metadata.armorCoverage : 'cortante_perfurante')
+  setShopItemProtectionTier(item.metadata?.protectionTier === 'moderada' || item.metadata?.protectionTier === 'avancada' ? item.metadata.protectionTier : 'basica')
+  setShopItemProtectionMode(item.metadata?.protectionMode === 'sanidade' ? 'sanidade' : 'resistencia')
+  setShopItemWeaponClass(typeof item.metadata?.weaponClass === 'string' ? item.metadata.weaponClass : 'improvised')
+  setShopItemScarcityLevel(['1', '2', '3', '4'].includes(String(item.metadata?.scarcityLevel ?? '1')) ? String(item.metadata?.scarcityLevel ?? '1') as '1' | '2' | '3' | '4' : '1')
+  setShopItemScarcityExhausted(item.metadata?.scarcityExhausted === true)
   setShopItemWeight(String(item.weight))
   setShopItemPrice(String(item.unit_price))
   setShopItemCurrencyId(item.currency_id ?? '')
@@ -2461,6 +2507,21 @@ async function deleteCharacter(character: Character) {
         : `${item.name}: ${roll} no d${die}. O nível de escassez permanece em ${currentLevel}.`)
   }
 
+  function getAutomaticItemWeight(
+    categories: string[],
+    equipmentType: 'none' | 'armor' | 'protection',
+    armorClass: 'leve' | 'media' | 'pesada',
+    weaponClass: string,
+  ): number | null {
+    if (categories.includes('Armas')) {
+      const weaponWeights: Record<string, number> = { improvised: 0.5, advanced: 1, special: 1, black_red: 1.5, mutable: 2 }
+      return weaponWeights[weaponClass] ?? 0.5
+    }
+    if (equipmentType === 'armor') return armorClass === 'pesada' ? 6 : armorClass === 'media' ? 4 : 2
+    if (equipmentType === 'protection') return 0
+    return null
+  }
+
   function resetItemForm() {
     setEditingItem(null)
     setNewItemName('')
@@ -2519,8 +2580,7 @@ async function deleteCharacter(character: Character) {
     if ((!selectedCharacterId && !editingItem) || !newItemName.trim()) return
 
     const quantity = Number(newItemQuantity)
-    const weaponWeightByClass: Record<string, number> = { improvised: 0.5, advanced: 1, special: 1, black_red: 1.5, mutable: 2 }
-    const weight = newItemCategories.includes('Armas') ? (weaponWeightByClass[newWeaponClass] ?? 0.5) : Number(newItemWeight)
+    const weight = Number(newItemWeight.replace(',', '.'))
 
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
       setError('A quantidade deve ser um número inteiro entre 1 e 999.')
@@ -2560,7 +2620,7 @@ async function deleteCharacter(character: Character) {
   scarcityExhausted: newItemCategories.includes('Consumíveis') ? newScarcityExhausted : false,
   weaponClass: newItemCategories.includes('Armas') ? newWeaponClass : null,
   weaponDamage: newItemCategories.includes('Armas') ? ({ improvised: '1d4', advanced: '1d6', special: '1d8', black_red: '1d10', mutable: '1d12' } as Record<string,string>)[newWeaponClass] || '1d4' : null,
-  weaponWeight: newItemCategories.includes('Armas') ? ({ improvised: 0.5, advanced: 1, special: 1, black_red: 1.5, mutable: 2 } as Record<string,number>)[newWeaponClass] ?? 0.5 : null,
+  weaponWeight: newItemCategories.includes('Armas') ? weight : null,
 },
     }
 
@@ -2995,10 +3055,10 @@ async function deleteCharacter(character: Character) {
     0,
   )
 
-  const totalWeight = items.reduce(
-    (sum, item) => sum + Number(item.weight) * Number(item.quantity),
-    0,
-  )
+  const totalWeight = items.reduce((sum, item) => {
+    const unitWeight = Number(item.weight) || 0
+    return sum + unitWeight * (Number(item.quantity) || 0)
+  }, 0)
 
   const maxCapacity = 10 + 2 * (selectedCharacter?.strength ?? 0)
   const remainingCapacity = maxCapacity - totalWeight
@@ -3229,8 +3289,15 @@ onClick={() => {
                       const skill = (key: string) => Math.min(12,Math.max(0,n(data.skills?.[key])+allocated(key)))
                       const maxes = { pv: skill('vigor')*10+family.pv+rank.pv+n(data.progression?.classStatus?.pv)+n(data.progression?.statusBonuses?.pv), ps: skill('mental')*10+family.ps+rank.ps+n(data.progression?.classStatus?.ps)+n(data.progression?.statusBonuses?.ps), pr: (attr('breathing',family.breathing)+skill('ability'))*10+family.pr+rank.pr+n(data.progression?.classStatus?.pr)+n(data.progression?.statusBonuses?.pr) }
                       const current = data.status?.current ?? {}
-                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],['PR',maxes.pr]] as const).map(([key,max]) => { const id=key.toLowerCase() as 'pv'|'ps'|'pr'; const value=Math.max(0,Math.min(max,n(current[id] ?? max))); return {key,max,value,pct:max>0?Math.min(100,value/max*100):0} })
-                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || KISATSUTAI_RANKS.find(entry=>entry.id===rankId)?.name || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div></div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
+                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],['PR',maxes.pr]] as const).map(([key,max]) => {
+                        const id=key.toLowerCase() as 'pv'|'ps'|'pr'
+                        const rawValue=n(current[id] ?? max)
+                        // PV pode ultrapassar o máximo normal; PS e PR continuam limitados.
+                        const value=Math.max(0,key==='PV'?rawValue:Math.min(max,rawValue))
+                        const extra=key==='PV'?Math.max(0,value-max):0
+                        return {key,max,value,extra,pct:max>0?Math.min(100,value/max*100):0,extraPct:max>0?Math.min(100,extra/max*100):0}
+                      })
+                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || KISATSUTAI_RANKS.find(entry=>entry.id===rankId)?.name || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div><small className="master-shield-extra-label">＋{stat.extra} PV excedentes</small></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
                     })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
                   </div>
                 </div>
@@ -3951,6 +4018,8 @@ onClick={() => {
                                 const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
                                 setNewItemCategories(next)
                                 if (next.length) setNewItemCategory(next[0])
+                                const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
+                                if (automaticWeight !== null) setNewItemWeight(String(automaticWeight))
                               }} />
                               <span className="item-classification-check">{newItemCategories.includes(category) ? '✓' : '+'}</span>
                               <span>{category}</span>
@@ -4002,7 +4071,7 @@ onClick={() => {
 
                       <label>
                         Tipo de equipamento
-                        <select value={newEquipmentType} onChange={event => setNewEquipmentType(event.target.value as 'none' | 'armor' | 'protection')}>
+                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
                           <option value="none">Item comum</option>
                           <option value="armor">Armadura</option>
                           <option value="protection">Proteção</option>
@@ -4010,7 +4079,7 @@ onClick={() => {
                       </label>
 
                       {newEquipmentType === 'armor' && <>
-                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => setNewArmorClass(event.target.value as 'leve' | 'media' | 'pesada')}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
+                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
                         {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
                         <div className="equipment-rules-preview">
   <strong>Regras da armadura</strong>
@@ -4048,7 +4117,7 @@ onClick={() => {
                       </>}
 
                       {newItemCategories.includes('Armas') && <>
-                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => setNewWeaponClass(event.target.value)}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
+                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
                         <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[newWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[newWeaponClass]} kg</p></div>
                       </>}
 
@@ -4067,7 +4136,7 @@ onClick={() => {
                         />
                       </label>
 
-                      {!newItemCategories.includes('Armas') && <label>
+                      <label>
                         Peso por unidade (kg)
                         <input
                           type="number"
@@ -4075,12 +4144,14 @@ onClick={() => {
                           max="100000"
                           step="0.1"
                           value={newItemWeight}
-                          onChange={(event) =>
-                            setNewItemWeight(event.target.value)
-                          }
+                          onChange={(event) => setNewItemWeight(event.target.value)}
+                          disabled={getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null}
                           required
                         />
-                      </label>}
+                        <small>{getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+                          ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
+                          : 'Informe o peso por unidade deste item.'}</small>
+                      </label>
                     </div>
 
 <label>
@@ -4247,7 +4318,7 @@ style={{cursor:'pointer'}}>
               </button>
             </div>}
             <div className="item-footer">
-              <span>⚖ {`${(item.metadata?.equipmentType === 'armor' ? (item.metadata?.armorClass === 'pesada' ? 6 : item.metadata?.armorClass === 'media' ? 4 : 2) : item.metadata?.equipmentType === 'protection' ? 0 : Number(item.weight) || 0).toFixed(1)} kg / un.`}</span>
+              <span>⚖ {`${(Number(item.weight) || 0).toFixed(1)} kg / un.`}</span>
               <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
                 <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)-1) }} disabled={Number(item.quantity)<=1 || updatingQuantityItemId===item.id} aria-label={`Diminuir quantidade de ${item.name}`}>−</button>
                 <span className="quantity" aria-live="polite">{item.quantity}</span>
@@ -5166,6 +5237,15 @@ style={{cursor:'pointer'}}>
                               setShopItemCurrencyId(selectedCampaign?.currency_config?.currencies?.[0]?.id ?? '')
                               setShopItemStock('')
                               setShopItemEmoji('📦')
+                              setShopItemCategories(['Diversos'])
+                              setShopItemEquipmentType('none')
+                              setShopItemArmorClass('leve')
+                              setShopItemArmorCoverage('cortante_perfurante')
+                              setShopItemProtectionTier('basica')
+                              setShopItemProtectionMode('resistencia')
+                              setShopItemWeaponClass('improvised')
+                              setShopItemScarcityLevel('1')
+                              setShopItemScarcityExhausted(false)
                               setShowShopItemForm(value => !value)
                             }}
                           >
@@ -5204,14 +5284,14 @@ style={{cursor:'pointer'}}>
       {items
         .filter(item => item.character_id === selectedCharacterId)
         .map(item => (
-          <article className="item-card" key={item.id}>
+          <article className="item-card shop-sale-item-card" key={item.id}>
             <div className="item-art">
               {typeof item.metadata?.icon === 'string'
                 ? item.metadata.icon
                 : '📦'}
             </div>
 
-            <h3>{item.name}</h3>
+            <h3 className="shop-sale-item-name" title={item.name}>{item.name}</h3>
             <p>Disponível: {item.quantity}</p>
             <p>
               Valor unitário: {Number(item.unit_price).toLocaleString('pt-BR')}
@@ -5310,39 +5390,61 @@ style={{cursor:'pointer'}}>
                                 </small>
                               </label>
 
-                              <label style={labelStyle}>
-                                Categoria
-                                <select
-                                  value={categories.includes(shopItemCategory) && shopItemCategory !== 'Todos' ? shopItemCategory : 'Diversos'}
-                                  onChange={event => setShopItemCategory(event.target.value)}
-                                  style={inputStyle}
-                                >
+                              <section className="item-classifications-panel">
+                                <div className="item-classifications-heading">
+                                  <div><strong>Classificações do item</strong><p>Marque todas as opções que se aplicam. O produto terá as mesmas categorias quando comprado.</p></div>
+                                  <span>{shopItemCategories.length} selecionada{shopItemCategories.length === 1 ? '' : 's'}</span>
+                                </div>
+                                <div className="item-classifications-grid">
                                   {categories.filter(category => category !== 'Todos').map(category => (
-                                    <option key={category} value={category}>{category}</option>
+                                    <label key={category} className={shopItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
+                                      <input type="checkbox" checked={shopItemCategories.includes(category)} onChange={event => {
+                                        const next = event.target.checked ? [...shopItemCategories, category] : shopItemCategories.filter(value => value !== category)
+                                        setShopItemCategories(next)
+                                        if (next.length) setShopItemCategory(next[0])
+                                        const automaticWeight = getAutomaticItemWeight(next, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass)
+                                        if (automaticWeight !== null) setShopItemWeight(String(automaticWeight))
+                                      }} />
+                                      <span className="item-classification-check">{shopItemCategories.includes(category) ? '✓' : '+'}</span>
+                                      <span>{category}</span>
+                                    </label>
                                   ))}
-                                </select>
-                                <small style={{ color: 'var(--season-muted, #aaa)' }}>
-                                  A categoria organiza o produto nos filtros do inventário e do catálogo.
-                                </small>
-                              </label>
-<div className="item-rarity-field">
-  <label htmlFor="item-rarity">
-    Raridade
-  </label>
+                                </div>
+                                {!shopItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
+                              </section>
 
-  <select
-    id="item-rarity"
-    value={newItemRarity}
-    onChange={event => setNewItemRarity(event.target.value)}
-  >
-    <option value="comum">Comum</option>
-    <option value="incomum">Incomum</option>
-    <option value="raro">Raro</option>
-    <option value="épico">Épico</option>
-    <option value="mítico">Mítico</option>
-    <option value="relíquia">Relíquia</option>
-  </select>
-</div>
+                              <div className="item-rarity-field">
+                                <label htmlFor="shop-item-rarity">Raridade</label>
+                                <select id="shop-item-rarity" value={shopItemRarity} onChange={event => setShopItemRarity(event.target.value)}>
+                                  <option value="comum">Comum</option><option value="incomum">Incomum</option><option value="raro">Raro</option><option value="épico">Épico</option><option value="mítico">Mítico</option><option value="relíquia">Relíquia</option>
+                                </select>
+                              </div>
+
+                              <label style={labelStyle}>Tipo de equipamento
+                                <select value={shopItemEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection'; setShopItemEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(shopItemCategories, nextType, shopItemArmorClass, shopItemWeaponClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}>
+                                  <option value="none">Item comum</option><option value="armor">Armadura</option><option value="protection">Proteção</option>
+                                </select>
+                              </label>
+
+                              {shopItemEquipmentType === 'armor' && <>
+                                <label style={labelStyle}>Tipo de armadura<select value={shopItemArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setShopItemArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, nextClass, shopItemWeaponClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
+                                {shopItemArmorClass !== 'pesada' && <label style={labelStyle}>Tipos de dano protegidos<select value={shopItemArmorCoverage} onChange={event => setShopItemArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')} style={inputStyle}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
+                                <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {shopItemArmorClass === 'leve' ? 2 : shopItemArmorClass === 'media' ? 4 : 6} kg</p><p>Proteção: {shopItemArmorClass === 'leve' ? '(Resistência ÷ 2) + 4' : shopItemArmorClass === 'media' ? 'Resistência + 6' : '(Resistência × 2) + 8'}</p><p>Destreza: {shopItemArmorClass === 'leve' ? 'Integral' : shopItemArmorClass === 'media' ? '½ dos pontos' : '0'}</p><p>Penalidades: {shopItemArmorClass === 'media' ? '−5 em Reflexo; metade do deslocamento' : shopItemArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade'}</p></div>
+                              </>}
+
+                              {shopItemEquipmentType === 'protection' && <>
+                                <label style={labelStyle}>Nível de proteção<select value={shopItemProtectionTier} onChange={event => setShopItemProtectionTier(event.target.value as 'basica' | 'moderada' | 'avancada')} style={inputStyle}><option value="basica">Básica</option><option value="moderada">Moderada</option><option value="avancada">Avançada</option></select></label>
+                                <label style={labelStyle}>Tipo de resistência<select value={shopItemProtectionMode} onChange={event => setShopItemProtectionMode(event.target.value as 'resistencia' | 'sanidade')} style={inputStyle}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
+                                <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0 kg</p><p>Proteção: {shopItemProtectionTier === 'basica' ? '¼' : shopItemProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {shopItemProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {shopItemProtectionTier === 'basica' ? '1d8' : shopItemProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
+                              </>}
+
+                              {shopItemCategories.includes('Armas') && <>
+                                <label style={labelStyle}>Classificação da arma<select value={shopItemWeaponClass} onChange={event => { const nextClass = event.target.value; setShopItemWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, nextClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
+                                <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[shopItemWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[shopItemWeaponClass]} kg</p></div>
+                              </>}
+
+                              {shopItemCategories.includes('Consumíveis') && <section className="scarcity-editor-card"><div className="scarcity-editor-heading"><span className="scarcity-editor-icon">⌛</span><div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div></div><label>Nível inicial de escassez<select value={shopItemScarcityLevel} onChange={event => setShopItemScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}><option value="1">Nível 1 — d12</option><option value="2">Nível 2 — d8</option><option value="3">Nível 3 — d6</option><option value="4">Nível 4 — d4</option></select></label><div className="scarcity-level-preview"><div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[shopItemScarcityLevel]}</strong></div><div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[shopItemScarcityLevel]}</strong></div></div><p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p><label className="scarcity-exhausted-toggle"><input type="checkbox" checked={shopItemScarcityExhausted} onChange={event => setShopItemScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label></section>}
+
                             </div>
 
                             <div style={{ marginBottom: 20 }}>
@@ -5399,8 +5501,10 @@ style={{cursor:'pointer'}}>
                                     step="0.01"
                                     value={shopItemWeight}
                                     onChange={event => setShopItemWeight(event.target.value)}
+                                    disabled={getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass) !== null}
                                     style={inputStyle}
                                   />
+                                  <small style={{ color: 'var(--season-muted, #aaa)' }}>{getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass) !== null ? 'Peso definido automaticamente pelas regras do equipamento.' : 'Informe o peso por unidade deste item.'}</small>
                                 </label>
                               </div>
                             </div>
@@ -5815,9 +5919,31 @@ style={{cursor:'pointer'}}>
             </section>
           )}
 
-            {selectedCharacter && isMaster && (
+            {selectedCampaign && isMaster && (
               <section className="inventory-section character-access-settings">
-                <div className="inventory-heading"><div><h2>Acesso do personagem</h2><p>Defina quem controla e quem pode visualizar {selectedCharacter.name}.</p></div></div>
+                <div className="inventory-heading"><div><h2>Acesso do personagem</h2><p>Selecione um personagem da campanha para definir quem controla e quem pode visualizá-lo.</p></div></div>
+                <div style={{ maxWidth: 460, marginBottom: 16 }}>
+                  <label style={labelStyle} htmlFor="character-access-selector">Personagem</label>
+                  <select
+                    id="character-access-selector"
+                    value={selectedCharacterId}
+                    onChange={(event) => setSelectedCharacterId(event.target.value)}
+                    disabled={visibilitySaving || characters.length === 0}
+                    style={inputStyle}
+                  >
+                    <option value="">Selecione um personagem...</option>
+                    {characters.map((character) => (
+                      <option key={character.id} value={character.id}>
+                        {character.emoji ? `${character.emoji} ` : ''}{character.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {!selectedCharacter ? (
+                  <div className="empty-state">
+                    <p>{characters.length === 0 ? 'Esta campanha ainda não possui personagens.' : 'Escolha um personagem acima para configurar os acessos.'}</p>
+                  </div>
+                ) : (
                 <div style={{ minWidth: 220, padding: '12px', border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))', borderRadius: 10, background: 'var(--season-bg, var(--season-bg, #100e19))' }}>
                       <label style={labelStyle} htmlFor="character-current-player">Jogador atual</label>
                       <select
@@ -5874,6 +6000,7 @@ style={{cursor:'pointer'}}>
                         </div>
                       )}
                     </div>
+                )}
               </section>
             )}
 
@@ -6324,6 +6451,8 @@ style={{cursor:'pointer'}}>
                                 const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
                                 setNewItemCategories(next)
                                 if (next.length) setNewItemCategory(next[0])
+                                const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
+                                if (automaticWeight !== null) setNewItemWeight(String(automaticWeight))
                               }} />
                               <span className="item-classification-check">{newItemCategories.includes(category) ? '✓' : '+'}</span>
                               <span>{category}</span>
@@ -6374,7 +6503,7 @@ style={{cursor:'pointer'}}>
 
                       <label>
                         Tipo de equipamento
-                        <select value={newEquipmentType} onChange={event => setNewEquipmentType(event.target.value as 'none' | 'armor' | 'protection')}>
+                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
                           <option value="none">Item comum</option>
                           <option value="armor">Armadura</option>
                           <option value="protection">Proteção</option>
@@ -6382,7 +6511,7 @@ style={{cursor:'pointer'}}>
                       </label>
 
                       {newEquipmentType === 'armor' && <>
-                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => setNewArmorClass(event.target.value as 'leve' | 'media' | 'pesada')}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
+                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
                         {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
                         <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}</p><p>Resistência adicional: {newArmorClass === 'leve' ? '½ dos pontos de resistência + 4' : newArmorClass === 'media' ? '+6 pontos' : '2× os pontos de resistência + 8'}</p><p>Destreza de armadura: {newArmorClass === 'leve' ? 'Destreza integral' : newArmorClass === 'media' ? 'Metade do valor de destreza' : '0'}</p><p>Penalidades: {newArmorClass === 'media' ? '−5 em Reflexo; ½ do deslocamento' : newArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade; deslocamento normal'}</p></div>
                       </>}
@@ -6394,7 +6523,7 @@ style={{cursor:'pointer'}}>
                       </>}
 
                       {newItemCategories.includes('Armas') && <>
-                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => setNewWeaponClass(event.target.value)}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
+                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
                         <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[newWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[newWeaponClass]} kg</p></div>
                       </>}
 
@@ -6413,7 +6542,7 @@ style={{cursor:'pointer'}}>
                         />
                       </label>
 
-                      {!newItemCategories.includes('Armas') && <label>
+                      <label>
                         Peso por unidade (kg)
                         <input
                           type="number"
@@ -6421,12 +6550,14 @@ style={{cursor:'pointer'}}>
                           max="100000"
                           step="0.1"
                           value={newItemWeight}
-                          onChange={(event) =>
-                            setNewItemWeight(event.target.value)
-                          }
+                          onChange={(event) => setNewItemWeight(event.target.value)}
+                          disabled={getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null}
                           required
                         />
-                      </label>}
+                        <small>{getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+                          ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
+                          : 'Informe o peso por unidade deste item.'}</small>
+                      </label>
                     </div>
 
 <label>
@@ -6698,7 +6829,7 @@ style={{cursor:'pointer'}}>
 
                         <div className="item-footer">
                           <span>
-                            ⚖ {`${(item.metadata?.equipmentType === 'armor' ? (item.metadata?.armorClass === 'pesada' ? 6 : item.metadata?.armorClass === 'media' ? 4 : 2) : item.metadata?.equipmentType === 'protection' ? 0 : Number(item.weight) || 0).toFixed(1)} kg / un.`}
+                            ⚖ {`${(Number(item.weight) || 0).toFixed(1)} kg / un.`}
                           </span>
                           <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
                             <button
@@ -6962,7 +7093,7 @@ style={{cursor:'pointer'}}>
       : 'Vender item'}
   </button>
 </div>
-      {selectedItemDetails.metadata?.equipmentType === 'armor' && <section className="equipment-rules-preview"><h3>Armadura {selectedItemDetails.metadata?.armorClass === 'media' ? 'média' : selectedItemDetails.metadata?.armorClass === 'pesada' ? 'pesada' : 'leve'}</h3><p>Tipos protegidos: {selectedItemDetails.metadata?.armorCoverage === 'todos' ? 'Cortante, perfurante, especial e bruto' : selectedItemDetails.metadata?.armorCoverage === 'especial_bruto' ? 'Especial e bruto' : 'Cortante e perfurante'}</p><p>Carga: {selectedItemDetails.metadata?.armorClass === 'media' ? 4 : selectedItemDetails.metadata?.armorClass === 'pesada' ? 6 : 2}</p><p>Resistência: {selectedItemDetails.metadata?.armorClass === 'media' ? '+6' : selectedItemDetails.metadata?.armorClass === 'pesada' ? 'Dobro dos pontos + 8' : 'Metade dos pontos + 4'}</p><p>Destreza de armadura: {selectedItemDetails.metadata?.armorClass === 'media' ? 'Metade da destreza' : selectedItemDetails.metadata?.armorClass === 'pesada' ? '0' : 'Igual à destreza'}</p><p>Penalidades: {selectedItemDetails.metadata?.armorClass === 'media' ? '−5 em Reflexo; deslocamento pela metade' : selectedItemDetails.metadata?.armorClass === 'pesada' ? '−10 em Reflexo e Corrida; deslocamento a ¼' : 'Nenhuma'}</p></section>}
+      {selectedItemDetails.metadata?.equipmentType === 'armor' && <section className="equipment-rules-preview"><h3>Armadura {selectedItemDetails.metadata?.armorClass === 'media' ? 'média' : selectedItemDetails.metadata?.armorClass === 'pesada' ? 'pesada' : 'leve'}</h3><p>Tipos protegidos: {selectedItemDetails.metadata?.armorCoverage === 'todos' ? 'Cortante, perfurante, especial e bruto' : selectedItemDetails.metadata?.armorCoverage === 'especial_bruto' ? 'Especial e bruto' : 'Cortante e perfurante'}</p><p>Carga por unidade: {Number(selectedItemDetails.weight || 0).toLocaleString('pt-BR')} kg</p><p>Resistência: {selectedItemDetails.metadata?.armorClass === 'media' ? '+6' : selectedItemDetails.metadata?.armorClass === 'pesada' ? 'Dobro dos pontos + 8' : 'Metade dos pontos + 4'}</p><p>Destreza de armadura: {selectedItemDetails.metadata?.armorClass === 'media' ? 'Metade da destreza' : selectedItemDetails.metadata?.armorClass === 'pesada' ? '0' : 'Igual à destreza'}</p><p>Penalidades: {selectedItemDetails.metadata?.armorClass === 'media' ? '−5 em Reflexo; deslocamento pela metade' : selectedItemDetails.metadata?.armorClass === 'pesada' ? '−10 em Reflexo e Corrida; deslocamento a ¼' : 'Nenhuma'}</p></section>}
       {selectedItemDetails.metadata?.equipmentType === 'protection' && <section className="equipment-rules-preview"><h3>Proteção {selectedItemDetails.metadata?.protectionTier === 'moderada' ? 'moderada' : selectedItemDetails.metadata?.protectionTier === 'avancada' ? 'avançada' : 'básica'}</h3><p>Carga: 0</p><p>Tipo: {selectedItemDetails.metadata?.protectionMode === 'sanidade' ? 'Resistência de sanidade' : 'Resistência contra dano especial e bruto'}</p><p>Valor protegido: {selectedItemDetails.metadata?.protectionTier === 'basica' ? '¼' : selectedItemDetails.metadata?.protectionTier === 'moderada' ? '½' : 'Integral'}</p><p>Dano de sanidade ao perder: {selectedItemDetails.metadata?.protectionTier === 'basica' ? '1d8' : selectedItemDetails.metadata?.protectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}</p></section>}
 <section className="item-basic-stats">
   <div className="item-stat-card">
