@@ -9166,3 +9166,13 @@ button:disabled { opacity: .58; }
   grid-row: 2;
   margin-top: 0;
 }
+
+/* Escudo do mestre: PV excedente com a mesma tipografia das demais informações */
+.master-shield-bar-row .master-shield-extra-label {
+  color: var(--season-text, inherit);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  line-height: 1;
+  text-transform: none;
+}
