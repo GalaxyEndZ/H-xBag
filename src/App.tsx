@@ -211,6 +211,8 @@ function App() {
   const isMaster = selectedCampaign?.role === 'master'
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
+  const [characterNameDraft, setCharacterNameDraft] = useState('')
+  const [characterNameSaving, setCharacterNameSaving] = useState(false)
   const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(null)
   const [campaignMembers, setCampaignMembers] = useState<CampaignMember[]>([])
   const [memberActionLoading, setMemberActionLoading] = useState<string | null>(null)
@@ -2947,6 +2949,9 @@ async function deleteCharacter(character: Character) {
   const selectedCharacter = characters.find(
     (character) => character.id === selectedCharacterId,
   )
+  useEffect(() => {
+    setCharacterNameDraft(selectedCharacter?.name ?? '')
+  }, [selectedCharacter?.id, selectedCharacter?.name])
   // O acesso explícito registrado em character_visibility é uma concessão
   // válida por si só; não deve depender do valor atual de visibility.
   // A campanha também é uma fonte de acesso para personagens compartilhados.
@@ -2966,6 +2971,45 @@ async function deleteCharacter(character: Character) {
   // Quem recebeu acesso ao personagem pode consultar a carteira e ajustar
   // as condições atuais da ficha; o banco continua validando a permissão.
   const canEditSelectedSheet = canAccessSelectedCharacter
+  const canRenameSelectedCharacter = Boolean(
+    selectedCharacter && session?.user?.id && (
+      isMaster || selectedCharacter.user_id === session.user.id
+    ),
+  )
+
+  async function saveSelectedCharacterName() {
+    if (!selectedCharacter || !canRenameSelectedCharacter || characterNameSaving) return
+    const nextName = characterNameDraft.trim()
+    if (!nextName) {
+      setError('O nome do personagem não pode ficar vazio.')
+      return
+    }
+    if (nextName === selectedCharacter.name) {
+      setNotice('O nome do personagem já está atualizado.')
+      return
+    }
+
+    setCharacterNameSaving(true)
+    setError('')
+    setNotice('')
+    const { data, error: updateError } = await supabase
+      .from('characters')
+      .update({ name: nextName })
+      .eq('id', selectedCharacter.id)
+      .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at')
+      .single()
+
+    if (updateError || !data) {
+      setError(`Não foi possível atualizar o nome: ${updateError?.message ?? 'personagem não encontrado'}`)
+      setCharacterNameSaving(false)
+      return
+    }
+
+    setCharacters(current => current.map(character => character.id === selectedCharacter.id ? data as Character : character))
+    setCharacterNameDraft((data as Character).name)
+    setNotice('Nome do personagem atualizado!')
+    setCharacterNameSaving(false)
+  }
 
   async function changeMemberRole(member: CampaignMember) {
     if (!selectedCampaignId || !isMaster || memberActionLoading) return
@@ -4041,7 +4085,7 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
 
                         </section>
                       })()}
-                      {panel('1. Identidade', <>{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
+                      {panel('1. Identidade', <>{canRenameSelectedCharacter && <div className="character-name-editor identity-character-name-editor"><label htmlFor="sheet-character-name">Nome do personagem</label><div><input id="sheet-character-name" value={characterNameDraft} onChange={event => setCharacterNameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void saveSelectedCharacterName() } }} maxLength={80} placeholder="Nome do personagem" disabled={characterNameSaving} /><button className="secondary-button" type="button" onClick={() => void saveSelectedCharacterName()} disabled={characterNameSaving || !characterNameDraft.trim()}>{characterNameSaving ? 'Salvando…' : 'Salvar nome'}</button></div></div>}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
   const otherKey = key === 'primaryArchetype'
     ? 'secondaryArchetype'
     : 'primaryArchetype'

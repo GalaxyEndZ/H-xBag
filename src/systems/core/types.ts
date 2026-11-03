@@ -49,6 +49,55 @@ export interface CombatRollResult {
   outcome: string
 }
 
+
+export type SkillPointKey =
+  | 'vigor'
+  | 'mental'
+  | 'combat'
+  | 'dexterity'
+  | 'resistance'
+  | 'ability'
+
+export interface SkillPointSource {
+  id: string
+  label: string
+  color: string
+  pool: 'rankBenefits' | 'intellectChoices' | 'progressionFields' | 'fixed'
+  rankBenefitsPattern?: string
+  progressionPaths?: readonly string[]
+  fixedPoints?: number
+}
+
+export interface SkillPointsConfig {
+  maxPerSkill?: number
+  allocationOrder?: readonly string[]
+  description?: string
+  allocationDescription?: string
+  skillLabels?: Partial<Record<SkillPointKey, string>>
+  sources?: readonly SkillPointSource[]
+  extraPointsInput?: {
+    path: string
+    label: string
+    description?: string
+  }
+  intellectChoice?: {
+    enabled?: boolean
+    attributePath: string
+    choicePath?: string
+    useEffectiveAttribute?: boolean
+    pointsPerMainChoice?: number
+    mainChoiceValue?: string
+    extraChoiceValue?: string
+    title?: string
+    description?: string
+    pointLabel?: string
+    mainLabel?: string
+    extraLabel?: string
+    mainPointsLabel?: string
+    extraLevelsLabel?: string
+  }
+}
+
 export interface RPGSystem {
   id: string
   name: string
@@ -69,6 +118,8 @@ export interface RPGSystem {
     }[]
 
     damageByGroup?: Readonly<Record<string, string>>
+
+    skillPoints?: SkillPointsConfig
 
     // Configuração dos atributos e bônus de cada ação de combate.
     combatActions?: Partial<
