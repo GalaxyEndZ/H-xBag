@@ -9214,3 +9214,77 @@ button:disabled { opacity: .58; }
 .combat-block-damage-close:hover {
   background: var(--surface-alt, rgba(255,255,255,.07));
 }
+
+/* PV excedente no escudo do mestre: mesma organização de rótulo, valor e barra dos demais status */
+.master-shield-bar-row .master-shield-extra-name {
+  grid-column: 1;
+  grid-row: 2;
+  color: var(--season-text, inherit);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.master-shield-bar-row .master-shield-extra-value {
+  grid-column: 2;
+  grid-row: 2;
+  text-align: right;
+  color: var(--season-text, inherit);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.master-shield-bar-row .master-shield-bar-extra {
+  grid-column: 3;
+  grid-row: 2;
+  margin-top: 0;
+}
+
+/* Alinhamento do PV excedente */
+.master-shield-bar-row {
+  display: grid;
+  grid-template-columns: 25px 70px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  row-gap: 8px;
+  align-items: center;
+}
+
+/* PV principal */
+.master-shield-bar-row > span:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.master-shield-bar-row > strong:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+}
+
+/* Barra principal */
+.master-shield-bar-row > .master-shield-bar:not(.master-shield-bar-extra) {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* PV Ex. */
+.master-shield-extra-name {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+/* Valor excedente */
+.master-shield-extra-value {
+  grid-column: 2;
+  grid-row: 2;
+  text-align: right;
+}
+
+/* Barra excedente */
+.master-shield-bar-extra {
+  grid-column: 3;
+  grid-row: 2;
+  margin: 0;
+}
