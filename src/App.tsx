@@ -6,12 +6,23 @@ import { supabase } from './supabase'
 import Auth from './Auth'
 import './App.css'
 import {
-  KISATSUTAI_FAMILY_TIERS,
   KISATSUTAI_RANKS,
   KISATSUTAI_ARCHETYPES,
-  KISATSUTAI_RANK_STATUS,
-  KISATSUTAI_PROMOTIONS,
 } from './systems/kisatsutai/data'
+import {
+  getKisatsutaiRankAttributePoints,
+  getKisatsutaiPromotionId,
+  hasKisatsutaiPromotion,
+  getKisatsutaiRankStatus,
+  createKisatsutaiPromotionEntry,
+  createKisatsutaiDefaultCurrencyConfig,
+  getKisatsutaiRankName,
+  findKisatsutaiRank,
+  isKisatsutaiSystem,
+  getKisatsutaiRank,
+  getKisatsutaiFamilyTier,
+  getKisatsutaiFamilyTiers,
+} from './systems/kisatsutai/logic'
 
 type Campaign = {
   id: string
@@ -573,7 +584,7 @@ if (accessibleShops.length === 0) {
   }, [selectedCharacterId, selectedSeasonId])
 
   useEffect(() => {
-    if (!selectedSeasonId || !characters.length || !String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai')) {
+    if (!selectedSeasonId || !characters.length || !isKisatsutaiSystem(selectedCampaign?.system_name)) {
       setCharacterRanks({})
       return
     }
@@ -586,7 +597,7 @@ if (accessibleShops.length === 0) {
       for (const row of data ?? []) {
         const sheetData = (row.sheet_data ?? {}) as Record<string, any>
         const progression = sheetData.progression ?? {}
-        ranks[row.character_id] = String(progression.rankName || KISATSUTAI_RANKS.find(rank => rank.id === progression.rankId)?.name || 'Graduação não definida')
+        ranks[row.character_id] = String(progression.rankName || getKisatsutaiRankName(progression.rankId) || 'Graduação não definida')
       }
       setCharacterRanks(ranks)
     }
@@ -1663,7 +1674,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
 
     const normalizedSystemName = systemName.trim() || null
     const existingCurrencies = campaigns.find(campaign => campaign.id === editingCampaignId)?.currency_config?.currencies ?? []
-    const shouldAddDefaultYen = Boolean(normalizedSystemName?.toLowerCase().includes('kisatsutai')) && existingCurrencies.length === 0
+    const shouldAddDefaultYen = isKisatsutaiSystem(normalizedSystemName) && existingCurrencies.length === 0
     const campaignUpdate: Record<string, unknown> = {
       name: campaignName.trim(),
       description: campaignDescription.trim() || null,
@@ -1751,8 +1762,8 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     }
 
     let campaignToUse = campaign
-    if (String(campaign.system_name ?? '').toLowerCase().includes('kisatsutai') && !(campaign.currency_config?.currencies?.length)) {
-      const defaultCurrencyConfig = { currencies: [{ id: crypto.randomUUID(), name: 'Iene', symbol: '¥', conversionRate: 1 }] }
+    if (isKisatsutaiSystem(campaign.system_name) && !(campaign.currency_config?.currencies?.length)) {
+      const defaultCurrencyConfig = createKisatsutaiDefaultCurrencyConfig()
       const { data: updatedCampaign, error: currencyInitError } = await supabase
         .from('campaigns')
         .update({ currency_config: defaultCurrencyConfig })
@@ -2144,7 +2155,9 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
 
     if (!selectedCampaignId || !characterName.trim()) return
 
-    const kisatsutaiCampaign = String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai')
+    const kisatsutaiCampaign = isKisatsutaiSystem(
+      selectedCampaign?.system_name || 'Kisatsutai'
+    )
     const level = kisatsutaiCampaign ? 1 : Number(characterLevel)
     if (kisatsutaiCampaign) {
   if (!primaryArchetype || !secondaryArchetype) {
@@ -2210,9 +2223,7 @@ const initialSheetData = {
   progression: {
     system: 'Kisatsutai',
     rankId: characterRank,
-    rankName: KISATSUTAI_RANKS.find(
-      rank => rank.id === characterRank
-    )?.name || 'Zaidan',
+    rankName: getKisatsutaiRankName(characterRank),
   },
 }
 
@@ -3246,9 +3257,9 @@ onClick={() => {
                     {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{characters.map(character => {
                       const data = masterShieldSheets[character.id]
                       if (!data || data.seasonParticipation !== true) return null
-                      const family = KISATSUTAI_FAMILY_TIERS[String(data.family?.tier ?? '5') as keyof typeof KISATSUTAI_FAMILY_TIERS] || KISATSUTAI_FAMILY_TIERS['5']
+                      const family = getKisatsutaiFamilyTier(String(data.family?.tier ?? '5'))
                       const rankId = String(data.progression?.rankId ?? 'zaidan')
-                      const rank = KISATSUTAI_RANK_STATUS[rankId] || { pv: 0, ps: 0, pr: 0 }
+                      const rank = getKisatsutaiRankStatus(rankId)
                       const n = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0
                       const allocations = data.progression?.allocations ?? {}
                       const allocated = (key: string) => ['family','class','progression'].reduce((sum, source) => sum + Math.max(0,n(allocations[source]?.[key])),0)
@@ -3264,7 +3275,7 @@ onClick={() => {
                         const extra=key==='PV'?Math.max(0,value-max):0
                         return {key,max,value,extra,pct:max>0?Math.min(100,value/max*100):0,extraPct:max>0?Math.min(100,extra/max*100):0}
                       })
-                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || KISATSUTAI_RANKS.find(entry=>entry.id===rankId)?.name || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
+                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || getKisatsutaiRankName(rankId) || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
                     })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
                   </div>
                 </div>
@@ -3306,7 +3317,7 @@ onClick={() => {
 )}
               {!sheetCharacterView ? <>
                 <div className="inventory-heading"><div><h2>Fichas de personagens</h2><p>Escolha um personagem para abrir sua ficha.</p></div></div>
-                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">{character.emoji || '⚔️'}</div><div className="item-category">{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? 'KISATSUTAI' : `NÍVEL ${character.level}`}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p>{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}<button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
+                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">{character.emoji || '⚔️'}</div><div className="item-category">{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? 'KISATSUTAI' : `NÍVEL ${character.level}`}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p>{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}<button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
               </> : <>
                 <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · Kisatsutai RPG</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
                 <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
@@ -3338,9 +3349,11 @@ onClick={() => {
                       node[parts[parts.length - 1]] = value
                       setSheetDraft(JSON.stringify(next, null, 2))
                     }
-                    const familyTierKey = String(read('family.tier', '5')) as keyof typeof KISATSUTAI_FAMILY_TIERS
-                    const familyTier = KISATSUTAI_FAMILY_TIERS[familyTierKey] || KISATSUTAI_FAMILY_TIERS['5']
-                    const isKisatsutaiSheet = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai')).toLowerCase().includes('kisatsutai')
+                    const familyTierKey = String(read('family.tier', '5'))
+                    const familyTier = getKisatsutaiFamilyTier(familyTierKey)
+                    const isKisatsutaiSheet = isKisatsutaiSystem(
+                      String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai'))
+                    )
                     const allocationSources = ['family', 'hierarchy', 'extra'] as const
                     const familyAllocationKeys = ['strength','agility','defense','breathing','intellect'] as const
 
@@ -3354,8 +3367,9 @@ onClick={() => {
                     // Graduações sem quantidade definida no material não concedem pontos automáticos aqui.
                     const rankIdForAttributes = String(read('progression.rankId', 'zaidan'))
                     const rankIdForStatus = rankIdForAttributes
-                    const rankAttributePointsById: Record<string, number> = { zaidan: 1, mizunoto: 1, mizunoe: 2, hinoto: 4, hinoe: 5, kinoto: 5, kinoe: 6, 'hashira-inferior': 10 }
-                    const rankAttributePoints = isKisatsutaiSheet ? (rankAttributePointsById[rankIdForAttributes] ?? 0) : 0
+                    const rankAttributePoints = isKisatsutaiSheet
+                      ? getKisatsutaiRankAttributePoints(rankIdForAttributes)
+                      : 0
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
                     const num = (path: string) => {
                       const match = path.match(/^(attributes|skills)\.(.+)$/)
@@ -3381,7 +3395,7 @@ onClick={() => {
                     const mainPoints = mainAllocations.filter(v => v === 'main').length * 5
                     const extraLevels = mainAllocations.filter(v => v === 'extra').length
                     const skillLabels: Record<typeof skillKeys[number], string> = {vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
-                    const rankBenefitsText = KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.benefits || ''
+                    const rankBenefitsText = findKisatsutaiRank(rankIdForStatus)?.benefits || ''
                     const rankSkillPointsMatch = rankBenefitsText.match(/(\d+) pontos? de perícias?/i)
                     const hierarchySkillPool = isKisatsutaiSheet ? Number(rankSkillPointsMatch?.[1] || 0) : 0
                     const extraSkillPool = numRaw('progression.classSkillPoints') + numRaw('progression.manualExtraSkillPoints')
@@ -3411,12 +3425,12 @@ onClick={() => {
                     const resistance = Math.min(12, num('skills.resistance'))
                     const strength = effectiveAttribute('attributes.strength', familyTier.strength)
                     const rankName = String(
-  read(
-    'progression.rankName',
-    KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.name || 'Zaidan'
-  )
-)
-                    const hierarchyGroup = KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.group || 'Carpa'
+                      read(
+                        'progression.rankName',
+                        getKisatsutaiRankName(rankIdForStatus)
+                      )
+                    )
+                    const hierarchyGroup = findKisatsutaiRank(rankIdForStatus)?.group || 'Carpa'
                     const baseDamageByGroup: Record<string,string> = { Carpa:'1d4', Raposa:'1d6', Tigre:'1d8', Dragão:'1d10', Corvo:'1d12' }
                     const equippedWeapon = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))
                     const equippedWeaponDamage = equippedWeapon ? String(equippedWeapon.metadata?.weaponDamage || '—') : '—'
@@ -3501,7 +3515,9 @@ onClick={() => {
                       setBlockIncomingDamage('')
                       setError('')
                     }
-                    const rankStatus = isKisatsutaiSheet ? (KISATSUTAI_RANK_STATUS[rankIdForStatus] || { pv: 0, ps: 0, pr: 0 }) : { pv: 0, ps: 0, pr: 0 }
+                    const rankStatus = isKisatsutaiSheet
+  ? getKisatsutaiRankStatus(rankIdForStatus)
+  : { pv: 0, ps: 0, pr: 0 }
                     const customClassPV = num('progression.classStatus.pv')
                     const customClassPS = num('progression.classStatus.ps')
                     const customClassPR = num('progression.classStatus.pr')
@@ -3570,21 +3586,44 @@ onClick={() => {
                       >
                       {(() => {
                         const system = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai'))
-                        const kisatsutai = system.toLowerCase().includes('kisatsutai')
-                        const tierKey = String(read('family.tier', '5')) as keyof typeof KISATSUTAI_FAMILY_TIERS
-                        const tier = KISATSUTAI_FAMILY_TIERS[tierKey] || KISATSUTAI_FAMILY_TIERS['5']
+                        const kisatsutai = isKisatsutaiSystem(system)
+                        const tierKey = String(read('family.tier', '5'))
+                        const tier = getKisatsutaiFamilyTier(tierKey)
                         const rankId = String(read('progression.rankId', 'zaidan'))
-                        const rank = KISATSUTAI_RANKS.find(entry => entry.id === rankId) || KISATSUTAI_RANKS[0]
+                        const rank = getKisatsutaiRank(rankId)
                         const promotionLog: any[] = Array.isArray(read('progression.promotionLog', [])) ? read('progression.promotionLog', []) : []
                         const benefitsApplied: string[] = Array.isArray(read('progression.appliedPromotionIds', [])) ? read('progression.appliedPromotionIds', []) : []
                         const changeRank = (nextId: string) => {
-                          const oldRank = KISATSUTAI_RANKS.find(entry => entry.id === rankId)
-                          const nextRank = KISATSUTAI_RANKS.find(entry => entry.id === nextId)
-                          const transition = `${rankId}>${nextId}`
-                          if (promotionLog.some(entry => entry.transition === transition)) { setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.'); return }
-                          const promotionId = `${Date.now()}-${transition}`
-                          const description = window.prompt('Descrição desta promoção (motivo, missão, observações):', '') ?? ''
-                          const next = { ...data, progression: { ...(data.progression || {}), rankId: nextId, rankName: nextRank?.name || nextId, promotionLog: [...promotionLog, { id: promotionId, transition, from: oldRank?.name || rankId, to: nextRank?.name || nextId, at: new Date().toISOString(), description, benefitReference: KISATSUTAI_PROMOTIONS[transition] || 'Benefícios incrementais não definidos no material.', applied: false }] } }
+                          const transition = getKisatsutaiPromotionId(rankId, nextId)
+
+                          if (hasKisatsutaiPromotion(promotionLog, transition)) {
+                            setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.')
+                            return
+                          }
+
+                          const description = window.prompt(
+                            'Descrição desta promoção (motivo, missão, observações):',
+                            ''
+                          ) ?? ''
+
+                          const promotionEntry = createKisatsutaiPromotionEntry(
+                            rankId,
+                            nextId,
+                            `${Date.now()}-${transition}`,
+                            new Date().toISOString(),
+                            description
+                          )
+
+                          const next = {
+                            ...data,
+                            progression: {
+                              ...(data.progression || {}),
+                              rankId: nextId,
+                              rankName: promotionEntry.to,
+                              promotionLog: [...promotionLog, promotionEntry],
+                            },
+                          }
+
                           setSheetDraft(JSON.stringify(next, null, 2))
                         }
                         return <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
@@ -3598,7 +3637,9 @@ onClick={() => {
                             </div>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
                             <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr','PR adicional')}</div></div>
-                            <label style={{...labelStyle,display:'block',marginTop:12}}>Tier da família<select value={tierKey} onChange={e=>write('family.tier',e.target.value)} style={inputStyle}>{Object.entries(KISATSUTAI_FAMILY_TIERS).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
+                            <label style={{...labelStyle,display:'block',marginTop:12}}>Tier da família<select value={tierKey} onChange={e=>write('family.tier',e.target.value)} style={inputStyle}>{getKisatsutaiFamilyTiers().map(([key, value]) => (
+                              <option key={key} value={key}>{value.label}</option>
+                            ))}</select></label>
                             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>{[['PV',tier.pv],['PS',tier.ps],['PR',tier.pr],['Força',tier.strength],['Agilidade',tier.agility],['Defesa',tier.defense],['Respiração',tier.breathing],['Intelecto',tier.intellect],['Pontos base da família',tier.points],['Foco',tier.focus]].map(([label,value])=><div key={String(label)} style={{padding:9,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label}</small><div style={{fontSize:19,fontWeight:800}}>{value}</div></div>)}</div>
                             <div style={{marginTop:16,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
                               <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Atributos</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos de Família, Hierarquia e Extras neste único gerenciador.</p></div></div>
@@ -3806,7 +3847,7 @@ onClick={() => {
   {' + '}
   {String(read('identity.secondaryArchetype', 'Arquétipo secundário não definido'))}
 </p></div>
-                          <div className="sheet-summary-progression">{[['Classe',read('progression.rankName', KISATSUTAI_RANKS.find(entry=>entry.id===rankIdForStatus)?.name || 'Não definida')],['Tier familiar',familyTier.label],['Foco',read('progression.classFocus',familyTier.focus)],['Pontos de perícia',read('progression.classSkillPoints',0)]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
+                          <div className="sheet-summary-progression">{[['Classe',read('progression.rankName', getKisatsutaiRankName(rankIdForStatus))],['Tier familiar',familyTier.label],['Foco',read('progression.classFocus',familyTier.focus)],['Pontos de perícia',read('progression.classSkillPoints',0)]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
                           <div className="sheet-summary-season">{seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada'}</div>
                         </header>
                         <div className="sheet-summary-status">{derived.map(([label,value], index) => {
@@ -3874,7 +3915,7 @@ onClick={() => {
                             {key === 'pv' && <div className="status-card-damage-control"><strong>Aplicar dano físico</strong><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${physicalProtection}` : `Proteção: ${physicalProtection}`}</small><button type="button" disabled={!canEditSelectedSheet || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const armorBlock=armorCovers(physicalDamageType)?armorResistance:0;const reduced=Math.max(0,incoming-armorBlock-physicalProtection);const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div>}
                             {key === 'ps' && <div className="status-card-damage-control sanity"><strong>Aplicar dano de sanidade</strong><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!canEditSelectedSheet || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div>}
                             {key === 'pr' && isKisatsutaiSheet && (() => {
-                              const rank = KISATSUTAI_RANKS.find(entry => entry.id === rankIdForStatus) || KISATSUTAI_RANKS[0]
+                              const rank = getKisatsutaiRank(rankIdForStatus)
                               const group = rank.group
                               const dtByGroup: Record<string, number> = { Raposa: 20, Tigre: 19, Dragão: 18, Corvo: 17 }
                               const dt = dtByGroup[group]
@@ -4878,7 +4919,7 @@ style={{cursor:'pointer'}}>
           <small>Selecione um dos emojis disponíveis para representar o personagem.</small>
         </div>
 
-{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
+{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? (
   <>
     <label>
       Arquétipo primário
@@ -4943,7 +4984,7 @@ style={{cursor:'pointer'}}>
   </label>
 )}
 
-{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
+{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? (
   <>
     <label>
       Arquétipo primário
@@ -5015,9 +5056,9 @@ style={{cursor:'pointer'}}>
         <div className="item-art">{character.emoji || '⚔️'}</div>
         <h3>{character.name}</h3>
         <p>
-          {character.archetype || 'Arquétipo não definido'}{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && <> · Nível {character.level}</>}
+          {character.archetype || 'Arquétipo não definido'}{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && <> · Nível {character.level}</>}
         </p>
-        {String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+        {isKisatsutaiSystem(selectedCampaign?.system_name) && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
         <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
 
         <button
@@ -5040,9 +5081,9 @@ style={{cursor:'pointer'}}>
         <div className="item-art">{character.emoji || '⚔️'}</div>
         <h3>{character.name}</h3>
         <p>
-          {character.archetype || 'Arquétipo não definido'}{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && <> · Nível {character.level}</>}
+          {character.archetype || 'Arquétipo não definido'}{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && <> · Nível {character.level}</>}
         </p>
-        {String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+        {isKisatsutaiSystem(selectedCampaign?.system_name) && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
         <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
 
         <button
@@ -5889,7 +5930,7 @@ style={{cursor:'pointer'}}>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
             {showCampaignForm&&<form className="add-form" onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<select value={campaignSystemChoice} onChange={e=>{const choice=e.target.value;setCampaignSystemChoice(choice);if(choice==='kisatsutai')setSystemName('Kisatsutai');else if(choice==='other')setSystemName('')}} style={inputStyle}><option value=''>Selecione um sistema</option><option value='kisatsutai'>Kisatsutai</option><option value='other'>Outro sistema</option></select></label>{campaignSystemChoice==='other'&&<label>Nome do sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} placeholder='Ex.: Dungeons & Dragons 5e' required style={inputStyle}/></label>}<label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="submit" disabled={loading}>{loading ? 'Salvando…' : editingCampaignId ? 'Salvar alterações' : 'Criar campanha'}</button><button className="secondary-button" type="button" onClick={()=>{setShowCampaignForm(false);setEditingCampaignId(null);setCampaignName('');setCampaignDescription('');setSystemName('');setCampaignSystemChoice('')}}>Cancelar</button></div></form>}
-            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':campaign.system_name.toLowerCase().includes('kisatsutai')?'kisatsutai':'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
+            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':isKisatsutaiSystem(campaign.system_name) ? 'kisatsutai' : 'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
             {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
 
             {selectedCampaign && isMaster && (
@@ -6182,7 +6223,7 @@ style={{cursor:'pointer'}}>
                     </label>
 
                     <div className="form-row">
-{String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') ? (
+{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? (
   <>
     <label>
       Arquétipo primário
@@ -6224,7 +6265,7 @@ style={{cursor:'pointer'}}>
   </label>
 )}
 
-{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && (
+{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && (
     <label>
       Nível
       <input
@@ -6273,9 +6314,7 @@ style={{cursor:'pointer'}}>
                       >
                         <div className="item-art">{character.emoji || '⚔️'}</div>
 <div className="item-category">
-  {String(selectedCampaign?.system_name || '')
-    .toLowerCase()
-    .includes('kisatsutai')
+  {isKisatsutaiSystem(selectedCampaign?.system_name)
     ? 'PERSONAGEM'
     : `NÍVEL ${character.level}`}
 </div>
@@ -6283,7 +6322,7 @@ style={{cursor:'pointer'}}>
                         <p className="item-description">
                           {character.archetype || 'Arquétipo não definido'}
                         </p>
-                        {String(selectedCampaign?.system_name || '').toLowerCase().includes('kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+                        {isKisatsutaiSystem(selectedCampaign?.system_name) && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
                         <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', margin: '8px 0' }}>
                           {character.visibility === 'campaign' ? '🌐 Toda a campanha' : character.visibility === 'selected' ? '👥 Jogadores selecionados' : '🔒 Privado'}
                         </small>
@@ -6355,7 +6394,7 @@ style={{cursor:'pointer'}}>
                     <h2>{selectedCharacter.name}</h2>
 <p>
   {selectedCharacter.archetype || 'Aventureiro'}
-{!String(selectedCampaign?.system_name || 'Kisatsutai').toLowerCase().includes('kisatsutai') && (
+{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && (
     <>
       <span> · </span>
       Nível {selectedCharacter.level}
