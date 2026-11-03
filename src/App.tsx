@@ -1,28 +1,15 @@
-
+import {
+  getRegisteredSystems,
+  getSystemByName,
+} from './systems/core/registry'
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import Auth from './Auth'
 import './App.css'
-import {
-  KISATSUTAI_RANKS,
-  KISATSUTAI_ARCHETYPES,
-} from './systems/kisatsutai/data'
-import {
-  getKisatsutaiRankAttributePoints,
-  getKisatsutaiPromotionId,
-  hasKisatsutaiPromotion,
-  getKisatsutaiRankStatus,
-  createKisatsutaiPromotionEntry,
-  createKisatsutaiDefaultCurrencyConfig,
-  getKisatsutaiRankName,
-  findKisatsutaiRank,
-  isKisatsutaiSystem,
-  getKisatsutaiRank,
-  getKisatsutaiFamilyTier,
-  getKisatsutaiFamilyTiers,
-} from './systems/kisatsutai/logic'
+import './themes/seasonThemes.css'
+import { seasonThemes } from './themes'
 
 type Campaign = {
   id: string
@@ -150,6 +137,77 @@ function App() {
   const selectedCampaign = campaigns.find(
     (campaign) => campaign.id === selectedCampaignId,
   )
+  const activeSystem = getSystemByName(selectedCampaign?.system_name)
+  const isKisatsutaiSystem = activeSystem?.id === 'kisatsutai'
+  const isCyberFlowerSystem = activeSystem?.id === 'cyberflower'
+  const resourceAbbreviation = isKisatsutaiSystem ? 'PR' : 'PM'
+  const resourceName = isKisatsutaiSystem ? 'Respiração' : 'Mana'
+  const resourcePointsLabel = isKisatsutaiSystem
+    ? 'Pontos de Respiração (PR)'
+    : 'Pontos de Mana (PM)'
+
+  const systemRanks = activeSystem?.data?.ranks ?? []
+  const systemArchetypes = activeSystem?.data?.archetypes ?? []
+  const systemLogic = activeSystem?.logic
+  const systemFeatures = activeSystem?.data?.features ?? {
+    usesRanks: false,
+    usesLevels: true,
+    usesFamilyTiers: false,
+    usesSkillPoints: false,
+    hasDefaultCurrency: false,
+  }
+  const getSystemRankName = systemLogic?.getRankName ?? (
+  (rankId: string) =>
+    systemRanks.find(rank => rank.id === rankId)?.name ??
+    systemRanks[0]?.name ??
+    ''
+  )
+  const getSystemRank = (rankId: string) =>
+    systemLogic?.getRank?.(rankId) ??
+    systemRanks.find(rank => rank.id === rankId) ??
+    systemRanks[0]
+  const getSystemRankStatus = (rankId: string) =>
+  systemLogic?.getRankStatus?.(rankId) ?? {
+    pv: 0,
+    ps: 0,
+    pr: 0,
+  }
+  const getSystemFamilyTier = (tierKey: string) =>
+    systemLogic?.getFamilyTier?.(tierKey)
+  const getSystemFamilyTiers = () =>
+    systemLogic?.getFamilyTiers?.() ?? []
+  const getSystemAttributeBonus = (
+    tierKey: string,
+    attribute: 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
+  ) => systemLogic?.getAttributeBonus?.(tierKey, attribute) ?? 0
+  const getSystemPromotionId = (from: string, to: string) =>
+    systemLogic?.getPromotionId?.(from, to) ?? `${from}>${to}`
+    const hasSystemPromotion = (
+    promotionLog: { transition?: string }[],
+    transition: string
+  ) =>
+    systemLogic?.hasPromotion?.(promotionLog, transition) ?? false
+
+  const createSystemPromotionEntry = (
+    from: string,
+    to: string,
+    id: string,
+    at: string,
+    description: string
+  ) =>
+    systemLogic?.createPromotionEntry?.(
+      from,
+      to,
+      id,
+      at,
+      description
+    )
+
+  const findSystemRank = (rankId: string) =>
+    systemLogic?.findRank?.(rankId)
+
+  const createSystemDefaultCurrencyConfig = () =>
+    systemLogic?.createDefaultCurrencyConfig?.() ?? { currencies: [] }
   const isMaster = selectedCampaign?.role === 'master'
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
@@ -221,16 +279,6 @@ function App() {
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
-  const seasonThemes = {
-    default: { label: 'Padrão HäxBag', primary: '#c8b5ff', secondary: '#7958cf', glow: 'rgba(190,170,255,.20)', bg: '#0e0b17', surface: '#181323', surfaceAlt: '#251b36', line: '#493765', onPrimary: '#ffffff' },
-    crimson: { label: 'Lua de Sangue', primary: '#ff334f', secondary: '#b5122e', glow: 'rgba(255,35,65,.22)', bg: '#080809', surface: '#111114', surfaceAlt: '#1b1115', line: '#64202e', onPrimary: '#ffffff' },
-    forest: { label: 'Floresta Esquecida', primary: '#9be8b7', secondary: '#397b58', glow: 'rgba(139,224,178,.19)', bg: '#09130f', surface: '#122019', surfaceAlt: '#1c3024', line: '#3b6249', onPrimary: '#ffffff' },
-    frost: { label: 'Inverno Eterno', primary: '#b9e8ff', secondary: '#4b88b5', glow: 'rgba(169,222,248,.20)', bg: '#09131d', surface: '#121f2c', surfaceAlt: '#1b3041', line: '#3c617c', onPrimary: '#ffffff' },
-    arcane: { label: 'Arcano', primary: '#e7c5ff', secondary: '#8754c5', glow: 'rgba(223,184,255,.20)', bg: '#120b1b', surface: '#1c1428', surfaceAlt: '#2b1c40', line: '#5a3d78', onPrimary: '#ffffff' },
-    ghost_vale: { label: 'Vale Fantasma', primary: '#ffc078', secondary: '#c85d27', glow: 'rgba(255,158,75,.19)', bg: '#080a0d', surface: '#11161b', surfaceAlt: '#1b252d', line: '#46535d', onPrimary: '#ffffff' },
-    crimson_vale: { label: 'Vale Carmesim', primary: '#ff5268', secondary: '#a91f38', glow: 'rgba(255,55,85,.20)', bg: '#09090c', surface: '#151216', surfaceAlt: '#24151c', line: '#653044', onPrimary: '#ffffff' },
-    celestial_sands: { label: 'Areias Celestes', primary: '#5865F2', secondary: '#7289DA', glow: 'rgba(88, 101, 242, 0.28)', bg: '#1E1F22', surface: '#2B2D31', surfaceAlt: '#313338', line: '#404249', onPrimary: '#ffffff' },
-  } as const
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
   const activeTheme = seasonThemes[activeThemeKey]
@@ -584,7 +632,7 @@ if (accessibleShops.length === 0) {
   }, [selectedCharacterId, selectedSeasonId])
 
   useEffect(() => {
-    if (!selectedSeasonId || !characters.length || !isKisatsutaiSystem(selectedCampaign?.system_name)) {
+    if (!selectedSeasonId || !characters.length || !systemFeatures.usesRanks) {
       setCharacterRanks({})
       return
     }
@@ -597,7 +645,7 @@ if (accessibleShops.length === 0) {
       for (const row of data ?? []) {
         const sheetData = (row.sheet_data ?? {}) as Record<string, any>
         const progression = sheetData.progression ?? {}
-        ranks[row.character_id] = String(progression.rankName || getKisatsutaiRankName(progression.rankId) || 'Graduação não definida')
+        ranks[row.character_id] = String(progression.rankName || getSystemRankName(progression.rankId) || 'Graduação não definida')
       }
       setCharacterRanks(ranks)
     }
@@ -1674,12 +1722,14 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
 
     const normalizedSystemName = systemName.trim() || null
     const existingCurrencies = campaigns.find(campaign => campaign.id === editingCampaignId)?.currency_config?.currencies ?? []
-    const shouldAddDefaultYen = isKisatsutaiSystem(normalizedSystemName) && existingCurrencies.length === 0
+    const shouldAddDefaultCurrency =
+      getSystemByName(normalizedSystemName)?.data?.features?.hasDefaultCurrency === true &&
+      existingCurrencies.length === 0
     const campaignUpdate: Record<string, unknown> = {
       name: campaignName.trim(),
       description: campaignDescription.trim() || null,
       system_name: normalizedSystemName,
-      ...(shouldAddDefaultYen ? { currency_config: { currencies: [{ id: crypto.randomUUID(), name: 'Iene', symbol: '¥', conversionRate: 1 }] } } : {}),
+      ...(shouldAddDefaultCurrency ? { currency_config: { currencies: [{ id: crypto.randomUUID(), name: 'Iene', symbol: '¥', conversionRate: 1 }] } } : {}),
     }
 
     const { data, error: updateError } = await supabase
@@ -1762,8 +1812,11 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     }
 
     let campaignToUse = campaign
-    if (isKisatsutaiSystem(campaign.system_name) && !(campaign.currency_config?.currencies?.length)) {
-      const defaultCurrencyConfig = createKisatsutaiDefaultCurrencyConfig()
+    if (
+      getSystemByName(campaign.system_name)?.data?.features?.hasDefaultCurrency === true &&
+      !(campaign.currency_config?.currencies?.length)
+    ) {
+      const defaultCurrencyConfig = createSystemDefaultCurrencyConfig()
       const { data: updatedCampaign, error: currencyInitError } = await supabase
         .from('campaigns')
         .update({ currency_config: defaultCurrencyConfig })
@@ -2060,11 +2113,11 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     const rawValues = [current.pv, current.ps, current.pr]
     const values = rawValues.map(value => value === null || value === undefined || String(value).trim() === '' ? NaN : Number(value))
     if (values.some(value => !Number.isFinite(value))) {
-      setError('PV, PS e PR precisam ter valores numéricos válidos antes de salvar.')
+      setError(`PV, PS e ${resourceAbbreviation} precisam ter valores numéricos válidos antes de salvar.`)
       return
     }
     if (values.some(value => value < 0)) {
-      setError('PV, PS e PR não podem ser negativos.')
+      setError(`PV, PS e ${resourceAbbreviation} não podem ser negativos.`)
       return
     }
 
@@ -2128,7 +2181,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
           },
         },
       }, null, 2))
-      setNotice('PV, PS e PR atualizados com sucesso!')
+      setNotice(`PV, PS e ${resourceAbbreviation} atualizados com sucesso!`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar as condições.')
     } finally {
@@ -2155,11 +2208,9 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
 
     if (!selectedCampaignId || !characterName.trim()) return
 
-    const kisatsutaiCampaign = isKisatsutaiSystem(
-      selectedCampaign?.system_name || 'Kisatsutai'
-    )
-    const level = kisatsutaiCampaign ? 1 : Number(characterLevel)
-    if (kisatsutaiCampaign) {
+    const usesSystemRanks = systemFeatures.usesRanks
+    const level = usesSystemRanks ? 1 : Number(characterLevel)
+    if (usesSystemRanks) {
   if (!primaryArchetype || !secondaryArchetype) {
     setError('Selecione os dois arquétipos.')
     return
@@ -2177,7 +2228,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
   }
 }
 
-    if (!kisatsutaiCampaign && (!Number.isInteger(level) || level < 1 || level > 999)) {
+    if (!usesSystemRanks && (!Number.isInteger(level) || level < 1 || level > 999)) {
       setError('O nível deve ser um número inteiro entre 1 e 999.')
       return
     }
@@ -2191,7 +2242,7 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
       {
         p_campaign_id: selectedCampaignId,
         p_name: characterName.trim(),
-        p_archetype: kisatsutaiCampaign
+        p_archetype: usesSystemRanks
   ? primaryArchetype
   : archetype.trim() || null,
         p_level: level,
@@ -2214,18 +2265,18 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     const { data: emojiUpdated, error: emojiError } = await supabase.from('characters').update({ emoji: characterEmoji }).eq('id', createdCharacter.id).select('id,campaign_id,user_id,name,emoji,archetype,level,strength,visibility,current_player_id,created_at').single()
     if (emojiError) { setError(`Personagem criado, mas não foi possível salvar o emoji: ${emojiError.message}. Execute a migração SQL fornecida.`); setLoading(false); return }
     createdCharacter = emojiUpdated as Character
-    if (kisatsutaiCampaign && selectedSeasonId) {
-const initialSheetData = {
-  identity: {
-    primaryArchetype,
-    secondaryArchetype,
-  },
-  progression: {
-    system: 'Kisatsutai',
-    rankId: characterRank,
-    rankName: getKisatsutaiRankName(characterRank),
-  },
-}
+    if (usesSystemRanks && selectedSeasonId) {
+        const initialSheetData = {
+          identity: {
+            primaryArchetype,
+            secondaryArchetype,
+          },
+          progression: {
+            system: selectedCampaign?.system_name ?? '',
+            rankId: characterRank,
+            rankName: getSystemRankName(characterRank),
+          },
+        }
 
   const { data: newSheet, error: sheetError } = await supabase
     .from('character_sheets')
@@ -2243,6 +2294,29 @@ const initialSheetData = {
   } else {
     setSheet(newSheet as CharacterSheet)
     setSheetDraft(JSON.stringify(initialSheetData, null, 2))
+
+    const { error: versionError } = await supabase
+      .from('character_sheet_versions')
+      .insert({
+        character_sheet_id: newSheet.id,
+        character_id: createdCharacter.id,
+        season_id: selectedSeasonId,
+        sheet_data: initialSheetData,
+        milestone_type: 'season_start',
+        milestone_name: `Início da temporada ${
+          seasons.find(season => season.id === selectedSeasonId)?.name ?? ''
+        }`,
+        notes: 'Snapshot automático no início da temporada.',
+        created_by: session!.user.id,
+      })
+
+    if (versionError) {
+      setError(
+        `Personagem criado e ficha inicializada, mas o snapshot inicial falhou: ${versionError.message}`,
+      )
+      setLoading(false)
+      return
+    }
   }
 }
     setCharacters((current) =>
@@ -3257,25 +3331,75 @@ onClick={() => {
                     {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{characters.map(character => {
                       const data = masterShieldSheets[character.id]
                       if (!data || data.seasonParticipation !== true) return null
-                      const family = getKisatsutaiFamilyTier(String(data.family?.tier ?? '5'))
+                      const family = getSystemFamilyTier(String(data.family?.tier ?? '5')) ?? {
+                        pv: 0,
+                        ps: 0,
+                        pr: 0,
+                        breathing: 0,
+                      }
                       const rankId = String(data.progression?.rankId ?? 'zaidan')
-                      const rank = getKisatsutaiRankStatus(rankId)
+                      const rank = getSystemRankStatus(rankId)
                       const n = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0
                       const allocations = data.progression?.allocations ?? {}
-                      const allocated = (key: string) => ['family','class','progression'].reduce((sum, source) => sum + Math.max(0,n(allocations[source]?.[key])),0)
-                      const attr = (key: string, bonus: number) => Math.min(5,Math.max(0,n(data.attributes?.[key])+allocated(key)+bonus))
-                      const skill = (key: string) => Math.min(12,Math.max(0,n(data.skills?.[key])+allocated(key)))
-                      const maxes = { pv: skill('vigor')*10+family.pv+rank.pv+n(data.progression?.classStatus?.pv)+n(data.progression?.statusBonuses?.pv), ps: skill('mental')*10+family.ps+rank.ps+n(data.progression?.classStatus?.ps)+n(data.progression?.statusBonuses?.ps), pr: (attr('breathing',family.breathing)+skill('ability'))*10+family.pr+rank.pr+n(data.progression?.classStatus?.pr)+n(data.progression?.statusBonuses?.pr) }
+                                            const allocated = (key: string) =>
+                        ['family', 'class', 'progression'].reduce((sum, source) => {
+                          if (source === 'family' && !systemFeatures.usesFamilyTiers) {
+                            return sum
+                          }
+
+                          return sum + Math.max(0, n(allocations[source]?.[key]))
+                        }, 0)
+                      const attr = (key: string, bonus: number) =>
+                        Math.min(
+                          5,
+                          Math.max(
+                            0,
+                            n(data.attributes?.[key]) +
+                              allocated(key) +
+                              (systemFeatures.usesFamilyTiers ? bonus : 0)
+                          )
+                        )
+
+                      const skill = (key: string) =>
+                        Math.min(
+                          12,
+                          Math.max(
+                            0,
+                            n(data.skills?.[key]) + allocated(key)
+                          )
+                        )
+                                            const maxes = {
+                        pv:
+                          skill('vigor') * 10 +
+                          (systemFeatures.usesFamilyTiers ? family.pv : 0) +
+                          rank.pv +
+                          n(data.progression?.classStatus?.pv) +
+                          n(data.progression?.statusBonuses?.pv),
+
+                        ps:
+                          skill('mental') * 10 +
+                          (systemFeatures.usesFamilyTiers ? family.ps : 0) +
+                          rank.ps +
+                          n(data.progression?.classStatus?.ps) +
+                          n(data.progression?.statusBonuses?.ps),
+
+                        pr:
+                          (attr('breathing', family.breathing) + skill('ability')) * 10 +
+                          (systemFeatures.usesFamilyTiers ? family.pr : 0) +
+                          rank.pr +
+                          n(data.progression?.classStatus?.pr) +
+                          n(data.progression?.statusBonuses?.pr),
+                      }
                       const current = data.status?.current ?? {}
-                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],['PR',maxes.pr]] as const).map(([key,max]) => {
-                        const id=key.toLowerCase() as 'pv'|'ps'|'pr'
+                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],[resourceAbbreviation,maxes.pr]] as const).map(([key,max]) => {
+                        const id=(key === 'PM' ? 'pr' : key.toLowerCase()) as 'pv'|'ps'|'pr'
                         const rawValue=n(current[id] ?? max)
                         // PV pode ultrapassar o máximo normal; PS e PR continuam limitados.
                         const value=Math.max(0,key==='PV'?rawValue:Math.min(max,rawValue))
                         const extra=key==='PV'?Math.max(0,value-max):0
                         return {key,max,value,extra,pct:max>0?Math.min(100,value/max*100):0,extraPct:max>0?Math.min(100,extra/max*100):0}
                       })
-                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || getKisatsutaiRankName(rankId) || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
+                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || getSystemRankName(rankId) || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
                     })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
                   </div>
                 </div>
@@ -3317,9 +3441,9 @@ onClick={() => {
 )}
               {!sheetCharacterView ? <>
                 <div className="inventory-heading"><div><h2>Fichas de personagens</h2><p>Escolha um personagem para abrir sua ficha.</p></div></div>
-                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">{character.emoji || '⚔️'}</div><div className="item-category">{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? 'KISATSUTAI' : `NÍVEL ${character.level}`}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p>{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}<button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
+                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">{character.emoji || '⚔️'}</div><div className="item-category">{systemFeatures.usesRanks ? activeSystem?.name?.toUpperCase() : `NÍVEL ${character.level}`}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p>{systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}<button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
               </> : <>
-                <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · Kisatsutai RPG</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
+                <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · {activeSystem?.name ?? 'Sistema de RPG'}</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
                 <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
                 {selectedSeasonId && !sheetLoading && <label className={`season-participation-toggle ${(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'is-participating' : ''}`}><input type="checkbox" checked={(() => { try { return (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() } catch { return false } })()} disabled={!canEditSelectedSheet || sheetSaving} onChange={e => { void toggleSeasonParticipation(e.target.checked) }} /><span><strong>{(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'Participando desta temporada' : 'Não participa desta temporada'}</strong><small>{sheetSaving ? 'Salvando participação…' : 'Altere esta opção para incluir ou retirar o personagem. A ficha e o histórico permanecem preservados.'}</small></span><b className="season-participation-status">{sheetSaving ? '…' : (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'ATIVO' : 'INATIVO'}</b></label>}
                 {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
@@ -3350,88 +3474,190 @@ onClick={() => {
                       setSheetDraft(JSON.stringify(next, null, 2))
                     }
                     const familyTierKey = String(read('family.tier', '5'))
-                    const familyTier = getKisatsutaiFamilyTier(familyTierKey)
-                    const isKisatsutaiSheet = isKisatsutaiSystem(
-                      String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai'))
-                    )
+                    const usesFamilyTiers = systemFeatures?.usesFamilyTiers ?? false
+
+                    const familyTier = usesFamilyTiers
+                      ? getSystemFamilyTier(familyTierKey)
+                      : undefined
+
+                    const familyTierData = familyTier ?? {
+                      pv: 0,
+                      ps: 0,
+                      pr: 0,
+                      strength: 0,
+                      agility: 0,
+                      defense: 0,
+                      breathing: 0,
+                      intellect: 0,
+                      points: 0,
+                      focus: '',
+                      label: '',
+                    }
                     const allocationSources = ['family', 'hierarchy', 'extra'] as const
                     const familyAllocationKeys = ['strength','agility','defense','breathing','intellect'] as const
 
-                    const allocationLabels: Record<string,string> = {strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:'Respiração',intellect:'Intelecto',vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
                     const skillKeys = ['vigor','mental','combat','dexterity','resistance','ability'] as const
                     const allocation = (source: string, key: string) => { if (!(familyAllocationKeys as readonly string[]).includes(key)) return 0; const own = Math.max(0, Math.floor(Number(read(`progression.allocations.${source}.${key}`, 0)) || 0)); const legacyClass = source === 'extra' ? Math.max(0, Math.floor(Number(read(`progression.allocations.class.${key}`, 0)) || 0)) : 0; return own + legacyClass }
-                    const allocationPool = (source: typeof allocationSources[number]) => source === 'family' ? (isKisatsutaiSheet ? familyTier.points : 0) : source === 'hierarchy' ? rankAttributePoints : numRaw('progression.extraAttributePoints') + numRaw('progression.attributePoints') + numRaw('progression.manualExtraAttributePoints')
-                    const familyTierMinimum = (key: typeof familyAllocationKeys[number]) => isKisatsutaiSheet ? Math.max(0, Number(familyTier[key]) || 0) : 0
-                    const familyTierMinimumTotal = familyAllocationKeys.reduce((sum, key) => sum + familyTierMinimum(key), 0)
                     // Pontos extras de atributos concedidos por graduação, conforme benefícios explicitamente documentados.
                     // Graduações sem quantidade definida no material não concedem pontos automáticos aqui.
-                    const rankIdForAttributes = String(read('progression.rankId', 'zaidan'))
+                    const rankIdForAttributes = String(read('progression.rankId', ''))
                     const rankIdForStatus = rankIdForAttributes
-                    const rankAttributePoints = isKisatsutaiSheet
-                      ? getKisatsutaiRankAttributePoints(rankIdForAttributes)
-                      : 0
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
+                    const skillPointConfig = activeSystem?.data?.skillPoints
+                    const maxSkillLevel = Math.max(1, Math.floor(skillPointConfig?.maxPerSkill ?? 12))
                     const num = (path: string) => {
                       const match = path.match(/^(attributes|skills)\.(.+)$/)
                       // Não há bases de perícia definidas por família/tier no material; portanto, a base é 0.
                       const base = match?.[1] === 'skills' ? 0 : numRaw(path)
                       if (!match) return base
                       const key = match[2]
+                      const configuredSkillSources = activeSystem?.data?.skillPoints?.sources ?? []
                       const sourceBonus = match[1] === 'attributes'
                         ? allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
                         : skillKeys.includes(key as typeof skillKeys[number])
-                          ? (['hierarchy','intellect','extra'] as const).reduce((sum, source) => sum + Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source}.${key}`, 0)) || 0)), 0)
+                          ? configuredSkillSources.reduce((sum, source) => sum + Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source.id}.${key}`, 0)) || 0)), 0)
                           : 0
-                      return Math.min(match[1] === 'attributes' ? 5 : 12, base + sourceBonus)
+                      return Math.min(match[1] === 'attributes' ? 5 : maxSkillLevel, base + sourceBonus)
                     }
-                    const effectiveAttribute = (path: string, bonus: number) => Math.min(5, Math.max(0, num(path) + (isKisatsutaiSheet ? bonus : 0)))
-                    const agility = Math.floor(effectiveAttribute('attributes.agility', familyTier.agility))
+                      const effectiveAttribute = (
+                        path: string,
+                        attribute: 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
+                    ) => {
+                      const bonus = usesFamilyTiers
+                        ? getSystemAttributeBonus(familyTierKey, attribute)
+                        : 0
+
+                      return Math.min(5, Math.max(0, num(path) + bonus))
+                    }
+                    const agility = Math.floor(effectiveAttribute('attributes.agility', 'agility'))
                     const movementActions = 1 + Math.floor(agility / 2)
                     const extraActions = agility % 2
-                    const dexterity = Math.min(12, num('skills.dexterity'))
-                    const intellect = Math.floor(effectiveAttribute('attributes.intellect', familyTier.intellect))
-                    const choices: string[] = Array.isArray(read('skills.intelligenceChoices', [])) ? read('skills.intelligenceChoices', []) : []
-                    const mainAllocations = Array.from({ length: intellect }, (_, i) => choices[i] === 'extra' ? 'extra' : 'main')
-                    const mainPoints = mainAllocations.filter(v => v === 'main').length * 5
-                    const extraLevels = mainAllocations.filter(v => v === 'extra').length
-                    const skillLabels: Record<typeof skillKeys[number], string> = {vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
-                    const rankBenefitsText = findKisatsutaiRank(rankIdForStatus)?.benefits || ''
-                    const rankSkillPointsMatch = rankBenefitsText.match(/(\d+) pontos? de perícias?/i)
-                    const hierarchySkillPool = isKisatsutaiSheet ? Number(rankSkillPointsMatch?.[1] || 0) : 0
-                    const extraSkillPool = numRaw('progression.classSkillPoints') + numRaw('progression.manualExtraSkillPoints')
-                    const skillAllocations = (source: 'hierarchy'|'intellect'|'extra', key: typeof skillKeys[number]) => Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source}.${key}`, 0)) || 0))
-                    const skillPool = (source: 'hierarchy'|'intellect'|'extra') => source === 'hierarchy' ? hierarchySkillPool : source === 'intellect' ? mainPoints : extraSkillPool
-                    const skillTotalUsed = (source: 'hierarchy'|'intellect'|'extra') => skillKeys.reduce((sum,key)=>sum+skillAllocations(source,key),0)
-                    const skillAllocatedTotal = (key: typeof skillKeys[number]) => skillAllocations('hierarchy',key)+skillAllocations('intellect',key)+skillAllocations('extra',key)
+                    const dexterity = Math.min(maxSkillLevel, num('skills.dexterity'))
+                    const intellectChoiceConfig = skillPointConfig?.intellectChoice
+                    const skillChoicePath = intellectChoiceConfig?.choicePath ?? 'skills.intelligenceChoices'
+                    const mainChoiceValue = intellectChoiceConfig?.mainChoiceValue ?? 'main'
+                    const extraChoiceValue = intellectChoiceConfig?.extraChoiceValue ?? 'extra'
+                    const intellect = intellectChoiceConfig?.enabled
+                      ? Math.floor(
+                          intellectChoiceConfig.useEffectiveAttribute
+                            ? effectiveAttribute(
+                                intellectChoiceConfig.attributePath,
+                                'intellect'
+                              )
+                            : num(intellectChoiceConfig.attributePath)
+                        )
+                      : 0
+                    const choices: string[] = Array.isArray(read(skillChoicePath, []))
+                      ? read(skillChoicePath, [])
+                      : []
+                    const mainAllocations = Array.from(
+                      { length: intellect },
+                      (_, i) => choices[i] === extraChoiceValue
+                        ? extraChoiceValue
+                        : mainChoiceValue
+                    )
+                    const mainPoints = mainAllocations.filter(value => value === mainChoiceValue).length *
+                      (intellectChoiceConfig?.pointsPerMainChoice ?? 0)
+                    const extraLevels = mainAllocations.filter(value => value === extraChoiceValue).length
+                    const defaultSkillLabels: Record<typeof skillKeys[number], string> = {
+                      vigor: 'Vigor',
+                      mental: 'Mental',
+                      combat: 'Combate',
+                      dexterity: 'Destreza',
+                      resistance: 'Resistência',
+                      ability: 'Habilidade',
+                    }
+                    const skillLabels = {
+                      ...defaultSkillLabels,
+                      ...(skillPointConfig?.skillLabels ?? {}),
+                    }
+                    const skillPointSources = skillPointConfig?.sources ?? []
+                    const configuredAllocationOrder = skillPointConfig?.allocationOrder ?? []
+                    const orderedSkillPointSources = [
+                      ...configuredAllocationOrder
+                        .map(id => skillPointSources.find(source => source.id === id))
+                        .filter((source): source is typeof skillPointSources[number] => Boolean(source)),
+                      ...skillPointSources.filter(source => !configuredAllocationOrder.includes(source.id)),
+                    ]
+                    const skillPool = (sourceId: string) => {
+                      const source = skillPointSources.find(item => item.id === sourceId)
+                      if (!source) return 0
+
+                      if (source.pool === 'rankBenefits') {
+                        const rankBenefitsText = findSystemRank(rankIdForStatus)?.benefits || ''
+                        const pattern = source.rankBenefitsPattern || '(\\d+) pontos? de perícias?'
+                        try {
+                          return Number(rankBenefitsText.match(new RegExp(pattern, 'i'))?.[1] || 0)
+                        } catch {
+                          return 0
+                        }
+                      }
+
+                      if (source.pool === 'intellectChoices') {
+                        return mainPoints
+                      }
+
+                      if (source.pool === 'progressionFields') {
+                        return (source.progressionPaths ?? []).reduce(
+                          (total, path) => total + numRaw(path),
+                          0
+                        )
+                      }
+
+                      if (source.pool === 'fixed') {
+                        return Math.max(0, Math.floor(source.fixedPoints ?? 0))
+                      }
+
+                      return 0
+                    }
+                    const skillAllocations = (source: string, key: typeof skillKeys[number]) =>
+                      Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source}.${key}`, 0)) || 0))
+                    const skillTotalUsed = (source: string) =>
+                      skillKeys.reduce((sum, key) => sum + skillAllocations(source, key), 0)
+                    const skillAllocatedTotal = (key: typeof skillKeys[number]) =>
+                      skillPointSources.reduce((sum, source) => sum + skillAllocations(source.id, key), 0)
                     const setSkillAllocation = (key: typeof skillKeys[number], value: number) => {
-                      const next = { ...data, skills: { ...(data.skills || {}), pointAllocations: { ...(data.skills?.pointAllocations || {}) } } }
-                      let left = Math.max(0, Math.min(12, Math.floor(Number(value)||0)))
-                      for (const source of ['hierarchy','intellect','extra'] as const) {
-                        const otherSpent = skillKeys.reduce((sum,item)=>sum+skillAllocations(source,item),0)-skillAllocations(source,key)
-                        const capacity = Math.max(0,skillPool(source)-otherSpent)
-                        const assigned = Math.min(left,capacity)
-                        next.skills.pointAllocations[source] = { ...(next.skills.pointAllocations[source] || {}), [key]: assigned }
+                      const next = {
+                        ...data,
+                        skills: {
+                          ...(data.skills || {}),
+                          pointAllocations: { ...(data.skills?.pointAllocations || {}) },
+                        },
+                      }
+                      let left = Math.max(0, Math.min(maxSkillLevel, Math.floor(Number(value) || 0)))
+
+                      for (const source of orderedSkillPointSources) {
+                        const otherSpent = skillKeys.reduce(
+                          (sum, item) => sum + skillAllocations(source.id, item),
+                          0
+                        ) - skillAllocations(source.id, key)
+                        const capacity = Math.max(0, skillPool(source.id) - otherSpent)
+                        const assigned = Math.min(left, capacity)
+                        next.skills.pointAllocations[source.id] = {
+                          ...(next.skills.pointAllocations[source.id] || {}),
+                          [key]: assigned,
+                        }
                         left -= assigned
                       }
-                      setSheetDraft(JSON.stringify(next,null,2))
+
+                      setSheetDraft(JSON.stringify(next, null, 2))
                     }
-                    const vigor = Math.min(12, num('skills.vigor'))
-                    const mental = Math.min(12, num('skills.mental'))
-                    const breathing = effectiveAttribute('attributes.breathing', familyTier.breathing)
-                    const ability = Math.min(12, num('skills.ability'))
-                    const defense = effectiveAttribute('attributes.defense', familyTier.defense)
+                    const vigor = Math.min(maxSkillLevel, num('skills.vigor'))
+                    const mental = Math.min(maxSkillLevel, num('skills.mental'))
+                    const breathing = effectiveAttribute('attributes.breathing', 'breathing')
+                    const ability = Math.min(maxSkillLevel, num('skills.ability'))
+                    const defense = effectiveAttribute('attributes.defense', 'defense')
                     const reactions = defense + 1
-                    const combat = Math.min(12, num('skills.combat'))
-                    const resistance = Math.min(12, num('skills.resistance'))
-                    const strength = effectiveAttribute('attributes.strength', familyTier.strength)
+                    const combat = Math.min(maxSkillLevel, num('skills.combat'))
+                    const resistance = Math.min(maxSkillLevel, num('skills.resistance'))
+                    const strength = effectiveAttribute('attributes.strength', 'strength')
                     const rankName = String(
                       read(
                         'progression.rankName',
-                        getKisatsutaiRankName(rankIdForStatus)
+                        getSystemRankName(rankIdForStatus)
                       )
                     )
-                    const hierarchyGroup = findKisatsutaiRank(rankIdForStatus)?.group || 'Carpa'
-                    const baseDamageByGroup: Record<string,string> = { Carpa:'1d4', Raposa:'1d6', Tigre:'1d8', Dragão:'1d10', Corvo:'1d12' }
+const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                     const equippedWeapon = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))
                     const equippedWeaponDamage = equippedWeapon ? String(equippedWeapon.metadata?.weaponDamage || '—') : '—'
                     const equippedArmor = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'armor')
@@ -3443,42 +3669,66 @@ onClick={() => {
                     const protectionFraction = (item: Item) => item.metadata?.protectionTier === 'avancada' ? 1 : item.metadata?.protectionTier === 'moderada' ? 0.5 : 0.25
                     const physicalProtection = equippedProtection.filter(item => item.metadata?.protectionMode !== 'sanidade').reduce((sum, item) => sum + Math.floor(resistance * protectionFraction(item)), 0)
                     const sanityProtection = equippedProtection.filter(item => item.metadata?.protectionMode === 'sanidade').reduce((sum, item) => sum + Math.floor(mental * protectionFraction(item)), 0)
-                    const baseDamage = baseDamageByGroup[hierarchyGroup] || '—'
+                    const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
                     const rollD20 = () => Math.floor(Math.random()*20)+1
-                    const performCombatRoll = (kind: 'Ataque bruto'|'Ataque ágil'|'Bloqueio'|'Esquiva', dodgeDt?: string) => {
-                      const constitution = Number(read('attributes.constitution', 0)) || resistance + vigor
-                      const attribute = kind === 'Ataque bruto' ? strength : kind === 'Bloqueio' ? defense : agility
-                      const bonus = kind === 'Bloqueio' ? constitution : kind === 'Esquiva' ? dexterity : combat
-                      const diceCount = Math.max(1, Math.floor(attribute))
-                      const dice = Array.from({ length: diceCount }, () => rollD20())
-                      const diceTotal = dice.reduce((sum, value) => sum + value, 0)
-                      const total = 1 + diceTotal + bonus
-                      const diceDescription = `${diceCount}d20 = [${dice.join(', ')}] (soma ${diceTotal})`
+                    const performCombatRoll = (
+                      kind: 'Ataque bruto' | 'Ataque ágil' | 'Bloqueio' | 'Esquiva',
+                      dodgeDt?: string
+                    ) => {
+                      const actionConfig = activeSystem?.data?.combatActions?.[kind]
+
+                      const calculateCombatRoll = systemLogic?.calculateCombatRoll
+
+                      if (!actionConfig || !calculateCombatRoll) {
+                        setBlockDamageReduction(null)
+                        setCombatActionResult(
+                          `O sistema ${activeSystem?.name ?? 'selecionado'} ainda não possui uma configuração de combate para esta ação.`
+                        )
+                        return 0
+                      }
+
+                      const readCombatValue = (path: string) => {
+                        const value = Number(read(path, 0))
+
+                        if (
+                          path === 'attributes.constitution' &&
+                          (!Number.isFinite(value) || value === 0)
+                        ) {
+                          return resistance + vigor
+                        }
+
+                        return Number.isFinite(value) ? value : 0
+                      }
+
+                      const attribute = readCombatValue(actionConfig.attribute)
+                      const bonus = readCombatValue(actionConfig.bonus)
+
+                      const target =
+                        dodgeDt !== undefined && dodgeDt.trim() !== ''
+                          ? Number(dodgeDt)
+                          : null
+
+                      const result = calculateCombatRoll({
+                        kind,
+                        attribute,
+                        bonus,
+                        target,
+                        rollDie: rollD20,
+                      })
+
+                      const diceDescription =
+                        `${result.diceCount}d20 = [${result.dice.join(', ')}] (soma ${result.diceTotal})`
 
                       if (kind === 'Bloqueio') {
-                        const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
-                        const validTarget = target !== null && Number.isFinite(target) && target >= 0
-                        const critical = dice.includes(20)
-                        const succeeded = validTarget && total >= target!
-                        const outcome = critical
-                          ? 'Crítico: nega 100% do dano.'
-                          : !validTarget
-                            ? 'Informe a DT do inimigo no campo ao lado das reações.'
-                            : succeeded
-                              ? `Sucesso contra DT ${target}: nega 50% do dano.`
-                              : `Falha contra DT ${target}: nega 25% do dano.`
                         setBlockIncomingDamage('')
-                        setBlockDamageReduction(critical ? null : !validTarget ? null : succeeded ? 0.5 : 0.25)
-                        setCombatActionResult(`Bloqueio: ${diceDescription}; 1 + ${diceTotal} + Constituição (${bonus}) = ${total}. ${outcome}`)
-                      } else if (kind === 'Esquiva') {
-                        const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
-                        const validTarget = target !== null && Number.isFinite(target) && target >= 0
-                        const outcome = validTarget ? (total >= target! ? `Sucesso contra DT ${target}: nega o dano completamente.` : `Falha contra DT ${target}: não evita o dano.`) : 'Informe a DT do inimigo no campo ao lado das reações.'
-                        setCombatActionResult(`Esquiva: ${diceDescription}; 1 + ${diceTotal} + Destreza (${bonus}) = ${total}. ${outcome}`)
-                      } else {
-                        setCombatActionResult(`${kind}: ${diceDescription}; 1 + ${diceTotal} + Combate (${bonus}) = ${total}.`)
+                        setBlockDamageReduction(result.damageReduction)
                       }
-                      return total
+
+                      setCombatActionResult(
+                        `${kind}: ${diceDescription}; 1 + ${result.diceTotal} + ${actionConfig.bonusLabel} (${bonus}) = ${result.total}. ${result.outcome}`
+                      )
+
+                      return result.total
                     }
                     const applyBlockedDamage = () => {
                       const incoming = Number(blockIncomingDamage)
@@ -3515,9 +3765,9 @@ onClick={() => {
                       setBlockIncomingDamage('')
                       setError('')
                     }
-                    const rankStatus = isKisatsutaiSheet
-  ? getKisatsutaiRankStatus(rankIdForStatus)
-  : { pv: 0, ps: 0, pr: 0 }
+                    const rankStatus = systemFeatures?.usesRanks
+                      ? getSystemRankStatus(rankIdForStatus)
+                      : { pv: 0, ps: 0, pr: 0 }
                     const customClassPV = num('progression.classStatus.pv')
                     const customClassPS = num('progression.classStatus.ps')
                     const customClassPR = num('progression.classStatus.pr')
@@ -3527,20 +3777,20 @@ onClick={() => {
                     const progressionPV = num('progression.statusBonuses.pv')
                     const progressionPS = num('progression.statusBonuses.ps')
                     const progressionPR = num('progression.statusBonuses.pr')
-                    const familyPV = isKisatsutaiSheet ? familyTier.pv : 0
-                    const familyPS = isKisatsutaiSheet ? familyTier.ps : 0
-                    const familyPR = isKisatsutaiSheet ? familyTier.pr : 0
+                    const familyPV = usesFamilyTiers ? familyTierData.pv : 0
+                    const familyPS = usesFamilyTiers ? familyTierData.ps : 0
+                    const familyPR = usesFamilyTiers ? familyTierData.pr : 0
                     const derived = [
                       ['Pontos de Vida (PV)', vigor * 10 + familyPV + classPV + progressionPV, `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
                       ['Pontos de Sanidade (PS)', mental * 10 + familyPS + classPS + progressionPS, `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
-                      ['Pontos de Respiração (PR)', (breathing + ability) * 10 + familyPR + classPR + progressionPR, `(Respiração + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
+                      [resourcePointsLabel, (breathing + ability) * 10 + familyPR + classPR + progressionPR, `(${resourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
                     ] as const
                     const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => { const limit = path.startsWith('attributes.') ? 5 : path.startsWith('skills.') ? 12 : undefined; return <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<input type={type} min={type === 'number' ? 0 : undefined} max={type === 'number' ? limit : undefined} step="1" value={String(read(path, type === 'number' ? 0 : ''))} onChange={e => write(path, type === 'number' ? Math.min(limit ?? 999, Math.max(0, e.target.value === '' ? 0 : Number(e.target.value))) : e.target.value)} style={inputStyle}/>{hint && <small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}{limit ? ` · máximo ${limit}` : ''}</small>}</label> }
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
                     const panel = (title: string, children: any) => <details className="sheet-editor-accordion" style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><summary>{title}</summary><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:14}}>{children}</div></details>
                     return (
                       <>
-  {isKisatsutaiSheet && (
+  {systemFeatures.usesRanks && (
     <section
       aria-label="Graduação atual"
       style={{
@@ -3570,13 +3820,17 @@ onClick={() => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
             <small style={{ color: 'var(--season-muted, #b9b4c2)', fontSize: 10, fontWeight: 800, letterSpacing: '1.5px' }}>GRADUAÇÃO ATUAL</small>
             <span style={{ width: 4, height: 4, borderRadius: 99, background: 'var(--season-accent, #e58a36)' }} />
-            <small style={{ color: 'var(--season-muted, #b9b4c2)', fontSize: 10, fontWeight: 700, letterSpacing: '.7px' }}>KISATSUTAI</small>
+            <small style={{ color: 'var(--season-muted, #b9b4c2)', fontSize: 10, fontWeight: 700, letterSpacing: '.7px' }}>
+  {activeSystem?.name?.toUpperCase() ?? 'SISTEMA PERSONALIZADO'}
+</small>
           </div>
           <h2 style={{ margin: 0, color: 'var(--season-text, inherit)', fontSize: 'clamp(20px, 3vw, 26px)', lineHeight: 1.15, fontWeight: 850, overflowWrap: 'anywhere' }}>{rankName}</h2>
-          <div style={{ marginTop: 5, color: 'var(--season-muted, #b9b4c2)', fontSize: 12 }}>Hierarquia do caçador</div>
+          <div style={{ marginTop: 5, color: 'var(--season-muted, #b9b4c2)', fontSize: 12 }}>
+  Progressão do personagem
+</div>
         </div>
       </div>
-      <div style={{ flex: '0 0 auto', alignSelf: 'stretch', display: 'flex', alignItems: 'center', paddingLeft: 12, borderLeft: '1px solid var(--season-line, rgba(255,255,255,.12))', color: 'var(--season-accent, #e58a36)', fontSize: 11, fontWeight: 800, letterSpacing: '.8px', textAlign: 'right' }}>RANK<br/>ATUAL</div>
+      <div style={{ flex: '0 0 auto', alignSelf: 'stretch', display: 'flex', alignItems: 'center', paddingLeft: 12, borderLeft: '1px solid var(--season-line, rgba(255,255,255,.12))', color: 'var(--season-accent, #e58a36)', fontSize: 11, fontWeight: 800, letterSpacing: '.8px', textAlign: 'right' }}>PROGRESSÃO<br/>ATUAL</div>
     </section>
   )}
                       {editingSheet && canEditSelectedSheet ? (<fieldset
@@ -3585,18 +3839,48 @@ onClick={() => {
                         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
                       >
                       {(() => {
-                        const system = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai'))
-                        const kisatsutai = isKisatsutaiSystem(system)
+                        const system = String(read('progression.system', selectedCampaign?.system_name || ''))
+                        const systemFeatures = getSystemByName(system)?.data?.features
+
+                        const usesRanks = systemFeatures?.usesRanks ?? false
+                        const usesFamilyTiers = systemFeatures?.usesFamilyTiers ?? false
+
                         const tierKey = String(read('family.tier', '5'))
-                        const tier = getKisatsutaiFamilyTier(tierKey)
+                        const tier = usesFamilyTiers
+                          ? getSystemFamilyTier(tierKey) ?? {
+                              pv: 0,
+                              ps: 0,
+                              pr: 0,
+                              strength: 0,
+                              agility: 0,
+                              defense: 0,
+                              breathing: 0,
+                              intellect: 0,
+                              points: 0,
+                              focus: '',
+                              label: '',
+                            }
+                          : {
+                              pv: 0,
+                              ps: 0,
+                              pr: 0,
+                              strength: 0,
+                              agility: 0,
+                              defense: 0,
+                              breathing: 0,
+                              intellect: 0,
+                              points: 0,
+                              focus: '',
+                              label: '',
+                            }
                         const rankId = String(read('progression.rankId', 'zaidan'))
-                        const rank = getKisatsutaiRank(rankId)
+                        const rank = getSystemRank(rankId)
                         const promotionLog: any[] = Array.isArray(read('progression.promotionLog', [])) ? read('progression.promotionLog', []) : []
                         const benefitsApplied: string[] = Array.isArray(read('progression.appliedPromotionIds', [])) ? read('progression.appliedPromotionIds', []) : []
                         const changeRank = (nextId: string) => {
-                          const transition = getKisatsutaiPromotionId(rankId, nextId)
+                          const transition = getSystemPromotionId(rankId, nextId)
 
-                          if (hasKisatsutaiPromotion(promotionLog, transition)) {
+                          if (hasSystemPromotion(promotionLog, transition)) {
                             setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.')
                             return
                           }
@@ -3606,7 +3890,7 @@ onClick={() => {
                             ''
                           ) ?? ''
 
-                          const promotionEntry = createKisatsutaiPromotionEntry(
+                          const promotionEntry = createSystemPromotionEntry(
                             rankId,
                             nextId,
                             `${Date.now()}-${transition}`,
@@ -3628,90 +3912,70 @@ onClick={() => {
                         }
                         return <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
                           <h3 style={{marginTop:0}}>Gerenciador de Família, Classe, Progressão e Atributos</h3>
-                          <label style={labelStyle}>Sistema de progressão<select value={system} onChange={e=>write('progression.system',e.target.value)} style={inputStyle}><option value="Kisatsutai">Kisatsutai</option><option value="Personalizado">Personalizado</option></select></label>
-                          {kisatsutai ? <>
-                            <label style={{...labelStyle,display:'block',marginTop:12}}>Classe / hierarquia do caçador<select value={rankId} onChange={e=>changeRank(e.target.value)} style={inputStyle}>{KISATSUTAI_RANKS.map(entry=><option key={entry.id} value={entry.id}>{entry.group} · {entry.name}</option>)}</select></label>
+                                                    <label style={labelStyle}>
+                            Sistema de progressão
+                            <select
+                              value={system}
+                              onChange={e => write('progression.system', e.target.value)}
+                              style={inputStyle}
+                            >
+                              <option value="">Selecione um sistema</option>
+                              {getRegisteredSystems().map(registeredSystem => (
+                                <option
+                                  key={registeredSystem.id}
+                                  value={registeredSystem.name}
+                                >
+                                  {registeredSystem.name}
+                                </option>
+                              ))}
+                              <option value="Personalizado">Personalizado</option>
+                            </select>
+                          </label>
+                          {usesFamilyTiers && <>
+                              <label style={{...labelStyle,display:'block',marginTop:12}}>
+                                Tier da família
+                                <select
+                                  value={tierKey}
+                                  onChange={e => write('family.tier', e.target.value)}
+                                  style={inputStyle}
+                                >
+                                  {getSystemFamilyTiers().map(([key, value]) => (
+                                    <option key={key} value={key}>
+                                      {value.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+
+                              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>
+                                {[
+                                  ['PV', tier.pv],
+                                  ['PS', tier.ps],
+                                  ['PR', tier.pr],
+                                  ['Força', tier.strength],
+                                  ['Agilidade', tier.agility],
+                                  ['Defesa', tier.defense],
+                                  ['Respiração', tier.breathing],
+                                  ['Intelecto', tier.intellect],
+                                  ['Pontos base da família', tier.points],
+                                  ['Foco', tier.focus],
+                                ].map(([label, value]) => (
+                                  <div key={String(label)} style={{padding:9,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
+                                    <small style={{color:'var(--season-muted, #b9b4c2)'}}>{label}</small>
+                                    <div style={{fontSize:19,fontWeight:800}}>{value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </>}
+                          {usesRanks ? <>
+                            <label style={{...labelStyle,display:'block',marginTop:12}}>Classe / hierarquia do caçador<select value={rankId} onChange={e=>changeRank(e.target.value)} style={inputStyle}>{systemRanks.map(entry=><option key={entry.id} value={entry.id}>{entry.group} · {entry.name}</option>)}</select></label>
                             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10,marginTop:12}}>
                               <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>FOCO EXIGIDO</small><div style={{fontSize:22,fontWeight:800}}>{rank.focus}</div></div>
                               <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
                             </div>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
-                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr','PR adicional')}</div></div>
-                            <label style={{...labelStyle,display:'block',marginTop:12}}>Tier da família<select value={tierKey} onChange={e=>write('family.tier',e.target.value)} style={inputStyle}>{getKisatsutaiFamilyTiers().map(([key, value]) => (
-                              <option key={key} value={key}>{value.label}</option>
-                            ))}</select></label>
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>{[['PV',tier.pv],['PS',tier.ps],['PR',tier.pr],['Força',tier.strength],['Agilidade',tier.agility],['Defesa',tier.defense],['Respiração',tier.breathing],['Intelecto',tier.intellect],['Pontos base da família',tier.points],['Foco',tier.focus]].map(([label,value])=><div key={String(label)} style={{padding:9,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label}</small><div style={{fontSize:19,fontWeight:800}}>{value}</div></div>)}</div>
-                            <div style={{marginTop:16,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
-                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Atributos</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos de Família, Hierarquia e Extras neste único gerenciador.</p></div></div>
-                              {(()=>{
-                                const distributablePool = allocationSources.reduce((sum, source) => sum + allocationPool(source), 0)
-                                const totalPool = distributablePool + familyTierMinimumTotal
-                                const spentTotal = familyTierMinimumTotal + familyAllocationKeys.reduce((sum, key) => sum + allocationSources.reduce((part, source) => part + allocation(source, key), 0), 0)
-                                const available = Math.max(0, totalPool - spentTotal)
+                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr',`${resourceAbbreviation} adicional`)}</div></div>
 
-                                const setCombinedAllocation = (key: typeof familyAllocationKeys[number], rawValue: number) => {
-                                  const base = numRaw(`attributes.${key}`)
-                                  const lockedMinimum = familyTierMinimum(key)
-                                  const other = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
-                                  const requestedAllocation = Math.max(0, Math.floor(rawValue || 0) - lockedMinimum)
-                                  const maxByAttribute = Math.max(0, 5 - base - lockedMinimum)
-                                  const maxByPool = Math.max(0, distributablePool - (spentTotal - familyTierMinimumTotal) + other)
-                                  let left = Math.max(0, Math.min(requestedAllocation, maxByAttribute, maxByPool))
-                                  const next = { ...data, progression: { ...(data.progression || {}), allocations: { ...((data.progression || {}).allocations || {}) } } }
-                                  for (const source of allocationSources) {
-                                    const sourcePool = allocationPool(source)
-                                    const otherSpent = familyAllocationKeys.reduce((sum, item) => sum + allocation(source, item), 0) - allocation(source, key)
-                                    const capacity = Math.max(0, sourcePool - otherSpent)
-                                    const assigned = Math.min(left, capacity)
-                                    next.progression.allocations[source] = { ...((next.progression.allocations || {})[source] || {}), [key]: assigned }
-                                    if (source === 'extra' && next.progression.allocations.class) next.progression.allocations.class = { ...next.progression.allocations.class, [key]: 0 }
-                                    left -= assigned
-                                  }
-                                  setSheetDraft(JSON.stringify(next, null, 2))
-                                }
-                                return <div style={{padding:'16px 2px'}}>
-                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                                    <div><strong style={{fontSize:15}}>Pontos para distribuir</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',marginTop:3}}>Mínimo familiar bloqueado + pontos de Família, Hierarquia e Extras</div></div>
-                                    <span style={{fontSize:11,color:available>0?'#a8dfbd':'var(--season-muted, #b9b4c2)',fontWeight:700}}>{available} disponíveis</span>
-                                  </div>
-                                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10,marginTop:14}}>
-                                    {allocationSources.map((source,index)=>{
-                                      const labels: Record<typeof allocationSources[number],string> = {family:'Família',hierarchy:'Hierarquia',extra:'Extra'}
-                                      const pool = allocationPool(source)
-                                      const used = familyAllocationKeys.reduce((sum,key)=>sum+allocation(source,key),0)
-                                      const ratio = pool>0?Math.min(100,used/pool*100):0
-                                      const accents = ['#ff5575','#8bc8a7','#c2a0ed']
-                                      return <div key={source} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:'1px solid color-mix(in srgb, '+accents[index]+' 24%, transparent)'}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:accents[index],flex:'0 0 9px'}}/>{labels[source]}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div>
-                                        <div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div>
-                                        <div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:accents[index],borderRadius:99,transition:'width .2s'}}/></div>
-                                      </div>
-                                    })}
-                                  </div>
-                                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>
-                                    {familyAllocationKeys.map(key=>{
-                                      const allocated = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
-                                      const lockedMinimum = familyTierMinimum(key)
-                                      const current = allocated + lockedMinimum
-                                      const base = numRaw(`attributes.${key}`)
-                                      const other = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
-                                      const max = lockedMinimum + Math.max(0, Math.min(5 - base - lockedMinimum, distributablePool - (spentTotal - familyTierMinimumTotal) + other))
-                                      return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{allocationLabels[key]}{lockedMinimum>0&&<small style={{display:'block',fontWeight:500,color:'#9de0b8'}}>Mínimo familiar: +{lockedMinimum} (bloqueado)</small>}</span><input type="number" min={lockedMinimum} max={Math.max(lockedMinimum,max)} value={current} onChange={e=>setCombinedAllocation(key, Number(e.target.value))} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {base + current}/5</small></label>
-                                    })}
-                                  </div>
-                                  <small style={{display:'block',marginTop:11,color:'var(--season-muted, #b9b4c2)',lineHeight:1.5}}>Os bônus fixos de tier e hierarquia aparecem como mínimo bloqueado e não podem ser reduzidos.</small>
-                                </div>
-                              })()}
-                              <div style={{marginTop:14,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}>
-                                <label style={{...labelStyle,display:'block',margin:0}}>Pontos extras
-                                  <input type="number" min="0" step="1" value={numRaw('progression.manualExtraAttributePoints')} onChange={e=>write('progression.manualExtraAttributePoints',Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} />
-                                </label>
-                                <small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>Adicione aqui pontos de atributos concedidos por recompensas, eventos ou decisões do mestre. Eles serão somados à barra Extra.</small>
-                              </div>
-                            </div>
-                            <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
-                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos de Hierarquia, Intelecto e Extras entre as perícias.</p></div></div>
-                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto aumenta um nível da perícia. Limite: 12 por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{(['hierarchy','intellect','extra'] as const).map((source,index)=>{const labels={hierarchy:'Hierarquia',intellect:'Intelecto',extra:'Extra'};const colors=['#8bc8a7','#8fb8d8','#c2a0ed'];const pool=skillPool(source);const used=skillTotalUsed(source);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${colors[index]}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:colors[index],flex:'0 0 9px'}}/>{labels[source]}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:colors[index]}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input type="number" min="0" max={12} value={extra} onChange={e=>setSkillAllocation(key,Number(e.target.value))} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/12</small></label>})}</div><small style={{display:'block',marginTop:11,color:'var(--season-muted, #b9b4c2)',lineHeight:1.5}}>Os bônus fixos de tier e hierarquia aparecem como mínimo bloqueado e não podem ser reduzidos.</small><div style={{marginTop:28,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><label style={{...labelStyle,display:'block',margin:0}}>Pontos extras<input type="number" min="0" step="1" value={numRaw('progression.manualExtraSkillPoints')} onChange={e=>write('progression.manualExtraSkillPoints',Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} /></label><small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>Adicione aqui pontos de perícia concedidos por recompensas, eventos ou decisões do mestre. Eles serão somados à barra Extra.</small></div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos para o distribuidor</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div></div>
                             <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button
   type="button"
   className="secondary-button"
@@ -3766,7 +4030,13 @@ onClick={() => {
                           </> : <>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
                             {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
-                            <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr','Bônus de PR')}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
+                            <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr',`Bônus de ${resourceAbbreviation}`)}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
+                          </>}
+
+                          {systemFeatures?.usesSkillPoints && <>
+                            <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
+                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>{skillPointConfig?.description || 'Distribua os pontos disponíveis entre as perícias.'}</p></div></div>
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>{skillPointConfig?.allocationDescription || 'Cada ponto aumenta um nível da perícia.'} Limite: {maxSkillLevel} por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{skillPointSources.map(source=>{const pool=skillPool(source.id);const used=skillTotalUsed(source.id);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source.id} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${source.color}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:source.color,flex:'0 0 9px'}}/>{source.label}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:source.color}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input type="number" min="0" max={maxSkillLevel} value={extra} onChange={e=>setSkillAllocation(key,Number(e.target.value))} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/{maxSkillLevel}</small></label>})}</div>{skillPointConfig?.extraPointsInput && <div style={{marginTop:28,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><label style={{...labelStyle,display:'block',margin:0}}>{skillPointConfig.extraPointsInput.label}<input type="number" min="0" step="1" value={numRaw(skillPointConfig.extraPointsInput.path)} onChange={e=>write(skillPointConfig.extraPointsInput!.path,Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} /></label>{skillPointConfig.extraPointsInput.description && <small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>{skillPointConfig.extraPointsInput.description}</small>}</div>}{intellectChoiceConfig?.enabled && <div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>{intellectChoiceConfig.title || 'Desenvolvimento por atributo'}</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>{intellectChoiceConfig.description || 'Escolha como utilizar cada ponto do atributo configurado.'}</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>{intellectChoiceConfig.pointLabel || 'Ponto'} {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value;write(skillChoicePath,next)}} style={inputStyle}><option value={mainChoiceValue}>{intellectChoiceConfig.mainLabel}</option><option value={extraChoiceValue}>{intellectChoiceConfig.extraLabel}</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>{intellectChoiceConfig.mainPointsLabel || 'Pontos da opção principal'}: <strong>{mainPoints}</strong> · {intellectChoiceConfig.extraLevelsLabel || 'Níveis extras'}: <strong>{extraLevels}</strong></div></div>}</div>
                           </>}
 
                         </section>
@@ -3801,7 +4071,7 @@ onClick={() => {
         style={inputStyle}
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map(archetype => (
+        {systemArchetypes.map(archetype => (
           <option
             key={archetype}
             value={archetype}
@@ -3814,7 +4084,7 @@ onClick={() => {
     </label>
   )
 })}
-{field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
+{field('identity.path','Caminho','text')}{field('identity.breathing',resourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
                       {panel('3. Combate', <><div style={{marginTop:14}}><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
@@ -3836,7 +4106,7 @@ onClick={() => {
 </div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
 
                       {panel('4. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
-                      {panel('5. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
+                      {panel(isKisatsutaiSystem ? '5. Habilidades & Respirações' : '5. Habilidades & Mana', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type',isKisatsutaiSystem ? 'Tipo de respiração' : 'Tipo de mana','text')}{area('breathing.forms',isKisatsutaiSystem ? 'Formas de respiração' : 'Formas de mana')}{area('breathing.concentration',isKisatsutaiSystem ? 'Técnica de concentração' : 'Técnica de concentração de mana')}</>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary">
                         <header className="sheet-summary-header">
@@ -3847,7 +4117,25 @@ onClick={() => {
   {' + '}
   {String(read('identity.secondaryArchetype', 'Arquétipo secundário não definido'))}
 </p></div>
-                          <div className="sheet-summary-progression">{[['Classe',read('progression.rankName', getKisatsutaiRankName(rankIdForStatus))],['Tier familiar',familyTier.label],['Foco',read('progression.classFocus',familyTier.focus)],['Pontos de perícia',read('progression.classSkillPoints',0)]].map(([label,value])=><div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
+                          <div className="sheet-summary-progression">
+                            {[
+                              ...(systemFeatures?.usesRanks
+                                ? [['Classe', read('progression.rankName', getSystemRankName(rankIdForStatus))]]
+                                : []),
+                              ...(usesFamilyTiers
+                                ? [
+                                    ['Tier familiar', familyTierData.label],
+                                    ['Foco', read('progression.classFocus', familyTierData.focus)],
+                                  ]
+                                : []),
+                              ['Pontos de perícia', read('progression.classSkillPoints', 0)],
+                            ].map(([label, value]) => (
+                              <div key={String(label)}>
+                                <span>{label}</span>
+                                <strong>{value}</strong>
+                              </div>
+                            ))}
+                          </div>
                           <div className="sheet-summary-season">{seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada'}</div>
                         </header>
                         <div className="sheet-summary-status">{derived.map(([label,value], index) => {
@@ -3890,7 +4178,7 @@ onClick={() => {
                             }
                             adjust(Number(raw))
                             setError('')
-                            setNotice(`${key.toUpperCase()} ajustado em ${raw} e salvo automaticamente.`)
+                            setNotice(`${key === 'pr' ? resourceAbbreviation : key.toUpperCase()} ajustado em ${raw} e salvo automaticamente.`)
                           }
                           const colors = [{accent:'#f28b9b',glow:'rgba(242,139,155,.18)'},{accent:'var(--season-primary)',glow:'var(--season-glow)'},{accent:'#75c9ee',glow:'rgba(117,201,238,.18)'}][index]
                           const percent = value > 0 ? Math.min(current / value * 100, 100) : 0
@@ -3904,18 +4192,18 @@ onClick={() => {
                             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                               <small style={{opacity:.7}}>{Math.round(percent)}% disponível</small>
                               {canEditSelectedSheet && <div style={{display:'flex',gap:6}}>
-                                <button type="button" aria-label={`Diminuir ${key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
-                                <button type="button" aria-label={`Aumentar ${key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
+                                <button type="button" aria-label={`Diminuir ${key === 'pr' ? resourceAbbreviation : key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
+                                <button type="button" aria-label={`Aumentar ${key === 'pr' ? resourceAbbreviation : key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
                               </div>}
                             </div>
                             {canEditSelectedSheet && <div style={{display:'flex',gap:7,marginTop:10}}>
-                              <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
+                              <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key === 'pr' ? resourceAbbreviation : key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
                               <button type="button" onClick={applyTypedAdjustment} style={{whiteSpace:'nowrap',padding:'7px 11px',borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontWeight:700,cursor:'pointer'}}>Aplicar</button>
                             </div>}
                             {key === 'pv' && <div className="status-card-damage-control"><strong>Aplicar dano físico</strong><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${physicalProtection}` : `Proteção: ${physicalProtection}`}</small><button type="button" disabled={!canEditSelectedSheet || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const armorBlock=armorCovers(physicalDamageType)?armorResistance:0;const reduced=Math.max(0,incoming-armorBlock-physicalProtection);const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div>}
                             {key === 'ps' && <div className="status-card-damage-control sanity"><strong>Aplicar dano de sanidade</strong><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!canEditSelectedSheet || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div>}
-                            {key === 'pr' && isKisatsutaiSheet && (() => {
-                              const rank = getKisatsutaiRank(rankIdForStatus)
+                            {key === 'pr' && usesFamilyTiers && (() => {
+                              const rank = getSystemRank(rankIdForStatus)
                               const group = rank.group
                               const dtByGroup: Record<string, number> = { Raposa: 20, Tigre: 19, Dragão: 18, Corvo: 17 }
                               const dt = dtByGroup[group]
@@ -3947,7 +4235,7 @@ onClick={() => {
                             })()}
                           </article>
                         })}</div>
-                        <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],['Respiração',breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
+                        <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],[resourceName,breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
                         <div className="sheet-summary-grid">
                           <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)} className={String(label)==='Destreza'?'sheet-dexterity-with-armor':''}><span>{label}</span><strong>{String(label)==='Destreza' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value}</> : value}</strong></div>)}</div></article>
 <article className="sheet-summary-card">
@@ -3959,9 +4247,15 @@ onClick={() => {
       ['Deslocamento', Math.max(1, movementActions * dexterity)],
       ['Ações', movementActions + extraActions],
       ['Reações', reactions],
-      ['Contra-ataque', combat + dexterity],
+      [
+        'Contra-ataque',
+        activeSystem?.data?.combatActions?.['Contra-ataque']
+          ? Number(read(activeSystem.data.combatActions['Contra-ataque']!.attribute, 0)) +
+            Number(read(activeSystem.data.combatActions['Contra-ataque']!.bonus, 0))
+          : '—'
+      ],
       ['Constituição', resistance + vigor],
-      ...(isKisatsutaiSheet ? [['Essência', read('combat.essence', '—')]] : [])
+      ...(usesFamilyTiers ? [['Essência', read('combat.essence', '—')]] : [])
     ].map(([label, value]) => (
       <div key={String(label)}>
         <span>{label}</span>
@@ -3995,18 +4289,88 @@ onClick={() => {
                           <div className="combat-action-grid">
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque bruto')}><span className="combat-action-icon">⚔</span><strong>Ataque Bruto</strong><small>1 + {strength}d20 + Combate</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque ágil')}><span className="combat-action-icon">➶</span><strong>Ataque Ágil</strong><small>1 + {agility}d20 + Combate</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>{const diceCount=Math.max(0,Math.floor(resistance));const rolls=Array.from({length:diceCount},()=>rollD20());const diceTotal=rolls.reduce((sum,value)=>sum+value,0);const total=1+diceTotal+ability;setBlockDamageReduction(null);setCombatActionResult(`Ataque especial: ${diceCount}d20 = [${rolls.join(', ') || 'sem dados'}] (soma ${diceTotal}); 1 + ${diceTotal} + Habilidade (${ability}) = ${total}.`);}}><span className="combat-action-icon">✦</span><strong>Ataque Especial</strong><small>1 + {resistance}d20 + Habilidade</small></button>
+                          </div>
+                          <div className="combat-complementary-section">
+                            <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares do personagem.</p></div>
+                            <div className="combat-action-grid combat-complementary-grid">
+                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();setBlockDamageReduction(null);setCombatActionResult(`Iniciativa: 1d20 = ${roll}.`);}}><span className="combat-action-icon">⚡</span><strong>Iniciativa</strong><small>1d20</small></button>
+                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();const total=1+roll+combat;setBlockDamageReduction(null);setCombatActionResult(`Manobra de luta: 1d20 = ${roll}; 1 + ${roll} + Combate (${combat}) = ${total}.`);}}><span className="combat-action-icon">⚔</span><strong>Manobra de Luta</strong><small>1 + 1d20 + Combate ({combat})</small></button>
+                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();const total=1+roll+resistance;setBlockDamageReduction(null);setCombatActionResult(`Teste de resistência física: 1d20 = ${roll}; 1 + ${roll} + Resistência (${resistance}) = ${total}.`);}}><span className="combat-action-icon">⛨</span><strong>Resistência Física</strong><small>1 + 1d20 + Resistência ({resistance})</small></button>
+                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();const total=1+roll+mental;setBlockDamageReduction(null);setCombatActionResult(`Teste de sanidade: 1d20 = ${roll}; 1 + ${roll} + Mental (${mental}) = ${total}.`);}}><span className="combat-action-icon">◈</span><strong>Teste de Sanidade</strong><small>1 + 1d20 + Mental ({mental})</small></button>
+                            </div>
                           </div>
                           <div className="combat-reactions-section">
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
                               <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense}d20 + Constituição</small></button>
                               <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility}d20 + Destreza</small></button>
-                              <button type="button" className="combat-action-card" onClick={()=>{const enemy=dodgeTarget.trim()===''?null:Number(dodgeTarget);const dt=combat+dexterity;const validEnemy=enemy!==null&&Number.isFinite(enemy)&&enemy>=0;setCombatActionResult(validEnemy?`Contra-ataque: resultado do inimigo ${enemy} ${enemy<dt?'<':'≥'} sua DT ${dt}. ${enemy<dt?'Contra-ataque bem-sucedido.':'Contra-ataque não sucedido.'}`:'Informe a DT do inimigo no campo ao lado das reações.' )}}><span className="combat-action-icon">↶</span><strong>Contra-ataque</strong><small>DT: {combat+dexterity}</small></button>
+                              <button
+                                type="button"
+                                className="combat-action-card"
+                                onClick={() => {
+                                  const actionConfig = activeSystem?.data?.combatActions?.['Contra-ataque']
+
+                                  if (!actionConfig) {
+                                    setCombatActionResult(
+                                      `O sistema ${activeSystem?.name ?? 'selecionado'} ainda não possui uma configuração de contra-ataque.`
+                                    )
+                                    return
+                                  }
+
+                                  const readCombatValue = (path: string) => {
+                                    const value = Number(read(path, 0))
+                                    return Number.isFinite(value) ? value : 0
+                                  }
+
+                                  const enemy =
+                                    dodgeTarget.trim() === ''
+                                      ? null
+                                      : Number(dodgeTarget)
+
+                                  const attribute = readCombatValue(actionConfig.attribute)
+                                  const bonus = readCombatValue(actionConfig.bonus)
+                                  const dt = attribute + bonus
+
+                                  const validEnemy =
+                                    enemy !== null &&
+                                    Number.isFinite(enemy) &&
+                                    enemy >= 0
+
+                                  setCombatActionResult(
+                                    validEnemy
+                                      ? `Contra-ataque: resultado do inimigo ${enemy} ${enemy < dt ? '<' : '≥'} sua DT ${dt}. ${enemy < dt ? 'Contra-ataque bem-sucedido.' : 'Contra-ataque não sucedido.'}`
+                                      : 'Informe a DT do inimigo no campo ao lado das reações.'
+                                  )
+                                }}
+                              >
+                                <span className="combat-action-icon">↶</span>
+                                <strong>Contra-ataque</strong>
+                                <small>
+                                  DT: {activeSystem?.data?.combatActions?.['Contra-ataque']
+                                    ? (() => {
+                                        const config = activeSystem.data.combatActions['Contra-ataque']!
+                                        return Number(read(config.attribute, 0)) + Number(read(config.bonus, 0))
+                                      })()
+                                    : '—'}
+                                </small>
+                              </button>
                               <label className="combat-dodge-target-inline combat-reactions-dt-card" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label>
                             </div>
                           </div>
                           <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">Será negado: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction) : '—'}</strong> · Será descontado dos PV: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.max(0, Number(blockIncomingDamage) - Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction)) : '—'}</strong></div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
-                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p><strong>Contra-ataque</strong><span>O resultado do inimigo precisa ser menor que sua DT de Contra-ataque (valor do contra-ataque: {combat+dexterity}).</span></p></div></details>
+                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1d20, sem atributo ou perícia adicional.</span></p><p><strong>Manobra de Luta</strong><span>1 + 1d20 + Combate.</span></p><p><strong>Resistência Física</strong><span>1 + 1d20 + Resistência.</span></p><p><strong>Teste de Sanidade</strong><span>1 + 1d20 + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p>
+  <strong>Contra-ataque</strong>
+  <span>
+    O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
+    {activeSystem?.data?.combatActions?.['Contra-ataque']
+      ? ` (${activeSystem.data.combatActions['Contra-ataque']!.attributeLabel} + ${activeSystem.data.combatActions['Contra-ataque']!.bonusLabel}: ${
+          Number(read(activeSystem.data.combatActions['Contra-ataque']!.attribute, 0)) +
+          Number(read(activeSystem.data.combatActions['Contra-ataque']!.bonus, 0))
+        }).`
+      : ', ainda não configurada para este sistema.'}
+  </span>
+</p></div></details>
                         </section>
                     </>
                     )
@@ -4446,6 +4810,38 @@ style={{cursor:'pointer'}}>
     </small>
   </section>
 )}
+
+{isCyberFlowerSystem && canAccessSelectedCharacter && selectedCharacter && selectedSeasonId && !sheetLoading && (() => {
+  let cyberData: Record<string, any> = {}
+  try { cyberData = JSON.parse(sheetDraft || '{}') } catch { cyberData = {} }
+  const biologicalLoadRaw = Number(cyberData.cybernetics?.biologicalLoad ?? 0)
+  const biologicalLoad = Number.isFinite(biologicalLoadRaw) ? Math.max(0, biologicalLoadRaw) : 0
+  const updateBiologicalLoad = (value: number) => {
+    let next: Record<string, any> = {}
+    try { next = JSON.parse(sheetDraft || '{}') } catch { next = {} }
+    next.cybernetics = { ...(next.cybernetics || {}), biologicalLoad: Math.max(0, Number.isFinite(value) ? value : 0) }
+    setSheetDraft(JSON.stringify(next, null, 2))
+  }
+  const cyberpsychosis = biologicalLoad > 100
+  return <section className="inventory-section cybernetics-section">
+    <div className="inventory-heading">
+      <div><h3>Cibernética</h3><p>Implantes, modificações e a estabilidade biológica do personagem.</p></div>
+      <span className="cybernetics-heading-icon" aria-hidden="true">⌬</span>
+    </div>
+    <div className={`biological-load-card ${cyberpsychosis ? 'is-cyberpsychosis' : ''}`}>
+      <div className="biological-load-heading">
+        <div><span className="biological-load-eyebrow">INTEGRIDADE ORGÂNICA</span><strong>Carga Biológica</strong></div>
+        <label className="biological-load-value"> <input aria-label="Carga Biológica em porcentagem" type="number" min="0" step="1" value={biologicalLoad} disabled={!editingSheet || !canEditSelectedSheet || sheetSaving} onChange={event => updateBiologicalLoad(Number(event.target.value))} /> <span>%</span></label>
+      </div>
+      <div className="biological-load-track" role="progressbar" aria-label="Carga Biológica" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, biologicalLoad)} aria-valuetext={`${biologicalLoad}%`}>
+        <div className="biological-load-fill" style={{ width: `${Math.min(100, biologicalLoad)}%` }} />
+      </div>
+      <div className="biological-load-scale"><span>0%</span><span>100%</span></div>
+      {cyberpsychosis ? <div className="cyberpsychosis-indicator" role="status"><span className="cyberpsychosis-pulse" /> <div><strong>CYBERPSICOSE</strong><small>Carga biológica excedeu o limite seguro em {biologicalLoad - 100}%.</small></div></div> : <p className="biological-load-note">Limite seguro: até 100%. O indicador de Cyberpsicose será ativado acima desse valor.</p>}
+      {!editingSheet && <small className="biological-load-readonly">Ative “Editar ficha” para alterar a carga. Salve a ficha para registrar as mudanças.</small>}
+    </div>
+  </section>
+})()}
 
 {canAccessSelectedCharacter && selectedCampaign?.currency_config?.currencies?.length && (
   <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
@@ -4919,7 +5315,7 @@ style={{cursor:'pointer'}}>
           <small>Selecione um dos emojis disponíveis para representar o personagem.</small>
         </div>
 
-{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? (
+{systemFeatures.usesRanks ? (
   <>
     <label>
       Arquétipo primário
@@ -4930,7 +5326,7 @@ style={{cursor:'pointer'}}>
         style={inputStyle}
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map(item => (
+        {systemArchetypes.map(item => (
           <option
             key={item}
             value={item}
@@ -4956,7 +5352,7 @@ style={{cursor:'pointer'}}>
         style={inputStyle}
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map(item => (
+        {systemArchetypes.map(item => (
           <option
             key={item}
             value={item}
@@ -4984,7 +5380,7 @@ style={{cursor:'pointer'}}>
   </label>
 )}
 
-{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? (
+{systemFeatures.usesRanks ? (
   <>
     <label>
       Arquétipo primário
@@ -4994,7 +5390,7 @@ style={{cursor:'pointer'}}>
         required
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map(item => (
+        {systemArchetypes.map(item => (
           <option key={item} value={item}>{item}</option>
         ))}
       </select>
@@ -5008,7 +5404,7 @@ style={{cursor:'pointer'}}>
         required
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map(item => (
+        {systemArchetypes.map(item => (
           <option key={item} value={item}>{item}</option>
         ))}
       </select>
@@ -5021,7 +5417,7 @@ style={{cursor:'pointer'}}>
         onChange={(event) => setCharacterRank(event.target.value)}
         required
       >
-        {KISATSUTAI_RANKS.map(rank => (
+        {systemRanks.map(rank => (
           <option key={rank.id} value={rank.id}>
             {rank.name}
           </option>
@@ -5056,9 +5452,9 @@ style={{cursor:'pointer'}}>
         <div className="item-art">{character.emoji || '⚔️'}</div>
         <h3>{character.name}</h3>
         <p>
-          {character.archetype || 'Arquétipo não definido'}{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && <> · Nível {character.level}</>}
+          {character.archetype || 'Arquétipo não definido'}{!systemFeatures.usesRanks && <> · Nível {character.level}</>}
         </p>
-        {isKisatsutaiSystem(selectedCampaign?.system_name) && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+        {systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
         <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
 
         <button
@@ -5081,9 +5477,9 @@ style={{cursor:'pointer'}}>
         <div className="item-art">{character.emoji || '⚔️'}</div>
         <h3>{character.name}</h3>
         <p>
-          {character.archetype || 'Arquétipo não definido'}{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && <> · Nível {character.level}</>}
+          {character.archetype || 'Arquétipo não definido'}{!systemFeatures.usesRanks && <> · Nível {character.level}</>}
         </p>
-        {isKisatsutaiSystem(selectedCampaign?.system_name) && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+        {systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
         <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
 
         <button
@@ -5929,8 +6325,114 @@ style={{cursor:'pointer'}}>
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
             <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
-            {showCampaignForm&&<form className="add-form" onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><label>Nome<input value={campaignName} onChange={e=>setCampaignName(e.target.value)} required style={inputStyle}/></label><label>Sistema<select value={campaignSystemChoice} onChange={e=>{const choice=e.target.value;setCampaignSystemChoice(choice);if(choice==='kisatsutai')setSystemName('Kisatsutai');else if(choice==='other')setSystemName('')}} style={inputStyle}><option value=''>Selecione um sistema</option><option value='kisatsutai'>Kisatsutai</option><option value='other'>Outro sistema</option></select></label>{campaignSystemChoice==='other'&&<label>Nome do sistema<input value={systemName} onChange={e=>setSystemName(e.target.value)} placeholder='Ex.: Dungeons & Dragons 5e' required style={inputStyle}/></label>}<label>Descrição<input value={campaignDescription} onChange={e=>setCampaignDescription(e.target.value)} style={inputStyle}/></label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="primary-button" type="submit" disabled={loading}>{loading ? 'Salvando…' : editingCampaignId ? 'Salvar alterações' : 'Criar campanha'}</button><button className="secondary-button" type="button" onClick={()=>{setShowCampaignForm(false);setEditingCampaignId(null);setCampaignName('');setCampaignDescription('');setSystemName('');setCampaignSystemChoice('')}}>Cancelar</button></div></form>}
-            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(!campaign.system_name?'':isKisatsutaiSystem(campaign.system_name) ? 'kisatsutai' : 'other');setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
+            {showCampaignForm && (
+              <form
+                className="add-form"
+                onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}
+              >
+                <h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3>
+
+                <label>
+                  Nome
+                  <input
+                    value={campaignName}
+                    onChange={e => setCampaignName(e.target.value)}
+                    required
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label>
+                  Sistema
+                  <select
+                    value={campaignSystemChoice}
+                    onChange={e => {
+                      const choice = e.target.value
+                      setCampaignSystemChoice(choice)
+
+                      const selectedSystem = getRegisteredSystems().find(
+                        system => system.id === choice
+                      )
+
+                      if (selectedSystem) {
+                        setSystemName(selectedSystem.name)
+                      } else if (choice === 'other') {
+                        setSystemName('')
+                      } else {
+                        setSystemName('')
+                      }
+                    }}
+                    style={inputStyle}
+                  >
+                    <option value="">Selecione um sistema</option>
+
+                    {getRegisteredSystems().map(system => (
+                      <option key={system.id} value={system.id}>
+                        {system.name}
+                      </option>
+                    ))}
+
+                    <option value="other">Outro sistema</option>
+                  </select>
+                </label>
+
+                {campaignSystemChoice === 'other' && (
+                  <label>
+                    Nome do sistema
+                    <input
+                      value={systemName}
+                      onChange={e => setSystemName(e.target.value)}
+                      placeholder="Ex.: Dungeons & Dragons 5e"
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
+                )}
+
+                <label>
+                  Descrição
+                  <input
+                    value={campaignDescription}
+                    onChange={e => setCampaignDescription(e.target.value)}
+                    style={inputStyle}
+                  />
+                </label>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={loading}
+                  >
+                    {loading
+                      ? 'Salvando…'
+                      : editingCampaignId
+                        ? 'Salvar alterações'
+                        : 'Criar campanha'}
+                  </button>
+
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={() => {
+                      setShowCampaignForm(false)
+                      setEditingCampaignId(null)
+                      setCampaignName('')
+                      setCampaignDescription('')
+                      setSystemName('')
+                      setCampaignSystemChoice('')
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(
+  !campaign.system_name
+    ? ''
+    : getSystemByName(campaign.system_name)?.id ?? 'other'
+);setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
             {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
 
             {selectedCampaign && isMaster && (
@@ -6223,7 +6725,7 @@ style={{cursor:'pointer'}}>
                     </label>
 
                     <div className="form-row">
-{isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') ? (
+{systemFeatures.usesRanks ? (
   <>
     <label>
       Arquétipo primário
@@ -6233,7 +6735,7 @@ style={{cursor:'pointer'}}>
         required
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map((item) => (
+        {systemArchetypes.map((item) => (
           <option key={item} value={item}>{item}</option>
         ))}
       </select>
@@ -6247,7 +6749,7 @@ style={{cursor:'pointer'}}>
         required
       >
         <option value="">Selecione...</option>
-        {KISATSUTAI_ARCHETYPES.map((item) => (
+        {systemArchetypes.map((item) => (
           <option key={item} value={item}>{item}</option>
         ))}
       </select>
@@ -6265,7 +6767,7 @@ style={{cursor:'pointer'}}>
   </label>
 )}
 
-{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && (
+{!systemFeatures.usesRanks && (
     <label>
       Nível
       <input
@@ -6314,7 +6816,7 @@ style={{cursor:'pointer'}}>
                       >
                         <div className="item-art">{character.emoji || '⚔️'}</div>
 <div className="item-category">
-  {isKisatsutaiSystem(selectedCampaign?.system_name)
+  {systemFeatures.usesRanks
     ? 'PERSONAGEM'
     : `NÍVEL ${character.level}`}
 </div>
@@ -6322,7 +6824,7 @@ style={{cursor:'pointer'}}>
                         <p className="item-description">
                           {character.archetype || 'Arquétipo não definido'}
                         </p>
-                        {isKisatsutaiSystem(selectedCampaign?.system_name) && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
+                        {systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
                         <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', margin: '8px 0' }}>
                           {character.visibility === 'campaign' ? '🌐 Toda a campanha' : character.visibility === 'selected' ? '👥 Jogadores selecionados' : '🔒 Privado'}
                         </small>
@@ -6394,7 +6896,7 @@ style={{cursor:'pointer'}}>
                     <h2>{selectedCharacter.name}</h2>
 <p>
   {selectedCharacter.archetype || 'Aventureiro'}
-{!isKisatsutaiSystem(selectedCampaign?.system_name || 'Kisatsutai') && (
+{!systemFeatures.usesRanks && (
     <>
       <span> · </span>
       Nível {selectedCharacter.level}

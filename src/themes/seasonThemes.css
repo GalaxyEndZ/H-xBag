@@ -1,0 +1,923 @@
+/*
+ * Sistema de temas:
+ * - A paleta de cada tema fica em seasonThemes.ts.
+ * - As regras genéricas abaixo usam as variáveis --season-* / --theme-*,
+ *   portanto novos temas recebem o visual base automaticamente.
+ * - Seletores .theme-<chave> devem ser criados aqui somente para efeitos
+ *   realmente exclusivos de um tema; não são necessários para temas comuns.
+ */
+
+/* Temas visuais vinculados à temporada ativa */
+.app-shell { --season-primary: var(--season-primary, var(--season-primary, #b49aff)); --season-secondary: var(--season-secondary, var(--season-primary, #b49aff)); --season-glow: color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent); }
+.app-shell .primary-button { background: linear-gradient(135deg,var(--season-primary),var(--season-secondary)); border-color: color-mix(in srgb,var(--season-primary) 65%,transparent); }
+.app-shell .brand-mark { background: linear-gradient(145deg,var(--season-primary),var(--season-secondary)); box-shadow: 0 5px 18px var(--season-glow); }
+.app-shell .nav-link.active { border-color: color-mix(in srgb,var(--season-primary) 50%,transparent); color: var(--season-primary); background: color-mix(in srgb,var(--season-primary) 13%,var(--season-bg, #100e19)); }
+.app-shell .sheet-summary-season, .app-shell .sheet-summary-attributes article strong { color: var(--season-primary); }
+.season-theme-panel { display:grid; gap:13px; margin:14px 0 18px; padding:16px; border:1px solid color-mix(in srgb,var(--season-primary) 35%,var(--season-surface-alt, #211c31)); border-radius:14px; background:linear-gradient(135deg,var(--season-glow),color-mix(in srgb, var(--season-surface-alt, #211c31) 92%, transparent)); }
+.season-theme-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.season-theme-heading > div { display:grid; gap:4px; }
+.season-theme-heading strong { color:#f0edf7; font-size:13px; }
+.season-theme-heading small, .season-theme-panel > small { color:#9b96a8; font-size:11px; }
+.season-theme-heading small b { color:var(--season-primary); }
+.season-theme-current-swatch { width:38px; height:28px; border-radius:8px; box-shadow:0 0 16px var(--season-glow); }
+.season-theme-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px; }
+.season-theme-option { display:flex; align-items:center; gap:9px; min-height:46px; padding:8px 10px; border:1px solid var(--season-surface-alt, #211c31); border-radius:10px; background:var(--season-surface, var(--season-bg, #100e19)); color:#d9d5e2; text-align:left; font-size:11px; transition:border-color .18s,background .18s,transform .18s; }
+.season-theme-option:hover:not(:disabled) { transform:translateY(-1px); border-color:var(--season-primary); }
+.season-theme-option.active { border-color:var(--season-primary); background:color-mix(in srgb,var(--season-primary) 13%,var(--season-surface, var(--season-bg, #100e19))); }
+.season-theme-option:disabled { cursor:wait; opacity:.7; }
+.season-theme-option b { margin-left:auto; color:var(--season-primary); }
+.season-theme-swatches { display:flex; flex:0 0 30px; }
+.season-theme-swatches i { width:15px; height:23px; border-radius:5px; border:2px solid var(--season-surface, var(--season-bg, #100e19)); }
+.season-theme-swatches i+i { margin-left:-4px; }
+
+/* HäxBag — acabamento dos temas por temporada */
+.app-shell {
+  --season-surface: color-mix(in srgb, var(--season-primary) 7%, var(--season-bg, #100e19));
+  --season-border: color-mix(in srgb, var(--season-primary) 28%, var(--season-surface-alt, #211c31));
+  --season-text-soft: color-mix(in srgb, var(--season-primary) 24%, #e9e7f1);
+}
+.app-shell .primary-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 0 7px 22px var(--season-glow);
+}
+.app-shell .primary-button:focus-visible,
+.app-shell .season-theme-option:focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 3px;
+}
+.app-shell .season-theme-panel {
+  border-color: var(--season-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 10px 28px rgba(0,0,0,.12);
+}
+.app-shell .season-theme-option {
+  border-color: var(--season-border);
+}
+.app-shell .season-theme-option.active {
+  color: #fff;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb,var(--season-primary) 24%,transparent), 0 0 18px var(--season-glow);
+}
+.app-shell .season-theme-option.active .season-theme-swatches i {
+  border-color: color-mix(in srgb,var(--season-primary) 28%,var(--season-surface, var(--season-bg, #100e19)));
+}
+.app-shell .sheet-summary-attributes article {
+  border-color: var(--season-border);
+  background: linear-gradient(145deg,var(--season-surface),rgba(255,255,255,.025));
+}
+.app-shell .sheet-summary-attributes article::before {
+  background: linear-gradient(180deg,var(--season-primary),var(--season-secondary));
+}
+.app-shell .sheet-summary-attributes strong {
+  border-color: var(--season-border);
+  background: color-mix(in srgb,var(--season-primary) 16%,var(--season-surface, var(--season-bg, #100e19)));
+  color: var(--season-text-soft);
+}
+.app-shell .sheet-summary-attributes article:hover {
+  border-color: color-mix(in srgb,var(--season-primary) 55%,var(--season-surface-alt, #211c31));
+  box-shadow: 0 8px 22px var(--season-glow);
+}
+@media (max-width: 560px) {
+  .season-theme-panel { padding: 13px; }
+  .season-theme-options { grid-template-columns: 1fr; }
+  .season-theme-option { min-height: 44px; }
+}
+
+/* Tema da temporada aplicado à interface inteira do HäxBag */
+.app-shell {
+  --theme-accent: var(--season-primary, var(--season-primary, var(--season-primary, #b49aff)));
+  --theme-accent-strong: var(--season-secondary, var(--season-secondary, var(--season-primary, #b49aff)));
+  --theme-accent-soft: color-mix(in srgb, var(--theme-accent) 13%, transparent);
+  --theme-accent-mid: color-mix(in srgb, var(--theme-accent) 25%, var(--season-surface, var(--season-bg, #100e19)));
+  --theme-accent-border: color-mix(in srgb, var(--theme-accent) 38%, var(--season-surface-alt, #211c31));
+  --theme-accent-glow: var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent));
+}
+
+/* Estrutura, navegação e cabeçalho */
+.app-shell .sidebar,
+.app-shell .topbar,
+.app-shell .campaign-select,
+.app-shell .invite-card,
+.app-shell .season-theme-panel {
+  border-color: var(--theme-accent-border);
+}
+.app-shell .sidebar { background: color-mix(in srgb, var(--theme-accent-strong) 9%, var(--season-bg, #100e19)); }
+.app-shell .topbar { background: color-mix(in srgb, var(--theme-accent-strong) 8%, color-mix(in srgb, var(--season-bg, #100e19) 93%, transparent)); }
+.app-shell .campaign-select,
+.app-shell .nav-link:hover,
+.app-shell .nav-link.active,
+.app-shell .nav-count,
+.app-shell .campaign-icon,
+.app-shell .invite-icon {
+  background-color: var(--theme-accent-soft);
+}
+.app-shell .brand-light,
+.app-shell .campaign-icon,
+.app-shell .nav-link.active,
+.app-shell .nav-link.active > span:first-child,
+.app-shell .nav-count,
+.app-shell .invite-card button,
+.app-shell .breadcrumb strong {
+  color: var(--theme-accent);
+}
+.app-shell .brand-mark,
+.app-shell .avatar,
+.app-shell .top-avatar {
+  background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong));
+  border-color: var(--theme-accent-border);
+  box-shadow: 0 5px 18px var(--theme-accent-glow);
+}
+
+/* Botões, abas, seletores e campos */
+.app-shell .primary-button,
+.app-shell button.primary-button,
+.app-shell .tab-button.active,
+.app-shell .nav-link.active::before {
+  border-color: var(--theme-accent-strong);
+  background: linear-gradient(135deg, var(--theme-accent-strong), color-mix(in srgb, var(--theme-accent) 75%, var(--theme-accent-strong)));
+  color: #fff;
+  box-shadow: 0 5px 18px var(--theme-accent-glow);
+}
+.app-shell .secondary-button,
+.app-shell button.secondary-button,
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell textarea:focus-visible {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px var(--theme-accent-soft);
+}
+.app-shell button:hover:not(:disabled),
+.app-shell a:hover { --hover-accent: var(--theme-accent); }
+.app-shell button:focus-visible,
+.app-shell a:focus-visible,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell textarea:focus-visible {
+  outline-color: var(--theme-accent);
+}
+
+/* Painéis, cartões, tabelas e áreas de conteúdo */
+.app-shell .card,
+.app-shell .panel,
+.app-shell .sheet-card,
+.app-shell .sheet-summary-card,
+.app-shell .sheet-summary-status-card,
+.app-shell .stat-card,
+.app-shell .dashboard-card,
+.app-shell .character-card,
+.app-shell .campaign-card,
+.app-shell .season-card,
+.app-shell .content-card {
+  border-color: color-mix(in srgb, var(--theme-accent) 24%, var(--season-surface-alt, #211c31));
+}
+.app-shell .sheet-summary-card h3,
+.app-shell .panel h3,
+.app-shell .section-title,
+.app-shell .card-title,
+.app-shell .stat-card strong {
+  color: color-mix(in srgb, var(--theme-accent) 70%, #f1edf8);
+}
+.app-shell table thead,
+.app-shell .table-header,
+.app-shell .section-header {
+  border-color: var(--theme-accent-border);
+}
+.app-shell table th { color: var(--theme-accent); }
+.app-shell progress,
+.app-shell input[type="range"] { accent-color: var(--theme-accent); }
+.app-shell ::selection { background: var(--theme-accent-strong); color: #fff; }
+
+/* Barras de progresso, indicadores e elementos destacados */
+.app-shell .progress-fill,
+.app-shell .progress-bar > span,
+.app-shell .progress-bar-fill,
+.app-shell .heatmap-cell.active,
+.app-shell .status-bar-fill {
+  background: linear-gradient(90deg, var(--theme-accent-strong), var(--theme-accent));
+  box-shadow: 0 0 12px var(--theme-accent-glow);
+}
+.app-shell .badge,
+.app-shell .tag,
+.app-shell .pill,
+.app-shell .status-badge {
+  border-color: var(--theme-accent-border);
+  background: var(--theme-accent-soft);
+}
+.app-shell .season-theme-option.active,
+.app-shell .season-theme-current-swatch {
+  border-color: var(--theme-accent);
+}
+
+/* Mantém o tema perceptível também em cartões com cores inline ou fundos escuros */
+.app-shell .sheet-summary-attributes article,
+.app-shell .sheet-summary-status-card,
+.app-shell .season-theme-panel,
+.app-shell .season-theme-option.active {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 8px 22px var(--theme-accent-glow);
+}
+
+
+/* Paletas completas por temporada: fundos, superfícies, bordas e acentos */
+.app-shell {
+  --theme-bg: var(--season-bg, var(--season-bg, #100e19));
+  --theme-surface: var(--season-surface, var(--season-bg, #100e19));
+  --theme-surface-alt: var(--season-surface-alt, var(--season-bg, #100e19));
+  --theme-line: var(--season-line, var(--season-surface-alt, #211c31));
+  background: var(--theme-bg) !important;
+  color-scheme: dark;
+}
+.app-shell .main-content,
+.app-shell .page-content,
+.app-shell .content-area,
+.app-shell .workspace,
+.app-shell .app-main {
+  background-color: var(--theme-bg);
+}
+.app-shell .sidebar {
+  background: linear-gradient(180deg, color-mix(in srgb,var(--theme-surface-alt) 78%,var(--theme-bg)),var(--theme-bg)) !important;
+  border-color: var(--theme-line) !important;
+}
+.app-shell .topbar {
+  background: color-mix(in srgb,var(--theme-surface) 91%,transparent) !important;
+  border-color: var(--theme-line) !important;
+  backdrop-filter: blur(14px);
+}
+.app-shell .card,
+.app-shell .panel,
+.app-shell .sheet-card,
+.app-shell .sheet-summary-card,
+.app-shell .sheet-summary-status-card,
+.app-shell .stat-card,
+.app-shell .dashboard-card,
+.app-shell .character-card,
+.app-shell .campaign-card,
+.app-shell .season-card,
+.app-shell .content-card,
+.app-shell .modal-content,
+.app-shell .dialog-content {
+  background: linear-gradient(145deg,var(--theme-surface-alt),var(--theme-surface)) !important;
+  border-color: var(--theme-line) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.app-shell input:not([type="checkbox"]):not([type="radio"]),
+.app-shell select,
+.app-shell textarea {
+  background: color-mix(in srgb,var(--theme-surface) 88%,var(--theme-bg)) !important;
+  border-color: var(--theme-line) !important;
+  color: #f2edf8 !important;
+}
+.app-shell .nav-link,
+.app-shell .tab-button,
+.app-shell .secondary-button,
+.app-shell .season-theme-option {
+  border-color: var(--theme-line);
+  background-color: color-mix(in srgb,var(--theme-surface) 86%,transparent);
+}
+.app-shell .nav-link.active,
+.app-shell .tab-button.active {
+  background: linear-gradient(110deg,color-mix(in srgb,var(--theme-accent-strong) 35%,var(--theme-surface)),color-mix(in srgb,var(--theme-accent) 14%,var(--theme-surface))) !important;
+  border-color: var(--theme-accent) !important;
+}
+.app-shell .season-theme-panel {
+  background: radial-gradient(ellipse at top right,var(--theme-accent-glow),transparent 58%),linear-gradient(145deg,var(--theme-surface-alt),var(--theme-surface)) !important;
+  border-color: var(--theme-line) !important;
+}
+.app-shell .season-theme-option {
+  background: linear-gradient(145deg,var(--theme-surface-alt),var(--theme-surface));
+  border-color: var(--theme-line);
+}
+.app-shell .season-theme-option.active {
+  background: linear-gradient(120deg,color-mix(in srgb,var(--theme-accent-strong) 28%,var(--theme-surface)),color-mix(in srgb,var(--theme-accent) 12%,var(--theme-surface))) !important;
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 1px var(--theme-accent-soft),0 8px 24px var(--theme-accent-glow);
+}
+.app-shell hr,
+.app-shell table th,
+.app-shell table td,
+.app-shell .divider,
+.app-shell .section-divider {
+  border-color: var(--theme-line) !important;
+}
+.app-shell .sheet-summary-attributes article,
+.app-shell .sheet-summary-status-card {
+  background: linear-gradient(145deg,var(--theme-surface-alt),var(--theme-surface));
+  border: 1px solid var(--theme-line);
+}
+.app-shell .primary-button,
+.app-shell button.primary-button {
+  background: linear-gradient(115deg,var(--theme-accent-strong),var(--theme-accent)) !important;
+  border-color: var(--theme-accent) !important;
+}
+
+/* Corrige os tons roxos fixos da ficha resumida: acompanha a temporada ativa */
+.app-shell .character-sheet-summary {
+  --summary-line: var(--theme-line, var(--season-line, #39434e));
+  --summary-panel: color-mix(in srgb, var(--theme-surface, #11151a) 92%, transparent);
+  --summary-muted: #aeb5bd;
+}
+.app-shell .sheet-summary-header {
+  background:
+    radial-gradient(ellipse at 5% 0%, var(--theme-accent-glow, rgba(255,139,46,.12)), transparent 48%),
+    linear-gradient(135deg, var(--theme-surface-alt, #1b222a), var(--theme-surface, #11151a)) !important;
+  border-color: var(--theme-line, #39434e) !important;
+}
+.app-shell .sheet-eyebrow,
+.app-shell .sheet-summary-card h3,
+.app-shell .sheet-summary-notes h3 {
+  color: var(--theme-accent, #ff9b3d) !important;
+}
+.app-shell .sheet-summary-season {
+  border-color: var(--theme-accent-border, #39434e) !important;
+  background: var(--theme-accent-soft, rgba(255,155,61,.12)) !important;
+  color: var(--theme-accent, #ff9b3d) !important;
+}
+.app-shell .sheet-summary-progression > div {
+  border-color: var(--theme-line, #39434e) !important;
+  background: color-mix(in srgb, var(--theme-surface, #11151a) 86%, transparent) !important;
+}
+.app-shell .sheet-summary-attributes strong {
+  background: var(--theme-accent-soft, rgba(255,155,61,.13)) !important;
+  color: var(--theme-accent, #ff9b3d) !important;
+}
+.app-shell .sheet-summary-status-card input:focus {
+  border-color: var(--theme-accent, #ff9b3d) !important;
+  box-shadow: 0 0 0 2px var(--theme-accent-soft, rgba(255,155,61,.13));
+}
+
+
+/* HäxBag — harmonização completa dos detalhes por tema da temporada.
+   Todas as cores usam as variáveis --season-* fornecidas pelo tema ativo;
+   assim, o Vale Fantasma fica laranja/grafite e os demais temas preservam suas paletas. */
+.app-shell {
+  --theme-accent: var(--season-primary, var(--season-primary, #b49aff));
+  --theme-accent-strong: var(--season-secondary, var(--season-muted, #b9b4c2));
+  --theme-accent-soft: color-mix(in srgb, var(--theme-accent) 13%, transparent);
+  --theme-accent-mid: color-mix(in srgb, var(--theme-accent) 20%, var(--theme-surface, var(--season-bg, #100e19)));
+  --theme-accent-border: color-mix(in srgb, var(--theme-accent) 38%, var(--theme-line, var(--season-surface-alt, #211c31)));
+  --theme-accent-glow: var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent));
+}
+
+/* Navegação, marca e controles laterais — removem roxos fixos do tema antigo. */
+.app-shell .sidebar {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--season-surface-alt) 78%, var(--season-bg)),
+    var(--season-bg)) !important;
+  border-color: var(--season-line) !important;
+}
+.app-shell .brand-mark,
+.app-shell .avatar,
+.app-shell .top-avatar {
+  background: linear-gradient(135deg, var(--theme-accent), var(--theme-accent-strong)) !important;
+  border-color: var(--theme-accent-border) !important;
+  box-shadow: 0 5px 18px var(--theme-accent-glow) !important;
+}
+.app-shell .workspace-label,
+.app-shell .nav-label { color: color-mix(in srgb, var(--season-line) 35%, #c4c9ce); }
+.app-shell .campaign-select {
+  background: linear-gradient(145deg, var(--season-surface-alt), var(--season-surface)) !important;
+  border-color: var(--season-line) !important;
+}
+.app-shell .nav-link.active {
+  border-color: var(--theme-accent-border) !important;
+  background: linear-gradient(100deg, var(--theme-accent-soft), color-mix(in srgb, var(--theme-accent) 5%, var(--season-surface))) !important;
+  color: var(--theme-accent) !important;
+  box-shadow: inset 3px 0 0 var(--theme-accent), inset 0 1px 0 rgba(255,255,255,.03) !important;
+}
+.app-shell .nav-link.active > span:first-child,
+.app-shell .brand-light,
+.app-shell .campaign-icon,
+.app-shell .nav-count,
+.app-shell .breadcrumb strong { color: var(--theme-accent) !important; }
+.app-shell .invite-card {
+  border-color: var(--theme-accent-border) !important;
+  background: radial-gradient(ellipse at 100% 0%, var(--theme-accent-glow), transparent 65%),
+    linear-gradient(145deg, var(--season-surface-alt), var(--season-surface)) !important;
+}
+
+/* Cabeçalhos e cartões grandes da página/personagem. */
+.app-shell .character-banner,
+.app-shell .sheet-summary-header {
+  border-color: var(--season-line) !important;
+  background: radial-gradient(ellipse at 92% 0%, var(--theme-accent-glow), transparent 48%),
+    linear-gradient(135deg, var(--season-surface-alt), var(--season-surface)) !important;
+}
+.app-shell .banner-art { border-color: var(--season-line) !important; }
+.app-shell .inventory-section,
+.app-shell .visibility-panel,
+.app-shell .capacity-banner,
+.app-shell .stat-card,
+.app-shell .dashboard-card,
+.app-shell .section-card,
+.app-shell .panel {
+  border-color: var(--season-line) !important;
+  background: linear-gradient(150deg, var(--season-surface-alt), var(--season-surface)) !important;
+}
+.app-shell .item-card,
+.app-shell .add-form,
+.app-shell .empty-state,
+.app-shell .modal,
+.app-shell .emoji-modal,
+.app-shell .item-menu {
+  border-color: var(--season-line) !important;
+  background: linear-gradient(145deg, var(--season-surface-alt), var(--season-surface)) !important;
+}
+
+/* Campos e botões secundários: contorno, foco e hover seguem a cor do tema. */
+.app-shell input,
+.app-shell select,
+.app-shell textarea,
+.app-shell .add-form input,
+.app-shell .add-form select,
+.app-shell .add-form textarea {
+  border-color: var(--season-line) !important;
+  background-color: color-mix(in srgb, var(--season-surface) 88%, var(--season-bg)) !important;
+}
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell textarea:focus-visible,
+.app-shell .sheet-summary-status-card input:focus {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px var(--theme-accent-soft) !important;
+}
+.app-shell .secondary-button {
+  border-color: var(--season-line) !important;
+  background: linear-gradient(145deg, var(--season-surface-alt), var(--season-surface)) !important;
+  color: color-mix(in srgb, var(--theme-accent) 18%, #e5e8eb) !important;
+}
+.app-shell .secondary-button:hover:not(:disabled) {
+  border-color: var(--theme-accent) !important;
+  background: var(--theme-accent-mid) !important;
+}
+.app-shell .primary-button,
+.app-shell button.primary-button,
+.app-shell .tab-button.active {
+  border-color: var(--theme-accent) !important;
+  background: linear-gradient(115deg, var(--theme-accent-strong), var(--theme-accent)) !important;
+  color: #fff !important;
+  box-shadow: 0 5px 18px var(--theme-accent-glow) !important;
+}
+
+/* Ficha resumida — etiquetas, pílulas, valores e barras que ainda tinham roxo literal. */
+.app-shell .sheet-eyebrow,
+.app-shell .sheet-summary-card h3,
+.app-shell .sheet-summary-notes h3,
+.app-shell .sheet-summary-attributes span { color: var(--theme-accent) !important; }
+.app-shell .sheet-summary-season {
+  border-color: var(--theme-accent-border) !important;
+  background: var(--theme-accent-soft) !important;
+  color: var(--theme-accent) !important;
+}
+.app-shell .sheet-summary-progression > div,
+.app-shell .sheet-summary-card,
+.app-shell .sheet-summary-notes,
+.app-shell .sheet-summary-status-card {
+  border-color: var(--season-line) !important;
+}
+.app-shell .sheet-summary-attributes article {
+  border-color: var(--season-line) !important;
+  background: linear-gradient(145deg, var(--season-surface-alt), var(--season-surface)) !important;
+}
+.app-shell .sheet-summary-attributes article::before {
+  background: linear-gradient(180deg, var(--theme-accent), var(--theme-accent-strong)) !important;
+}
+.app-shell .sheet-summary-attributes article:hover { border-color: var(--theme-accent) !important; }
+.app-shell .sheet-summary-attributes strong {
+  border-color: var(--theme-accent-border) !important;
+  background: var(--theme-accent-soft) !important;
+  color: var(--theme-accent) !important;
+}
+.app-shell .sheet-summary-status-card button,
+.app-shell .sheet-summary-status-card .secondary-button { border-color: var(--theme-accent) !important; }
+
+/* Indicadores, progresso, badges e estados ativos. */
+.app-shell .progress-fill,
+.app-shell .progress-bar > span,
+.app-shell .progress-bar-fill,
+.app-shell .heatmap-cell.active,
+.app-shell .status-bar-fill { background: linear-gradient(90deg, var(--theme-accent-strong), var(--theme-accent)) !important; }
+.app-shell .badge,
+.app-shell .tag,
+.app-shell .pill,
+.app-shell .status-badge {
+  border-color: var(--theme-accent-border) !important;
+  background: var(--theme-accent-soft) !important;
+}
+.app-shell table th { color: var(--theme-accent) !important; }
+.app-shell progress,
+.app-shell input[type="range"] { accent-color: var(--theme-accent) !important; }
+.app-shell ::selection { background: var(--theme-accent-strong); color: #fff; }
+
+
+/* HäxBag — acabamento visual transversal para os seis temas.
+   Mantém a personalidade cromática de cada temporada e melhora hierarquia,
+   contraste, estados interativos e consistência dos componentes. */
+.app-shell {
+  --theme-text: #f2f0f5;
+  --theme-muted: #a9a6b1;
+  --theme-card-shadow: 0 14px 34px rgba(0,0,0,.22);
+  --theme-radius: 14px;
+}
+.app-shell .topbar {
+  box-shadow: 0 1px 0 color-mix(in srgb,var(--theme-accent) 10%,transparent), 0 8px 24px rgba(0,0,0,.12);
+}
+.app-shell .card,
+.app-shell .panel,
+.app-shell .sheet-card,
+.app-shell .sheet-summary-card,
+.app-shell .sheet-summary-status-card,
+.app-shell .stat-card,
+.app-shell .dashboard-card,
+.app-shell .character-card,
+.app-shell .campaign-card,
+.app-shell .season-card,
+.app-shell .content-card,
+.app-shell .inventory-section,
+.app-shell .visibility-panel,
+.app-shell .capacity-banner,
+.app-shell .section-card {
+  border-radius: var(--theme-radius);
+  box-shadow: var(--theme-card-shadow), inset 0 1px 0 rgba(255,255,255,.035);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.app-shell .card:hover,
+.app-shell .dashboard-card:hover,
+.app-shell .campaign-card:hover,
+.app-shell .season-card:hover {
+  border-color: color-mix(in srgb,var(--theme-accent) 52%,var(--theme-line)) !important;
+  box-shadow: 0 17px 38px rgba(0,0,0,.27), 0 0 0 1px var(--theme-accent-soft);
+}
+.app-shell .section-title,
+.app-shell .card-title,
+.app-shell .sheet-summary-card h3,
+.app-shell .panel h3,
+.app-shell .stat-card strong {
+  letter-spacing: .015em;
+}
+.app-shell .nav-link,
+.app-shell .tab-button,
+.app-shell .secondary-button,
+.app-shell .season-theme-option {
+  transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.app-shell .nav-link:hover,
+.app-shell .tab-button:hover,
+.app-shell .secondary-button:hover,
+.app-shell .season-theme-option:hover:not(:disabled) {
+  border-color: color-mix(in srgb,var(--theme-accent) 55%,var(--theme-line)) !important;
+  background: color-mix(in srgb,var(--theme-accent) 9%,var(--theme-surface)) !important;
+}
+.app-shell .primary-button,
+.app-shell button.primary-button {
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.app-shell .primary-button:hover:not(:disabled),
+.app-shell button.primary-button:hover:not(:disabled) {
+  filter: brightness(1.09);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px var(--theme-accent-glow) !important;
+}
+.app-shell button:disabled { cursor: not-allowed; }
+.app-shell input:not([type="checkbox"]):not([type="radio"]),
+.app-shell select,
+.app-shell textarea {
+  border-radius: 9px;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.app-shell input::placeholder,
+.app-shell textarea::placeholder { color: color-mix(in srgb,var(--theme-muted) 76%,transparent); }
+.app-shell .badge,
+.app-shell .tag,
+.app-shell .pill,
+.app-shell .status-badge {
+  border-radius: 999px;
+  font-weight: 650;
+  letter-spacing: .015em;
+}
+.app-shell table thead th {
+  background: color-mix(in srgb,var(--theme-accent) 7%,var(--theme-surface));
+  font-weight: 700;
+}
+.app-shell table tbody tr:hover {
+  background: color-mix(in srgb,var(--theme-accent) 5%,transparent);
+}
+.app-shell .progress-bar,
+.app-shell .progress-track,
+.app-shell progress {
+  border-radius: 999px;
+  overflow: hidden;
+}
+.app-shell .season-theme-panel {
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.app-shell .season-theme-option.active {
+  box-shadow: inset 3px 0 0 var(--theme-accent), 0 0 0 1px var(--theme-accent-soft), 0 8px 22px var(--theme-accent-glow) !important;
+}
+.app-shell .season-theme-swatches i { box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.app-shell .sheet-summary-header,
+.app-shell .character-banner {
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.045), 0 12px 30px rgba(0,0,0,.18);
+}
+.app-shell .sheet-summary-attributes article strong,
+.app-shell .sheet-summary-attributes strong {
+  border-radius: 8px;
+  font-weight: 800;
+}
+.app-shell .sheet-summary-season {
+  border-radius: 999px;
+  font-weight: 700;
+}
+.app-shell .divider,
+.app-shell .section-divider,
+.app-shell hr { opacity: .8; }
+.app-shell :focus-visible {
+  outline: 2px solid var(--theme-accent) !important;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *, .app-shell *::before, .app-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+
+/* LUA DE SANGUE — eclipse carmesim, pedra escura e luz lunar */
+.app-shell.theme-crimson {
+  --theme-accent: #ff6678;
+  --theme-accent-strong: #9f263d;
+  --theme-accent-soft: rgba(255, 82, 105, .12);
+  --theme-accent-mid: #3b1825;
+  --theme-accent-border: rgba(190, 65, 87, .38);
+  --theme-accent-glow: rgba(255, 70, 91, .20);
+  color-scheme: dark;
+  background-color: #10080d;
+  background-image:
+    radial-gradient(ellipse at 82% 4%, rgba(151, 25, 51, .20), transparent 34%),
+    radial-gradient(ellipse at 8% 88%, rgba(89, 22, 43, .13), transparent 38%),
+    linear-gradient(145deg, #10080d 0%, #130a10 48%, var(--season-bg, #100e19) 100%);
+}
+.app-shell.theme-crimson .sidebar {
+  background:
+    linear-gradient(180deg, rgba(79, 18, 36, .20), transparent 38%),
+    var(--season-bg, #100e19);
+  border-color: rgba(151, 49, 69, .32);
+}
+.app-shell.theme-crimson .topbar {
+  background: linear-gradient(100deg, rgba(61, 15, 30, .88), rgba(17, 10, 15, .96));
+  border-color: rgba(151, 49, 69, .34);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .20);
+}
+.app-shell.theme-crimson .card,
+.app-shell.theme-crimson .panel,
+.app-shell.theme-crimson .inventory-card,
+.app-shell.theme-crimson .character-card,
+.app-shell.theme-crimson .sheet-card,
+.app-shell.theme-crimson .campaign-card,
+.app-shell.theme-crimson .modal-content,
+.app-shell.theme-crimson .dialog-content {
+  background: linear-gradient(145deg, rgba(43, 19, 30, .96), rgba(24, 13, 20, .98));
+  border-color: rgba(130, 48, 68, .34);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 190, 198, .025);
+}
+.app-shell.theme-crimson .card:hover,
+.app-shell.theme-crimson .inventory-card:hover,
+.app-shell.theme-crimson .character-card:hover,
+.app-shell.theme-crimson .campaign-card:hover {
+  border-color: rgba(255, 102, 120, .48);
+  box-shadow: 0 14px 34px rgba(82, 15, 35, .22), 0 0 22px rgba(255, 70, 91, .07);
+}
+.app-shell.theme-crimson .season-theme-panel {
+  background:
+    radial-gradient(circle at 92% 12%, rgba(255, 82, 105, .18), transparent 32%),
+    linear-gradient(135deg, rgba(70, 20, 37, .72), color-mix(in srgb, var(--season-surface-alt, #211c31) 96%, transparent));
+  border-color: rgba(190, 65, 87, .40);
+}
+.app-shell.theme-crimson .season-theme-option {
+  background: rgba(24, 12, 19, .88);
+  border-color: rgba(130, 48, 68, .34);
+}
+.app-shell.theme-crimson .season-theme-option.active {
+  background: linear-gradient(115deg, rgba(159, 38, 61, .25), rgba(255, 102, 120, .09));
+  border-color: rgba(255, 102, 120, .68);
+  box-shadow: 0 0 18px rgba(255, 70, 91, .10), inset 0 0 0 1px rgba(255, 102, 120, .08);
+}
+.app-shell.theme-crimson .nav-link.active,
+.app-shell.theme-crimson .nav-link:hover {
+  background: linear-gradient(90deg, rgba(159, 38, 61, .22), rgba(255, 102, 120, .055));
+  box-shadow: inset 2px 0 0 #ff6678;
+}
+.app-shell.theme-crimson .primary-button,
+.app-shell.theme-crimson button.primary,
+.app-shell.theme-crimson .btn-primary {
+  background: linear-gradient(135deg, #b8324e, #7e1f38);
+  border-color: rgba(255, 133, 147, .35);
+  box-shadow: 0 5px 18px rgba(130, 24, 51, .22);
+}
+.app-shell.theme-crimson input:focus,
+.app-shell.theme-crimson textarea:focus,
+.app-shell.theme-crimson select:focus {
+  border-color: rgba(255, 102, 120, .72);
+  box-shadow: 0 0 0 3px rgba(255, 102, 120, .12);
+}
+.app-shell.theme-crimson .badge,
+.app-shell.theme-crimson .pill,
+.app-shell.theme-crimson .tag {
+  background: rgba(159, 38, 61, .17);
+  border-color: rgba(190, 65, 87, .32);
+}
+.app-shell.theme-crimson .section-title::after,
+.app-shell.theme-crimson .page-title::after {
+  background: linear-gradient(90deg, #ff6678, rgba(255, 102, 120, 0));
+}
+.app-shell.theme-crimson .avatar,
+.app-shell.theme-crimson .brand-mark,
+.app-shell.theme-crimson .top-avatar {
+  background: radial-gradient(circle at 35% 28%, #ffb1b8 0%, #d84962 34%, #711c36 76%, #321321 100%);
+  border-color: rgba(255, 151, 164, .38);
+  box-shadow: 0 0 18px rgba(255, 70, 91, .16);
+}
+.app-shell.theme-crimson ::selection {
+  color: #fff4f5;
+  background: rgba(190, 48, 72, .55);
+}
+
+
+/* REFINAMENTO 2.0 — cada temporada recebe atmosfera, profundidade e contraste próprios */
+.app-shell { position: relative; isolation: isolate; }
+.app-shell::before {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse at 50% -18%, var(--theme-accent-glow), transparent 58%);
+  opacity: .78;
+}
+.app-shell .sidebar { box-shadow: 12px 0 36px rgba(0,0,0,.14), inset -1px 0 0 rgba(255,255,255,.018); }
+.app-shell .topbar { box-shadow: 0 10px 32px rgba(0,0,0,.13); }
+.app-shell .card, .app-shell .panel, .app-shell .sheet-card,
+.app-shell .sheet-summary-card, .app-shell .stat-card, .app-shell .dashboard-card,
+.app-shell .character-card, .app-shell .campaign-card, .app-shell .season-card,
+.app-shell .content-card, .app-shell .inventory-card {
+  position: relative; overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
+  transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease;
+}
+.app-shell .card::before, .app-shell .panel::before, .app-shell .sheet-card::before,
+.app-shell .stat-card::before, .app-shell .character-card::before, .app-shell .campaign-card::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb,var(--theme-accent) 48%,transparent), transparent);
+  opacity: .65;
+}
+.app-shell .card:hover, .app-shell .panel:hover, .app-shell .character-card:hover,
+.app-shell .campaign-card:hover, .app-shell .inventory-card:hover {
+  border-color: color-mix(in srgb,var(--theme-accent) 48%,var(--theme-line));
+  box-shadow: 0 16px 38px rgba(0,0,0,.22), 0 0 24px var(--theme-accent-glow), inset 0 1px 0 rgba(255,255,255,.045);
+}
+.app-shell .section-title, .app-shell .page-title, .app-shell .card-title { letter-spacing: -.025em; }
+.app-shell .section-title::after, .app-shell .page-title::after {
+  content: ""; display: block; width: min(100px, 26%); height: 2px; margin-top: 9px;
+  border-radius: 9px; background: linear-gradient(90deg,var(--theme-accent),transparent); opacity: .72;
+}
+.app-shell .nav-link { transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease; }
+.app-shell .nav-link:hover { transform: translateX(2px); }
+.app-shell .nav-link.active { box-shadow: inset 3px 0 var(--theme-accent), 0 5px 16px var(--theme-accent-glow); }
+.app-shell .primary-button { text-shadow: 0 1px 1px rgba(0,0,0,.18); }
+.app-shell .primary-button:hover:not(:disabled) { filter: saturate(1.12) brightness(1.08); box-shadow: 0 8px 24px var(--theme-accent-glow); }
+.app-shell input, .app-shell select, .app-shell textarea { transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.app-shell input:focus, .app-shell select:focus, .app-shell textarea:focus { background-color: color-mix(in srgb,var(--theme-surface-alt) 72%,var(--theme-bg)); }
+.app-shell table tbody tr { transition: background .16s ease; }
+.app-shell table tbody tr:hover { background: color-mix(in srgb,var(--theme-accent) 6%,transparent); }
+.app-shell .season-theme-panel { position: relative; overflow: hidden; }
+.app-shell .season-theme-panel::after { content:""; position:absolute; width:190px; height:190px; right:-90px; top:-115px; border-radius:50%; border:1px solid color-mix(in srgb,var(--theme-accent) 22%,transparent); box-shadow:0 0 0 18px color-mix(in srgb,var(--theme-accent) 3%,transparent),0 0 0 38px color-mix(in srgb,var(--theme-accent) 2%,transparent); pointer-events:none; }
+
+/* Padrão HäxBag — biblioteca arcana e ametista */
+.app-shell.theme-default { background-image: radial-gradient(ellipse at 84% 0%,color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent),transparent 34%), radial-gradient(ellipse at 0% 80%,color-mix(in srgb, var(--season-secondary, #7653c8) 12%, transparent),transparent 42%), linear-gradient(145deg,var(--season-bg, #100e19),var(--season-bg, #100e19) 55%,var(--season-bg, #100e19)); }
+.app-shell.theme-default .sidebar { background:linear-gradient(180deg,color-mix(in srgb, var(--season-secondary, #7653c8) 20%, transparent),transparent 48%),var(--season-bg, #100e19); }
+.app-shell.theme-default .topbar { background:linear-gradient(100deg,color-mix(in srgb, var(--season-surface-alt, #211c31) 76%, transparent),color-mix(in srgb, var(--season-surface-alt, #211c31) 94%, transparent)); }
+.app-shell.theme-default .card, .app-shell.theme-default .panel, .app-shell.theme-default .sheet-card { background:linear-gradient(145deg,color-mix(in srgb, var(--season-surface-alt, #211c31) 96%, transparent),color-mix(in srgb, var(--season-surface-alt, #211c31) 98%, transparent)); }
+
+/* Lua de Sangue — eclipse rubro e pedra vulcânica */
+.app-shell.theme-crimson { background-image:radial-gradient(ellipse at 82% 2%,rgba(165,25,57,.23),transparent 33%),radial-gradient(ellipse at 8% 92%,rgba(91,16,39,.16),transparent 40%),linear-gradient(145deg,var(--season-bg, #100e19),#160a12 52%,var(--season-bg, #100e19)); }
+.app-shell.theme-crimson .sidebar { background:linear-gradient(180deg,rgba(112,22,47,.22),transparent 48%),var(--season-bg, #100e19); }
+.app-shell.theme-crimson .topbar { background:linear-gradient(100deg,rgba(73,17,36,.84),rgba(15,8,13,.96)); }
+.app-shell.theme-crimson .card, .app-shell.theme-crimson .panel, .app-shell.theme-crimson .sheet-card { background:linear-gradient(145deg,rgba(47,19,32,.97),rgba(23,12,19,.99)); }
+.app-shell.theme-crimson .primary-button { background:linear-gradient(135deg,#b83250,#741b36); }
+
+/* Floresta Esquecida — musgo, madeira úmida e luz de clareira */
+.app-shell.theme-forest { background-image:radial-gradient(ellipse at 82% 0%,rgba(50,124,81,.19),transparent 35%),radial-gradient(ellipse at 0% 90%,rgba(38,83,57,.15),transparent 42%),linear-gradient(145deg,#09130f,#0d1912 55%,#080e0b); }
+.app-shell.theme-forest .sidebar { background:linear-gradient(180deg,rgba(40,99,64,.22),transparent 48%),#0c1711; }
+.app-shell.theme-forest .topbar { background:linear-gradient(100deg,rgba(24,60,39,.82),rgba(10,19,14,.96)); }
+.app-shell.theme-forest .card, .app-shell.theme-forest .panel, .app-shell.theme-forest .sheet-card { background:linear-gradient(145deg,rgba(27,48,35,.97),rgba(17,31,23,.99)); }
+.app-shell.theme-forest .primary-button { background:linear-gradient(135deg,#397b58,#24513c); }
+
+/* Inverno Eterno — gelo azul, aço e aurora */
+.app-shell.theme-frost { background-image:radial-gradient(ellipse at 80% 0%,rgba(65,133,177,.21),transparent 36%),radial-gradient(ellipse at 0% 86%,rgba(42,91,125,.15),transparent 40%),linear-gradient(145deg,#09131d,#0e1b28 55%,#080f17); }
+.app-shell.theme-frost .sidebar { background:linear-gradient(180deg,rgba(47,102,139,.23),transparent 48%),#0b1620; }
+.app-shell.theme-frost .topbar { background:linear-gradient(100deg,rgba(25,57,80,.84),rgba(9,17,26,.96)); }
+.app-shell.theme-frost .card, .app-shell.theme-frost .panel, .app-shell.theme-frost .sheet-card { background:linear-gradient(145deg,rgba(27,46,63,.97),rgba(16,29,42,.99)); }
+.app-shell.theme-frost .primary-button { background:linear-gradient(135deg,#4b88b5,#315d83); }
+
+/* Arcano — grimório violeta, tinta e magia luminosa */
+.app-shell.theme-arcane { background-image:radial-gradient(ellipse at 82% 0%,color-mix(in srgb, var(--season-primary, #b49aff) 22%, transparent),transparent 34%),radial-gradient(ellipse at 5% 88%,color-mix(in srgb, var(--season-secondary, #7653c8) 16%, transparent),transparent 40%),linear-gradient(145deg,var(--season-bg, #100e19),var(--season-bg, #100e19) 55%,var(--season-bg, #100e19)); }
+.app-shell.theme-arcane .sidebar { background:linear-gradient(180deg,color-mix(in srgb, var(--season-secondary, #7653c8) 24%, transparent),transparent 48%),var(--season-bg, #100e19); }
+.app-shell.theme-arcane .topbar { background:linear-gradient(100deg,color-mix(in srgb, var(--season-surface-alt, #211c31) 84%, transparent),color-mix(in srgb, var(--season-surface-alt, #211c31) 96%, transparent)); }
+.app-shell.theme-arcane .card, .app-shell.theme-arcane .panel, .app-shell.theme-arcane .sheet-card { background:linear-gradient(145deg,color-mix(in srgb, var(--season-surface-alt, #211c31) 97%, transparent),color-mix(in srgb, var(--season-surface-alt, #211c31) 99%, transparent)); }
+.app-shell.theme-arcane .primary-button { background:linear-gradient(135deg,var(--season-muted, #b9b4c2),var(--season-secondary, #7653c8)); }
+
+/* Vale Fantasma — carvão, ruínas e brasa âmbar */
+.app-shell.theme-ghost_vale { background-image:radial-gradient(ellipse at 84% 0%,rgba(190,86,31,.19),transparent 34%),radial-gradient(ellipse at 0% 88%,rgba(111,57,27,.15),transparent 42%),linear-gradient(145deg,#080a0d,#101419 58%,#08090b); }
+.app-shell.theme-ghost_vale .sidebar { background:linear-gradient(180deg,rgba(123,63,29,.20),transparent 48%),#0c1014; }
+.app-shell.theme-ghost_vale .topbar { background:linear-gradient(100deg,rgba(64,37,23,.82),rgba(9,12,15,.96)); }
+.app-shell.theme-ghost_vale .card, .app-shell.theme-ghost_vale .panel, .app-shell.theme-ghost_vale .sheet-card { background:linear-gradient(145deg,rgba(31,36,40,.98),rgba(16,20,24,.99)); }
+.app-shell.theme-ghost_vale .primary-button { background:linear-gradient(135deg,#c85d27,#87401f); }
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .card, .app-shell .panel, .app-shell .nav-link, .app-shell button { transition:none !important; }
+}
+
+
+/* HäxBag — remoção de cores fixas: todos os componentes acompanham o tema ativo */
+.app-shell {
+  --theme-accent: var(--season-primary, var(--season-primary, #b49aff));
+  --theme-accent-strong: var(--season-secondary, var(--season-primary, #b49aff));
+  --theme-bg: var(--season-bg, var(--season-bg, #100e19));
+  --theme-surface: var(--season-surface, var(--season-bg, #100e19));
+  --theme-surface-alt: var(--season-surface-alt, var(--season-bg, #100e19));
+  --theme-line: var(--season-line, var(--season-surface-alt, #211c31));
+  --theme-glow: var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent));
+}
+.app-shell :is(.sidebar,.topbar,.campaign-select,.invite-card,.profile,.character-banner,.banner-art,.stat-card,.sheet-card,.sheet-summary-card,.sheet-summary-status-card,.panel,.card,.modal-content,.dialog-content,.emoji-modal,.emoji-preview,.emoji-option,.item-menu,.season-theme-panel,.season-theme-option,.campaign-card,.season-card,.content-card) {
+  border-color: var(--theme-line) !important;
+}
+.app-shell :is(.campaign-select,.nav-link:hover,.nav-link.active,.nav-count,.campaign-icon,.invite-icon,.invite-card,.banner-art,.stat-card,.emoji-preview,.emoji-option,.item-menu,.season-theme-option,.character-meta > span,.quantity-button,.secondary-button) {
+  background-color: color-mix(in srgb, var(--theme-accent) 9%, var(--theme-surface)) !important;
+}
+.app-shell :is(.sidebar,.topbar,.character-banner,.sheet-card,.sheet-summary-card,.sheet-summary-status-card,.panel,.card,.stat-card,.modal-content,.dialog-content,.emoji-modal,.item-menu,.season-theme-panel) {
+  background-image: linear-gradient(145deg, color-mix(in srgb,var(--theme-accent) 5%,var(--theme-surface-alt)), var(--theme-surface)) !important;
+}
+.app-shell :is(.brand-light,.eyebrow,.eyebrow > span,.title-period,.character-tag,.banner-stat > strong small,.item-category,.empty-state > span,.page-footer > span:last-child span,.sheet-summary-season,.sheet-summary-attributes article strong,.quantity-button,.nav-link.active,.nav-link.active > span:first-child,.invite-card button,.campaign-icon,.nav-count,.season-theme-heading small b) {
+  color: var(--theme-accent) !important;
+}
+.app-shell :is(.brand-mark,.primary-button,.progress-track > div,.progress-fill,.progress-bar > span,.progress-bar-fill,.status-bar-fill,.nav-link.active::before) {
+  background: linear-gradient(135deg,var(--theme-accent),var(--theme-accent-strong)) !important;
+}
+.app-shell :is(.brand-mark, .avatar, .top-avatar, .banner-art, .banner-orb, .character-banner, .progress-track, .stat-icon.purple) {
+  box-shadow: 0 5px 18px var(--theme-glow) !important;
+}
+.app-shell :is(.primary-button,.secondary-button,.tab-button.active,.nav-link.active,.quantity-button,.season-theme-option.active,.emoji-option:hover,.item-menu button:hover) {
+  border-color: var(--theme-accent) !important;
+}
+.app-shell :is(.primary-button:hover:not(:disabled),.secondary-button:hover:not(:disabled),.quantity-button:hover:not(:disabled),.season-theme-option.active) {
+  box-shadow: 0 7px 22px var(--theme-glow) !important;
+}
+.app-shell :is(input,select,textarea):focus,
+.app-shell :is(input,select,textarea):focus-visible {
+  border-color: var(--theme-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--theme-accent) 18%,transparent) !important;
+}
+.app-shell :is(progress,input[type="range"]) { accent-color: var(--theme-accent) !important; }
+.app-shell ::selection { color: var(--theme-bg); background: var(--theme-accent); }
+.app-shell :is(.character-banner,.banner-art) { background-color: var(--theme-surface-alt) !important; }
+.app-shell .banner-art { background-image: radial-gradient(ellipse at 50% 45%,color-mix(in srgb,var(--theme-accent) 25%,var(--theme-surface-alt)),var(--theme-surface) 75%) !important; }
+.app-shell .banner-art > span { color: var(--theme-accent); text-shadow: 0 0 24px var(--theme-glow); }
+.app-shell .banner-orb { background: var(--theme-glow); }
+.app-shell .character-banner { background-image: radial-gradient(ellipse at 80% 20%,var(--theme-glow),transparent 42%),linear-gradient(120deg,var(--theme-surface-alt),var(--theme-surface) 65%) !important; }
+.app-shell .progress-track { background: color-mix(in srgb,var(--theme-line) 70%,var(--theme-surface)); }
+.app-shell .season-theme-option.active { background: color-mix(in srgb,var(--theme-accent) 15%,var(--theme-surface)) !important; }
+.app-shell .stat-icon.purple { background: color-mix(in srgb,var(--theme-accent) 16%,var(--theme-surface)) !important; color: var(--theme-accent) !important; }
+
+/* Componentes com estilos inline legados: sincronização com a paleta ativa */
+.app-shell [style*="var(--season-surface-alt, #211c31)"],
+.app-shell [style*="var(--season-secondary, #7653c8)"],
+.app-shell [style*="var(--season-secondary, #7653c8)"],
+.app-shell [style*="var(--season-secondary, #7653c8)"],
+.app-shell [style*="var(--season-secondary, #7653c8)"] {
+  border-color: var(--theme-line) !important;
+}
+.app-shell [style*="var(--season-bg, #100e19)"],
+.app-shell [style*="var(--season-bg, #100e19)"],
+.app-shell [style*="var(--season-bg, #100e19)"],
+.app-shell [style*="var(--season-bg, #100e19)"],
+.app-shell [style*="var(--season-bg, #100e19)"],
+.app-shell [style*="var(--season-bg, #100e19)"],
+.app-shell [style*="var(--season-surface-alt, #211c31)"],
+.app-shell [style*="var(--season-surface-alt, #211c31)"],
+.app-shell [style*="var(--season-bg, #100e19)"] {
+  background: linear-gradient(145deg,var(--theme-surface-alt),var(--theme-surface)) !important;
+}
+.app-shell [style*="var(--season-muted, #b9b4c2)"],
+.app-shell [style*="var(--season-primary, #b49aff)"],
+.app-shell [style*="var(--season-primary, #b49aff)"],
+.app-shell [style*="#d8cce5"],
+.app-shell [style*="var(--season-primary, #b49aff)"] {
+  color: var(--theme-text-soft, color-mix(in srgb,var(--theme-accent) 24%,#e9e7f1)) !important;
+}
+/* Seletores incompletos removidos: causavam css-lbracketexpected. */

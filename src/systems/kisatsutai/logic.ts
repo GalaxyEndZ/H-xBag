@@ -1,11 +1,85 @@
 // Regras e cálculos específicos do sistema Kisatsutai.
 
+import type {
+  CombatRollInput,
+  CombatRollResult,
+} from '../core/types'
+
 import {
   KISATSUTAI_FAMILY_TIERS,
   KISATSUTAI_PROMOTIONS,
   KISATSUTAI_RANK_STATUS,
   KISATSUTAI_RANKS,
 } from './data'
+
+// Calcula uma rolagem de combate conforme as regras do Kisatsutai.
+export function calculateKisatsutaiCombatRoll(
+  input: CombatRollInput
+): CombatRollResult {
+  const diceCount = Math.max(1, Math.floor(input.attribute))
+
+  const dice = Array.from(
+    { length: diceCount },
+    () => input.rollDie()
+  )
+
+  const diceTotal = dice.reduce(
+    (sum, value) => sum + value,
+    0
+  )
+
+  const total = 1 + diceTotal + input.bonus
+  const critical = input.kind === 'Bloqueio' && dice.includes(20)
+
+  const validTarget =
+    input.target !== undefined &&
+    input.target !== null &&
+    Number.isFinite(input.target) &&
+    input.target >= 0
+
+  let succeeded: boolean | null = null
+  let damageReduction: number | null = null
+  let outcome = ''
+
+  if (input.kind === 'Bloqueio') {
+    succeeded = validTarget ? total >= input.target! : null
+
+    damageReduction = critical
+      ? null
+      : !validTarget
+        ? null
+        : succeeded
+          ? 0.5
+          : 0.25
+
+    outcome = critical
+      ? 'Crítico: nega 100% do dano.'
+      : !validTarget
+        ? 'Informe a DT do inimigo no campo ao lado das reações.'
+        : succeeded
+          ? `Sucesso contra DT ${input.target}: nega 50% do dano.`
+          : `Falha contra DT ${input.target}: nega 25% do dano.`
+  } else if (input.kind === 'Esquiva') {
+    succeeded = validTarget ? total >= input.target! : null
+
+    outcome = !validTarget
+      ? 'Informe a DT do inimigo no campo ao lado das reações.'
+      : succeeded
+        ? `Sucesso contra DT ${input.target}: nega o dano completamente.`
+        : `Falha contra DT ${input.target}: não evita o dano.`
+  }
+
+  return {
+    dice,
+    diceTotal,
+    total,
+    diceCount,
+    critical,
+    succeeded,
+    damageReduction,
+    outcome,
+  }
+}
 
 // Pontos extras de atributos concedidos por graduação.
 export const KISATSUTAI_RANK_ATTRIBUTE_POINTS: Record<string, number> = {
@@ -114,6 +188,14 @@ export function getKisatsutaiFamilyTiers(): [
     string,
     (typeof KISATSUTAI_FAMILY_TIERS)[keyof typeof KISATSUTAI_FAMILY_TIERS]
   ][]
+}
+
+// Retorna o bônus de um atributo concedido pelo tier familiar.
+export function getKisatsutaiAttributeBonus(
+  tierKey: string,
+  attribute: 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
+): number {
+  return getKisatsutaiFamilyTier(tierKey)[attribute]
 }
 
 // Cria a configuração inicial de moedas do sistema Kisatsutai.
