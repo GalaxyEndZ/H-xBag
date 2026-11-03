@@ -445,10 +445,15 @@ function App() {
 
       setCampaigns(result)
 
+      const preferredCampaignId = typeof session!.user.user_metadata?.primary_campaign_id === 'string'
+        ? session!.user.user_metadata.primary_campaign_id
+        : ''
       setSelectedCampaignId((current) =>
         result.some((campaign) => campaign.id === current)
           ? current
-          : result[0]?.id ?? '',
+          : result.some((campaign) => campaign.id === preferredCampaignId)
+            ? preferredCampaignId
+            : result[0]?.id ?? '',
       )
 
       setLoading(false)
@@ -2475,7 +2480,7 @@ async function deleteCharacter(character: Character) {
       ...metadata,
       scarcityLevel: nextLevel,
       scarcityDie: `d${diceByLevel[nextLevel]}`,
-      scarcityCharge: chargeByLevel[nextLevel],
+      scarcityCharge: exhausted ? 0 : chargeByLevel[nextLevel],
       scarcityLastRoll: roll,
       scarcityLastDie: `d${die}`,
       scarcityUses: (Number(metadata.scarcityUses) || 0) + 1,
@@ -2485,7 +2490,7 @@ async function deleteCharacter(character: Character) {
     setUsingScarcityItemId(item.id)
     const { data, error: updateError } = await supabase
       .from('inventory_items')
-      .update({ metadata: nextMetadata })
+      .update({ metadata: nextMetadata, ...(exhausted ? { unit_price: 0 } : {}) })
       .eq('id', item.id)
       .eq('character_id', item.character_id)
       .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
@@ -2602,7 +2607,7 @@ async function deleteCharacter(character: Character) {
       category: newItemCategories[0] ?? newItemCategory,
       quantity,
       weight,
-      unit_price: Number(newItemUnitPrice.replace(',', '.')) || 0,
+      unit_price: newItemCategories.includes('Consumíveis') && newScarcityExhausted ? 0 : (Number(newItemUnitPrice.replace(',', '.')) || 0),
       currency_id: newItemCurrencyId || null,
       metadata: {
   ...(editingItem?.metadata ?? {}),
@@ -2616,7 +2621,7 @@ async function deleteCharacter(character: Character) {
   protectionMode: newEquipmentType === 'protection' ? newProtectionMode : null,
   scarcityLevel: newItemCategories.includes('Consumíveis') ? Number(newScarcityLevel) : null,
   scarcityDie: newItemCategories.includes('Consumíveis') ? ({ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' } as Record<string, string>)[newScarcityLevel] : null,
-  scarcityCharge: newItemCategories.includes('Consumíveis') ? ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel] : null,
+  scarcityCharge: newItemCategories.includes('Consumíveis') ? (newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]) : null,
   scarcityExhausted: newItemCategories.includes('Consumíveis') ? newScarcityExhausted : false,
   weaponClass: newItemCategories.includes('Armas') ? newWeaponClass : null,
   weaponDamage: newItemCategories.includes('Armas') ? ({ improvised: '1d4', advanced: '1d6', special: '1d8', black_red: '1d10', mutable: '1d12' } as Record<string,string>)[newWeaponClass] || '1d4' : null,
@@ -3089,7 +3094,13 @@ async function deleteCharacter(character: Character) {
           <label style={labelStyle}>Campanha selecionada</label>
           <select
             value={selectedCampaignId}
-            onChange={(event) => setSelectedCampaignId(event.target.value)}
+            onChange={async (event) => {
+              const campaignId = event.target.value
+              setSelectedCampaignId(campaignId)
+              const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
+              if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
+              else setNotice('Campanha principal atualizada para este perfil.')
+            }}
             style={inputStyle}
           >
             <option value="">Selecione uma campanha</option>
@@ -3374,19 +3385,33 @@ onClick={() => {
                     const familyTierKey = String(read('family.tier', '5')) as keyof typeof KISATSUTAI_FAMILY_TIERS
                     const familyTier = KISATSUTAI_FAMILY_TIERS[familyTierKey] || KISATSUTAI_FAMILY_TIERS['5']
                     const isKisatsutaiSheet = String(read('progression.system', selectedCampaign?.system_name || 'Kisatsutai')).toLowerCase().includes('kisatsutai')
-                    const allocationSources = ['family', 'class', 'progression'] as const
+                    const allocationSources = ['family', 'hierarchy', 'extra'] as const
                     const familyAllocationKeys = ['strength','agility','defense','breathing','intellect'] as const
                     const allocationKeysFor = (_source: typeof allocationSources[number]) => familyAllocationKeys
                     const allocationLabels: Record<string,string> = {strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:'Respiração',intellect:'Intelecto',vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
-                    const allocation = (source: string, key: string) => { if (!(familyAllocationKeys as readonly string[]).includes(key)) return 0; return Math.max(0, Math.floor(Number(read(`progression.allocations.${source}.${key}`, 0)) || 0)) }
-                    const allocationPool = (source: typeof allocationSources[number]) => source === 'family' ? (isKisatsutaiSheet ? familyTier.points : 0) : source === 'class' ? numRaw('progression.extraAttributePoints') + numRaw('progression.classSkillPoints') : numRaw('progression.attributePoints') + numRaw('progression.skillPoints')
+                    const skillKeys = ['vigor','mental','combat','dexterity','resistance','ability'] as const
+                    const allocation = (source: string, key: string) => { if (!(familyAllocationKeys as readonly string[]).includes(key)) return 0; const own = Math.max(0, Math.floor(Number(read(`progression.allocations.${source}.${key}`, 0)) || 0)); const legacyClass = source === 'extra' ? Math.max(0, Math.floor(Number(read(`progression.allocations.class.${key}`, 0)) || 0)) : 0; return own + legacyClass }
+                    const allocationPool = (source: typeof allocationSources[number]) => source === 'family' ? (isKisatsutaiSheet ? familyTier.points : 0) : source === 'hierarchy' ? rankAttributePoints : numRaw('progression.extraAttributePoints') + numRaw('progression.attributePoints') + numRaw('progression.manualExtraAttributePoints')
+                    const familyTierMinimum = (key: typeof familyAllocationKeys[number]) => isKisatsutaiSheet ? Math.max(0, Number(familyTier[key]) || 0) : 0
+                    const familyTierMinimumTotal = familyAllocationKeys.reduce((sum, key) => sum + familyTierMinimum(key), 0)
+                    // Pontos extras de atributos concedidos por graduação, conforme benefícios explicitamente documentados.
+                    // Graduações sem quantidade definida no material não concedem pontos automáticos aqui.
+                    const rankIdForAttributes = String(read('progression.rankId', 'zaidan'))
+                    const rankIdForStatus = rankIdForAttributes
+                    const rankAttributePointsById: Record<string, number> = { zaidan: 1, mizunoto: 1, mizunoe: 2, hinoto: 4, hinoe: 5, kinoto: 5, kinoe: 6, 'hashira-inferior': 10 }
+                    const rankAttributePoints = isKisatsutaiSheet ? (rankAttributePointsById[rankIdForAttributes] ?? 0) : 0
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
                     const num = (path: string) => {
-                      const base = numRaw(path)
                       const match = path.match(/^(attributes|skills)\.(.+)$/)
+                      // Não há bases de perícia definidas por família/tier no material; portanto, a base é 0.
+                      const base = match?.[1] === 'skills' ? 0 : numRaw(path)
                       if (!match) return base
                       const key = match[2]
-                      const sourceBonus = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                      const sourceBonus = match[1] === 'attributes'
+                        ? allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                        : skillKeys.includes(key as typeof skillKeys[number])
+                          ? (['hierarchy','intellect','extra'] as const).reduce((sum, source) => sum + Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source}.${key}`, 0)) || 0)), 0)
+                          : 0
                       return Math.min(match[1] === 'attributes' ? 5 : 12, base + sourceBonus)
                     }
                     const effectiveAttribute = (path: string, bonus: number) => Math.min(5, Math.max(0, num(path) + (isKisatsutaiSheet ? bonus : 0)))
@@ -3399,6 +3424,27 @@ onClick={() => {
                     const mainAllocations = Array.from({ length: intellect }, (_, i) => choices[i] === 'extra' ? 'extra' : 'main')
                     const mainPoints = mainAllocations.filter(v => v === 'main').length * 5
                     const extraLevels = mainAllocations.filter(v => v === 'extra').length
+                    const skillLabels: Record<typeof skillKeys[number], string> = {vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
+                    const rankBenefitsText = KISATSUTAI_RANKS.find(rank => rank.id === rankIdForStatus)?.benefits || ''
+                    const rankSkillPointsMatch = rankBenefitsText.match(/(\d+) pontos? de perícias?/i)
+                    const hierarchySkillPool = isKisatsutaiSheet ? Number(rankSkillPointsMatch?.[1] || 0) : 0
+                    const extraSkillPool = numRaw('progression.classSkillPoints') + numRaw('progression.manualExtraSkillPoints')
+                    const skillAllocations = (source: 'hierarchy'|'intellect'|'extra', key: typeof skillKeys[number]) => Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source}.${key}`, 0)) || 0))
+                    const skillPool = (source: 'hierarchy'|'intellect'|'extra') => source === 'hierarchy' ? hierarchySkillPool : source === 'intellect' ? mainPoints : extraSkillPool
+                    const skillTotalUsed = (source: 'hierarchy'|'intellect'|'extra') => skillKeys.reduce((sum,key)=>sum+skillAllocations(source,key),0)
+                    const skillAllocatedTotal = (key: typeof skillKeys[number]) => skillAllocations('hierarchy',key)+skillAllocations('intellect',key)+skillAllocations('extra',key)
+                    const setSkillAllocation = (key: typeof skillKeys[number], value: number) => {
+                      const next = { ...data, skills: { ...(data.skills || {}), pointAllocations: { ...(data.skills?.pointAllocations || {}) } } }
+                      let left = Math.max(0, Math.min(12, Math.floor(Number(value)||0)))
+                      for (const source of ['hierarchy','intellect','extra'] as const) {
+                        const otherSpent = skillKeys.reduce((sum,item)=>sum+skillAllocations(source,item),0)-skillAllocations(source,key)
+                        const capacity = Math.max(0,skillPool(source)-otherSpent)
+                        const assigned = Math.min(left,capacity)
+                        next.skills.pointAllocations[source] = { ...(next.skills.pointAllocations[source] || {}), [key]: assigned }
+                        left -= assigned
+                      }
+                      setSheetDraft(JSON.stringify(next,null,2))
+                    }
                     const vigor = Math.min(12, num('skills.vigor'))
                     const mental = Math.min(12, num('skills.mental'))
                     const breathing = effectiveAttribute('attributes.breathing', familyTier.breathing)
@@ -3408,7 +3454,6 @@ onClick={() => {
                     const combat = Math.min(12, num('skills.combat'))
                     const resistance = Math.min(12, num('skills.resistance'))
                     const strength = effectiveAttribute('attributes.strength', familyTier.strength)
-                    const rankIdForStatus = String(read('progression.rankId', 'zaidan'))
                     const rankName = String(
   read(
     'progression.rankName',
@@ -3431,7 +3476,6 @@ onClick={() => {
                     const baseDamage = baseDamageByGroup[hierarchyGroup] || '—'
                     const rollD20 = () => Math.floor(Math.random()*20)+1
                     const performCombatRoll = (kind: 'Ataque bruto'|'Ataque ágil'|'Bloqueio'|'Esquiva', dodgeDt?: string) => {
-                      const dt = combat + dexterity
                       const constitution = Number(read('attributes.constitution', 0)) || resistance + vigor
                       const attribute = kind === 'Ataque bruto' ? strength : kind === 'Bloqueio' ? defense : agility
                       const bonus = kind === 'Bloqueio' ? constitution : kind === 'Esquiva' ? dexterity : combat
@@ -3442,19 +3486,24 @@ onClick={() => {
                       const diceDescription = `${diceCount}d20 = [${dice.join(', ')}] (soma ${diceTotal})`
 
                       if (kind === 'Bloqueio') {
+                        const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
+                        const validTarget = target !== null && Number.isFinite(target) && target >= 0
                         const critical = dice.includes(20)
+                        const succeeded = validTarget && total >= target!
                         const outcome = critical
                           ? 'Crítico: nega 100% do dano.'
-                          : total >= dt
-                            ? 'Sucesso: nega 50% do dano.'
-                            : 'Falha: nega 25% do dano.'
+                          : !validTarget
+                            ? 'Informe a DT do inimigo no campo ao lado das reações.'
+                            : succeeded
+                              ? `Sucesso contra DT ${target}: nega 50% do dano.`
+                              : `Falha contra DT ${target}: nega 25% do dano.`
                         setBlockIncomingDamage('')
-                        setBlockDamageReduction(critical ? null : total >= dt ? 0.5 : 0.25)
+                        setBlockDamageReduction(critical ? null : !validTarget ? null : succeeded ? 0.5 : 0.25)
                         setCombatActionResult(`Bloqueio: ${diceDescription}; 1 + ${diceTotal} + Constituição (${bonus}) = ${total}. ${outcome}`)
                       } else if (kind === 'Esquiva') {
                         const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
                         const validTarget = target !== null && Number.isFinite(target) && target >= 0
-                        const outcome = validTarget ? (total >= target! ? `Sucesso contra DT ${target}: nega o dano completamente.` : `Falha contra DT ${target}: não evita o dano.`) : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
+                        const outcome = validTarget ? (total >= target! ? `Sucesso contra DT ${target}: nega o dano completamente.` : `Falha contra DT ${target}: não evita o dano.`) : 'Informe a DT do inimigo no campo ao lado das reações.'
                         setCombatActionResult(`Esquiva: ${diceDescription}; 1 + ${diceTotal} + Destreza (${bonus}) = ${total}. ${outcome}`)
                       } else {
                         setCombatActionResult(`${kind}: ${diceDescription}; 1 + ${diceTotal} + Combate (${bonus}) = ${total}.`)
@@ -3583,7 +3632,7 @@ onClick={() => {
                           setSheetDraft(JSON.stringify(next, null, 2))
                         }
                         return <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
-                          <h3 style={{marginTop:0}}>Progressão, classe e família</h3>
+                          <h3 style={{marginTop:0}}>Gerenciador de Família, Classe, Progressão e Atributos</h3>
                           <label style={labelStyle}>Sistema de progressão<select value={system} onChange={e=>write('progression.system',e.target.value)} style={inputStyle}><option value="Kisatsutai">Kisatsutai</option><option value="Personalizado">Personalizado</option></select></label>
                           {kisatsutai ? <>
                             <label style={{...labelStyle,display:'block',marginTop:12}}>Classe / hierarquia do caçador<select value={rankId} onChange={e=>changeRank(e.target.value)} style={inputStyle}>{KISATSUTAI_RANKS.map(entry=><option key={entry.id} value={entry.id}>{entry.group} · {entry.name}</option>)}</select></label>
@@ -3592,24 +3641,80 @@ onClick={() => {
                               <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
                             </div>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginTop:10}}>{field('progression.classSkillPoints','Pontos de perícias da classe')}{field('progression.classFocus','Foco adicional da classe')}{field('progression.extraAttributePoints','Pontos de atributos concedidos pela classe')}</div>
                             <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr','PR adicional')}</div></div>
                             <label style={{...labelStyle,display:'block',marginTop:12}}>Tier da família<select value={tierKey} onChange={e=>write('family.tier',e.target.value)} style={inputStyle}>{Object.entries(KISATSUTAI_FAMILY_TIERS).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}</select></label>
                             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(115px,1fr))',gap:8,marginTop:10}}>{[['PV',tier.pv],['PS',tier.ps],['PR',tier.pr],['Força',tier.strength],['Agilidade',tier.agility],['Defesa',tier.defense],['Respiração',tier.breathing],['Intelecto',tier.intellect],['Pontos base da família',tier.points],['Foco',tier.focus]].map(([label,value])=><div key={String(label)} style={{padding:9,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label}</small><div style={{fontSize:19,fontWeight:800}}>{value}</div></div>)}</div>
-                            <div style={{marginTop:14,padding:16,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:14,background:'linear-gradient(145deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)) 0%,var(--season-surface, var(--season-bg, #100e19)) 100%)',boxShadow:'0 8px 24px rgba(0,0,0,.16)'}}>
-                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}><div><strong style={{fontSize:15}}>Pontos da família</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',marginTop:3}}>Distribuição entre os cinco atributos principais</div></div><span style={{padding:'5px 10px',borderRadius:999,background:'var(--season-line, var(--season-surface-alt, #211c31))',color:'var(--season-on-primary, var(--season-bg, #100e19))',fontSize:11,fontWeight:700}}>TIER {tierKey}</span></div>
-                              {(()=>{const total=allocationPool('family');const spent=familyAllocationKeys.reduce((sum,key)=>sum+allocation('family',key),0);const remaining=Math.max(0,total-spent);const percent=total>0?Math.min(100,spent/total*100):0;return <><div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:9,marginTop:14}}>{[['Total',total],['Usados',spent],['Disponíveis',remaining]].map(([label,value],i)=><div key={String(label)} style={{padding:'11px 12px',borderRadius:10,background:i===2?'rgba(91,170,133,.13)':'rgba(255,255,255,.045)',border:'1px solid '+(i===2?'rgba(111,194,151,.35)':'var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 14%, transparent))')}}><small style={{color:'var(--season-muted, #b9b4c2)',fontSize:11}}>{label}</small><div style={{fontSize:25,fontWeight:800,lineHeight:1.25,marginTop:2,color:i===2?'#9de0b8':'#fff'}}>{value}</div></div>)}</div><div style={{height:7,background:'rgba(255,255,255,.09)',borderRadius:99,overflow:'hidden',marginTop:12}}><div style={{height:'100%',width:percent+'%',background:'linear-gradient(90deg,var(--season-secondary, var(--season-muted, #b9b4c2)),#70c49b)',borderRadius:99,transition:'width .2s'}}/></div></>})()}
-                              <small style={{display:'block',marginTop:10,color:'var(--season-muted, #b9b4c2)',lineHeight:1.5}}>Os pontos distribuíveis de Família, Classe e Progressão só podem ser alocados em FOR, AGI, DEF, RES e INT.</small>
-                            </div>
                             <div style={{marginTop:16,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
-                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de pontos</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Gerencie separadamente os pontos recebidos por cada origem.</p></div></div>
-                              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:12}}>
-                              {allocationSources.map(source=>{const pool=allocationPool(source);const sourceKeys=allocationKeysFor(source);const spent=sourceKeys.reduce((sum,key)=>sum+allocation(source,key),0);const remaining=pool-spent;const percent=pool>0?Math.min(100,spent/pool*100):0;const sourceName=source==='family'?'Família':source==='class'?'Classe':'Progressão';const accent=source==='family'?'var(--season-primary, var(--season-primary, #b49aff))':source==='class'?'#8fb8d8':'#91c9ad';return <div key={source} style={{minWidth:0,padding:14,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',borderRadius:14,background:'linear-gradient(155deg,rgba(255,255,255,.055),rgba(255,255,255,.018))'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}><div style={{display:'flex',alignItems:'center',gap:8}}><span style={{width:8,height:8,borderRadius:99,background:accent,boxShadow:'0 0 12px var(--season-glow)'}}/><strong style={{fontSize:14}}>{sourceName}</strong></div><span style={{fontSize:11,color:remaining>0?'#a8dfbd':'var(--season-muted, #b9b4c2)',fontWeight:700}}>{remaining} livres</span></div><div style={{display:'flex',alignItems:'baseline',gap:5,marginTop:13}}><strong style={{fontSize:27,lineHeight:1,color:'#fff'}}>{spent}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}> / {pool} pontos usados</span></div><div style={{height:6,background:'rgba(255,255,255,.09)',borderRadius:99,overflow:'hidden',marginTop:10}}><div style={{height:'100%',width:percent+'%',background:`linear-gradient(90deg,${accent},${accent}bb)`,borderRadius:99,transition:'width .2s'}}/></div><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:9,marginTop:14}}>{sourceKeys.map(key=>{const isSkill=['vigor','mental','combat','dexterity','resistance','ability'].includes(key);const base=numRaw(`${isSkill?'skills':'attributes'}.${key}`);const other=allocationSources.filter(item=>item!==source).reduce((sum,item)=>sum+allocation(item,key),0);const max=Math.max(0,(isSkill?12:5)-base-other);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'9px 10px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{allocationLabels[key]}</span><input type="number" min="0" max={Math.min(max,Math.max(0,pool-spent+allocation(source,key)))} value={allocation(source,key)} onChange={e=>{const wanted=Math.max(0,Math.min(Math.floor(Number(e.target.value)||0),max,pool-spent+allocation(source,key)));write(`progression.allocations.${source}.${key}`,wanted)}} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/></label>})}</div></div>})}
+                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Atributos</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos de Família, Hierarquia e Extras neste único gerenciador.</p></div></div>
+                              {(()=>{
+                                const distributablePool = allocationSources.reduce((sum, source) => sum + allocationPool(source), 0)
+                                const totalPool = distributablePool + familyTierMinimumTotal
+                                const spentTotal = familyTierMinimumTotal + familyAllocationKeys.reduce((sum, key) => sum + allocationSources.reduce((part, source) => part + allocation(source, key), 0), 0)
+                                const available = Math.max(0, totalPool - spentTotal)
+                                const percent = totalPool > 0 ? Math.min(100, spentTotal / totalPool * 100) : 0
+                                const setCombinedAllocation = (key: typeof familyAllocationKeys[number], rawValue: number) => {
+                                  const base = numRaw(`attributes.${key}`)
+                                  const lockedMinimum = familyTierMinimum(key)
+                                  const other = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                                  const requestedAllocation = Math.max(0, Math.floor(rawValue || 0) - lockedMinimum)
+                                  const maxByAttribute = Math.max(0, 5 - base - lockedMinimum)
+                                  const maxByPool = Math.max(0, distributablePool - (spentTotal - familyTierMinimumTotal) + other)
+                                  let left = Math.max(0, Math.min(requestedAllocation, maxByAttribute, maxByPool))
+                                  const next = { ...data, progression: { ...(data.progression || {}), allocations: { ...((data.progression || {}).allocations || {}) } } }
+                                  for (const source of allocationSources) {
+                                    const sourcePool = allocationPool(source)
+                                    const otherSpent = familyAllocationKeys.reduce((sum, item) => sum + allocation(source, item), 0) - allocation(source, key)
+                                    const capacity = Math.max(0, sourcePool - otherSpent)
+                                    const assigned = Math.min(left, capacity)
+                                    next.progression.allocations[source] = { ...((next.progression.allocations || {})[source] || {}), [key]: assigned }
+                                    if (source === 'extra' && next.progression.allocations.class) next.progression.allocations.class = { ...next.progression.allocations.class, [key]: 0 }
+                                    left -= assigned
+                                  }
+                                  setSheetDraft(JSON.stringify(next, null, 2))
+                                }
+                                return <div style={{padding:'16px 2px'}}>
+                                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                                    <div><strong style={{fontSize:15}}>Pontos para distribuir</strong><div style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',marginTop:3}}>Mínimo familiar bloqueado + pontos de Família, Hierarquia e Extras</div></div>
+                                    <span style={{fontSize:11,color:available>0?'#a8dfbd':'var(--season-muted, #b9b4c2)',fontWeight:700}}>{available} disponíveis</span>
+                                  </div>
+                                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10,marginTop:14}}>
+                                    {allocationSources.map((source,index)=>{
+                                      const labels: Record<typeof allocationSources[number],string> = {family:'Família',hierarchy:'Hierarquia',extra:'Extra'}
+                                      const pool = allocationPool(source)
+                                      const used = familyAllocationKeys.reduce((sum,key)=>sum+allocation(source,key),0)
+                                      const ratio = pool>0?Math.min(100,used/pool*100):0
+                                      const accents = ['#ff5575','#8bc8a7','#c2a0ed']
+                                      return <div key={source} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:'1px solid color-mix(in srgb, '+accents[index]+' 24%, transparent)'}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:accents[index],flex:'0 0 9px'}}/>{labels[source]}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div>
+                                        <div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div>
+                                        <div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:accents[index],borderRadius:99,transition:'width .2s'}}/></div>
+                                      </div>
+                                    })}
+                                  </div>
+                                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>
+                                    {familyAllocationKeys.map(key=>{
+                                      const allocated = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                                      const lockedMinimum = familyTierMinimum(key)
+                                      const current = allocated + lockedMinimum
+                                      const base = numRaw(`attributes.${key}`)
+                                      const other = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                                      const max = lockedMinimum + Math.max(0, Math.min(5 - base - lockedMinimum, distributablePool - (spentTotal - familyTierMinimumTotal) + other))
+                                      return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{allocationLabels[key]}{lockedMinimum>0&&<small style={{display:'block',fontWeight:500,color:'#9de0b8'}}>Mínimo familiar: +{lockedMinimum} (bloqueado)</small>}</span><input type="number" min={lockedMinimum} max={Math.max(lockedMinimum,max)} value={current} onChange={e=>setCombinedAllocation(key, Number(e.target.value))} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {base + current}/5</small></label>
+                                    })}
+                                  </div>
+                                  <small style={{display:'block',marginTop:11,color:'var(--season-muted, #b9b4c2)',lineHeight:1.5}}>Os bônus fixos de tier e hierarquia aparecem como mínimo bloqueado e não podem ser reduzidos.</small>
+                                </div>
+                              })()}
+                              <div style={{marginTop:14,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}>
+                                <label style={{...labelStyle,display:'block',margin:0}}>Pontos extras
+                                  <input type="number" min="0" step="1" value={numRaw('progression.manualExtraAttributePoints')} onChange={e=>write('progression.manualExtraAttributePoints',Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} />
+                                </label>
+                                <small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>Adicione aqui pontos de atributos concedidos por recompensas, eventos ou decisões do mestre. Eles serão somados à barra Extra.</small>
                               </div>
-                              <div style={{marginTop:14,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><div style={{fontSize:11,fontWeight:800,letterSpacing:1,color:'var(--season-primary, var(--season-primary, #b49aff))',textTransform:'uppercase',marginBottom:9}}>Pontos de perícia da progressão</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10}}>{field('progression.skillPoints','Pontos de perícias da progressão')}{field('progression.attributePoints','Pontos de atributos da progressão')}</div></div>
                             </div>
-                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Benefícios por grupo</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginTop:8}}>{field('progression.damageBase','Dano base da classe','text')}{field('progression.unlockedFlows','Fluxos desbloqueados','text')}{field('progression.formLevels','Níveis de formas','text')}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>Registre separadamente dano base, fluxos e níveis de formas. Esses campos não alteram automaticamente outros valores.</small></div>
-                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:12}}>Os benefícios de classe são referências totais do material. Preencha os bônus de status acima apenas quando confirmar os valores aplicáveis ao personagem; não some novamente benefícios já incorporados.</p>
+                            <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
+                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos de Hierarquia, Intelecto e Extras entre as perícias.</p></div></div>
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto aumenta um nível da perícia. Limite: 12 por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{(['hierarchy','intellect','extra'] as const).map((source,index)=>{const labels={hierarchy:'Hierarquia',intellect:'Intelecto',extra:'Extra'};const colors=['#8bc8a7','#8fb8d8','#c2a0ed'];const pool=skillPool(source);const used=skillTotalUsed(source);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${colors[index]}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:colors[index],flex:'0 0 9px'}}/>{labels[source]}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:colors[index]}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input type="number" min="0" max={12} value={extra} onChange={e=>setSkillAllocation(key,Number(e.target.value))} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/12</small></label>})}</div><small style={{display:'block',marginTop:11,color:'var(--season-muted, #b9b4c2)',lineHeight:1.5}}>Os bônus fixos de tier e hierarquia aparecem como mínimo bloqueado e não podem ser reduzidos.</small><div style={{marginTop:28,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><label style={{...labelStyle,display:'block',margin:0}}>Pontos extras<input type="number" min="0" step="1" value={numRaw('progression.manualExtraSkillPoints')} onChange={e=>write('progression.manualExtraSkillPoints',Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} /></label><small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>Adicione aqui pontos de perícia concedidos por recompensas, eventos ou decisões do mestre. Eles serão somados à barra Extra.</small></div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos para o distribuidor</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div></div>
                             <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button
   type="button"
   className="secondary-button"
@@ -3666,6 +3771,7 @@ onClick={() => {
                             {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
                             <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr','Bônus de PR')}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
                           </>}
+
                         </section>
                       })()}
                       {panel('1. Identidade', <>{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
@@ -3713,9 +3819,8 @@ onClick={() => {
 })}
 {field('identity.path','Caminho','text')}{field('identity.breathing','Respiração','text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>3. Atributos</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Valores-base do personagem. A Força é sincronizada com a capacidade de carga do inventário.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(155px,1fr))',gap:12}}>{field('attributes.strength','Força','number','Efetivo com família: '+strength+' · Capacidade: '+(10+2*strength)+' kg')}{field('attributes.agility','Agilidade','number','A cada 2 pontos: 1 Ação de Movimento; ímpar concede 1 Ação Extra.')}{field('attributes.defense','Defesa','number','Efetivo com família: '+defense+' · Cada ponto concede 1 Reação.')}{field('attributes.breathing','Respiração','number','Efetivo com família: '+breathing+' · Cada ponto concede +10 PR.')}{field('attributes.intellect','Intelecto','number','Efetivo com família: '+intellect+' · Cada ponto concede uma escolha de desenvolvimento.')}</div><div style={{marginTop:12,padding:12,borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))',color:'#eee'}}><strong>Capacidade de carga: {10+2*strength} kg</strong></div></div>
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>4. Perícias</h3><p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Cada ponto de Vigor concede +10 PV; Mental concede +10 PS; Habilidade concede +10 PR. Combate é usado nos ataques corpo a corpo e Destreza na esquiva.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>{field('skills.vigor','Vigor')}{field('skills.mental','Mental')}{field('skills.combat','Combate')}{field('skills.dexterity','Destreza')}{field('skills.resistance','Resistência')}{field('skills.ability','Habilidade')}</div><div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>Desenvolvimento por Intelecto</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>Para cada ponto de Intelecto, escolha entre receber 5 pontos para distribuir nas perícias principais ou evoluir um nível de treinamento em uma perícia extra.</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>Ponto {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value as 'main' | 'extra';write('skills.intelligenceChoices',next)}} style={inputStyle}><option value="main">5 pontos em perícias principais</option><option value="extra">+1 nível em perícia extra</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>Pontos para perícias principais: <strong>{mainPoints}</strong> · Níveis de treinamento extra: <strong>{extraLevels}</strong></div></div>{area('skills.main','Distribuição das perícias principais')}{area('skills.extra','Perícias extras')}{area('skills.training','Detalhes dos treinamentos')}</div>
-                      <div style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><h3 style={{marginTop:0}}>5. Combate</h3><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
+
+                      {panel('3. Combate', <><div style={{marginTop:14}}><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
   <small>DESLOCAMENTO</small>
 <div className="sheet-movement-values">
   <strong>
@@ -3731,10 +3836,10 @@ onClick={() => {
   </strong>
 </div>
   <small>Ações de Movimento × Destreza</small>
-</div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div>
+</div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
 
-                      {panel('6. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
-                      {panel('7. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
+                      {panel('4. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
+                      {panel('5. Habilidades & Respirações', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type','Tipo de respiração','text')}{area('breathing.forms','Formas de respiração')}{area('breathing.concentration','Técnica de concentração')}</>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary">
                         <header className="sheet-summary-header">
@@ -3893,12 +3998,18 @@ onClick={() => {
                           <div className="combat-action-grid">
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque bruto')}><span className="combat-action-icon">⚔</span><strong>Ataque Bruto</strong><small>1 + {strength}d20 + Combate</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque ágil')}><span className="combat-action-icon">➶</span><strong>Ataque Ágil</strong><small>1 + {agility}d20 + Combate</small></button>
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio')}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense}d20 + Constituição</small></button>
-                            <div className="combat-dodge-control"><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility}d20 + Destreza</small></button><label className="combat-dodge-target-inline" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label></div>
                           </div>
-                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">Será negado: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction) : '—'}</strong> · Será descontado dos PV: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.max(0, Number(blockIncomingDamage) - Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction)) : '—'}</strong></div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
+                          <div className="combat-reactions-section">
+                            <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
+                            <div className="combat-action-grid combat-reactions-grid">
+                              <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense}d20 + Constituição</small></button>
+                              <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility}d20 + Destreza</small></button>
+                              <button type="button" className="combat-action-card" onClick={()=>{const enemy=dodgeTarget.trim()===''?null:Number(dodgeTarget);const dt=combat+dexterity;const validEnemy=enemy!==null&&Number.isFinite(enemy)&&enemy>=0;setCombatActionResult(validEnemy?`Contra-ataque: resultado do inimigo ${enemy} ${enemy<dt?'<':'≥'} sua DT ${dt}. ${enemy<dt?'Contra-ataque bem-sucedido.':'Contra-ataque não sucedido.'}`:'Informe a DT do inimigo no campo ao lado das reações.' )}}><span className="combat-action-icon">↶</span><strong>Contra-ataque</strong><small>DT: {combat+dexterity}</small></button>
+                              <label className="combat-dodge-target-inline combat-reactions-dt-card" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label>
+                            </div>
+                          </div>
+                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">Será negado: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction) : '—'}</strong> · Será descontado dos PV: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.max(0, Number(blockIncomingDamage) - Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction)) : '—'}</strong></div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
                           <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p><strong>Contra-ataque</strong><span>O resultado do inimigo precisa ser menor que sua DT de Contra-ataque (valor do contra-ataque: {combat+dexterity}).</span></p></div></details>
-                          <div className="combat-counter-panel"><div><strong>Contra-ataque</strong><small>Sua DT na ficha: <b>{combat+dexterity}</b></small></div><label>Resultado do inimigo<input type="number" min="0" value={String(read('combat.enemyResult',0))} onChange={e=>write('combat.enemyResult',Math.max(0,Number(e.target.value)||0))} style={inputStyle}/></label><button type="button" className="combat-counter-button" onClick={()=>{const enemy=Number(read('combat.enemyResult',0))||0;const dt=combat+dexterity;setCombatActionResult(`Contra-ataque: resultado do inimigo ${enemy} ${enemy<dt?'<':'≥'} sua DT ${dt}. ${enemy<dt?'Contra-ataque bem-sucedido.':'Contra-ataque não sucedido.'}`)}}>Verificar</button></div>
                         </section>
                     </>
                     )
@@ -3951,7 +4062,10 @@ onClick={() => {
                             : 'O item será associado ao personagem selecionado.'}
                         </p>
                       </div>
-                      <span>{editingItem ? '✎' : '✧'}</span>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span>{editingItem ? '✎' : '✧'}</span>
+                        <button type="button" className="secondary-button" onClick={() => { resetItemForm(); setShowItemForm(false) }}>Fechar</button>
+                      </div>
                     </div>
 
                     <label>
@@ -4036,7 +4150,7 @@ onClick={() => {
                             <div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div>
                           </div>
                           <label>Nível inicial de escassez
-                            <select value={newScarcityLevel} onChange={event => setNewScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}>
+                            <select value={newScarcityLevel} disabled={newScarcityExhausted} onChange={event => setNewScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}>
                               <option value="1">Nível 1 — d12</option>
                               <option value="2">Nível 2 — d8</option>
                               <option value="3">Nível 3 — d6</option>
@@ -4045,10 +4159,10 @@ onClick={() => {
                           </label>
                           <div className="scarcity-level-preview">
                             <div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[newScarcityLevel]}</strong></div>
-                            <div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[newScarcityLevel]}</strong></div>
+                            <div><span>Carga</span><strong>{newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]}</strong></div>
                           </div>
                           <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
-                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => setNewScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
+                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} disabled={newScarcityExhausted} onChange={event => setNewScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
                         </section>
                       )}
 
@@ -4160,8 +4274,9 @@ onClick={() => {
     type="number"
     min="0"
     step="0.01"
-    value={newItemUnitPrice}
+    value={newScarcityExhausted && newItemCategories.includes('Consumíveis') ? '0' : newItemUnitPrice}
     onChange={event => setNewItemUnitPrice(event.target.value)}
+    disabled={newScarcityExhausted && newItemCategories.includes('Consumíveis')}
     placeholder="Ex.: 500"
   />
 </label>

@@ -9176,3 +9176,41 @@ button:disabled { opacity: .58; }
   line-height: 1;
   text-transform: none;
 }
+
+/* Separação visual entre ações e reações de combate */
+.combat-reactions-section{margin-top:22px;padding-top:18px;border-top:1px solid color-mix(in srgb,var(--season-primary,#b49aff) 22%,transparent)}
+.combat-reactions-heading{margin-bottom:13px}
+.combat-reactions-heading h3{margin:4px 0 5px;color:var(--season-primary,#b49aff);font:800 24px Manrope,sans-serif;letter-spacing:-.6px}
+.combat-reactions-heading p{margin:0;color:var(--season-muted,#b9b4c2);font-size:13px}
+.combat-reactions-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:900px){.combat-reactions-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.combat-reactions-grid{grid-template-columns:1fr}}
+
+/* Reações: três botões uniformes e DT ao lado, como quarto elemento da mesma linha. */
+.combat-reactions-grid{grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch}
+.combat-reactions-grid>.combat-action-card{width:100%;min-width:0;min-height:126px;padding:14px}
+.combat-reactions-grid>.combat-reactions-dt-card{box-sizing:border-box;flex:initial;width:100%;min-width:0;min-height:126px;padding:14px}
+@media(max-width:900px){.combat-reactions-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:560px){.combat-reactions-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.combat-reactions-grid>.combat-action-card{padding:11px;min-height:112px}.combat-reactions-grid>.combat-action-card strong{font-size:12px}.combat-reactions-grid>.combat-action-card small{font-size:10px}.combat-reactions-grid>.combat-reactions-dt-card{padding:11px;min-height:112px}.combat-reactions-grid>.combat-reactions-dt-card input{font-size:16px}}
+
+.combat-block-damage-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.combat-block-damage-close {
+  border: 1px solid var(--line, rgba(255,255,255,.14));
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: .82rem;
+}
+
+.combat-block-damage-close:hover {
+  background: var(--surface-alt, rgba(255,255,255,.07));
+}
