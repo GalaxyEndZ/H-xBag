@@ -1,3 +1,4 @@
+
 // Regras e cálculos específicos do sistema Kisatsutai.
 
 import type {
@@ -29,7 +30,13 @@ export function calculateKisatsutaiCombatRoll(
   )
 
   const total = 1 + diceTotal + input.bonus
-  const critical = input.kind === 'Bloqueio' && dice.includes(20)
+
+  const criticalThreshold = Math.min(
+    20,
+    Math.max(1, Math.floor(input.criticalThreshold ?? 20))
+  )
+
+  const critical = dice.some(value => value >= criticalThreshold)
 
   const validTarget =
     input.target !== undefined &&
@@ -62,11 +69,13 @@ export function calculateKisatsutaiCombatRoll(
   } else if (input.kind === 'Esquiva') {
     succeeded = validTarget ? total >= input.target! : null
 
-    outcome = !validTarget
-      ? 'Informe a DT do inimigo no campo ao lado das reações.'
-      : succeeded
-        ? `Sucesso contra DT ${input.target}: nega o dano completamente.`
-        : `Falha contra DT ${input.target}: não evita o dano.`
+    outcome = critical
+      ? 'Crítico: evita o dano completamente.'
+      : !validTarget
+        ? 'Informe a DT do inimigo no campo ao lado das reações.'
+        : succeeded
+          ? `Sucesso contra DT ${input.target}: nega o dano completamente.`
+          : `Falha contra DT ${input.target}: não evita o dano.`
   }
 
   return {

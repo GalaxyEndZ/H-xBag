@@ -1,3 +1,4 @@
+
 /**
  * Temas de temporada do HäxBag.
  *
@@ -111,22 +112,61 @@ export const seasonThemes = {
     line: '#404249',
     onPrimary: '#ffffff',
   },
-
-  /*
-   * MODELO PARA NOVOS TEMAS
-   *
-   * bosque_sombrio: {
-   *   label: 'Bosque Sombrio',
-   *   primary: '#78b88a',
-   *   secondary: '#315c40',
-   *   glow: 'rgba(120,184,138,.20)',
-   *   bg: '#0b120e',
-   *   surface: '#142019',
-   *   surfaceAlt: '#1d3024',
-   *   line: '#385744',
-   *   onPrimary: '#ffffff',
-   * },
-   */
+  rosa_de_ferro: {
+    label: 'Rosa de Ferro',
+    primary: '#ff4fd8',
+    secondary: '#c026a8',
+    glow: 'rgba(255, 55, 210, .25)',
+    bg: '#0d080f',
+    surface: '#1b1020',
+    surfaceAlt: '#2b1730',
+    line: '#71345f',
+    onPrimary: '#1a0816',
+  },
+  flower_city: {
+    label: 'Flower City',
+    primary: '#ff4fd8',
+    secondary: '#00d9ff',
+    glow: 'rgba(255, 55, 220, .25)',
+    bg: '#080b16',
+    surface: '#111629',
+    surfaceAlt: '#1a2440',
+    line: '#344b75',
+    onPrimary: '#160817',
+  },
+  validade_programada: {
+    label: 'Validade Programada',
+    primary: '#b56aff',
+    secondary: '#397bff',
+    glow: 'rgba(157, 83, 255, .25)',
+    bg: '#0b0818',
+    surface: '#17112a',
+    surfaceAlt: '#251b40',
+    line: '#503b7d',
+    onPrimary: '#ffffff',
+  },
+  matrix: {
+    label: 'Matrix',
+    primary: '#39ff88',
+    secondary: '#00b86b',
+    glow: 'rgba(40, 255, 130, .22)',
+    bg: '#070d0b',
+    surface: '#101b16',
+    surfaceAlt: '#192a21',
+    line: '#315c45',
+    onPrimary: '#06140c',
+  },
+  brasas: {
+    label: 'Brasas',
+    primary: '#ff873d',
+    secondary: '#e33b52',
+    glow: 'rgba(255, 105, 50, .23)',
+    bg: '#100909',
+    surface: '#1d1213',
+    surfaceAlt: '#2c1b1c',
+    line: '#694044',
+    onPrimary: '#1a0905',
+  },
 } satisfies Record<string, SeasonTheme>
 
 export type SeasonThemeKey = keyof typeof seasonThemes

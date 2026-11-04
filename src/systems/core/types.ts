@@ -1,4 +1,3 @@
-
 // Estruturas comuns utilizadas por todos os sistemas de RPG.
 
 export interface FamilyTier {
@@ -35,6 +34,7 @@ export interface CombatRollInput {
   attribute: number
   bonus: number
   target?: number | null
+  criticalThreshold?: number
   rollDie: () => number
 }
 
@@ -48,7 +48,6 @@ export interface CombatRollResult {
   damageReduction: number | null
   outcome: string
 }
-
 
 export type SkillPointKey =
   | 'vigor'

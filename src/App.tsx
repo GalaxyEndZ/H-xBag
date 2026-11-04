@@ -139,12 +139,28 @@ function App() {
   )
   const activeSystem = getSystemByName(selectedCampaign?.system_name)
   const isKisatsutaiSystem = activeSystem?.id === 'kisatsutai'
-  const isCyberFlowerSystem = activeSystem?.id === 'cyberflower'
-  const resourceAbbreviation = isKisatsutaiSystem ? 'PR' : 'PM'
-  const resourceName = isKisatsutaiSystem ? 'Respiração' : 'Mana'
+  const normalizedSystemName = String(selectedCampaign?.system_name ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+  const isCyberFlowerSystem = normalizedSystemName.includes('cyberflower')
+
+  const resourceAbbreviation = isKisatsutaiSystem
+    ? 'PR'
+    : isCyberFlowerSystem
+      ? 'PE'
+      : 'PM'
+
+  const resourceName = isKisatsutaiSystem
+    ? 'Respiração'
+    : isCyberFlowerSystem
+      ? 'Eletrização'
+      : 'Mana'
+
   const resourcePointsLabel = isKisatsutaiSystem
     ? 'Pontos de Respiração (PR)'
-    : 'Pontos de Mana (PM)'
+    : isCyberFlowerSystem
+      ? 'Pontos de Eletrização (PE)'
+      : 'Pontos de Mana (PM)'
 
   const systemRanks = activeSystem?.data?.ranks ?? []
   const systemArchetypes = activeSystem?.data?.archetypes ?? []
@@ -2000,7 +2016,30 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
       setError('Não foi possível atualizar a participação porque os dados da ficha estão inválidos. Salve ou corrija a edição primeiro.')
       return
     }
-    parsed = { ...parsed, seasonParticipation: participates }
+    const persistedCombat =
+  sheet?.sheet_data?.combat &&
+  typeof sheet.sheet_data.combat === 'object' &&
+  !Array.isArray(sheet.sheet_data.combat)
+    ? sheet.sheet_data.combat as Record<string, unknown>
+    : {}
+
+const draftCombat =
+  parsed.combat &&
+  typeof parsed.combat === 'object' &&
+  !Array.isArray(parsed.combat)
+    ? parsed.combat as Record<string, unknown>
+    : {}
+
+parsed = {
+  ...parsed,
+  seasonParticipation: participates,
+  combat: {
+    ...draftCombat,
+    ...(persistedCombat.initiative !== undefined
+      ? { initiative: persistedCombat.initiative }
+      : {}),
+  },
+}
     setSheetSaving(true)
     setError('')
     if (sheet) {
@@ -2026,6 +2065,123 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     setSheetSaving(false)
   }
 
+  async function saveCharacterInitiative(total: number) {
+    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) {
+      setError('Não foi possível registrar a iniciativa: ficha sem permissão de edição.')
+      return
+    }
+
+    setSheetSaving(true)
+    setError('')
+    setNotice('')
+
+    try {
+      // Busca a versão mais recente para preservar os dados da ficha.
+      const { data: latest, error: loadError } = await supabase
+        .from('character_sheets')
+        .select('id,character_id,season_id,sheet_data')
+        .eq('character_id', selectedCharacterId)
+        .eq('season_id', selectedSeasonId)
+        .maybeSingle()
+
+      if (loadError) {
+        throw new Error(`Não foi possível consultar a ficha: ${loadError.message}`)
+      }
+
+      let baseData: Record<string, any> = {}
+
+      if (latest?.sheet_data && typeof latest.sheet_data === 'object' && !Array.isArray(latest.sheet_data)) {
+        baseData = latest.sheet_data as Record<string, any>
+      } else {
+        const parsed: unknown = JSON.parse(sheetDraft)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          throw new Error('A ficha precisa ser um objeto JSON válido.')
+        }
+        baseData = parsed as Record<string, any>
+      }
+
+      const currentCombat =
+        baseData.combat && typeof baseData.combat === 'object' && !Array.isArray(baseData.combat)
+          ? baseData.combat
+          : {}
+
+      const nextData = {
+        ...baseData,
+        combat: {
+          ...currentCombat,
+          initiative: total,
+        },
+      }
+
+      let savedSheet: CharacterSheet
+
+      if (latest) {
+        const { data, error: updateError } = await supabase
+          .from('character_sheets')
+          .update({ sheet_data: nextData })
+          .eq('id', latest.id)
+          .select('id,character_id,season_id,sheet_data')
+          .single()
+
+        if (updateError || !data) {
+          throw new Error(`Não foi possível salvar a iniciativa: ${updateError?.message ?? 'resposta vazia'}`)
+        }
+
+        savedSheet = data as CharacterSheet
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('character_sheets')
+          .insert({
+            character_id: selectedCharacterId,
+            season_id: selectedSeasonId,
+            sheet_data: nextData,
+            created_by: session!.user.id,
+          })
+          .select('id,character_id,season_id,sheet_data')
+          .single()
+
+        if (insertError || !data) {
+          throw new Error(`Não foi possível criar a ficha com a iniciativa: ${insertError?.message ?? 'resposta vazia'}`)
+        }
+
+        savedSheet = data as CharacterSheet
+      }
+
+      setSheet(savedSheet)
+
+      setSheetDraft(previous => {
+        try {
+          const draft = JSON.parse(previous)
+          const draftCombat =
+            draft.combat && typeof draft.combat === 'object' && !Array.isArray(draft.combat)
+              ? draft.combat
+              : {}
+
+          return JSON.stringify({
+            ...draft,
+            combat: {
+              ...draftCombat,
+              initiative: total,
+            },
+          }, null, 2)
+        } catch {
+          return JSON.stringify(nextData, null, 2)
+        }
+      })
+
+      setMasterShieldSheets(current => ({
+        ...current,
+        [selectedCharacterId]: nextData,
+      }))
+
+      setNotice(`Iniciativa registrada: ${total}.`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao registrar a iniciativa.')
+    } finally {
+      setSheetSaving(false)
+    }
+  }
+
   async function saveCharacterSheet() {
     if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
     let parsed: Record<string, unknown>
@@ -2047,6 +2203,20 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
         ? draftStatus.current as Record<string, unknown>
         : {}
 
+const persistedCombat =
+  sheet.sheet_data.combat &&
+  typeof sheet.sheet_data.combat === 'object' &&
+  !Array.isArray(sheet.sheet_data.combat)
+    ? sheet.sheet_data.combat as Record<string, unknown>
+    : {}
+
+const draftCombat =
+  parsed.combat &&
+  typeof parsed.combat === 'object' &&
+  !Array.isArray(parsed.combat)
+    ? parsed.combat as Record<string, unknown>
+    : {}
+
       parsed = {
         ...parsed,
         status: {
@@ -2055,6 +2225,12 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
             ...draftCurrent,
             ...persistedCurrent,
           },
+        },
+        combat: {
+          ...draftCombat,
+          ...(persistedCombat.initiative !== undefined
+            ? { initiative: persistedCombat.initiative }
+            : {}),
         },
       }
     }
@@ -3436,7 +3612,7 @@ onClick={() => {
                       }
                       const current = data.status?.current ?? {}
                       const stats = ([['PV',maxes.pv],['PS',maxes.ps],[resourceAbbreviation,maxes.pr]] as const).map(([key,max]) => {
-                        const id=(key === 'PM' ? 'pr' : key.toLowerCase()) as 'pv'|'ps'|'pr'
+                        const id = key === 'PV' ? 'pv' : key === 'PS' ? 'ps' : 'pr'
                         const rawValue=n(current[id] ?? max)
                         // PV pode ultrapassar o máximo normal; PS e PR continuam limitados.
                         const value=Math.max(0,key==='PV'?rawValue:Math.min(max,rawValue))
@@ -3447,6 +3623,87 @@ onClick={() => {
                     })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
                   </div>
                 </div>
+                                {masterShieldSeasonId && !masterShieldLoading && (
+                  <div style={{
+                    marginTop: 22,
+                    padding: 16,
+                    border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))',
+                    borderRadius: 14,
+                    background: 'var(--season-surface-alt, #211c31)',
+                  }}>
+                    <h3 style={{ marginTop: 0 }}>⚡ Iniciativa da party</h3>
+
+                    {characters.filter(character =>
+                      masterShieldSheets[character.id]?.seasonParticipation === true
+                    ).length === 0 ? (
+                      <p className="master-shield-empty">
+                        Nenhum personagem participa desta temporada.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {characters
+                          .filter(character =>
+                            masterShieldSheets[character.id]?.seasonParticipation === true
+                          )
+                          .sort((a, b) => {
+                            const aRaw = masterShieldSheets[a.id]?.combat?.initiative
+                            const bRaw = masterShieldSheets[b.id]?.combat?.initiative
+
+                            const aHas = aRaw !== null && aRaw !== undefined && aRaw !== '' && Number.isFinite(Number(aRaw))
+                            const bHas = bRaw !== null && bRaw !== undefined && bRaw !== '' && Number.isFinite(Number(bRaw))
+
+                            if (aHas && !bHas) return -1
+                            if (!aHas && bHas) return 1
+                            if (!aHas && !bHas) return a.name.localeCompare(b.name)
+
+                            return Number(bRaw) - Number(aRaw)
+                          })
+                          .map((character, index) => {
+                            const raw = masterShieldSheets[character.id]?.combat?.initiative
+                            const hasInitiative = raw !== null &&
+                              raw !== undefined &&
+                              raw !== '' &&
+                              Number.isFinite(Number(raw))
+
+                            return (
+                              <div
+                                key={character.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: 12,
+                                  padding: '12px 14px',
+                                  borderRadius: 10,
+                                  border: '1px solid var(--season-line, #393044)',
+                                  background: 'var(--season-surface, #100e19)',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <strong style={{
+                                    color: 'var(--season-primary, #b49aff)',
+                                    minWidth: 24,
+                                  }}>
+                                    {index + 1}º
+                                  </strong>
+                                  <span>{character.emoji ? `${character.emoji} ` : ''}{character.name}</span>
+                                </div>
+
+                                <strong style={{
+                                  fontSize: 20,
+                                  color: hasInitiative
+                                    ? 'var(--season-primary, #b49aff)'
+                                    : 'var(--season-muted, #b9b4c2)',
+                                }}>
+                                  {hasInitiative ? Number(raw) : 'Não rolou'}
+                                </strong>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
             </section>
           )}
@@ -3545,8 +3802,67 @@ onClick={() => {
                     // Pontos extras de atributos concedidos por graduação, conforme benefícios explicitamente documentados.
                     // Graduações sem quantidade definida no material não concedem pontos automáticos aqui.
                     const rankIdForAttributes = String(read('progression.rankId', ''))
+
                     const rankIdForStatus = rankIdForAttributes
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
+                    const rankAttributePoints = (() => {
+                      const benefits = findSystemRank(rankIdForStatus)?.benefits || ''
+                      const match = benefits.match(/(\d+) pontos? de atributos?/i)
+                      return Number(match?.[1] || 0)
+                    })()
+                    const allocationPool = (source: typeof allocationSources[number]) => {
+                      if (source === 'family') {
+                        return usesFamilyTiers ? Math.max(0, familyTier?.points ?? 0) : 0
+                      }
+
+                      if (source === 'hierarchy') {
+                        return rankAttributePoints
+                      }
+
+                      return (
+                        numRaw('progression.extraAttributePoints') +
+                        numRaw('progression.attributePoints') +
+                        numRaw('progression.manualExtraAttributePoints')
+                      )
+                    }
+
+                    const attributeTotalUsed = (source: typeof allocationSources[number]) =>
+                      familyAllocationKeys.reduce(
+                        (sum, key) => sum + allocation(source, key),
+                        0
+                      )
+
+                    const setAttributeAllocation = (
+                      source: typeof allocationSources[number],
+                      key: typeof familyAllocationKeys[number],
+                      value: number
+                    ) => {
+                      const current = allocation(source, key)
+                      const otherUsed = attributeTotalUsed(source) - current
+                      const available = Math.max(0, allocationPool(source) - otherUsed)
+
+                      const otherSourcesUsed = allocationSources
+                        .filter(entry => entry !== source)
+                        .reduce((sum, entry) => sum + allocation(entry, key), 0)
+
+                      const familyBonus = usesFamilyTiers
+                        ? getSystemAttributeBonus(familyTierKey, key)
+                        : 0
+
+                      const baseValue = numRaw(`attributes.${key}`)
+                      const maximum = Math.max(
+                        0,
+                        5 - baseValue - familyBonus - otherSourcesUsed
+                      )
+
+                      const wanted = Math.min(
+                        available,
+                        maximum,
+                        Math.max(0, Math.floor(Number(value) || 0))
+                      )
+
+                      write(`progression.allocations.${source}.${key}`, wanted)
+                    }
                     const skillPointConfig = activeSystem?.data?.skillPoints
                     const maxSkillLevel = Math.max(1, Math.floor(skillPointConfig?.maxPerSkill ?? 12))
                     const num = (path: string) => {
@@ -3714,82 +4030,123 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                     const physicalProtection = equippedProtection.filter(item => item.metadata?.protectionMode !== 'sanidade').reduce((sum, item) => sum + Math.floor(resistance * protectionFraction(item)), 0)
                     const sanityProtection = equippedProtection.filter(item => item.metadata?.protectionMode === 'sanidade').reduce((sum, item) => sum + Math.floor(mental * protectionFraction(item)), 0)
                     const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
-                    const rollD20 = () => Math.floor(Math.random()*20)+1
-                    const performCombatRoll = (
-                      kind: 'Ataque bruto' | 'Ataque ágil' | 'Bloqueio' | 'Esquiva',
-                      dodgeDt?: string
-                    ) => {
-                      const actionConfig = activeSystem?.data?.combatActions?.[kind]
+                    const rollD20 = () => Math.floor(Math.random() * 20) + 1
 
-                      const calculateCombatRoll = systemLogic?.calculateCombatRoll
+const performCombatRoll = (
+  kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Bloqueio' | 'Esquiva',
+  dodgeDt?: string
+) => {
+  const dt = combat + dexterity
 
-                      if (!actionConfig || !calculateCombatRoll) {
-                        setBlockDamageReduction(null)
-                        setCombatActionResult(
-                          `O sistema ${activeSystem?.name ?? 'selecionado'} ainda não possui uma configuração de combate para esta ação.`
-                        )
-                        return 0
-                      }
+  const constitution =
+    Number(read('attributes.constitution', 0)) || resistance + vigor
 
-                      const readCombatValue = (path: string) => {
-                        const value = Number(read(path, 0))
+  const attribute =
+    kind === 'Ataque bruto' ? strength :
+    kind === 'Ataque ágil' || kind === 'Esquiva' ? agility :
+    kind === 'Ataque especial' ? resistance :
+    defense
 
-                        if (
-                          path === 'attributes.constitution' &&
-                          (!Number.isFinite(value) || value === 0)
-                        ) {
-                          return resistance + vigor
-                        }
+  const bonus =
+    kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
+    kind === 'Ataque especial' ? ability :
+    kind === 'Bloqueio' ? constitution :
+    dexterity
 
-                        return Number.isFinite(value) ? value : 0
-                      }
+  const diceCount = 1 + Math.max(0, Math.floor(attribute))
+  const dice = Array.from({ length: diceCount }, () => rollD20())
+  const highest = Math.max(...dice)
+  const total = highest + bonus
 
-                      const attribute = readCombatValue(actionConfig.attribute)
-                      const bonus = readCombatValue(actionConfig.bonus)
+  const diceDescription =
+    `${diceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
 
-                      const target =
-                        dodgeDt !== undefined && dodgeDt.trim() !== ''
-                          ? Number(dodgeDt)
-                          : null
+  if (kind === 'Bloqueio') {
+    const critical = highest === 20
 
-                      const result = calculateCombatRoll({
-                        kind,
-                        attribute,
-                        bonus,
-                        target,
-                        rollDie: rollD20,
-                      })
+    const outcome = critical
+      ? 'Crítico: nega 100% do dano.'
+      : total >= dt
+        ? 'Sucesso: nega 50% do dano.'
+        : 'Falha: nega 25% do dano.'
 
-                      const diceDescription =
-                        `${result.diceCount}d20 = [${result.dice.join(', ')}] (soma ${result.diceTotal})`
+    setBlockIncomingDamage('')
+    setBlockDamageReduction(
+      critical ? null : total >= dt ? 0.5 : 0.25
+    )
 
-                      if (kind === 'Bloqueio') {
-                        setBlockIncomingDamage('')
-                        setBlockDamageReduction(result.damageReduction)
-                      }
+    setCombatActionResult(
+      `Bloqueio: ${diceDescription} + Constituição (${bonus}) = ${total}. ${outcome}`
+    )
+  } else if (kind === 'Esquiva') {
+    const target =
+      dodgeDt !== undefined && dodgeDt.trim() !== ''
+        ? Number(dodgeDt)
+        : null
 
-                      setCombatActionResult(
-                        `${kind}: ${diceDescription}; 1 + ${result.diceTotal} + ${actionConfig.bonusLabel} (${bonus}) = ${result.total}. ${result.outcome}`
-                      )
+    const validTarget =
+      target !== null &&
+      Number.isFinite(target) &&
+      target >= 0
 
-                      return result.total
-                    }
-                    const applyBlockedDamage = () => {
+    const outcome = validTarget
+      ? total >= target!
+        ? `Sucesso contra DT ${target}: nega o dano completamente.`
+        : `Falha contra DT ${target}: não evita o dano.`
+      : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
+
+    setBlockDamageReduction(null)
+
+    setCombatActionResult(
+      `Esquiva: ${diceDescription} + Destreza (${bonus}) = ${total}. ${outcome}`
+    )
+  } else {
+    setBlockDamageReduction(null)
+
+    const bonusName =
+      kind === 'Ataque especial' ? 'Habilidade' : 'Combate'
+
+    setCombatActionResult(
+      `${kind}: ${diceDescription} + ${bonusName} (${bonus}) = ${total}.`
+    )
+  }
+
+  return total
+}
+                                        const applyBlockedDamage = () => {
                       const incoming = Number(blockIncomingDamage)
+
                       if (!Number.isFinite(incoming) || incoming < 0 || blockDamageReduction === null) {
                         setError('Informe um dano inimigo válido (zero ou maior).')
                         return
                       }
-                      const prevented = Math.floor(incoming * blockDamageReduction)
-                      const remaining = incoming - prevented
+
+                      // Redução proporcionada pela reação.
+                      const reactionPrevented = Math.floor(incoming * blockDamageReduction)
+                      const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
+
+                      // Redução proporcionada pela armadura e pelas proteções.
+                      const armorReduction = armorCovers(physicalDamageType)
+                        ? armorResistance
+                        : 0
+
+                      const totalArmorProtection = armorReduction + physicalProtection
+                      const armorPrevented = Math.min(damageAfterReaction, totalArmorProtection)
+                      const remaining = Math.max(0, damageAfterReaction - armorPrevented)
+
                       const currentStatus = data.status && typeof data.status === 'object' && !Array.isArray(data.status)
-                        ? data.status as Record<string, any> : {}
+                        ? data.status as Record<string, any>
+                        : {}
+
                       const currentValues = currentStatus.current && typeof currentStatus.current === 'object'
-                        ? currentStatus.current as Record<string, any> : {}
+                        ? currentStatus.current as Record<string, any>
+                        : {}
+
                       const maxPV = Number(derived[0][1]) || 0
                       const currentPVValue = Number(currentValues.pv ?? maxPV)
                       const currentPV = Number.isFinite(currentPVValue) ? Math.max(0, currentPVValue) : maxPV
                       const nextPV = Math.max(0, currentPV - remaining)
+
                       const next = {
                         ...data,
                         status: {
@@ -3802,9 +4159,16 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                           },
                         },
                       }
+
                       setSheetDraft(JSON.stringify(next, null, 2))
                       void saveCharacterConditions(next)
-                      setCombatActionResult(previous => `${previous} Dano recebido: ${incoming}. Dano negado: ${prevented}. Dano aplicado aos PV: ${remaining}. PV restantes: ${nextPV}.`)
+
+                      const totalPrevented = reactionPrevented + armorPrevented
+
+                      setCombatActionResult(
+                        previous => `${previous} Dano recebido: ${incoming}. Dano negado pela reação: ${reactionPrevented}. Dano reduzido pela armadura e proteções: ${armorPrevented}. Redução total: ${totalPrevented}. Dano aplicado aos PV: ${remaining}. PV restantes: ${nextPV}.`
+                      )
+
                       setBlockDamageReduction(null)
                       setBlockIncomingDamage('')
                       setError('')
@@ -4077,6 +4441,84 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                             <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr',`Bônus de ${resourceAbbreviation}`)}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
                           </>}
 
+                          {allocationSources.some(source => allocationPool(source) > 0) && <>
+                            <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
+                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}>
+                                <div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div>
+                                <div>
+                                  <div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div>
+                                  <strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Atributos</strong>
+                                  <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos disponíveis entre os atributos.</p>
+                                </div>
+                              </div>
+
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto aumenta um nível do atributo. Limite: 5 por atributo.</p>
+
+                              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>
+                                {allocationSources.map(source=>{
+                                  const pool=allocationPool(source)
+                                  const used=attributeTotalUsed(source)
+                                  const ratio=pool>0?Math.min(100,used/pool*100):0
+                                  const sourceInfo={
+                                    family:{label:'Família',color:'#d5a6ff'},
+                                    hierarchy:{label:'Hierarquia',color:'#e8bd75'},
+                                    extra:{label:'Extras',color:'#75c9ee'},
+                                  }[source]
+
+                                  return (
+                                    <div key={source} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${sourceInfo.color}44`}}>
+                                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}>
+                                        <strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}>
+                                          <span style={{width:9,height:9,borderRadius:'50%',background:sourceInfo.color,flex:'0 0 9px'}}/>
+                                          {sourceInfo.label}
+                                        </strong>
+                                        <small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small>
+                                      </div>
+                                      <div style={{display:'flex',alignItems:'baseline',gap:5}}>
+                                        <strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong>
+                                        <span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span>
+                                      </div>
+                                      <div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}>
+                                        <div style={{height:'100%',width:ratio+'%',background:sourceInfo.color}}/>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+
+                              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>
+                                {familyAllocationKeys.map(key=>{
+                                  const current=num(`attributes.${key}`)
+                                  const extra=allocationSources.reduce((sum,source)=>sum+allocation(source,key),0)
+
+                                  return (
+                                    <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}>
+                                      <span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{({strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:resourceName,intellect:'Intelecto'})[key]}</span>
+                                      <input type="number" min="0" max={5} value={extra} onChange={e=>{
+                                        const wanted=Math.max(0,Math.min(5,Math.floor(Number(e.target.value)||0)))
+                                        const currentTotal=allocationSources.reduce((sum,source)=>sum+allocation(source,key),0)
+                                        let remaining=Math.max(0,wanted-(currentTotal-extra))
+                                        const nextValues: Record<string,number>={}
+
+                                        for(const source of allocationSources){
+                                          const otherUsed=familyAllocationKeys.reduce((sum,item)=>sum+(item===key?0:allocation(source,item)),0)
+                                          const capacity=Math.max(0,allocationPool(source)-otherUsed)
+                                          const assigned=Math.min(remaining,capacity)
+                                          nextValues[source]=assigned
+                                          remaining-=assigned
+                                        }
+
+                                        for(const source of allocationSources){
+                                          setAttributeAllocation(source,key,nextValues[source])
+                                        }
+                                      }} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/>
+                                      <small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/5</small>
+                                    </label>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </>}
                           {systemFeatures?.usesSkillPoints && <>
                             <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
                               <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>{skillPointConfig?.description || 'Distribua os pontos disponíveis entre as perícias.'}</p></div></div>
@@ -4147,10 +4589,35 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
   </strong>
 </div>
   <small>Ações de Movimento × Destreza</small>
-</div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat+dexterity}</div><small>Combate + Destreza</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
+</div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat + armorDexterity}</div>
+<small>Combate + Destreza de Armadura</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
 
                       {panel('4. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
-                      {panel(isKisatsutaiSystem ? '5. Habilidades & Respirações' : '5. Habilidades & Mana', <>{area('abilities.archetype','Habilidades do arquétipo')}{area('abilities.path','Habilidades do caminho')}{area('abilities.conditions','Condições')}{field('breathing.type',isKisatsutaiSystem ? 'Tipo de respiração' : 'Tipo de mana','text')}{area('breathing.forms',isKisatsutaiSystem ? 'Formas de respiração' : 'Formas de mana')}{area('breathing.concentration',isKisatsutaiSystem ? 'Técnica de concentração' : 'Técnica de concentração de mana')}</>)}
+{panel(
+  isKisatsutaiSystem
+    ? '5. Habilidades & Respirações'
+    : isCyberFlowerSystem
+      ? '5. Habilidades & Eletrização'
+      : '5. Habilidades & Mana',
+  <>
+    {area('abilities.archetype', 'Habilidades do arquétipo')}
+    {area('abilities.path', 'Habilidades do caminho')}
+    {area('abilities.conditions', 'Condições')}
+    {field(
+      'breathing.type',
+      isKisatsutaiSystem ? 'Tipo de respiração' : isCyberFlowerSystem ? 'Tipo de eletrização' : 'Tipo de mana',
+      'text'
+    )}
+    {area(
+      'breathing.forms',
+      isKisatsutaiSystem ? 'Formas de respiração' : isCyberFlowerSystem ? 'Formas de eletrização' : 'Formas de mana'
+    )}
+    {area(
+      'breathing.concentration',
+      isKisatsutaiSystem ? 'Técnica de concentração' : isCyberFlowerSystem ? 'Técnica de concentração de eletrização' : 'Técnica de concentração de mana'
+    )}
+  </>
+)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary">
                         <header className="sheet-summary-header">
@@ -4331,24 +4798,114 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                         <section className="combat-actions-panel">
                           <div className="combat-actions-heading"><div><span className="combat-eyebrow">TURNO DO PERSONAGEM</span><h3>Ações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div><div className="combat-d20-mark">D20</div></div>
                           <div className="combat-action-grid">
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque bruto')}><span className="combat-action-icon">⚔</span><strong>Ataque Bruto</strong><small>1 + {strength}d20 + Combate</small></button>
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Ataque ágil')}><span className="combat-action-icon">➶</span><strong>Ataque Ágil</strong><small>1 + {agility}d20 + Combate</small></button>
-                            <button type="button" className="combat-action-card" onClick={()=>{const diceCount=Math.max(0,Math.floor(resistance));const rolls=Array.from({length:diceCount},()=>rollD20());const diceTotal=rolls.reduce((sum,value)=>sum+value,0);const total=1+diceTotal+ability;setBlockDamageReduction(null);setCombatActionResult(`Ataque especial: ${diceCount}d20 = [${rolls.join(', ') || 'sem dados'}] (soma ${diceTotal}); 1 + ${diceTotal} + Habilidade (${ability}) = ${total}.`);}}><span className="combat-action-icon">✦</span><strong>Ataque Especial</strong><small>1 + {resistance}d20 + Habilidade</small></button>
+                            <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque bruto')}>
+                              <span className="combat-action-icon">⚔</span>
+                              <strong>Ataque Bruto</strong>
+                              <small>{1 + strength}D20 + Combate ({combat})</small>
+                            </button>
+
+                            <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque ágil')}>
+                              <span className="combat-action-icon">➶</span>
+                              <strong>Ataque Ágil</strong>
+                              <small>{1 + agility}D20 + Combate ({combat})</small>
+                            </button>
+
+                            <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
+                              <span className="combat-action-icon">✦</span>
+                              <strong>Ataque Especial</strong>
+                              <small>{1 + resistance}D20 + Habilidade ({ability})</small>
+                            </button>
                           </div>
                           <div className="combat-complementary-section">
                             <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares do personagem.</p></div>
                             <div className="combat-action-grid combat-complementary-grid">
-                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();setBlockDamageReduction(null);setCombatActionResult(`Iniciativa: 1d20 = ${roll}.`);}}><span className="combat-action-icon">⚡</span><strong>Iniciativa</strong><small>1d20</small></button>
-                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();const total=1+roll+combat;setBlockDamageReduction(null);setCombatActionResult(`Manobra de luta: 1d20 = ${roll}; 1 + ${roll} + Combate (${combat}) = ${total}.`);}}><span className="combat-action-icon">⚔</span><strong>Manobra de Luta</strong><small>1 + 1d20 + Combate ({combat})</small></button>
-                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();const total=1+roll+resistance;setBlockDamageReduction(null);setCombatActionResult(`Teste de resistência física: 1d20 = ${roll}; 1 + ${roll} + Resistência (${resistance}) = ${total}.`);}}><span className="combat-action-icon">⛨</span><strong>Resistência Física</strong><small>1 + 1d20 + Resistência ({resistance})</small></button>
-                              <button type="button" className="combat-action-card" onClick={()=>{const roll=rollD20();const total=1+roll+mental;setBlockDamageReduction(null);setCombatActionResult(`Teste de sanidade: 1d20 = ${roll}; 1 + ${roll} + Mental (${mental}) = ${total}.`);}}><span className="combat-action-icon">◈</span><strong>Teste de Sanidade</strong><small>1 + 1d20 + Mental ({mental})</small></button>
+                              <button
+                                type="button"
+                                className="combat-action-card"
+                                onClick={() => {
+                                  const diceCount = 1
+                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
+                                  const highest = Math.max(...rolls)
+                                  const total = highest + dexterity
+
+                                  setBlockDamageReduction(null)
+                                  setCombatActionResult(
+                                    `Iniciativa: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Destreza (${dexterity}) = ${total}.`
+                                  )
+                                  void saveCharacterInitiative(total)
+                                }}
+                              >
+                                <span className="combat-action-icon">⚡</span>
+                                <strong>Iniciativa</strong>
+                                <small>1D20 + Destreza ({dexterity})</small>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="combat-action-card"
+                                onClick={() => {
+                                  const diceCount = 1 + Math.max(0, Math.floor(strength))
+                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
+                                  const highest = Math.max(...rolls)
+                                  const total = highest + vigor
+
+                                  setBlockDamageReduction(null)
+                                  setCombatActionResult(
+                                    `Manobra de Luta: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Vigor (${vigor}) = ${total}.`
+                                  )
+                                }}
+                              >
+                                <span className="combat-action-icon">⚔</span>
+                                <strong>Manobra de Luta</strong>
+                                <small>{1 + strength}D20 + Vigor ({vigor})</small>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="combat-action-card"
+                                onClick={() => {
+                                  const diceCount = 1 + Math.max(0, Math.floor(defense))
+                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
+                                  const highest = Math.max(...rolls)
+                                  const total = highest + resistance
+
+                                  setBlockDamageReduction(null)
+                                  setCombatActionResult(
+                                    `Resistência Física: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Resistência (${resistance}) = ${total}.`
+                                  )
+                                }}
+                              >
+                                <span className="combat-action-icon">⛨</span>
+                                <strong>Resistência Física</strong>
+                                <small>{1 + defense}D20 + Resistência ({resistance})</small>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="combat-action-card"
+                                onClick={() => {
+                                  const diceCount = 1 + Math.max(0, Math.floor(intellect))
+                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
+                                  const highest = Math.max(...rolls)
+                                  const total = highest + mental
+
+                                  setBlockDamageReduction(null)
+                                  setCombatActionResult(
+                                    `Teste de Sanidade: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Mental (${mental}) = ${total}.`
+                                  )
+                                }}
+                              >
+                                <span className="combat-action-icon">◈</span>
+                                <strong>Teste de Sanidade</strong>
+                                <small>{1 + intellect}D20 + Mental ({mental})</small>
+                              </button>
                             </div>
                           </div>
                           <div className="combat-reactions-section">
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
-                              <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense}d20 + Constituição</small></button>
-                              <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility}d20 + Destreza</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense} D20 (maior) + Constituição</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility} D20 (maior) + Destreza</small></button>
                               <button
                                 type="button"
                                 className="combat-action-card"
@@ -4403,7 +4960,10 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                             </div>
                           </div>
                           <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">Será negado: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction) : '—'}</strong> · Será descontado dos PV: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.max(0, Number(blockIncomingDamage) - Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction)) : '—'}</strong></div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
-                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1d20, sem atributo ou perícia adicional.</span></p><p><strong>Manobra de Luta</strong><span>1 + 1d20 + Combate.</span></p><p><strong>Resistência Física</strong><span>1 + 1d20 + Resistência.</span></p><p><strong>Teste de Sanidade</strong><span>1 + 1d20 + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p>
+                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza. Habilidades podem conceder D20 adicionais.</span></p>
+<p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
+<p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
+<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p>
   <strong>Contra-ataque</strong>
   <span>
     O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
