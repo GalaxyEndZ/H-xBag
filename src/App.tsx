@@ -238,6 +238,11 @@ function App() {
   const [currencyBalances, setCurrencyBalances] = useState<Record<string, number>>({})
   const [currencyAmount, setCurrencyAmount] = useState('')
   const [currencyDescription, setCurrencyDescription] = useState('')
+  const [currencyAdjustmentId, setCurrencyAdjustmentId] = useState('')
+  const [conversionFromId, setConversionFromId] = useState('')
+  const [conversionToId, setConversionToId] = useState('')
+  const [conversionAmount, setConversionAmount] = useState('')
+
   const [currencyActionLoading, setCurrencyActionLoading] = useState(false)
   const [currencyLoading, setCurrencyLoading] = useState(false)
   const [showCurrencyHistory, setShowCurrencyHistory] = useState(false)
@@ -297,6 +302,7 @@ function App() {
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
+  const [seasonOrderSaving, setSeasonOrderSaving] = useState(false)
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
   const activeTheme = seasonThemes[activeThemeKey]
@@ -310,6 +316,7 @@ function App() {
   const [combatActionResult, setCombatActionResult] = useState<string>('')
   const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
   const [blockIncomingDamage, setBlockIncomingDamage] = useState('')
+  const [blockPhysicalDamageType, setBlockPhysicalDamageType] = useState<'cortante_perfurante' | 'especial_bruto'>('cortante_perfurante')
   const [physicalDamageType, setPhysicalDamageType] = useState<'cortante_perfurante' | 'especial_bruto'>('cortante_perfurante')
   const [physicalDamageAmount, setPhysicalDamageAmount] = useState('')
   const [sanityDamageAmount, setSanityDamageAmount] = useState('')
@@ -320,7 +327,7 @@ function App() {
 
   const [activePage, setActivePage] = useState<
   'sheets' | 'characters' | 'campaigns' | 'shops' | 'master-shield'
->('campaigns')
+>('sheets')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
@@ -1673,7 +1680,10 @@ async function saveEditedCampaignCurrency() {
 async function handleCurrencyAdjustment(action: 'add' | 'remove') {
   if (!selectedCharacterId || !selectedCampaign || currencyActionLoading) return
 
-  const currency = selectedCampaign.currency_config?.currencies?.[0]
+  const currencies = selectedCampaign.currency_config?.currencies ?? []
+  const currency = currencies.find(
+    item => item.id === (currencyAdjustmentId || currencies[0]?.id),
+  )
 
   if (!currency) {
     setError('Esta campanha ainda não possui moedas configuradas.')
@@ -1719,6 +1729,76 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
       ? 'Dinheiro adicionado à carteira!'
       : 'Dinheiro retirado da carteira!',
   )
+
+  if (showCurrencyHistory) {
+    await loadCurrencyHistory()
+  }
+
+  setCurrencyActionLoading(false)
+}
+
+async function handleCurrencyConversion() {
+  if (!selectedCharacterId || !selectedCampaign || currencyActionLoading) return
+
+  const currencies = selectedCampaign.currency_config?.currencies ?? []
+  const fromCurrency = currencies.find(currency => currency.id === conversionFromId)
+  const toCurrency = currencies.find(currency => currency.id === conversionToId)
+  const amount = Number(conversionAmount.replace(',', '.'))
+
+  if (!fromCurrency || !toCurrency) {
+    setError('Selecione as moedas de origem e destino.')
+    return
+  }
+
+  if (fromCurrency.id === toCurrency.id) {
+    setError('Escolha duas moedas diferentes.')
+    return
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    setError('Informe um valor válido e maior que zero.')
+    return
+  }
+
+  if ((currencyBalances[fromCurrency.id] ?? 0) < amount) {
+    setError(`Saldo insuficiente em ${fromCurrency.name}.`)
+    return
+  }
+
+  setCurrencyActionLoading(true)
+  setError('')
+  setNotice('')
+
+  const { data, error: conversionError } = await supabase.rpc(
+    'convert_character_currency',
+    {
+      p_character_id: selectedCharacterId,
+      p_from_currency_id: fromCurrency.id,
+      p_to_currency_id: toCurrency.id,
+      p_amount: amount,
+    },
+  )
+
+  if (conversionError) {
+    setError(`Não foi possível converter as moedas: ${conversionError.message}`)
+    setCurrencyActionLoading(false)
+    return
+  }
+
+  setCurrencyBalances(current => ({
+    ...current,
+    [fromCurrency.id]: Number(data.from_balance),
+    [toCurrency.id]: Number(data.to_balance),
+  }))
+
+  setConversionAmount('')
+  setNotice(
+    `Conversão realizada! ${amount.toLocaleString('pt-BR')} ${fromCurrency.name} → ${Number(data.amount_received).toLocaleString('pt-BR')} ${toCurrency.name}.`,
+  )
+
+  if (showCurrencyHistory) {
+    await loadCurrencyHistory()
+  }
 
   setCurrencyActionLoading(false)
 }
@@ -1831,19 +1911,55 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     }
 
     let campaignToUse = campaign
+
+    const selectedSystem = getSystemByName(campaign.system_name)
+    const hasDefaultCurrency =
+      selectedSystem?.data?.features?.hasDefaultCurrency === true
+
     if (
-      getSystemByName(campaign.system_name)?.data?.features?.hasDefaultCurrency === true &&
+      hasDefaultCurrency &&
       !(campaign.currency_config?.currencies?.length)
     ) {
-      const defaultCurrencyConfig = createSystemDefaultCurrencyConfig()
-      const { data: updatedCampaign, error: currencyInitError } = await supabase
-        .from('campaigns')
-        .update({ currency_config: defaultCurrencyConfig })
-        .eq('id', newCampaignId)
-        .select('id, name, description, system_name, currency_config, created_by')
-        .single()
+      const defaultCurrencyConfig =
+        selectedSystem.id === 'ciclos'
+          ? {
+              currencies: [
+                {
+                  id: 'imperial',
+                  name: 'Imperial',
+                  symbol: '₰',
+                  conversionRate: 1,
+                },
+                {
+                  id: 'astra',
+                  name: 'Astra',
+                  symbol: '₳',
+                  conversionRate: 0.1,
+                },
+                {
+                  id: 'arkanis',
+                  name: 'Arkanis',
+                  symbol: 'ø',
+                  conversionRate: 0.01,
+                },
+              ],
+            }
+          : createSystemDefaultCurrencyConfig()
+
+      const { data: updatedCampaign, error: currencyInitError } =
+        await supabase
+          .from('campaigns')
+          .update({ currency_config: defaultCurrencyConfig })
+          .eq('id', newCampaignId)
+          .select(
+            'id, name, description, system_name, currency_config, created_by',
+          )
+          .single()
+
       if (currencyInitError || !updatedCampaign) {
-        setError(`Campanha criada, mas não foi possível configurar o Iene automaticamente: ${currencyInitError?.message ?? 'erro desconhecido'}. Você pode adicioná-lo nas configurações de moedas.`)
+        setError(
+          `Campanha criada, mas não foi possível configurar as moedas automaticamente: ${currencyInitError?.message ?? 'erro desconhecido'}. Você pode adicioná-las nas configurações de moedas.`,
+        )
       } else {
         campaignToUse = updatedCampaign
       }
@@ -1920,6 +2036,48 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
       setInviteLoading(false)
     }
   }
+
+
+async function deleteCampaign(campaign: Campaign) {
+  if (campaign.role !== 'master') {
+    setError('Apenas o mestre pode excluir esta campanha.')
+    return
+  }
+
+  const confirmation = window.prompt(
+    `Esta ação é irreversível e apagará todos os dados da campanha "${campaign.name}".\n\nDigite o nome da campanha para confirmar:`
+  )
+
+  if (confirmation === null) return
+
+  if (confirmation.trim() !== campaign.name) {
+    setError('O nome digitado não corresponde ao nome da campanha. Exclusão cancelada.')
+    return
+  }
+
+  setError('')
+  setNotice('')
+
+  const { error: deleteError } = await supabase.rpc('delete_campaign', {
+    p_campaign_id: campaign.id,
+  })
+
+  if (deleteError) {
+    setError(`Não foi possível excluir a campanha: ${deleteError.message}`)
+    return
+  }
+
+  setCampaigns(current =>
+    current.filter(entry => entry.id !== campaign.id)
+  )
+
+  if (selectedCampaignId === campaign.id) {
+    setSelectedCampaignId('')
+  }
+
+  setNotice(`Campanha "${campaign.name}" excluída com sucesso.`)
+}
+
 
   async function joinCampaignWithInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -2006,6 +2164,102 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
     if (updateError || !data) { setError(`Não foi possível mudar o status: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`)
   }
+
+async function moveSeason(seasonId: string, direction: -1 | 1) {
+  if (!isMaster || seasonOrderSaving) return
+
+  const orderedSeasons = [...seasons].sort(
+    (a, b) => a.season_number - b.season_number
+  )
+
+  const currentIndex = orderedSeasons.findIndex(
+    season => season.id === seasonId
+  )
+
+  const targetIndex = currentIndex + direction
+
+  if (
+    currentIndex < 0 ||
+    targetIndex < 0 ||
+    targetIndex >= orderedSeasons.length
+  ) return
+
+  const currentSeason = orderedSeasons[currentIndex]
+  const targetSeason = orderedSeasons[targetIndex]
+  const temporaryNumber =
+    Math.max(0, ...orderedSeasons.map(season => season.season_number)) + 1
+
+  setSeasonOrderSaving(true)
+  setError('')
+  setNotice('')
+
+  const firstUpdate = await supabase
+    .from('campaign_seasons')
+    .update({ season_number: temporaryNumber })
+    .eq('id', currentSeason.id)
+
+  if (firstUpdate.error) {
+    setError(`Não foi possível alterar a ordem: ${firstUpdate.error.message}`)
+    setSeasonOrderSaving(false)
+    return
+  }
+
+  const secondUpdate = await supabase
+    .from('campaign_seasons')
+    .update({ season_number: currentSeason.season_number })
+    .eq('id', targetSeason.id)
+
+  if (secondUpdate.error) {
+    await supabase
+      .from('campaign_seasons')
+      .update({ season_number: currentSeason.season_number })
+      .eq('id', currentSeason.id)
+
+    setError(`Não foi possível alterar a ordem: ${secondUpdate.error.message}`)
+    setSeasonOrderSaving(false)
+    return
+  }
+
+  const thirdUpdate = await supabase
+    .from('campaign_seasons')
+    .update({ season_number: targetSeason.season_number })
+    .eq('id', currentSeason.id)
+
+  if (thirdUpdate.error) {
+    await supabase
+      .from('campaign_seasons')
+      .update({ season_number: targetSeason.season_number })
+      .eq('id', targetSeason.id)
+
+    await supabase
+      .from('campaign_seasons')
+      .update({ season_number: currentSeason.season_number })
+      .eq('id', currentSeason.id)
+
+    setError(`Não foi possível concluir a alteração: ${thirdUpdate.error.message}`)
+    setSeasonOrderSaving(false)
+    return
+  }
+
+  setSeasons(current =>
+    current
+      .map(season => {
+        if (season.id === currentSeason.id) {
+          return { ...season, season_number: targetSeason.season_number }
+        }
+
+        if (season.id === targetSeason.id) {
+          return { ...season, season_number: currentSeason.season_number }
+        }
+
+        return season
+      })
+      .sort((a, b) => a.season_number - b.season_number)
+  )
+
+  setNotice('Ordem das temporadas atualizada!')
+  setSeasonOrderSaving(false)
+}
 
   async function toggleSeasonParticipation(participates: boolean) {
     if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet || sheetSaving) return
@@ -2750,7 +3004,11 @@ async function deleteCharacter(character: Character) {
     setUsingScarcityItemId(item.id)
     const { data, error: updateError } = await supabase
       .from('inventory_items')
-      .update({ metadata: nextMetadata, ...(exhausted ? { unit_price: 0 } : {}) })
+.update({
+  metadata: nextMetadata,
+  weight: nextMetadata.scarcityCharge,
+  ...(exhausted ? { unit_price: 0 } : {}),
+})
       .eq('id', item.id)
       .eq('character_id', item.character_id)
       .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
@@ -2845,7 +3103,11 @@ async function deleteCharacter(character: Character) {
     if ((!selectedCharacterId && !editingItem) || !newItemName.trim()) return
 
     const quantity = Number(newItemQuantity)
-    const weight = Number(newItemWeight.replace(',', '.'))
+const chargeByLevel: Record<number, number> = { 1: 7, 2: 5, 3: 3, 4: 1 }
+
+const weight = newItemCategories.includes('Consumíveis')
+  ? (newScarcityExhausted ? 0 : chargeByLevel[Number(newScarcityLevel)] ?? 1)
+  : Number(newItemWeight.replace(',', '.'))
 
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
       setError('A quantidade deve ser um número inteiro entre 1 e 999.')
@@ -3957,14 +4219,6 @@ onClick={() => {
                     <p style={{color:'var(--season-muted, #b9b4c2)',margin:0}}>Consulte os dados calculados da ficha. As alterações ficam concentradas no modo de edição.</p>
                     {canEditSelectedSheet && (
   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-    <button
-      className="primary-button"
-      type="button"
-      onClick={()=>setEditingSheet(value=>!value)}
-    >
-      {editingSheet?'Fechar edição':'Editar ficha'}
-    </button>
-
     {editingSheet && (
       <button
         className="primary-button"
@@ -3975,6 +4229,14 @@ onClick={() => {
         {sheetSaving?'Salvando…':'Salvar ficha'}
       </button>
     )}
+
+    <button
+      className="primary-button"
+      type="button"
+      onClick={()=>setEditingSheet(value=>!value)}
+    >
+      {editingSheet?'Fechar edição':'Editar ficha'}
+    </button>
   </div>
 )}
                   </div>
@@ -4222,6 +4484,7 @@ const counterAttackDT = counterAttackAttribute + counterAttackBonus
                     const physicalProtection = equippedProtection.filter(item => item.metadata?.protectionMode !== 'sanidade').reduce((sum, item) => sum + Math.floor(resistance * protectionFraction(item)), 0)
                     const sanityProtection = equippedProtection.filter(item => item.metadata?.protectionMode === 'sanidade').reduce((sum, item) => sum + Math.floor(mental * protectionFraction(item)), 0)
                     const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
+                    const criticalValue = Math.max(1, Math.min(20, Math.floor(num('combat.critical') || 20)))
                     const rollD20 = () => Math.floor(Math.random() * 20) + 1
 
 const performCombatRoll = (
@@ -4274,7 +4537,7 @@ const performCombatRoll = (
     : `${diceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
 
   if (kind === 'Bloqueio') {
-    const critical = highest === 20
+    const critical = highest >= criticalValue
 
     const outcome = critical
       ? 'Crítico: nega 100% do dano.'
@@ -4303,7 +4566,7 @@ setBlockDamageReduction(
 
     const outcome = validTarget
       ? total >= target!
-        ? `Sucesso contra DT ${target}: nega o dano completamente.`
+        ? `Sucesso contra DT ${target}: nega 100% do dano.`
         : `Falha contra DT ${target}: não evita o dano.`
       : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
 
@@ -4340,7 +4603,7 @@ setBlockDamageReduction(
                       const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
 
                       // Redução proporcionada pela armadura e pelas proteções.
-                      const armorReduction = armorCovers(physicalDamageType)
+                      const armorReduction = armorCovers(blockPhysicalDamageType)
                         ? armorResistance
                         : 0
 
@@ -4912,7 +5175,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 {field('identity.path','Caminho','text')}{field('identity.breathing',resourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
-                      {panel('3. Combate', <><div style={{marginTop:14}}><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico','text')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
+                      {panel('3. Combate', <><div style={{marginTop:14}}><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
   <small>DESLOCAMENTO</small>
 <div className="sheet-movement-values">
   <strong>
@@ -5281,7 +5544,34 @@ const dt = counterAttackDT
                               <label className="combat-dodge-target-inline combat-reactions-dt-card" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label>
                             </div>
                           </div>
-                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">
+                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && blockDamageReduction !== 1 && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div>{blockDamageReduction !== 1 && (
+<label htmlFor="combat-incoming-damage-type">
+
+  Categoria do dano recebido
+  <select
+    id="combat-incoming-damage-type"
+    value={blockPhysicalDamageType}
+    onChange={event => setBlockPhysicalDamageType(event.target.value as 'cortante_perfurante' | 'especial_bruto')}
+  >
+    <option value="cortante_perfurante">Cortante e perfurante</option>
+    <option value="especial_bruto">Especial e bruto</option>
+  </select>
+</label>
+)}
+{blockDamageReduction !== 1 && (
+  <label htmlFor="combat-incoming-damage">
+    Dano total do inimigo
+    <input
+      id="combat-incoming-damage"
+      type="number"
+      min="0"
+      step="1"
+      value={blockIncomingDamage}
+      onChange={event => setBlockIncomingDamage(event.target.value)}
+      placeholder="Informe o dano recebido"
+    />
+  </label>
+)}<div className="combat-block-damage-preview">
   {(() => {
     const incoming = Number(blockIncomingDamage)
 
@@ -5296,7 +5586,7 @@ const dt = counterAttackDT
     const reactionPrevented = Math.floor(incoming * blockDamageReduction)
     const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
 
-    const armorReduction = armorCovers(physicalDamageType)
+    const armorReduction = armorCovers(blockPhysicalDamageType)
       ? armorResistance
       : 0
 
@@ -5317,7 +5607,7 @@ const dt = counterAttackDT
                           <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza. Habilidades podem conceder D20 adicionais.</span></p>
 <p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
 <p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
-<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega o dano completamente.</span></p><p>
+<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega 100% do dano.</span></p><p>
   <strong>Contra-ataque</strong>
   <span>
     O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
@@ -5491,7 +5781,13 @@ counterAttackDT
                             <div><span>Carga</span><strong>{newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]}</strong></div>
                           </div>
                           <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
-                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} disabled={newScarcityExhausted} onChange={event => setNewScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
+                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => {
+  const exhausted = event.target.checked
+  setNewScarcityExhausted(exhausted)
+  setNewItemWeight(
+    String(exhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
+  )
+}} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
                         </section>
                       )}
 
@@ -5579,22 +5875,33 @@ counterAttackDT
                         />
                       </label>
 
-                      <label>
-                        Peso por unidade (kg)
-                        <input
-                          type="number"
-                          min="0"
-                          max="100000"
-                          step="0.1"
-                          value={newItemWeight}
-                          onChange={(event) => setNewItemWeight(event.target.value)}
-                          disabled={getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null}
-                          required
-                        />
-                        <small>{getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
-                          ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
-                          : 'Informe o peso por unidade deste item.'}</small>
-                      </label>
+<label>
+  Peso por unidade (kg)
+  <input
+    type="number"
+    min="0"
+    max="100000"
+    step="0.1"
+    value={
+      newItemCategories.includes('Consumíveis')
+        ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
+        : newItemWeight
+    }
+    onChange={(event) => setNewItemWeight(event.target.value)}
+    disabled={
+      newItemCategories.includes('Consumíveis') ||
+      getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+    }
+    required
+  />
+  <small>
+    {newItemCategories.includes('Consumíveis')
+      ? 'Peso definido automaticamente pela carga restante do consumível.'
+      : getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+        ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
+        : 'Informe o peso por unidade deste item.'}
+  </small>
+</label>
                     </div>
 
 <label>
@@ -5814,14 +6121,22 @@ style={{cursor:'pointer'}}>
 {canAccessSelectedCharacter && selectedCampaign?.currency_config?.currencies?.length && (
   <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
     <style>{`
-      .currency-wallet > .inventory-heading { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
-      .currency-wallet > .currency-balances-grid { grid-column: 1; width: 100%; min-width: 0; align-self: stretch; }
+      .currency-wallet > .inventory-heading,
+      .currency-wallet > .currency-tabs,
+      .currency-wallet > .currency-history-page { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+      .currency-wallet > .currency-balances-grid { grid-column: 1 / -1; width: 100%; min-width: 0; align-self: stretch; }
+      .currency-wallet > .currency-conversion-panel { grid-column: 1; width: 100%; min-width: 0; align-self: stretch; }
       .currency-wallet > .currency-actions { grid-column: 2; width: 100%; min-width: 0; align-self: stretch; }
+      .currency-wallet > p { grid-column: 2; }
       @media (max-width: 760px) {
         .currency-wallet { grid-template-columns: minmax(0, 1fr) !important; }
         .currency-wallet > .inventory-heading,
+        .currency-wallet > .currency-tabs,
         .currency-wallet > .currency-balances-grid,
-        .currency-wallet > .currency-actions { grid-column: 1 !important; }
+        .currency-wallet > .currency-conversion-panel,
+        .currency-wallet > .currency-actions,
+        .currency-wallet > .currency-history-page,
+        .currency-wallet > p { grid-column: 1 !important; }
       }
       .currency-wallet .currency-balance { min-width: 0; }
       .currency-wallet .currency-actions input { max-width: 100%; }
@@ -6018,6 +6333,184 @@ style={{cursor:'pointer'}}>
     border-radius: 18px !important;
   }
 }
+
+/* ===== ACABAMENTO VISUAL DA CARTEIRA ===== */
+.currency-wallet {
+  gap: 0 18px;
+  padding: clamp(16px, 2.4vw, 26px) !important;
+  border-color: var(--season-line, rgba(255,255,255,.14)) !important;
+  background:
+    radial-gradient(ellipse at 4% 0%, var(--season-accent-soft, rgba(220,135,65,.16)), transparent 38%),
+    linear-gradient(145deg, var(--season-surface, rgba(20,18,25,.97)), var(--season-surface-alt, rgba(255,255,255,.025))) !important;
+}
+
+.currency-wallet > .inventory-heading {
+  margin-bottom: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+.currency-wallet .currency-tabs {
+  display: inline-flex;
+  justify-self: start;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 20px;
+  padding: 5px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.12));
+  border-radius: 14px;
+  background: var(--season-bg, rgba(0,0,0,.16));
+}
+
+.currency-wallet .currency-tab {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--season-muted, #aaa);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.currency-wallet .currency-tab.active {
+  border-color: var(--season-line, rgba(255,255,255,.12));
+  background: var(--season-accent-soft, rgba(220,135,65,.16));
+  color: var(--season-text, inherit);
+  box-shadow: 0 3px 12px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.currency-wallet .currency-balances-grid {
+  gap: 12px !important;
+  margin-bottom: 20px !important;
+}
+
+.currency-wallet .currency-balance {
+  min-height: 142px !important;
+  padding: 18px !important;
+  border-color: var(--season-line, rgba(255,255,255,.13)) !important;
+  background:
+    radial-gradient(circle at 100% 0%, var(--season-accent-soft, rgba(220,135,65,.17)), transparent 58%),
+    linear-gradient(145deg, var(--season-surface-alt, rgba(255,255,255,.065)), var(--season-surface, rgba(0,0,0,.12))) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 10px 24px rgba(0,0,0,.13) !important;
+}
+
+.currency-wallet .currency-balance > strong {
+  font-size: clamp(26px, 3vw, 34px) !important;
+  line-height: 1.05 !important;
+}
+
+.currency-wallet .currency-conversion-panel,
+.currency-wallet .currency-actions {
+  align-self: stretch;
+  min-width: 0;
+  padding: clamp(16px, 2vw, 21px) !important;
+  border: 1px solid var(--season-line, rgba(255,255,255,.13)) !important;
+  border-radius: 19px !important;
+  background:
+    linear-gradient(145deg, var(--season-surface-alt, rgba(255,255,255,.055)), var(--season-surface, rgba(0,0,0,.12))) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 12px 26px rgba(0,0,0,.12) !important;
+}
+
+.currency-wallet .currency-conversion-panel h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px !important;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.currency-wallet .currency-conversion-panel label,
+.currency-wallet .currency-actions label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: var(--season-muted, #aaa);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .045em;
+}
+
+.currency-wallet .currency-conversion-panel input,
+.currency-wallet .currency-conversion-panel select,
+.currency-wallet .currency-actions input,
+.currency-wallet .currency-actions select {
+  width: 100%;
+  min-width: 0;
+  min-height: 45px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--season-line, rgba(255,255,255,.16)) !important;
+  border-radius: 11px !important;
+  background: var(--season-bg, rgba(0,0,0,.2)) !important;
+  color: var(--season-text, inherit) !important;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: normal;
+}
+
+.currency-wallet .currency-conversion-panel button,
+.currency-wallet .currency-actions button {
+  min-height: 43px;
+  border-radius: 11px !important;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.currency-wallet .currency-conversion-panel button {
+  width: 100%;
+  border: 1px solid var(--season-line, rgba(255,255,255,.18));
+  background: var(--season-accent-soft, rgba(220,135,65,.17));
+  color: var(--season-text, inherit);
+}
+
+.currency-wallet .currency-actions {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.currency-wallet .currency-actions .currency-buttons {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px !important;
+  margin-top: 2px;
+}
+
+.currency-wallet .currency-actions .currency-action-add,
+.currency-wallet .currency-actions .currency-action-remove {
+  justify-content: center;
+  min-width: 0;
+  padding: 10px 9px !important;
+}
+
+.currency-wallet .currency-history-page {
+  padding: clamp(14px, 2vw, 22px);
+  border: 1px solid var(--season-line, rgba(255,255,255,.13));
+  border-radius: 19px;
+  background: var(--season-surface-alt, rgba(255,255,255,.035));
+}
+
+.currency-wallet .currency-history-summary,
+.currency-wallet .currency-history-entry {
+  border-color: var(--season-line, rgba(255,255,255,.12));
+}
+
+@media (max-width: 760px) {
+  .currency-wallet .currency-tabs { width: 100%; }
+  .currency-wallet .currency-tab { flex: 1; }
+  .currency-wallet .currency-actions .currency-buttons { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .currency-wallet *,
+  .currency-wallet *::before,
+  .currency-wallet *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
     `}</style>
     <div className="inventory-heading" style={{position:'relative',alignItems:'center',gap:16,marginBottom:24,paddingBottom:18,borderBottom:'1px solid var(--season-line,rgba(255,255,255,.12))'}}>
       <div style={{display:'flex',alignItems:'center',gap:14}}>
@@ -6069,12 +6562,191 @@ style={{cursor:'pointer'}}>
       ))}
     </div>
 
+    <div
+      className="currency-conversion-panel"
+      style={{
+        width: '100%',
+        boxSizing: 'border-box',
+        display: 'grid',
+        gap: 16,
+        marginBottom: 20,
+        padding: 20,
+        borderRadius: 18,
+        border: '1px solid var(--season-line,rgba(255,255,255,.12))',
+        background: 'var(--season-surface-alt,rgba(255,255,255,.035))',
+      }}
+    >
+      <div>
+        <h4 style={{ margin: '0 0 5px', fontSize: 16 }}>⇄ Converter moedas</h4>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--season-muted,#aaa)' }}>
+          Converta seus saldos entre as moedas da campanha.
+        </p>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,190px),1fr))',
+        gap: 12,
+        alignItems: 'end',
+      }}>
+        <label style={{ display: 'grid', gap: 7, fontSize: 12, fontWeight: 700 }}>
+          MOEDA DE ORIGEM
+          <select
+            value={conversionFromId}
+            onChange={event => setConversionFromId(event.target.value)}
+            style={{
+              width: '100%',
+              minHeight: 46,
+              padding: '10px 12px',
+              borderRadius: 12,
+              border: '1px solid var(--season-line,rgba(255,255,255,.16))',
+              background: 'var(--season-surface,rgba(0,0,0,.16))',
+              color: 'var(--season-text,inherit)',
+            }}
+          >
+            <option value="">Selecione</option>
+            {selectedCampaign.currency_config.currencies.map(currency => (
+              <option key={currency.id} value={currency.id}>
+                {currency.name} ({currency.symbol})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: 'grid', gap: 7, fontSize: 12, fontWeight: 700 }}>
+          MOEDA DE DESTINO
+          <select
+            value={conversionToId}
+            onChange={event => setConversionToId(event.target.value)}
+            style={{
+              width: '100%',
+              minHeight: 46,
+              padding: '10px 12px',
+              borderRadius: 12,
+              border: '1px solid var(--season-line,rgba(255,255,255,.16))',
+              background: 'var(--season-surface,rgba(0,0,0,.16))',
+              color: 'var(--season-text,inherit)',
+            }}
+          >
+            <option value="">Selecione</option>
+            {selectedCampaign.currency_config.currencies.map(currency => (
+              <option key={currency.id} value={currency.id}>
+                {currency.name} ({currency.symbol})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: 'grid', gap: 7, fontSize: 12, fontWeight: 700 }}>
+          QUANTIDADE A CONVERTER
+          <input
+            type="number"
+            min="0.01"
+            step="any"
+            value={conversionAmount}
+            onChange={event => setConversionAmount(event.target.value)}
+            placeholder="Ex.: 10"
+            style={{
+              width: '100%',
+              minHeight: 46,
+              boxSizing: 'border-box',
+              padding: '10px 12px',
+              borderRadius: 12,
+              border: '1px solid var(--season-line,rgba(255,255,255,.16))',
+              background: 'var(--season-surface,rgba(0,0,0,.16))',
+              color: 'var(--season-text,inherit)',
+            }}
+          />
+        </label>
+      </div>
+
+      {(() => {
+        const from = selectedCampaign.currency_config.currencies.find(
+          currency => currency.id === conversionFromId,
+        )
+        const to = selectedCampaign.currency_config.currencies.find(
+          currency => currency.id === conversionToId,
+        )
+        const amount = Number(conversionAmount.replace(',', '.'))
+        const received = from && to && Number.isFinite(amount) && amount > 0
+          ? amount * from.conversionRate / to.conversionRate
+          : null
+
+        return (
+          <div style={{
+            padding: 13,
+            borderRadius: 12,
+            background: 'var(--season-surface,rgba(0,0,0,.13))',
+            fontSize: 13,
+          }}>
+            {received !== null && from && to ? (
+              <>
+                <span style={{ color: 'var(--season-muted,#aaa)' }}>Você receberá aproximadamente:</span>
+                <strong style={{ display: 'block', marginTop: 5, fontSize: 20 }}>
+                  {to.symbol} {received.toLocaleString('pt-BR', { maximumFractionDigits: 8 })}
+                </strong>
+              </>
+            ) : (
+              <span style={{ color: 'var(--season-muted,#aaa)' }}>
+                Selecione as moedas e informe uma quantidade para visualizar a conversão.
+              </span>
+            )}
+          </div>
+        )
+      })()}
+
+      <button
+        type="button"
+        className="currency-action-button"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 9,
+          minHeight: 46,
+          padding: '11px 18px',
+          borderRadius: 12,
+          border: '1px solid var(--season-line,rgba(255,255,255,.18))',
+          background: 'var(--season-accent-soft,rgba(220,135,65,.18))',
+          color: 'var(--season-text,inherit)',
+          fontWeight: 750,
+          cursor: 'pointer',
+        }}
+        disabled={
+          currencyActionLoading ||
+          !canAccessSelectedCharacter ||
+          !conversionFromId ||
+          !conversionToId ||
+          conversionFromId === conversionToId ||
+          !conversionAmount ||
+          Number(conversionAmount.replace(',', '.')) <= 0
+        }
+        onClick={() => void handleCurrencyConversion()}
+      >
+        {currencyActionLoading ? 'Convertendo…' : '⇄ Converter moedas'}
+      </button>
+    </div>
+
     {currencyLoading ? (
       <p>Carregando carteira...</p>
     ) : (
-      <div className="currency-actions" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,230px),1fr))',gap:14,alignItems:'end',padding:18,borderRadius:18,border:'1px solid var(--season-line,rgba(255,255,255,.12))',background:'var(--season-surface-alt,rgba(255,255,255,.035))'}}>
-        <label style={{display:'grid',gap:8,fontSize:12,fontWeight:750,letterSpacing:'.035em',color:'var(--season-muted, #aaa)'}}>
-          VALOR
+<div className="currency-actions">
+  <label>
+    Moeda
+    <select
+      value={currencyAdjustmentId || selectedCampaign.currency_config.currencies[0]?.id || ''}
+      onChange={event => setCurrencyAdjustmentId(event.target.value)}
+    >
+      {selectedCampaign.currency_config.currencies.map(currency => (
+        <option key={currency.id} value={currency.id}>
+          {currency.name} ({currency.symbol})
+        </option>
+      ))}
+    </select>
+  </label>
+
+  <label>
+    Valor
           <input
             type="number"
             min="0.01"
@@ -7385,11 +8057,102 @@ disabled={
                 </div>
               </form>
             )}
-            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>{campaign.role === 'master' && <button type="button" className="secondary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setCampaignName(campaign.name);setCampaignDescription(campaign.description ?? '');setSystemName(campaign.system_name ?? '');setCampaignSystemChoice(
-  !campaign.system_name
-    ? ''
-    : getSystemByName(campaign.system_name)?.id ?? 'other'
-);setEditingCampaignId(campaign.id);setShowCampaignForm(true)}}>Editar campanha</button>}</article>)}</div>
+            {selectedCampaign && isMaster && seasons.length > 0 && (
+  <section className="add-form season-order-panel">
+    <h3>Ordem das temporadas</h3>
+    <p>Organize a sequência das temporadas desta campanha.</p>
+
+    <div style={{ display: 'grid', gap: 10 }}>
+      {[...seasons]
+        .sort((a, b) => a.season_number - b.season_number)
+        .map((season, index, orderedSeasons) => (
+          <div
+            key={season.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: 12,
+              border: '1px solid var(--season-line, #444)',
+              borderRadius: 10,
+            }}
+          >
+            <div>
+              <strong>
+                {index + 1}. {season.name}
+              </strong>
+              <small style={{ display: 'block', opacity: 0.7 }}>
+                Temporada {season.season_number}
+              </small>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={index === 0 || seasonOrderSaving}
+                onClick={() => void moveSeason(season.id, -1)}
+                aria-label={`Mover ${season.name} para cima`}
+              >
+                ↑
+              </button>
+
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={
+                  index === orderedSeasons.length - 1 ||
+                  seasonOrderSaving
+                }
+                onClick={() => void moveSeason(season.id, 1)}
+                aria-label={`Mover ${season.name} para baixo`}
+              >
+                ↓
+              </button>
+            </div>
+          </div>
+        ))}
+    </div>
+
+    {seasonOrderSaving && (
+      <p style={{ opacity: 0.7 }}>Salvando nova ordem...</p>
+    )}
+  </section>
+)}
+            <div className="item-grid">{campaigns.map(campaign=><article className="item-card" key={campaign.id}><h3>{campaign.name}</h3><p>{campaign.system_name||'Sistema não definido'}</p><button className="primary-button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}}>Selecionar campanha</button>
+{campaign.role === 'master' && (
+  <>
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={() => {
+        setSelectedCampaignId(campaign.id)
+        setCampaignName(campaign.name)
+        setCampaignDescription(campaign.description ?? '')
+        setSystemName(campaign.system_name ?? '')
+        setCampaignSystemChoice(
+          !campaign.system_name
+            ? ''
+            : getSystemByName(campaign.system_name)?.id ?? 'other'
+        )
+        setEditingCampaignId(campaign.id)
+        setShowCampaignForm(true)
+      }}
+    >
+      Editar campanha
+    </button>
+
+    <button
+      type="button"
+      className="secondary-button"
+      onClick={() => deleteCampaign(campaign)}
+    >
+      Excluir campanha
+    </button>
+  </>
+)}
+</article>)}</div>
             {selectedCampaign && isMaster && <div className="add-form" style={{marginTop:20}}><h3>Convites de campanha</h3><p>Gere um link para convidar jogadores para <strong>{selectedCampaign.name}</strong>.</p><button type="button" className="primary-button" onClick={()=>void createCampaignInvite()} disabled={inviteLoading}>{inviteLoading?'Gerando…':'Gerar convite'}</button>{campaignInviteLink&&<label>Link para compartilhar<input readOnly value={campaignInviteLink} onFocus={e=>e.currentTarget.select()} style={inputStyle}/><button type="button" className="secondary-button" onClick={()=>{void navigator.clipboard.writeText(campaignInviteLink);setNotice('Link copiado!')}}>Copiar link</button></label>}</div>}
 
             {selectedCampaign && isMaster && (
@@ -8050,7 +8813,13 @@ disabled={
                             <div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[newScarcityLevel]}</strong></div>
                           </div>
                           <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
-                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => setNewScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
+                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => {
+  const exhausted = event.target.checked
+  setNewScarcityExhausted(exhausted)
+  setNewItemWeight(
+    String(exhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
+  )
+}} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
                         </section>
                       )}
 
@@ -8113,19 +8882,30 @@ disabled={
 
                       <label>
                         Peso por unidade (kg)
-                        <input
-                          type="number"
-                          min="0"
-                          max="100000"
-                          step="0.1"
-                          value={newItemWeight}
-                          onChange={(event) => setNewItemWeight(event.target.value)}
-                          disabled={getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null}
-                          required
-                        />
-                        <small>{getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
-                          ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
-                          : 'Informe o peso por unidade deste item.'}</small>
+<input
+  type="number"
+  min="0"
+  max="100000"
+  step="0.1"
+  value={
+    newItemCategories.includes('Consumíveis')
+      ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
+      : newItemWeight
+  }
+  onChange={(event) => setNewItemWeight(event.target.value)}
+  disabled={
+    newItemCategories.includes('Consumíveis') ||
+    getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+  }
+  required
+/>
+<small>
+  {newItemCategories.includes('Consumíveis')
+    ? 'Peso definido automaticamente pela carga restante do consumível.'
+    : getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+      ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
+      : 'Informe o peso por unidade deste item.'}
+</small>
                       </label>
                     </div>
 
