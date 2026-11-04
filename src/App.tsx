@@ -344,6 +344,7 @@ function App() {
   const [primaryArchetype, setPrimaryArchetype] = useState('')
   const [secondaryArchetype, setSecondaryArchetype] = useState('')
   const [characterRank, setCharacterRank] = useState('zaidan')
+  const [characterFamilyTier, setCharacterFamilyTier] = useState('5')
   const [characterLevel, setCharacterLevel] = useState('1')
 
   const [newItemName, setNewItemName] = useState('')
@@ -2443,18 +2444,28 @@ const draftCombat =
     const { data: emojiUpdated, error: emojiError } = await supabase.from('characters').update({ emoji: characterEmoji }).eq('id', createdCharacter.id).select('id,campaign_id,user_id,name,emoji,archetype,level,strength,visibility,current_player_id,created_at').single()
     if (emojiError) { setError(`Personagem criado, mas não foi possível salvar o emoji: ${emojiError.message}. Execute a migração SQL fornecida.`); setLoading(false); return }
     createdCharacter = emojiUpdated as Character
-    if (usesSystemRanks && selectedSeasonId) {
-        const initialSheetData = {
-          identity: {
-            primaryArchetype,
-            secondaryArchetype,
-          },
-          progression: {
-            system: selectedCampaign?.system_name ?? '',
-            rankId: characterRank,
-            rankName: getSystemRankName(characterRank),
-          },
-        }
+if (usesSystemRanks && selectedSeasonId) {
+  const initialSheetData: Record<string, any> = {
+    identity: {
+      primaryArchetype,
+      secondaryArchetype,
+    },
+    attributes: {
+      strength: 0,
+      agility: 0,
+      defense: 0,
+      breathing: 0,
+      intellect: 0,
+    },
+    family: {
+      tier: characterFamilyTier,
+    },
+    progression: {
+      system: selectedCampaign?.system_name ?? '',
+      rankId: characterRank,
+      rankName: getSystemRankName(characterRank),
+    },
+  }
 
   const { data: newSheet, error: sheetError } = await supabase
     .from('character_sheets')
@@ -2512,9 +2523,10 @@ setPrimaryArchetype('')
 setSecondaryArchetype('')
 setCharacterLevel('1')
 setCharacterRank('zaidan')
-    setShowCharacterForm(false)
-    setNotice('Personagem criado e salvo!')
-    setLoading(false)
+setCharacterFamilyTier('5')
+setShowCharacterForm(false)
+setNotice('Personagem criado e salvo!')
+setLoading(false)
   }
 
 function openCharacterEmojiPicker(character: Character) {
@@ -2546,8 +2558,18 @@ async function changeCharacterEmoji(character: Character, emoji: string) {
   setNotice(`Emoji de ${character.name} atualizado.`)
 }
 
+
 async function deleteCharacter(character: Character) {
-  if (!isMaster || deletingCharacterId) return
+  console.log('[DELETE CHARACTER]', {
+    character: character.name,
+    isMaster,
+    deletingCharacterId,
+  })
+
+  if (!isMaster || deletingCharacterId) {
+    console.log('[DELETE BLOCKED]')
+    return
+  }
 
   const confirmed = window.confirm(
     `ATENÇÃO: deseja excluir definitivamente "${character.name}"?\n\n` +
@@ -2556,6 +2578,8 @@ async function deleteCharacter(character: Character) {
   )
 
   if (!confirmed) return
+
+  console.log('[DELETE CONFIRMED] Starting RPC for:', character.id)
 
   setDeletingCharacterId(character.id)
   setError('')
@@ -2569,6 +2593,22 @@ async function deleteCharacter(character: Character) {
 
     if (deleteError) {
       throw new Error(deleteError.message)
+    }
+
+    const { data: remaining, error: checkError } = await supabase
+      .from('characters')
+      .select('id')
+      .eq('id', character.id)
+      .maybeSingle()
+
+    if (checkError) {
+      throw new Error(`Não foi possível confirmar a exclusão: ${checkError.message}`)
+    }
+
+    if (remaining) {
+      throw new Error(
+        'A função SQL foi executada, mas o personagem ainda existe no banco. Verifique a função delete_character no Supabase.'
+      )
     }
 
     const remainingCharacters = characters.filter(
@@ -2597,6 +2637,7 @@ async function deleteCharacter(character: Character) {
     setDeletingCharacterId(null)
   }
 }
+
 
   async function changeCharacterPlayer(userId: string) {
     if (!selectedCharacter || !isMaster) return
@@ -3294,27 +3335,120 @@ async function deleteCharacter(character: Character) {
     setMemberActionLoading(null)
   }
 
-  const filteredItems = items
-    .filter((item) => {
-      const matchesCategory =
-        activeCategory === 'Todos' || item.category === activeCategory || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes(activeCategory))
-      const term = search.trim().toLowerCase()
-      const matchesSearch =
-        item.name.toLowerCase().includes(term) ||
-        (item.description ?? '').toLowerCase().includes(term)
-      const matchesFavorite = !favoriteOnly || item.metadata?.favorite === true
-      return matchesCategory && matchesSearch && matchesFavorite
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'name': return a.name.localeCompare(b.name, 'pt-BR')
-        case 'category': return a.category.localeCompare(b.category, 'pt-BR') || a.name.localeCompare(b.name, 'pt-BR')
-        case 'weight': return Number(b.weight) - Number(a.weight)
-        case 'quantity': return Number(b.quantity) - Number(a.quantity)
-        case 'created':
-        default: return items.indexOf(a) - items.indexOf(b)
-      }
-    })
+  const filteredItems = items.filter((item) => {
+  const matchesCategory =
+    activeCategory === 'Todos' ||
+    item.category === activeCategory ||
+    (
+      Array.isArray(item.metadata?.categories) &&
+      item.metadata.categories.includes(activeCategory)
+    )
+
+  const term = search.trim().toLowerCase()
+
+  const matchesSearch =
+    item.name.toLowerCase().includes(term) ||
+    (item.description ?? '').toLowerCase().includes(term)
+
+  const matchesFavorite =
+    !favoriteOnly || item.metadata?.favorite === true
+
+  return matchesCategory && matchesSearch && matchesFavorite
+})
+.sort((a, b) => {
+  const aData = masterShieldSheets[a.id]
+  const bData = masterShieldSheets[b.id]
+
+  const aRaw = aData?.combat?.initiative
+  const bRaw = bData?.combat?.initiative
+
+  const aHas =
+    aRaw !== null &&
+    aRaw !== undefined &&
+    aRaw !== '' &&
+    Number.isFinite(Number(aRaw))
+
+  const bHas =
+    bRaw !== null &&
+    bRaw !== undefined &&
+    bRaw !== '' &&
+    Number.isFinite(Number(bRaw))
+
+  // Personagens que já rolaram ficam primeiro.
+  if (aHas && !bHas) return -1
+  if (!aHas && bHas) return 1
+
+  // Maior iniciativa primeiro.
+  if (aHas && bHas && Number(aRaw) !== Number(bRaw)) {
+    return Number(bRaw) - Number(aRaw)
+  }
+
+  const getAgility = (data: any) => {
+    const familyTierKey = String(data?.family?.tier ?? '5')
+    const familyBonus = systemFeatures.usesFamilyTiers
+      ? getSystemAttributeBonus(familyTierKey, 'agility')
+      : 0
+
+    const allocations = data?.progression?.allocations ?? {}
+
+    const allocation = (source: string) => {
+      const own = Math.max(
+        0,
+        Math.floor(Number(allocations[source]?.agility) || 0)
+      )
+
+      const legacyClass = source === 'extra'
+        ? Math.max(0, Math.floor(Number(allocations.class?.agility) || 0))
+        : 0
+
+      return own + legacyClass
+    }
+
+    const base = Math.max(
+      0,
+      Math.floor(Number(data?.attributes?.agility) || 0)
+    )
+
+    return Math.min(
+      5,
+      Math.max(
+        0,
+        base +
+          allocation('family') +
+          allocation('hierarchy') +
+          allocation('extra') +
+          familyBonus
+      )
+    )
+  }
+
+  // Maior Agilidade efetiva primeiro.
+  const agilityDifference =
+    getAgility(bData) - getAgility(aData)
+
+  if (agilityDifference !== 0) {
+    return agilityDifference
+  }
+
+  // Raposa — Sempre Pronto tem preferência.
+  const hasAlwaysReady = (data: any) => {
+    const flows = String(data?.flows?.details ?? '').toLowerCase()
+
+    return (
+      flows.includes('raposa') &&
+      flows.includes('sempre pronto')
+    )
+  }
+
+  const aHasPriority = hasAlwaysReady(aData)
+  const bHasPriority = hasAlwaysReady(bData)
+
+  if (aHasPriority && !bHasPriority) return -1
+  if (!aHasPriority && bHasPriority) return 1
+
+  // Empate total: ordem alfabética.
+  return a.name.localeCompare(b.name)
+})
 
   const totalObjects = items.reduce(
     (sum, item) => sum + Number(item.quantity),
@@ -3328,6 +3462,7 @@ async function deleteCharacter(character: Character) {
 
   const maxCapacity = 10 + 2 * (selectedCharacter?.strength ?? 0)
   const remainingCapacity = maxCapacity - totalWeight
+  const isOverloaded = totalWeight > maxCapacity
   const capacityPercent = Math.min(
     100,
     (totalWeight / maxCapacity) * 100,
@@ -3645,19 +3780,83 @@ onClick={() => {
                           .filter(character =>
                             masterShieldSheets[character.id]?.seasonParticipation === true
                           )
-                          .sort((a, b) => {
-                            const aRaw = masterShieldSheets[a.id]?.combat?.initiative
-                            const bRaw = masterShieldSheets[b.id]?.combat?.initiative
+.sort((a, b) => {
+  const aData = masterShieldSheets[a.id]
+  const bData = masterShieldSheets[b.id]
 
-                            const aHas = aRaw !== null && aRaw !== undefined && aRaw !== '' && Number.isFinite(Number(aRaw))
-                            const bHas = bRaw !== null && bRaw !== undefined && bRaw !== '' && Number.isFinite(Number(bRaw))
+  const aRaw = aData?.combat?.initiative
+  const bRaw = bData?.combat?.initiative
 
-                            if (aHas && !bHas) return -1
-                            if (!aHas && bHas) return 1
-                            if (!aHas && !bHas) return a.name.localeCompare(b.name)
+  const aHas = aRaw !== null && aRaw !== undefined && aRaw !== '' && Number.isFinite(Number(aRaw))
+  const bHas = bRaw !== null && bRaw !== undefined && bRaw !== '' && Number.isFinite(Number(bRaw))
 
-                            return Number(bRaw) - Number(aRaw)
-                          })
+  // Quem já rolou fica primeiro.
+  if (aHas && !bHas) return -1
+  if (!aHas && bHas) return 1
+
+  // Maior iniciativa primeiro.
+  if (aHas && bHas && Number(aRaw) !== Number(bRaw)) {
+    return Number(bRaw) - Number(aRaw)
+  }
+
+  // Calcula a Agilidade efetiva.
+  const getAgility = (data: any) => {
+    const familyTierKey = String(data?.family?.tier ?? '5')
+
+    const familyBonus = systemFeatures.usesFamilyTiers
+      ? getSystemAttributeBonus(familyTierKey, 'agility')
+      : 0
+
+    const allocations = data?.progression?.allocations ?? {}
+
+    const allocation = (source: string) => {
+      const own = Math.max(0, Math.floor(Number(allocations[source]?.agility) || 0))
+
+      const legacyClass = source === 'extra'
+        ? Math.max(0, Math.floor(Number(allocations.class?.agility) || 0))
+        : 0
+
+      return own + legacyClass
+    }
+
+    const base = Math.max(0, Math.floor(Number(data?.attributes?.agility) || 0))
+
+    return Math.min(
+      5,
+      Math.max(
+        0,
+        base +
+          allocation('family') +
+          allocation('hierarchy') +
+          allocation('extra') +
+          familyBonus
+      )
+    )
+  }
+
+  // Maior Agilidade primeiro em caso de empate.
+  const agilityDifference = getAgility(bData) - getAgility(aData)
+
+  if (agilityDifference !== 0) {
+    return agilityDifference
+  }
+
+  // Raposa — Sempre Pronto tem preferência.
+  const hasAlwaysReady = (data: any) => {
+    const flows = String(data?.flows?.details ?? '').toLowerCase()
+
+    return flows.includes('raposa') && flows.includes('sempre pronto')
+  }
+
+  const aPriority = hasAlwaysReady(aData)
+  const bPriority = hasAlwaysReady(bData)
+
+  if (aPriority && !bPriority) return -1
+  if (!aPriority && bPriority) return 1
+
+  // Empate total: ordem alfabética.
+  return a.name.localeCompare(b.name)
+})
                           .map((character, index) => {
                             const raw = masterShieldSheets[character.id]?.combat?.initiative
                             const hasInitiative = raw !== null &&
@@ -3756,7 +3955,28 @@ onClick={() => {
                 {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',margin:'14px 0'}}>
                     <p style={{color:'var(--season-muted, #b9b4c2)',margin:0}}>Consulte os dados calculados da ficha. As alterações ficam concentradas no modo de edição.</p>
-                    {canEditSelectedSheet && <button className="primary-button" type="button" onClick={()=>setEditingSheet(value=>!value)}>{editingSheet?'Fechar edição':'Editar ficha'}</button>}
+                    {canEditSelectedSheet && (
+  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+    <button
+      className="primary-button"
+      type="button"
+      onClick={()=>setEditingSheet(value=>!value)}
+    >
+      {editingSheet?'Fechar edição':'Editar ficha'}
+    </button>
+
+    {editingSheet && (
+      <button
+        className="primary-button"
+        type="button"
+        disabled={sheetSaving}
+        onClick={()=>void saveCharacterSheet()}
+      >
+        {sheetSaving?'Salvando…':'Salvar ficha'}
+      </button>
+    )}
+  </div>
+)}
                   </div>
                   {(() => {
                     let data: Record<string, any> = {}
@@ -3805,26 +4025,6 @@ onClick={() => {
 
                     const rankIdForStatus = rankIdForAttributes
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
-                    const rankAttributePoints = (() => {
-                      const benefits = findSystemRank(rankIdForStatus)?.benefits || ''
-                      const match = benefits.match(/(\d+) pontos? de atributos?/i)
-                      return Number(match?.[1] || 0)
-                    })()
-                    const allocationPool = (source: typeof allocationSources[number]) => {
-                      if (source === 'family') {
-                        return usesFamilyTiers ? Math.max(0, familyTier?.points ?? 0) : 0
-                      }
-
-                      if (source === 'hierarchy') {
-                        return rankAttributePoints
-                      }
-
-                      return (
-                        numRaw('progression.extraAttributePoints') +
-                        numRaw('progression.attributePoints') +
-                        numRaw('progression.manualExtraAttributePoints')
-                      )
-                    }
 
                     const attributeTotalUsed = (source: typeof allocationSources[number]) =>
                       familyAllocationKeys.reduce(
@@ -3832,37 +4032,6 @@ onClick={() => {
                         0
                       )
 
-                    const setAttributeAllocation = (
-                      source: typeof allocationSources[number],
-                      key: typeof familyAllocationKeys[number],
-                      value: number
-                    ) => {
-                      const current = allocation(source, key)
-                      const otherUsed = attributeTotalUsed(source) - current
-                      const available = Math.max(0, allocationPool(source) - otherUsed)
-
-                      const otherSourcesUsed = allocationSources
-                        .filter(entry => entry !== source)
-                        .reduce((sum, entry) => sum + allocation(entry, key), 0)
-
-                      const familyBonus = usesFamilyTiers
-                        ? getSystemAttributeBonus(familyTierKey, key)
-                        : 0
-
-                      const baseValue = numRaw(`attributes.${key}`)
-                      const maximum = Math.max(
-                        0,
-                        5 - baseValue - familyBonus - otherSourcesUsed
-                      )
-
-                      const wanted = Math.min(
-                        available,
-                        maximum,
-                        Math.max(0, Math.floor(Number(value) || 0))
-                      )
-
-                      write(`progression.allocations.${source}.${key}`, wanted)
-                    }
                     const skillPointConfig = activeSystem?.data?.skillPoints
                     const maxSkillLevel = Math.max(1, Math.floor(skillPointConfig?.maxPerSkill ?? 12))
                     const num = (path: string) => {
@@ -4024,6 +4193,29 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                     const equippedProtection = items.filter(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'protection')
                     const armorClass = String(equippedArmor?.metadata?.armorClass || 'leve')
                     const armorDexterity = !equippedArmor ? dexterity : armorClass === 'pesada' ? 0 : armorClass === 'media' ? Math.floor(dexterity / 2) : dexterity
+                    const counterAttackConfig = activeSystem?.data?.combatActions?.['Contra-ataque']
+
+const counterAttackUsesDexterity = /destreza|dexterity/i.test(
+  `${counterAttackConfig?.attribute ?? ''} ${counterAttackConfig?.attributeLabel ?? ''}`
+)
+
+const counterAttackUsesDexterityBonus = /destreza|dexterity/i.test(
+  `${counterAttackConfig?.bonus ?? ''} ${counterAttackConfig?.bonusLabel ?? ''}`
+)
+
+const counterAttackAttribute = counterAttackConfig
+  ? counterAttackUsesDexterity
+    ? armorDexterity
+    : Number(read(counterAttackConfig.attribute, 0))
+  : 0
+
+const counterAttackBonus = counterAttackConfig
+  ? counterAttackUsesDexterityBonus
+    ? armorDexterity
+    : Number(read(counterAttackConfig.bonus, 0))
+  : 0
+
+const counterAttackDT = counterAttackAttribute + counterAttackBonus
                     const armorResistance = armorClass === 'pesada' ? resistance * 2 + 8 : armorClass === 'media' ? resistance + 6 : Math.floor(resistance / 2) + 4
                     const armorCovers = (type: 'cortante_perfurante' | 'especial_bruto') => !!equippedArmor && (armorClass === 'pesada' || equippedArmor.metadata?.armorCoverage === type)
                     const protectionFraction = (item: Item) => item.metadata?.protectionTier === 'avancada' ? 1 : item.metadata?.protectionTier === 'moderada' ? 0.5 : 0.25
@@ -4054,12 +4246,32 @@ const performCombatRoll = (
     dexterity
 
   const diceCount = 1 + Math.max(0, Math.floor(attribute))
-  const dice = Array.from({ length: diceCount }, () => rollD20())
-  const highest = Math.max(...dice)
+  const usesAgility = kind === 'Ataque ágil' || kind === 'Esquiva'
+  const hasDisadvantage = isOverloaded && usesAgility
+
+  const rolledDiceCount = hasDisadvantage && diceCount === 1
+    ? 2
+    : diceCount
+
+  const dice = Array.from(
+    { length: rolledDiceCount },
+    () => rollD20()
+  )
+
+  const sortedDice = [...dice].sort((a, b) => b - a)
+
+  const selectedDice = hasDisadvantage
+    ? diceCount === 1
+      ? [sortedDice[sortedDice.length - 1]]
+      : sortedDice.slice(0, -1)
+    : dice
+
+  const highest = Math.max(...selectedDice)
   const total = highest + bonus
 
-  const diceDescription =
-    `${diceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
+  const diceDescription = hasDisadvantage
+    ? `${rolledDiceCount}D20 = [${dice.join(', ')}] (desvantagem: ${diceCount === 1 ? 'menor resultado' : 'descartando o menor'}; utilizado: ${selectedDice.join(', ')}; resultado: ${highest})`
+    : `${diceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
 
   if (kind === 'Bloqueio') {
     const critical = highest === 20
@@ -4071,9 +4283,9 @@ const performCombatRoll = (
         : 'Falha: nega 25% do dano.'
 
     setBlockIncomingDamage('')
-    setBlockDamageReduction(
-      critical ? null : total >= dt ? 0.5 : 0.25
-    )
+setBlockDamageReduction(
+  critical ? 1 : total >= dt ? 0.5 : 0.25
+)
 
     setCombatActionResult(
       `Bloqueio: ${diceDescription} + Constituição (${bonus}) = ${total}. ${outcome}`
@@ -4095,7 +4307,9 @@ const performCombatRoll = (
         : `Falha contra DT ${target}: não evita o dano.`
       : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
 
-    setBlockDamageReduction(null)
+    setBlockDamageReduction(
+  validTarget && total >= target! ? 1 : 0
+)
 
     setCombatActionResult(
       `Esquiva: ${diceDescription} + Destreza (${bonus}) = ${total}. ${outcome}`
@@ -4113,7 +4327,7 @@ const performCombatRoll = (
 
   return total
 }
-                                        const applyBlockedDamage = () => {
+              const applyBlockedDamage = () => {
                       const incoming = Number(blockIncomingDamage)
 
                       if (!Number.isFinite(incoming) || incoming < 0 || blockDamageReduction === null) {
@@ -4283,6 +4497,27 @@ const performCombatRoll = (
                             }
                         const rankId = String(read('progression.rankId', 'zaidan'))
                         const rank = getSystemRank(rankId)
+                        const rankBenefits = String(rank?.benefits ?? '')
+                        // Aceita “pontos de atributos” e “atributo(s) extra(s)”.
+                        const rankAttributeMatch = rankBenefits.match(/(?:([0-9]+)\s+pontos?\s+de\s+atributos?|\+?([0-9]+)\s+atributos?\s+extras?)/i)
+                        const rankAttributePoints = Math.max(0, Number(rankAttributeMatch?.[1] ?? rankAttributeMatch?.[2] ?? 0))
+                        const allocationPool = (source: typeof allocationSources[number]) => {
+  if (source === 'family') {
+    return usesFamilyTiers
+      ? Math.max(0, Math.floor(Number(tier.points) || 0))
+      : 0
+  }
+
+  if (source === 'hierarchy') {
+    return rankAttributePoints
+  }
+
+  return (
+    numRaw('progression.extraAttributePoints') +
+    numRaw('progression.attributePoints') +
+    numRaw('progression.manualExtraAttributePoints')
+  )
+}
                         const promotionLog: any[] = Array.isArray(read('progression.promotionLog', [])) ? read('progression.promotionLog', []) : []
                         const benefitsApplied: string[] = Array.isArray(read('progression.appliedPromotionIds', [])) ? read('progression.appliedPromotionIds', []) : []
                         const changeRank = (nextId: string) => {
@@ -4488,30 +4723,120 @@ const performCombatRoll = (
 
                               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>
                                 {familyAllocationKeys.map(key=>{
-                                  const current=num(`attributes.${key}`)
-                                  const extra=allocationSources.reduce((sum,source)=>sum+allocation(source,key),0)
+const extra = allocationSources.reduce(
+  (sum, source) => sum + allocation(source, key),
+  0
+)
 
+const baseValue = numRaw(`attributes.${key}`)
+
+const familyBonus = usesFamilyTiers
+  ? getSystemAttributeBonus(familyTierKey, key)
+  : 0
+
+const minimum = Math.min(5, Math.max(0, baseValue + familyBonus))
+
+const current = Math.min(
+  5,
+  Math.max(0, baseValue + familyBonus + extra)
+)
                                   return (
                                     <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}>
                                       <span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{({strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:resourceName,intellect:'Intelecto'})[key]}</span>
-                                      <input type="number" min="0" max={5} value={extra} onChange={e=>{
-                                        const wanted=Math.max(0,Math.min(5,Math.floor(Number(e.target.value)||0)))
-                                        const currentTotal=allocationSources.reduce((sum,source)=>sum+allocation(source,key),0)
-                                        let remaining=Math.max(0,wanted-(currentTotal-extra))
-                                        const nextValues: Record<string,number>={}
+                                      <input type="number" min={minimum} max={5} defaultValue={current} key={`${key}-${minimum}`} onChange={e => {
 
-                                        for(const source of allocationSources){
-                                          const otherUsed=familyAllocationKeys.reduce((sum,item)=>sum+(item===key?0:allocation(source,item)),0)
-                                          const capacity=Math.max(0,allocationPool(source)-otherUsed)
-                                          const assigned=Math.min(remaining,capacity)
-                                          nextValues[source]=assigned
-                                          remaining-=assigned
-                                        }
+if (e.target.value === '') return
 
-                                        for(const source of allocationSources){
-                                          setAttributeAllocation(source,key,nextValues[source])
-                                        }
-                                      }} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/>
+const wanted = Math.max(
+  minimum,
+  Math.min(5, Math.floor(Number(e.target.value) || 0))
+)
+
+const familyBonus = usesFamilyTiers
+  ? getSystemAttributeBonus(familyTierKey, key)
+  : 0
+
+const baseValue = numRaw(`attributes.${key}`)
+
+const maximum = Math.max(
+  0,
+  5 - baseValue - familyBonus
+)
+
+let remaining = Math.max(
+  0,
+  Math.min(wanted - baseValue - familyBonus, maximum)
+)
+
+  const next = {
+    ...data,
+    progression: {
+      ...(data.progression || {}),
+      allocations: {
+        ...(data.progression?.allocations || {}),
+        family: {
+          ...(data.progression?.allocations?.family || {}),
+        },
+        hierarchy: {
+          ...(data.progression?.allocations?.hierarchy || {}),
+        },
+        extra: {
+          ...(data.progression?.allocations?.extra || {}),
+        },
+        class: {
+          ...(data.progression?.allocations?.class || {}),
+        },
+      },
+    },
+  }
+
+  for (const source of allocationSources) {
+    const otherUsed = familyAllocationKeys.reduce(
+      (sum, item) => {
+        if (item === key) return sum
+
+        const own = Math.max(
+          0,
+          Math.floor(
+            Number(next.progression.allocations[source]?.[item]) || 0
+          )
+        )
+
+        const legacyClass = source === 'extra'
+          ? Math.max(
+              0,
+              Math.floor(
+                Number(next.progression.allocations.class?.[item]) || 0
+              )
+            )
+          : 0
+
+        return sum + own + legacyClass
+      },
+      0
+    )
+
+    const capacity = Math.max(
+      0,
+      allocationPool(source) - otherUsed
+    )
+
+    const assigned = Math.min(remaining, capacity)
+
+    next.progression.allocations[source][key] = assigned
+    remaining -= assigned
+  }
+
+  // Migra eventual valor antigo de "class" para "extra",
+  // evitando que os pontos sejam contabilizados duas vezes.
+  next.progression.allocations.class[key] = 0
+
+setSheetDraft(JSON.stringify(next, null, 2))
+}}
+onBlur={e => {
+  e.currentTarget.value = String(current)
+}}
+style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/>
                                       <small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/5</small>
                                     </label>
                                   )
@@ -4522,7 +4847,21 @@ const performCombatRoll = (
                           {systemFeatures?.usesSkillPoints && <>
                             <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
                               <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>{skillPointConfig?.description || 'Distribua os pontos disponíveis entre as perícias.'}</p></div></div>
-                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>{skillPointConfig?.allocationDescription || 'Cada ponto aumenta um nível da perícia.'} Limite: {maxSkillLevel} por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{skillPointSources.map(source=>{const pool=skillPool(source.id);const used=skillTotalUsed(source.id);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source.id} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${source.color}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:source.color,flex:'0 0 9px'}}/>{source.label}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:source.color}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input type="number" min="0" max={maxSkillLevel} value={extra} onChange={e=>setSkillAllocation(key,Number(e.target.value))} style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/{maxSkillLevel}</small></label>})}</div>{skillPointConfig?.extraPointsInput && <div style={{marginTop:28,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><label style={{...labelStyle,display:'block',margin:0}}>{skillPointConfig.extraPointsInput.label}<input type="number" min="0" step="1" value={numRaw(skillPointConfig.extraPointsInput.path)} onChange={e=>write(skillPointConfig.extraPointsInput!.path,Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} /></label>{skillPointConfig.extraPointsInput.description && <small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>{skillPointConfig.extraPointsInput.description}</small>}</div>}{intellectChoiceConfig?.enabled && <div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>{intellectChoiceConfig.title || 'Desenvolvimento por atributo'}</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>{intellectChoiceConfig.description || 'Escolha como utilizar cada ponto do atributo configurado.'}</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>{intellectChoiceConfig.pointLabel || 'Ponto'} {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value;write(skillChoicePath,next)}} style={inputStyle}><option value={mainChoiceValue}>{intellectChoiceConfig.mainLabel}</option><option value={extraChoiceValue}>{intellectChoiceConfig.extraLabel}</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>{intellectChoiceConfig.mainPointsLabel || 'Pontos da opção principal'}: <strong>{mainPoints}</strong> · {intellectChoiceConfig.extraLevelsLabel || 'Níveis extras'}: <strong>{extraLevels}</strong></div></div>}</div>
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>{skillPointConfig?.allocationDescription || 'Cada ponto aumenta um nível da perícia.'} Limite: {maxSkillLevel} por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{skillPointSources.map(source=>{const pool=skillPool(source.id);const used=skillTotalUsed(source.id);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source.id} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${source.color}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:source.color,flex:'0 0 9px'}}/>{source.label}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:source.color}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input
+  type="number"
+  min="0"
+  max={maxSkillLevel}
+  defaultValue={extra}
+  key={key}
+  onChange={e => {
+    if (e.target.value === '') return
+    setSkillAllocation(key, Number(e.target.value))
+  }}
+  onBlur={e => {
+    e.currentTarget.value = String(skillAllocatedTotal(key))
+  }}
+  style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}
+/><small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/{maxSkillLevel}</small></label>})}</div>{skillPointConfig?.extraPointsInput && <div style={{marginTop:28,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}><label style={{...labelStyle,display:'block',margin:0}}>{skillPointConfig.extraPointsInput.label}<input type="number" min="0" step="1" value={numRaw(skillPointConfig.extraPointsInput.path)} onChange={e=>write(skillPointConfig.extraPointsInput!.path,Math.max(0,Math.floor(Number(e.target.value)||0)))} style={{...inputStyle,marginTop:7}} /></label>{skillPointConfig.extraPointsInput.description && <small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>{skillPointConfig.extraPointsInput.description}</small>}</div>}{intellectChoiceConfig?.enabled && <div style={{marginTop:16,padding:14,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><strong>{intellectChoiceConfig.title || 'Desenvolvimento por atributo'}</strong><p style={{fontSize:13,color:'var(--season-muted, #b9b4c2)'}}>{intellectChoiceConfig.description || 'Escolha como utilizar cada ponto do atributo configurado.'}</p>{Array.from({length:intellect},(_,i)=><label key={i} style={{...labelStyle,display:'grid',gridTemplateColumns:'90px 1fr',alignItems:'center',gap:10,marginTop:8}}>{intellectChoiceConfig.pointLabel || 'Ponto'} {i+1}<select value={mainAllocations[i]} onChange={e=>{const next=[...mainAllocations];next[i]=e.target.value;write(skillChoicePath,next)}} style={inputStyle}><option value={mainChoiceValue}>{intellectChoiceConfig.mainLabel}</option><option value={extraChoiceValue}>{intellectChoiceConfig.extraLabel}</option></select></label>)}<div style={{marginTop:10,color:'#eee'}}>{intellectChoiceConfig.mainPointsLabel || 'Pontos da opção principal'}: <strong>{mainPoints}</strong> · {intellectChoiceConfig.extraLevelsLabel || 'Níveis extras'}: <strong>{extraLevels}</strong></div></div>}</div>
                           </>}
 
                         </section>
@@ -4755,16 +5094,10 @@ const performCombatRoll = (
     {[
       ['Dano base', baseDamage],
       ['Dano extra', equippedWeaponDamage],
-      ['Deslocamento', Math.max(1, movementActions * dexterity)],
+      ['Deslocamento', Math.max(1, Math.floor((movementActions * dexterity) / (isOverloaded ? 2 : 1)))],
       ['Ações', movementActions + extraActions],
       ['Reações', reactions],
-      [
-        'Contra-ataque',
-        activeSystem?.data?.combatActions?.['Contra-ataque']
-          ? Number(read(activeSystem.data.combatActions['Contra-ataque']!.attribute, 0)) +
-            Number(read(activeSystem.data.combatActions['Contra-ataque']!.bonus, 0))
-          : '—'
-      ],
+['Contra-ataque', counterAttackConfig ? counterAttackDT : '—'],
       ['Constituição', resistance + vigor],
       ...(usesFamilyTiers ? [['Essência', read('combat.essence', '—')]] : [])
     ].map(([label, value]) => (
@@ -4919,24 +5252,20 @@ const performCombatRoll = (
                                     return
                                   }
 
-                                  const readCombatValue = (path: string) => {
-                                    const value = Number(read(path, 0))
-                                    return Number.isFinite(value) ? value : 0
-                                  }
-
                                   const enemy =
                                     dodgeTarget.trim() === ''
                                       ? null
                                       : Number(dodgeTarget)
 
-                                  const attribute = readCombatValue(actionConfig.attribute)
-                                  const bonus = readCombatValue(actionConfig.bonus)
-                                  const dt = attribute + bonus
+const dt = counterAttackDT
 
                                   const validEnemy =
                                     enemy !== null &&
                                     Number.isFinite(enemy) &&
                                     enemy >= 0
+
+    setBlockIncomingDamage('')
+    setBlockDamageReduction(validEnemy ? (enemy! < dt ? 1 : 0) : null)
 
                                   setCombatActionResult(
                                     validEnemy
@@ -4947,19 +5276,44 @@ const performCombatRoll = (
                               >
                                 <span className="combat-action-icon">↶</span>
                                 <strong>Contra-ataque</strong>
-                                <small>
-                                  DT: {activeSystem?.data?.combatActions?.['Contra-ataque']
-                                    ? (() => {
-                                        const config = activeSystem.data.combatActions['Contra-ataque']!
-                                        return Number(read(config.attribute, 0)) + Number(read(config.bonus, 0))
-                                      })()
-                                    : '—'}
-                                </small>
+<small>DT: {counterAttackDT}</small>
                               </button>
                               <label className="combat-dodge-target-inline combat-reactions-dt-card" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label>
                             </div>
                           </div>
-                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">Será negado: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction) : '—'}</strong> · Será descontado dos PV: <strong>{blockIncomingDamage.trim() !== '' && Number.isFinite(Number(blockIncomingDamage)) ? Math.max(0, Number(blockIncomingDamage) - Math.floor(Math.max(0, Number(blockIncomingDamage)) * blockDamageReduction)) : '—'}</strong></div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
+                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div><label htmlFor="combat-incoming-damage">Dano total do inimigo<input id="combat-incoming-damage" type="number" min="0" step="1" value={blockIncomingDamage} onChange={event=>setBlockIncomingDamage(event.target.value)} placeholder="Informe o dano recebido" /></label><div className="combat-block-damage-preview">
+  {(() => {
+    const incoming = Number(blockIncomingDamage)
+
+    if (
+      blockIncomingDamage.trim() === '' ||
+      !Number.isFinite(incoming) ||
+      incoming < 0
+    ) {
+      return <>Informe o dano recebido para visualizar os cálculos.</>
+    }
+
+    const reactionPrevented = Math.floor(incoming * blockDamageReduction)
+    const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
+
+    const armorReduction = armorCovers(physicalDamageType)
+      ? armorResistance
+      : 0
+
+    const totalArmorProtection = armorReduction + physicalProtection
+    const armorPrevented = Math.min(damageAfterReaction, totalArmorProtection)
+    const remaining = Math.max(0, damageAfterReaction - armorPrevented)
+
+    return (
+      <>
+        Dano inicial: <strong>{incoming}</strong>
+        {' · '}Negado pela reação: <strong>{reactionPrevented}</strong>
+        {' · '}Reduzido pela armadura e proteções: <strong>{armorPrevented}</strong>
+        {' · '}Dano aplicado aos PV: <strong>{remaining}</strong>
+      </>
+    )
+  })()}
+</div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
                           <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza. Habilidades podem conceder D20 adicionais.</span></p>
 <p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
 <p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
@@ -4969,8 +5323,7 @@ const performCombatRoll = (
     O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
     {activeSystem?.data?.combatActions?.['Contra-ataque']
       ? ` (${activeSystem.data.combatActions['Contra-ataque']!.attributeLabel} + ${activeSystem.data.combatActions['Contra-ataque']!.bonusLabel}: ${
-          Number(read(activeSystem.data.combatActions['Contra-ataque']!.attribute, 0)) +
-          Number(read(activeSystem.data.combatActions['Contra-ataque']!.bonus, 0))
+counterAttackDT
         }).`
       : ', ainda não configurada para este sistema.'}
   </span>
@@ -4980,7 +5333,18 @@ const performCombatRoll = (
                     )
 
                   })()}
-                  {editingSheet && canEditSelectedSheet && <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}><button className="primary-button" type="button" disabled={sheetSaving} onClick={()=>void saveCharacterSheet()}>{sheetSaving?'Salvando…':'Salvar ficha'}</button><button className="secondary-button" type="button" disabled={!sheet} onClick={()=>void createSheetMilestone()}>Registrar marco no histórico</button></div>}
+                  {editingSheet && canEditSelectedSheet && (
+  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
+    <button
+      className="secondary-button"
+      type="button"
+      disabled={!sheet}
+      onClick={()=>void createSheetMilestone()}
+    >
+      Registrar marco no histórico
+    </button>
+  </div>
+)}
                 
 
 {canAccessSelectedCharacter && selectedCharacter && (
@@ -5960,12 +6324,13 @@ style={{cursor:'pointer'}}>
           <option
             key={item}
             value={item}
-            disabled={
-              (item === 'Linha de Frente' && primaryArchetype === 'Suporte') ||
-              (item === 'Suporte' && primaryArchetype === 'Linha de Frente') ||
-              (item === 'Defensor' && primaryArchetype === 'Flanco') ||
-              (item === 'Flanco' && primaryArchetype === 'Defensor')
-            }
+disabled={
+  item === primaryArchetype ||
+  (item === 'Linha de Frente' && primaryArchetype === 'Suporte') ||
+  (item === 'Suporte' && primaryArchetype === 'Linha de Frente') ||
+  (item === 'Defensor' && primaryArchetype === 'Flanco') ||
+  (item === 'Flanco' && primaryArchetype === 'Defensor')
+}
           >
             {item}
           </option>
@@ -5985,50 +6350,20 @@ style={{cursor:'pointer'}}>
 )}
 
 {systemFeatures.usesRanks ? (
-  <>
-    <label>
-      Arquétipo primário
-      <select
-        value={primaryArchetype}
-        onChange={(event) => setPrimaryArchetype(event.target.value)}
-        required
-      >
-        <option value="">Selecione...</option>
-        {systemArchetypes.map(item => (
-          <option key={item} value={item}>{item}</option>
-        ))}
-      </select>
-    </label>
-
-    <label>
-      Arquétipo secundário
-      <select
-        value={secondaryArchetype}
-        onChange={(event) => setSecondaryArchetype(event.target.value)}
-        required
-      >
-        <option value="">Selecione...</option>
-        {systemArchetypes.map(item => (
-          <option key={item} value={item}>{item}</option>
-        ))}
-      </select>
-    </label>
-
-    <label>
-      Graduação
-      <select
-        value={characterRank}
-        onChange={(event) => setCharacterRank(event.target.value)}
-        required
-      >
-        {systemRanks.map(rank => (
-          <option key={rank.id} value={rank.id}>
-            {rank.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  </>
+  <label>
+    Graduação
+    <select
+      value={characterRank}
+      onChange={(event) => setCharacterRank(event.target.value)}
+      required
+    >
+      {systemRanks.map(rank => (
+        <option key={rank.id} value={rank.id}>
+          {rank.name}
+        </option>
+      ))}
+    </select>
+  </label>
 ) : (
   <label>
     Nível
@@ -6040,6 +6375,24 @@ style={{cursor:'pointer'}}>
       onChange={(event) => setCharacterLevel(event.target.value)}
       required
     />
+  </label>
+)}
+
+{systemFeatures.usesFamilyTiers && (
+  <label>
+    Tier da família
+    <select
+      value={characterFamilyTier}
+      onChange={event => setCharacterFamilyTier(event.target.value)}
+      required
+      style={inputStyle}
+    >
+      {getSystemFamilyTiers().map(([key, value]) => (
+        <option key={key} value={key}>
+          {value.label}
+        </option>
+      ))}
+    </select>
   </label>
 )}
 
