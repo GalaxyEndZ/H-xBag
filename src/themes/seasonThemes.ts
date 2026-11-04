@@ -162,6 +162,17 @@ export const seasonThemes = {
     line: '#536A48',
     onPrimary: '#101509',
   },
+    lua_de_sangue: {
+    label: 'Lua de Sangue',
+    primary: '#ff334f',
+    secondary: '#b5122e',
+    glow: 'rgba(255,35,65,.22)',
+    bg: '#080809',
+    surface: '#111114',
+    surfaceAlt: '#1b1115',
+    line: '#64202e',
+    onPrimary: '#ffffff',
+  },
   matrix: {
     label: 'Matrix',
     primary: '#39ff88',
