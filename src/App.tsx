@@ -10,6 +10,7 @@ import Auth from './Auth'
 import './App.css'
 import './themes/seasonThemes.css'
 import { seasonThemes } from './themes'
+import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 
 type Campaign = {
   id: string
@@ -139,10 +140,9 @@ function App() {
   )
   const activeSystem = getSystemByName(selectedCampaign?.system_name)
   const isKisatsutaiSystem = activeSystem?.id === 'kisatsutai'
-  const normalizedSystemName = String(selectedCampaign?.system_name ?? '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-  const isCyberFlowerSystem = normalizedSystemName.includes('cyberflower')
+  
+  const isCyberFlowerSystem =
+  activeSystem?.data?.features?.hasCyberneticsInventory === true
 
   const resourceAbbreviation = isKisatsutaiSystem
     ? 'PR'
@@ -6086,37 +6086,19 @@ style={{cursor:'pointer'}}>
   </section>
 )}
 
-{isCyberFlowerSystem && canAccessSelectedCharacter && selectedCharacter && selectedSeasonId && !sheetLoading && (() => {
-  let cyberData: Record<string, any> = {}
-  try { cyberData = JSON.parse(sheetDraft || '{}') } catch { cyberData = {} }
-  const biologicalLoadRaw = Number(cyberData.cybernetics?.biologicalLoad ?? 0)
-  const biologicalLoad = Number.isFinite(biologicalLoadRaw) ? Math.max(0, biologicalLoadRaw) : 0
-  const updateBiologicalLoad = (value: number) => {
-    let next: Record<string, any> = {}
-    try { next = JSON.parse(sheetDraft || '{}') } catch { next = {} }
-    next.cybernetics = { ...(next.cybernetics || {}), biologicalLoad: Math.max(0, Number.isFinite(value) ? value : 0) }
-    setSheetDraft(JSON.stringify(next, null, 2))
-  }
-  const cyberpsychosis = biologicalLoad > 100
-  return <section className="inventory-section cybernetics-section">
-    <div className="inventory-heading">
-      <div><h3>Cibernética</h3><p>Implantes, modificações e a estabilidade biológica do personagem.</p></div>
-      <span className="cybernetics-heading-icon" aria-hidden="true">⌬</span>
-    </div>
-    <div className={`biological-load-card ${cyberpsychosis ? 'is-cyberpsychosis' : ''}`}>
-      <div className="biological-load-heading">
-        <div><span className="biological-load-eyebrow">INTEGRIDADE ORGÂNICA</span><strong>Carga Biológica</strong></div>
-        <label className="biological-load-value"> <input aria-label="Carga Biológica em porcentagem" type="number" min="0" step="1" value={biologicalLoad} disabled={!editingSheet || !canEditSelectedSheet || sheetSaving} onChange={event => updateBiologicalLoad(Number(event.target.value))} /> <span>%</span></label>
-      </div>
-      <div className="biological-load-track" role="progressbar" aria-label="Carga Biológica" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, biologicalLoad)} aria-valuetext={`${biologicalLoad}%`}>
-        <div className="biological-load-fill" style={{ width: `${Math.min(100, biologicalLoad)}%` }} />
-      </div>
-      <div className="biological-load-scale"><span>0%</span><span>100%</span></div>
-      {cyberpsychosis ? <div className="cyberpsychosis-indicator" role="status"><span className="cyberpsychosis-pulse" /> <div><strong>CYBERPSICOSE</strong><small>Carga biológica excedeu o limite seguro em {biologicalLoad - 100}%.</small></div></div> : <p className="biological-load-note">Limite seguro: até 100%. O indicador de Cyberpsicose será ativado acima desse valor.</p>}
-      {!editingSheet && <small className="biological-load-readonly">Ative “Editar ficha” para alterar a carga. Salve a ficha para registrar as mudanças.</small>}
-    </div>
-  </section>
-})()}
+{isCyberFlowerSystem &&
+  canAccessSelectedCharacter &&
+  selectedCharacter &&
+  selectedSeasonId &&
+  !sheetLoading && (
+    <CyberneticsInventory
+      sheetDraft={sheetDraft}
+      setSheetDraft={setSheetDraft}
+      editingSheet={editingSheet}
+      canEditSelectedSheet={canEditSelectedSheet}
+      sheetSaving={sheetSaving}
+    />
+  )}
 
 {canAccessSelectedCharacter && selectedCampaign?.currency_config?.currencies?.length && (
   <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>

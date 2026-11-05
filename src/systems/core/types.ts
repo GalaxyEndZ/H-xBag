@@ -1,3 +1,4 @@
+
 // Estruturas comuns utilizadas por todos os sistemas de RPG.
 
 export interface FamilyTier {
@@ -131,6 +132,7 @@ export interface RPGSystem {
       usesFamilyTiers?: boolean
       usesSkillPoints?: boolean
       hasDefaultCurrency?: boolean
+      hasCyberneticsInventory?: boolean
     }
   }
 

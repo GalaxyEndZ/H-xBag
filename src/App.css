@@ -9585,3 +9585,644 @@ button:disabled { opacity: .58; }
   min-width: 0 !important;
   text-align: center !important;
 }
+
+/* =========================================
+   HÄXBAG — INVENTÁRIO DE CIBERNÉTICA
+   Visual adaptável ao tema da temporada
+========================================= */
+
+.app-shell .cybernetics-section {
+  --cyber-accent: var(--season-primary, #b49aff);
+  --cyber-secondary: var(--season-secondary, var(--season-primary, #b49aff));
+  --cyber-bg: var(--season-bg, #101014);
+  --cyber-surface: var(--season-surface, #191720);
+  --cyber-surface-alt: var(--season-surface-alt, #211c31);
+  --cyber-line: var(--season-line, #393342);
+  --cyber-text: var(--season-text, #f4f0fa);
+  --cyber-muted: var(--season-muted, #aaa);
+
+  display: grid;
+  gap: 20px;
+  margin-top: 24px;
+  min-width: 0;
+}
+
+.app-shell .cybernetics-section .inventory-heading {
+  align-items: center;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--cyber-line);
+}
+
+.app-shell .cybernetics-section .inventory-heading h3 {
+  margin: 0;
+  color: var(--cyber-text);
+  font-size: 20px;
+  font-weight: 850;
+  letter-spacing: -.035em;
+}
+
+.app-shell .cybernetics-section .inventory-heading p {
+  margin: 5px 0 0;
+  color: var(--cyber-muted);
+  font-size: 12px;
+}
+
+.app-shell .cybernetics-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border: 1px solid color-mix(in srgb, var(--cyber-accent) 35%, var(--cyber-line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--cyber-accent) 10%, var(--cyber-surface));
+  color: var(--cyber-accent);
+  font-size: 26px;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--cyber-accent) 10%, transparent);
+}
+
+/* Carga biológica */
+
+.app-shell .cybernetics-section .biological-load-card {
+  position: relative;
+  overflow: hidden;
+  padding: 22px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, var(--cyber-accent) 8%, transparent),
+      transparent 65%
+    ),
+    var(--cyber-surface);
+  box-shadow: 0 8px 25px rgba(0,0,0,.12);
+}
+
+.app-shell .cybernetics-section .biological-load-card::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--cyber-accent);
+  content: "";
+  opacity: .8;
+}
+
+.app-shell .cybernetics-section .biological-load-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.app-shell .cybernetics-section .biological-load-heading > div {
+  display: grid;
+  gap: 6px;
+}
+
+.app-shell .cybernetics-section .biological-load-eyebrow {
+  color: var(--cyber-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.app-shell .cybernetics-section .biological-load-heading strong {
+  color: var(--cyber-text);
+  font-size: 19px;
+  font-weight: 850;
+}
+
+.app-shell .cybernetics-section .biological-load-value {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--cyber-accent);
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.app-shell .cybernetics-section .biological-load-value input {
+  width: 78px;
+  padding: 8px 10px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 10px;
+  outline: none;
+  background: var(--cyber-bg);
+  color: var(--cyber-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.app-shell .cybernetics-section .biological-load-value input:focus {
+  border-color: var(--cyber-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyber-accent) 15%, transparent);
+}
+
+.app-shell .cybernetics-section .biological-load-track {
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid var(--cyber-line);
+  border-radius: 99px;
+  background: var(--cyber-bg);
+}
+
+.app-shell .cybernetics-section .biological-load-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cyber-secondary) 75%, var(--cyber-accent)),
+    var(--cyber-accent)
+  );
+  box-shadow: 0 0 15px color-mix(in srgb, var(--cyber-accent) 45%, transparent);
+  transition: width .3s ease;
+}
+
+.app-shell .cybernetics-section .biological-load-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--cyber-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .cybernetics-section .biological-load-note,
+.app-shell .cybernetics-section .biological-load-readonly {
+  display: block;
+  margin: 13px 0 0;
+  color: var(--cyber-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Cyberpsicose */
+
+.app-shell .cybernetics-section .biological-load-card.is-cyberpsychosis {
+  border-color: rgba(255,76,91,.65);
+  background:
+    linear-gradient(120deg, rgba(160,25,48,.13), transparent 70%),
+    var(--cyber-surface);
+}
+
+.app-shell .cybernetics-section .biological-load-card.is-cyberpsychosis::before {
+  background: #ff5268;
+}
+
+.app-shell .cybernetics-section .biological-load-card.is-cyberpsychosis .biological-load-fill {
+  background: linear-gradient(90deg, #e99a45, #ff3e58);
+  box-shadow: 0 0 18px rgba(255,62,88,.4);
+}
+
+.app-shell .cybernetics-section .cyberpsychosis-indicator {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 17px;
+  padding: 14px;
+  border: 1px solid rgba(255,76,91,.45);
+  border-radius: 12px;
+  background: rgba(125,20,38,.17);
+  color: #ff7787;
+}
+
+.app-shell .cybernetics-section .cyberpsychosis-indicator > div {
+  display: grid;
+  gap: 4px;
+}
+
+.app-shell .cybernetics-section .cyberpsychosis-indicator strong {
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .14em;
+}
+
+.app-shell .cybernetics-section .cyberpsychosis-indicator small {
+  color: #e9a1a9;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.app-shell .cybernetics-section .cyberpsychosis-pulse {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 50%;
+  background: #ff5268;
+  box-shadow: 0 0 0 5px rgba(255,82,104,.12), 0 0 15px rgba(255,82,104,.65);
+}
+
+/* Cabeçalho do inventário */
+
+.app-shell .cybernetics-section .cybernetics-inventory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.app-shell .cybernetics-section .cybernetics-inventory-heading h4 {
+  margin: 0;
+  color: var(--cyber-text);
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.app-shell .cybernetics-section .cybernetics-inventory-heading p {
+  margin: 5px 0 0;
+  color: var(--cyber-muted);
+  font-size: 11px;
+}
+
+/* Formulário */
+
+.app-shell .cybernetics-section .cybernetics-form {
+  display: grid;
+  gap: 18px;
+  padding: 21px;
+  border: 1px solid color-mix(in srgb, var(--cyber-accent) 30%, var(--cyber-line));
+  border-radius: 17px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--cyber-accent) 6%, transparent),
+      transparent 55%
+    ),
+    var(--cyber-surface);
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  animation: cybernetics-form-enter .2s ease;
+}
+
+@keyframes cybernetics-form-enter {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-shell .cybernetics-section .cybernetics-form > h4 {
+  margin: 0;
+  color: var(--cyber-accent);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid label {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  color: var(--cyber-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid input,
+.app-shell .cybernetics-section .cybernetics-form-grid select,
+.app-shell .cybernetics-section .cybernetics-form-grid textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 10px;
+  outline: none;
+  background: var(--cyber-bg);
+  color: var(--cyber-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid input::placeholder,
+.app-shell .cybernetics-section .cybernetics-form-grid textarea::placeholder {
+  color: var(--cyber-muted);
+  opacity: .65;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid :is(input, select, textarea):focus {
+  border-color: var(--cyber-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyber-accent) 13%, transparent);
+}
+
+.app-shell .cybernetics-section .cybernetics-form-grid select option {
+  background: var(--cyber-surface);
+  color: var(--cyber-text);
+}
+
+.app-shell .cybernetics-section .cybernetics-form-full {
+  grid-column: 1 / -1;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 15px;
+  border-top: 1px solid var(--cyber-line);
+}
+
+/* Botões da seção */
+
+.app-shell .cybernetics-section .cybernetics-form-actions button,
+.app-shell .cybernetics-section .cybernetics-inventory-heading button {
+  min-height: 39px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 850;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+
+.app-shell .cybernetics-section .cybernetics-form-actions button:hover,
+.app-shell .cybernetics-section .cybernetics-inventory-heading button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px color-mix(in srgb, var(--cyber-accent) 16%, transparent);
+}
+
+.app-shell .cybernetics-section .cybernetics-form-actions .primary-button,
+.app-shell .cybernetics-section .cybernetics-inventory-heading .primary-button {
+  border: 1px solid color-mix(in srgb, var(--cyber-accent) 45%, transparent);
+  background: linear-gradient(
+    135deg,
+    var(--cyber-accent),
+    color-mix(in srgb, var(--cyber-accent) 65%, var(--cyber-secondary))
+  );
+  color: var(--season-on-primary, #fff);
+}
+
+.app-shell .cybernetics-section .cybernetics-form-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Estado vazio */
+
+.app-shell .cybernetics-section .cybernetics-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 185px;
+  padding: 25px;
+  border: 1px dashed color-mix(in srgb, var(--cyber-accent) 35%, var(--cyber-line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--cyber-accent) 4%, var(--cyber-surface));
+  text-align: center;
+}
+
+.app-shell .cybernetics-section .cybernetics-empty > span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 12px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 13px;
+  background: var(--cyber-surface-alt);
+  color: var(--cyber-accent);
+  font-size: 25px;
+}
+
+.app-shell .cybernetics-section .cybernetics-empty strong {
+  color: var(--cyber-text);
+  font-size: 13px;
+}
+
+.app-shell .cybernetics-section .cybernetics-empty p {
+  margin: 6px 0 0;
+  color: var(--cyber-muted);
+  font-size: 11px;
+}
+
+/* Grade e cartões de implantes */
+
+.app-shell .cybernetics-section .cybernetics-implant-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+  padding: 17px;
+  overflow: hidden;
+  border: 1px solid var(--cyber-line);
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--cyber-accent) 6%, transparent),
+      transparent 60%
+    ),
+    var(--cyber-surface);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--cyber-accent) 48%, var(--cyber-line));
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--cyber-accent) 9%, transparent);
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-category {
+  display: inline-flex;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--cyber-accent) 25%, var(--cyber-line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cyber-accent) 8%, transparent);
+  color: var(--cyber-accent);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-top h4 {
+  margin: 8px 0 0;
+  color: var(--cyber-text);
+  font-size: 15px;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .cybernetics-section .cybernetics-status {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 7px;
+  background: var(--cyber-bg);
+  color: var(--cyber-muted);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.app-shell .cybernetics-section .cybernetics-status.installed {
+  border-color: color-mix(in srgb, var(--cyber-accent) 40%, var(--cyber-line));
+  background: color-mix(in srgb, var(--cyber-accent) 10%, var(--cyber-surface));
+  color: var(--cyber-accent);
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-card > p {
+  margin: 0;
+  color: var(--cyber-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-details span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cyber-bg) 75%, transparent);
+  color: var(--cyber-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-effects {
+  padding: 11px 12px;
+  border-left: 2px solid var(--cyber-accent);
+  border-radius: 0 9px 9px 0;
+  background: color-mix(in srgb, var(--cyber-accent) 6%, var(--cyber-surface));
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-effects strong {
+  color: var(--cyber-accent);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-effects p {
+  margin: 5px 0 0;
+  color: var(--cyber-muted);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+/* Ações do implante */
+
+.app-shell .cybernetics-section .cybernetics-implant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 11px;
+  border-top: 1px solid var(--cyber-line);
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--cyber-line);
+  border-radius: 8px;
+  background: var(--cyber-surface-alt);
+  color: var(--cyber-text);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color .18s, background .18s, color .18s;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-actions button:hover {
+  border-color: var(--cyber-accent);
+  background: color-mix(in srgb, var(--cyber-accent) 10%, var(--cyber-surface));
+  color: var(--cyber-accent);
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-actions button.danger-text {
+  margin-left: auto;
+  color: #e87986;
+}
+
+.app-shell .cybernetics-section .cybernetics-implant-actions button.danger-text:hover {
+  border-color: rgba(232,121,134,.55);
+  background: rgba(232,121,134,.1);
+  color: #ff8997;
+}
+
+/* Responsividade */
+
+@media (max-width: 650px) {
+  .app-shell .cybernetics-section .biological-load-card {
+    padding: 17px;
+  }
+
+  .app-shell .cybernetics-section .cybernetics-form {
+    padding: 16px;
+  }
+
+  .app-shell .cybernetics-section .cybernetics-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell .cybernetics-section .cybernetics-form-full {
+    grid-column: auto;
+  }
+
+  .app-shell .cybernetics-section .cybernetics-inventory-heading {
+    align-items: flex-start;
+  }
+
+  .app-shell .cybernetics-section .cybernetics-implant-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .cybernetics-section *,
+  .app-shell .cybernetics-section *::before,
+  .app-shell .cybernetics-section *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
