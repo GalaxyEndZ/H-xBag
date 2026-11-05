@@ -2,7 +2,7 @@ import {
   getRegisteredSystems,
   getSystemByName,
 } from './systems/core/registry'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -140,7 +140,7 @@ function App() {
   )
   const activeSystem = getSystemByName(selectedCampaign?.system_name)
   const isKisatsutaiSystem = activeSystem?.id === 'kisatsutai'
-  
+
   const isCyberFlowerSystem =
   activeSystem?.data?.features?.hasCyberneticsInventory === true
 
@@ -311,6 +311,8 @@ function App() {
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
   const [sheetDraft, setSheetDraft] = useState('{}')
+  const sheetDraftRef = useRef(sheetDraft)
+    sheetDraftRef.current = sheetDraft
   const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
   const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
   const [combatActionResult, setCombatActionResult] = useState<string>('')
@@ -324,6 +326,13 @@ function App() {
   const [sheetLoading, setSheetLoading] = useState(false)
   const [sheetSaving, setSheetSaving] = useState(false)
   const [editingSheet, setEditingSheet] = useState(false)
+  const [sheetAutoSaveStatus, setSheetAutoSaveStatus] = useState<
+    'idle' | 'pending' | 'saving' | 'saved' | 'error'
+  >('idle')
+
+  const sheetDraftLoadedForRef = useRef('')
+  const lastSavedSheetDraftRef = useRef('{}')
+  const saveInFlightRef = useRef(false)
 
   const [activePage, setActivePage] = useState<
   'sheets' | 'characters' | 'campaigns' | 'shops' | 'master-shield'
@@ -643,19 +652,57 @@ if (accessibleShops.length === 0) {
 }, [selectedCampaignId, isMaster])
 
   useEffect(() => {
-    if (!selectedCharacterId || !selectedSeasonId) { setSheet(null); setSheetDraft('{}'); return }
-    let cancelled = false
-    async function loadSheet() {
-      setSheetLoading(true)
-      const { data, error: sheetError } = await supabase.from('character_sheets').select('id,character_id,season_id,sheet_data').eq('character_id', selectedCharacterId).eq('season_id', selectedSeasonId).maybeSingle()
-      if (cancelled) return
-      if (sheetError) { setError(`Erro ao carregar ficha: ${sheetError.message}`); setSheet(null); setSheetDraft('{}') }
-      else { const value = (data ?? null) as CharacterSheet | null; setSheet(value); setSheetDraft(JSON.stringify(value?.sheet_data ?? {}, null, 2)) }
-      setSheetLoading(false)
+  const ownerKey = `${selectedCharacterId ?? ''}:${selectedSeasonId ?? ''}`
+
+  sheetDraftLoadedForRef.current = ''
+  setSheetAutoSaveStatus('idle')
+
+  if (!selectedCharacterId || !selectedSeasonId) {
+    setSheet(null)
+    setSheetDraft('{}')
+    lastSavedSheetDraftRef.current = '{}'
+    setSheetLoading(false)
+    return
+  }
+
+  let cancelled = false
+
+  async function loadSheet() {
+    setSheetLoading(true)
+
+    const { data, error: sheetError } = await supabase
+      .from('character_sheets')
+      .select('id,character_id,season_id,sheet_data')
+      .eq('character_id', selectedCharacterId)
+      .eq('season_id', selectedSeasonId)
+      .maybeSingle()
+
+    if (cancelled) return
+
+    if (sheetError) {
+      setError(`Erro ao carregar ficha: ${sheetError.message}`)
+      setSheet(null)
+      setSheetDraft('{}')
+      lastSavedSheetDraftRef.current = '{}'
+    } else {
+      const value = (data ?? null) as CharacterSheet | null
+      const initialDraft = JSON.stringify(value?.sheet_data ?? {}, null, 2)
+
+      setSheet(value)
+      setSheetDraft(initialDraft)
+      lastSavedSheetDraftRef.current = initialDraft
+      sheetDraftLoadedForRef.current = ownerKey
     }
-    void loadSheet()
-    return () => { cancelled = true }
-  }, [selectedCharacterId, selectedSeasonId])
+
+    setSheetLoading(false)
+  }
+
+  void loadSheet()
+
+  return () => {
+    cancelled = true
+  }
+}, [selectedCharacterId, selectedSeasonId])
 
   useEffect(() => {
     if (!selectedSeasonId || !characters.length || !systemFeatures.usesRanks) {
@@ -2395,9 +2442,11 @@ parsed = {
           .select('id,character_id,season_id,sheet_data')
           .single()
 
-        if (insertError || !data) {
-          throw new Error(`Não foi possível criar a ficha com a iniciativa: ${insertError?.message ?? 'resposta vazia'}`)
-        }
+if (insertError || !data) {
+  setError(`Não foi possível criar a ficha: ${insertError?.message ?? 'resposta vazia'}`)
+  setSheetSaving(false)
+  return
+}
 
         savedSheet = data as CharacterSheet
       }
@@ -2437,11 +2486,22 @@ parsed = {
     }
   }
 
-  async function saveCharacterSheet() {
-    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
+  async function saveCharacterSheet(draftOverride?: string, automatic = false) {
+    if (
+  !selectedCharacterId ||
+  !selectedSeasonId ||
+  !canEditSelectedSheet ||
+  saveInFlightRef.current
+) return
+
+const draftToSave = draftOverride ?? sheetDraft
     let parsed: Record<string, unknown>
-    try { const value: unknown = JSON.parse(sheetDraft); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('A ficha precisa ser um objeto JSON.'); parsed = value as Record<string, unknown> }
-    catch (e) { setError(e instanceof Error ? e.message : 'JSON inválido.'); return }
+    try { const value: unknown = JSON.parse(draftToSave); if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('A ficha precisa ser um objeto JSON.'); parsed = value as Record<string, unknown> }
+    catch (e) {
+  setError(e instanceof Error ? e.message : 'JSON inválido.')
+  if (automatic) setSheetAutoSaveStatus('error')
+  return
+}
     // O salvamento geral da ficha não deve alterar PV, PS ou PR atuais.
     // Esses três campos são persistidos exclusivamente por saveCharacterConditions().
     if (sheet) {
@@ -2490,14 +2550,37 @@ const draftCombat =
       }
     }
 
-    setSheetSaving(true); setError('')
+    saveInFlightRef.current = true
+
+if (automatic) {
+  setSheetAutoSaveStatus('saving')
+}
+
+setSheetSaving(true)
+setError('')
     if (sheet) {
       const { data, error: updateError } = await supabase.from('character_sheets').update({ sheet_data: parsed }).eq('id', sheet.id).select('id,character_id,season_id,sheet_data').single()
-      if (updateError || !data) { setError(`Não foi possível salvar a ficha: ${updateError?.message ?? 'resposta vazia'}`); setSheetSaving(false); return }
+      if (updateError || !data) {
+  setError(`Não foi possível salvar a ficha: ${updateError?.message ?? 'resposta vazia'}`)
+  setSheetSaving(false)
+  saveInFlightRef.current = false
+
+  if (automatic) setSheetAutoSaveStatus('error')
+
+  return
+}
       setSheet(data as CharacterSheet)
     } else {
       const { data, error: insertError } = await supabase.from('character_sheets').insert({ character_id: selectedCharacterId, season_id: selectedSeasonId, sheet_data: parsed, created_by: session!.user.id }).select('id,character_id,season_id,sheet_data').single()
-      if (insertError || !data) { setError(`Não foi possível criar a ficha: ${insertError?.message ?? 'resposta vazia'}`); setSheetSaving(false); return }
+      if (insertError || !data) {
+  setError(`Não foi possível criar a ficha: ${insertError?.message ?? 'resposta vazia'}`)
+  setSheetSaving(false)
+  saveInFlightRef.current = false
+
+  if (automatic) setSheetAutoSaveStatus('error')
+
+  return
+}
       setSheet(data as CharacterSheet)
     }
     let strengthSyncFailed = false
@@ -2516,9 +2599,22 @@ const draftCombat =
         setCharacters(current => current.map(character => character.id === selectedCharacterId ? updatedCharacter as Character : character))
       }
     }
-    setSheetDraft(JSON.stringify(parsed, null, 2));
-    if (!strengthSyncFailed) setNotice('Ficha salva.');
-    setSheetSaving(false)
+const savedDraft = JSON.stringify(parsed, null, 2)
+
+lastSavedSheetDraftRef.current = savedDraft
+
+if (sheetDraftRef.current === draftToSave) {
+  setSheetDraft(savedDraft)
+}
+
+if (automatic) {
+  setSheetAutoSaveStatus('saved')
+} else if (!strengthSyncFailed) {
+  setNotice('Ficha salva.')
+}
+
+saveInFlightRef.current = false
+setSheetSaving(false)
   }
 
   async function saveCharacterConditions(draftOverride?: Record<string, unknown>) {
@@ -3450,6 +3546,39 @@ const weight = newItemCategories.includes('Consumíveis')
   // Quem recebeu acesso ao personagem pode consultar a carteira e ajustar
   // as condições atuais da ficha; o banco continua validando a permissão.
   const canEditSelectedSheet = canAccessSelectedCharacter
+
+useEffect(() => {
+  const ownerKey = `${selectedCharacterId ?? ''}:${selectedSeasonId ?? ''}`
+
+  if (
+    !selectedCharacterId ||
+    !selectedSeasonId ||
+    sheetLoading ||
+    sheetSaving ||
+    !canEditSelectedSheet ||
+    sheetDraftLoadedForRef.current !== ownerKey ||
+    (!editingSheet && !isCyberFlowerSystem) ||
+    sheetDraft === lastSavedSheetDraftRef.current
+  ) {
+    return
+  }
+
+  const timeout = window.setTimeout(() => {
+    void saveCharacterSheet(sheetDraft, true)
+  }, 700)
+
+  return () => window.clearTimeout(timeout)
+}, [
+  sheetDraft,
+  selectedCharacterId,
+  selectedSeasonId,
+  sheetLoading,
+  sheetSaving,
+  canEditSelectedSheet,
+  editingSheet,
+  isCyberFlowerSystem,
+])
+
   const canRenameSelectedCharacter = Boolean(
     selectedCharacter && session?.user?.id && (
       isMaster || selectedCharacter.user_id === session.user.id
@@ -4237,6 +4366,14 @@ onClick={() => {
     >
       {editingSheet?'Fechar edição':'Editar ficha'}
     </button>
+    {isCyberFlowerSystem && (
+  <span className="sheet-autosave-status">
+    {sheetAutoSaveStatus === 'saving' && 'Salvando...'}
+    {sheetAutoSaveStatus === 'saved' && 'Salvo automaticamente'}
+    {sheetAutoSaveStatus === 'error' && 'Erro ao salvar'}
+    {sheetAutoSaveStatus === 'pending' && 'Alterações pendentes'}
+  </span>
+)}
   </div>
 )}
                   </div>
@@ -6094,13 +6231,13 @@ style={{cursor:'pointer'}}>
     <CyberneticsInventory
       sheetDraft={sheetDraft}
       setSheetDraft={setSheetDraft}
-      editingSheet={editingSheet}
       canEditSelectedSheet={canEditSelectedSheet}
       sheetSaving={sheetSaving}
     />
   )}
 
-{canAccessSelectedCharacter && selectedCampaign?.currency_config?.currencies?.length && (
+{canAccessSelectedCharacter &&
+  (selectedCampaign?.currency_config?.currencies?.length ?? 0) > 0 && (
   <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
     <style>{`
       .currency-wallet > .inventory-heading,
@@ -6532,7 +6669,7 @@ style={{cursor:'pointer'}}>
 {!showCurrencyHistory ? (
   <>
     <div className="currency-balances-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,210px),1fr))',gap:14,marginBottom:24}}>
-      {selectedCampaign.currency_config.currencies.map((currency, index) => (
+      {(selectedCampaign?.currency_config?.currencies ?? []).map((currency, index) => (
         <div className="currency-balance" key={currency.id} style={{position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',gap:14,minHeight:132,padding:19,borderRadius:19,border:'1px solid var(--season-line,rgba(255,255,255,.16))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.09)),var(--season-surface,rgba(0,0,0,.10)))',boxShadow:'0 12px 28px rgba(0,0,0,.13),inset 0 1px 0 rgba(255,255,255,.07)'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
             <span style={{fontSize:12,fontWeight:700,letterSpacing:'.045em',color:'var(--season-muted, #aaa)'}}>{currency.name}</span>
@@ -6587,7 +6724,7 @@ style={{cursor:'pointer'}}>
             }}
           >
             <option value="">Selecione</option>
-            {selectedCampaign.currency_config.currencies.map(currency => (
+            {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
               <option key={currency.id} value={currency.id}>
                 {currency.name} ({currency.symbol})
               </option>
@@ -6611,7 +6748,7 @@ style={{cursor:'pointer'}}>
             }}
           >
             <option value="">Selecione</option>
-            {selectedCampaign.currency_config.currencies.map(currency => (
+            {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
               <option key={currency.id} value={currency.id}>
                 {currency.name} ({currency.symbol})
               </option>
@@ -6643,10 +6780,10 @@ style={{cursor:'pointer'}}>
       </div>
 
       {(() => {
-        const from = selectedCampaign.currency_config.currencies.find(
+        const from = (selectedCampaign?.currency_config?.currencies ?? []).find(
           currency => currency.id === conversionFromId,
         )
-        const to = selectedCampaign.currency_config.currencies.find(
+        const to = (selectedCampaign?.currency_config?.currencies ?? []).find(
           currency => currency.id === conversionToId,
         )
         const amount = Number(conversionAmount.replace(',', '.'))
@@ -6716,10 +6853,10 @@ style={{cursor:'pointer'}}>
   <label>
     Moeda
     <select
-      value={currencyAdjustmentId || selectedCampaign.currency_config.currencies[0]?.id || ''}
+      value={currencyAdjustmentId || (selectedCampaign?.currency_config?.currencies ?? [])[0]?.id || ''}
       onChange={event => setCurrencyAdjustmentId(event.target.value)}
     >
-      {selectedCampaign.currency_config.currencies.map(currency => (
+      {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
         <option key={currency.id} value={currency.id}>
           {currency.name} ({currency.symbol})
         </option>

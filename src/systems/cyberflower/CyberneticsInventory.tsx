@@ -16,7 +16,6 @@ type CyberneticImplant = {
 type CyberneticsInventoryProps = {
   sheetDraft: string
   setSheetDraft: React.Dispatch<React.SetStateAction<string>>
-  editingSheet: boolean
   canEditSelectedSheet: boolean
   sheetSaving: boolean
 }
@@ -46,7 +45,6 @@ const categories = [
 export default function CyberneticsInventory({
   sheetDraft,
   setSheetDraft,
-  editingSheet,
   canEditSelectedSheet,
   sheetSaving,
 }: CyberneticsInventoryProps) {
@@ -54,9 +52,10 @@ export default function CyberneticsInventory({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyImplant)
 
-  const canEdit = editingSheet && canEditSelectedSheet && !sheetSaving
+  const canEdit = canEditSelectedSheet && !sheetSaving
 
   let sheet: Record<string, any> = {}
+
   try {
     sheet = JSON.parse(sheetDraft || '{}')
   } catch {
@@ -64,20 +63,20 @@ export default function CyberneticsInventory({
   }
 
   const cybernetics = sheet.cybernetics ?? {}
+
   const implants: CyberneticImplant[] = Array.isArray(cybernetics.implants)
     ? cybernetics.implants
     : []
 
   const biologicalLoadRaw = Number(cybernetics.biologicalLoad ?? 0)
+
   const biologicalLoad = Number.isFinite(biologicalLoadRaw)
     ? Math.max(0, biologicalLoadRaw)
     : 0
 
   const cyberpsychosis = biologicalLoad > 100
 
-  function updateCybernetics(
-    changes: Record<string, unknown>,
-  ) {
+  function updateCybernetics(changes: Record<string, unknown>) {
     let next: Record<string, any> = {}
 
     try {
@@ -95,6 +94,8 @@ export default function CyberneticsInventory({
   }
 
   function updateBiologicalLoad(value: number) {
+    if (!canEdit) return
+
     updateCybernetics({
       biologicalLoad: Math.max(0, Number.isFinite(value) ? value : 0),
     })
@@ -107,6 +108,8 @@ export default function CyberneticsInventory({
   }
 
   function startEditing(implant: CyberneticImplant) {
+    if (!canEdit) return
+
     setForm({
       name: implant.name ?? '',
       category: implant.category ?? 'Outro',
@@ -133,7 +136,9 @@ export default function CyberneticsInventory({
     }
 
     const nextImplants = editingId
-      ? implants.map(item => item.id === editingId ? implant : item)
+      ? implants.map(item =>
+          item.id === editingId ? implant : item,
+        )
       : [...implants, implant]
 
     updateCybernetics({ implants: nextImplants })
@@ -151,7 +156,9 @@ export default function CyberneticsInventory({
       implants: implants.filter(item => item.id !== id),
     })
 
-    if (editingId === id) resetForm()
+    if (editingId === id) {
+      resetForm()
+    }
   }
 
   function toggleStatus(implant: CyberneticImplant) {
@@ -174,15 +181,26 @@ export default function CyberneticsInventory({
       <div className="inventory-heading">
         <div>
           <h3>Cibernética</h3>
-          <p>Implantes, modificações e a estabilidade biológica do personagem.</p>
+          <p>
+            Implantes, modificações e a estabilidade biológica do personagem.
+          </p>
         </div>
-        <span className="cybernetics-heading-icon" aria-hidden="true">⌬</span>
+
+        <span className="cybernetics-heading-icon" aria-hidden="true">
+          ⌬
+        </span>
       </div>
 
-      <div className={`biological-load-card ${cyberpsychosis ? 'is-cyberpsychosis' : ''}`}>
+      <div
+        className={`biological-load-card ${
+          cyberpsychosis ? 'is-cyberpsychosis' : ''
+        }`}
+      >
         <div className="biological-load-heading">
           <div>
-            <span className="biological-load-eyebrow">INTEGRIDADE ORGÂNICA</span>
+            <span className="biological-load-eyebrow">
+              INTEGRIDADE ORGÂNICA
+            </span>
             <strong>Carga Biológica</strong>
           </div>
 
@@ -194,7 +212,9 @@ export default function CyberneticsInventory({
               step="1"
               value={biologicalLoad}
               disabled={!canEdit}
-              onChange={event => updateBiologicalLoad(Number(event.target.value))}
+              onChange={event =>
+                updateBiologicalLoad(Number(event.target.value))
+              }
             />
             <span>%</span>
           </label>
@@ -211,7 +231,9 @@ export default function CyberneticsInventory({
         >
           <div
             className="biological-load-fill"
-            style={{ width: `${Math.min(100, biologicalLoad)}%` }}
+            style={{
+              width: `${Math.min(100, biologicalLoad)}%`,
+            }}
           />
         </div>
 
@@ -223,16 +245,19 @@ export default function CyberneticsInventory({
         {cyberpsychosis ? (
           <div className="cyberpsychosis-indicator" role="status">
             <span className="cyberpsychosis-pulse" />
+
             <div>
               <strong>CYBERPSICOSE</strong>
               <small>
-                Carga biológica excedeu o limite seguro em {biologicalLoad - 100}%.
+                Carga biológica excedeu o limite seguro em{' '}
+                {biologicalLoad - 100}%.
               </small>
             </div>
           </div>
         ) : (
           <p className="biological-load-note">
-            Limite seguro: até 100%. O indicador de Cyberpsicose será ativado acima desse valor.
+            Limite seguro: até 100%. O indicador de Cyberpsicose será ativado
+            acima desse valor.
           </p>
         )}
       </div>
@@ -241,7 +266,10 @@ export default function CyberneticsInventory({
         <div>
           <h4>Inventário de implantes</h4>
           <p>
-            {implants.length} {implants.length === 1 ? 'implante cadastrado' : 'implantes cadastrados'}
+            {implants.length}{' '}
+            {implants.length === 1
+              ? 'implante cadastrado'
+              : 'implantes cadastrados'}
           </p>
         </div>
 
@@ -250,9 +278,14 @@ export default function CyberneticsInventory({
             type="button"
             className="primary-button"
             onClick={() => {
+              if (showForm && !editingId) {
+                resetForm()
+                return
+              }
+
               setForm(emptyImplant)
               setEditingId(null)
-              setShowForm(value => !value)
+              setShowForm(true)
             }}
           >
             {showForm && !editingId ? 'Cancelar' : '+ Novo implante'}
@@ -269,7 +302,9 @@ export default function CyberneticsInventory({
               Nome
               <input
                 value={form.name}
-                onChange={event => setForm({ ...form, name: event.target.value })}
+                onChange={event =>
+                  setForm({ ...form, name: event.target.value })
+                }
                 placeholder="Nome do implante"
                 autoFocus
               />
@@ -279,10 +314,14 @@ export default function CyberneticsInventory({
               Categoria
               <select
                 value={form.category}
-                onChange={event => setForm({ ...form, category: event.target.value })}
+                onChange={event =>
+                  setForm({ ...form, category: event.target.value })
+                }
               >
                 {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
               </select>
             </label>
@@ -291,7 +330,9 @@ export default function CyberneticsInventory({
               Localização no corpo
               <input
                 value={form.location}
-                onChange={event => setForm({ ...form, location: event.target.value })}
+                onChange={event =>
+                  setForm({ ...form, location: event.target.value })
+                }
                 placeholder="Ex.: braço esquerdo"
               />
             </label>
@@ -303,10 +344,15 @@ export default function CyberneticsInventory({
                 min="0"
                 step="0.1"
                 value={form.biologicalLoad}
-                onChange={event => setForm({
-                  ...form,
-                  biologicalLoad: Math.max(0, Number(event.target.value) || 0),
-                })}
+                onChange={event =>
+                  setForm({
+                    ...form,
+                    biologicalLoad: Math.max(
+                      0,
+                      Number(event.target.value) || 0,
+                    ),
+                  })
+                }
               />
             </label>
 
@@ -314,7 +360,9 @@ export default function CyberneticsInventory({
               Custo
               <input
                 value={form.cost}
-                onChange={event => setForm({ ...form, cost: event.target.value })}
+                onChange={event =>
+                  setForm({ ...form, cost: event.target.value })
+                }
                 placeholder="Ex.: 500 ₰"
               />
             </label>
@@ -323,10 +371,12 @@ export default function CyberneticsInventory({
               Status
               <select
                 value={form.status}
-                onChange={event => setForm({
-                  ...form,
-                  status: event.target.value as CyberneticImplant['status'],
-                })}
+                onChange={event =>
+                  setForm({
+                    ...form,
+                    status: event.target.value as CyberneticImplant['status'],
+                  })
+                }
               >
                 <option value="installed">Instalado</option>
                 <option value="stored">Armazenado</option>
@@ -337,7 +387,9 @@ export default function CyberneticsInventory({
               Descrição
               <textarea
                 value={form.description}
-                onChange={event => setForm({ ...form, description: event.target.value })}
+                onChange={event =>
+                  setForm({ ...form, description: event.target.value })
+                }
                 placeholder="Descreva o implante..."
                 rows={3}
               />
@@ -347,7 +399,9 @@ export default function CyberneticsInventory({
               Efeitos e modificações
               <textarea
                 value={form.effects}
-                onChange={event => setForm({ ...form, effects: event.target.value })}
+                onChange={event =>
+                  setForm({ ...form, effects: event.target.value })
+                }
                 placeholder="Bônus, efeitos especiais, limitações..."
                 rows={3}
               />
@@ -355,14 +409,19 @@ export default function CyberneticsInventory({
           </div>
 
           <div className="cybernetics-form-actions">
-            <button type="button" className="secondary-button" onClick={resetForm}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={resetForm}
+            >
               Cancelar
             </button>
+
             <button
               type="button"
               className="primary-button"
               onClick={saveImplant}
-              disabled={!form.name.trim()}
+              disabled={!form.name.trim() || !canEdit}
             >
               {editingId ? 'Salvar alterações' : 'Adicionar implante'}
             </button>
@@ -374,31 +433,50 @@ export default function CyberneticsInventory({
         <div className="cybernetics-empty">
           <span>⌬</span>
           <strong>Nenhum implante cadastrado</strong>
-          <p>Os implantes e modificações cibernéticas aparecerão aqui.</p>
+          <p>
+            Os implantes e modificações cibernéticas aparecerão aqui.
+          </p>
         </div>
       ) : (
         <div className="cybernetics-implant-list">
           {implants.map(implant => (
-            <article className="cybernetics-implant-card" key={implant.id}>
+            <article
+              className="cybernetics-implant-card"
+              key={implant.id}
+            >
               <div className="cybernetics-implant-top">
                 <div>
-                  <span className="cybernetics-implant-category">{implant.category}</span>
+                  <span className="cybernetics-implant-category">
+                    {implant.category}
+                  </span>
                   <h4>{implant.name}</h4>
                 </div>
 
-                <span className={`cybernetics-status ${implant.status}`}>
-                  {implant.status === 'installed' ? 'Instalado' : 'Armazenado'}
+                <span
+                  className={`cybernetics-status ${implant.status}`}
+                >
+                  {implant.status === 'installed'
+                    ? 'Instalado'
+                    : 'Armazenado'}
                 </span>
               </div>
 
-              {implant.description && <p>{implant.description}</p>}
+              {implant.description && (
+                <p>{implant.description}</p>
+              )}
 
               <div className="cybernetics-implant-details">
                 {implant.location && (
                   <span>⌖ {implant.location}</span>
                 )}
-                <span>⌬ {Number(implant.biologicalLoad) || 0}% de carga</span>
-                {implant.cost && <span>◈ {implant.cost}</span>}
+
+                <span>
+                  ⌬ {Number(implant.biologicalLoad) || 0}% de carga
+                </span>
+
+                {implant.cost && (
+                  <span>◈ {implant.cost}</span>
+                )}
               </div>
 
               {implant.effects && (
@@ -410,13 +488,27 @@ export default function CyberneticsInventory({
 
               {canEdit && (
                 <div className="cybernetics-implant-actions">
-                  <button type="button" onClick={() => toggleStatus(implant)}>
-                    {implant.status === 'installed' ? 'Armazenar' : 'Instalar'}
+                  <button
+                    type="button"
+                    onClick={() => toggleStatus(implant)}
+                  >
+                    {implant.status === 'installed'
+                      ? 'Armazenar'
+                      : 'Instalar'}
                   </button>
-                  <button type="button" onClick={() => startEditing(implant)}>
+
+                  <button
+                    type="button"
+                    onClick={() => startEditing(implant)}
+                  >
                     Editar
                   </button>
-                  <button type="button" className="danger-text" onClick={() => removeImplant(implant.id)}>
+
+                  <button
+                    type="button"
+                    className="danger-text"
+                    onClick={() => removeImplant(implant.id)}
+                  >
                     Remover
                   </button>
                 </div>
@@ -424,12 +516,6 @@ export default function CyberneticsInventory({
             </article>
           ))}
         </div>
-      )}
-
-      {!editingSheet && (
-        <small className="biological-load-readonly">
-          Ative “Editar ficha” para cadastrar ou modificar implantes. Salve a ficha para registrar as mudanças.
-        </small>
       )}
     </section>
   )
