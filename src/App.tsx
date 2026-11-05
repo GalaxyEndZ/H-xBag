@@ -282,7 +282,11 @@ function App() {
   const [shopItemStock, setShopItemStock] = useState('')
   const [shopItemEmoji, setShopItemEmoji] = useState('📦')
   const [shopItemCategories, setShopItemCategories] = useState<string[]>(['Diversos'])
-  const [shopItemEquipmentType, setShopItemEquipmentType] = useState<'none' | 'armor' | 'protection'>('none')
+  const [shopItemEquipmentType, setShopItemEquipmentType] = useState<'none' | 'armor' | 'protection' | 'cybernetic'>('none')
+  const [shopCyberneticCategory, setShopCyberneticCategory] = useState('Outro')
+  const [shopCyberneticLocation, setShopCyberneticLocation] = useState('')
+  const [shopCyberneticLoad, setShopCyberneticLoad] = useState('0')
+  const [shopCyberneticEffects, setShopCyberneticEffects] = useState('')
   const [shopItemArmorClass, setShopItemArmorClass] = useState<'leve' | 'media' | 'pesada'>('leve')
   const [shopItemArmorCoverage, setShopItemArmorCoverage] = useState<'cortante_perfurante' | 'especial_bruto' | 'todos'>('cortante_perfurante')
   const [shopItemProtectionTier, setShopItemProtectionTier] = useState<'basica' | 'moderada' | 'avancada'>('basica')
@@ -297,6 +301,7 @@ function App() {
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [masterShieldSeasonId, setMasterShieldSeasonId] = useState('')
   const [masterShieldSheets, setMasterShieldSheets] = useState<Record<string, Record<string, any>>>({})
+  const [cyberneticsArchetypeSheets, setCyberneticsArchetypeSheets] = useState<Record<string, Record<string, any>>>({})
   const [, setMasterShieldGrantRows] = useState<Array<{ character_id: string; user_id: string }>>([])
   const [masterShieldLoading, setMasterShieldLoading] = useState(false)
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
@@ -334,9 +339,13 @@ function App() {
   const lastSavedSheetDraftRef = useRef('{}')
   const saveInFlightRef = useRef(false)
 
+  useEffect(() => {
+    sheetDraftRef.current = sheetDraft
+  }, [sheetDraft])
+
   const [activePage, setActivePage] = useState<
-  'sheets' | 'characters' | 'campaigns' | 'shops' | 'master-shield'
->('sheets')
+  'overview' | 'sheets' | 'characters' | 'campaigns' | 'shops' | 'master-shield'
+>('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
@@ -374,7 +383,11 @@ function App() {
   const [newItemUnitPrice, setNewItemUnitPrice] = useState('0')
   const [newItemCurrencyId, setNewItemCurrencyId] = useState('')
   const [newItemEmoji, setNewItemEmoji] = useState('📦')
-  const [newEquipmentType, setNewEquipmentType] = useState<'none' | 'armor' | 'protection'>('none')
+  const [newEquipmentType, setNewEquipmentType] = useState<'none' | 'armor' | 'protection' | 'cybernetic'>('none')
+  const [newCyberneticCategory, setNewCyberneticCategory] = useState('Outro')
+  const [newCyberneticLocation, setNewCyberneticLocation] = useState('')
+  const [newCyberneticLoad, setNewCyberneticLoad] = useState('0')
+  const [newCyberneticEffects, setNewCyberneticEffects] = useState('')
   const [newArmorClass, setNewArmorClass] = useState<'leve' | 'media' | 'pesada'>('leve')
   const [newArmorCoverage, setNewArmorCoverage] = useState<'cortante_perfurante' | 'especial_bruto' | 'todos'>('cortante_perfurante')
   const [newProtectionTier, setNewProtectionTier] = useState<'basica' | 'moderada' | 'avancada'>('basica')
@@ -919,7 +932,13 @@ if (accessibleShops.length === 0) {
         setError(`Erro ao carregar inventário: ${itemsError.message}`)
         setItems([])
       } else {
-        setItems((data ?? []) as Item[])
+        setItems(
+  ((data ?? []) as Item[]).filter(
+    item =>
+      item.metadata?.cybernetic !== true ||
+      item.metadata?.cyberneticEquipped !== true
+  )
+)
       }
 
       setItemsLoading(false)
@@ -1149,7 +1168,9 @@ async function saveShopItem() {
       icon: shopItemEmoji.trim() || '📦',
       rarity: shopItemRarity,
       categories: shopItemCategories.length ? shopItemCategories : [shopItemCategory],
-      equipmentType: shopItemEquipmentType,
+      equipmentType: isCyberFlowerSystem ? shopItemEquipmentType : (
+  shopItemEquipmentType === 'cybernetic' ? 'none' : shopItemEquipmentType
+),
       armorClass: shopItemEquipmentType === 'armor' ? shopItemArmorClass : null,
       armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : shopItemArmorCoverage) : null,
       protectionTier: shopItemEquipmentType === 'protection' ? shopItemProtectionTier : null,
@@ -1161,6 +1182,24 @@ async function saveShopItem() {
       weaponClass: shopItemCategories.includes('Armas') ? shopItemWeaponClass : null,
       weaponDamage: shopItemCategories.includes('Armas') ? ({ improvised: '1d4', advanced: '1d6', special: '1d8', black_red: '1d10', mutable: '1d12' } as Record<string, string>)[shopItemWeaponClass] || '1d4' : null,
       weaponWeight: shopItemCategories.includes('Armas') ? weight : null,
+
+cybernetic: isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic',
+cyberneticEquipped: false,
+biologicalLoad: isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic'
+  ? Math.max(0, Number(shopCyberneticLoad) || 0)
+  : null,
+cyberneticData: isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic'
+  ? {
+      name: shopItemName.trim(),
+      category: shopCyberneticCategory,
+      description: shopItemDescription.trim(),
+      location: shopCyberneticLocation.trim(),
+      biologicalLoad: Math.max(0, Number(shopCyberneticLoad) || 0),
+      cost: String(price),
+      effects: shopCyberneticEffects.trim(),
+      status: 'stored',
+    }
+  : null,
     },
   }
 
@@ -1248,7 +1287,30 @@ function editShopItem(item: CampaignShopItem) {
   setShopItemCategory(item.category)
   setShopItemCategories(Array.isArray(item.metadata?.categories) ? item.metadata.categories.filter((value): value is string => typeof value === 'string') : [item.category])
   setShopItemRarity(typeof item.metadata?.rarity === 'string' ? item.metadata.rarity.toLocaleLowerCase('pt-BR') : 'comum')
-  setShopItemEquipmentType(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' ? item.metadata.equipmentType : 'none')
+  setShopItemEquipmentType(
+  item.metadata?.equipmentType === 'armor' ||
+  item.metadata?.equipmentType === 'protection' ||
+  (isCyberFlowerSystem && item.metadata?.equipmentType === 'cybernetic')
+    ? item.metadata.equipmentType
+    : 'none'
+)
+
+const cyberneticData = isCyberFlowerSystem
+  ? item.metadata?.cyberneticData as Record<string, unknown> | undefined
+  : undefined
+
+setShopCyberneticCategory(
+  typeof cyberneticData?.category === 'string' ? cyberneticData.category : 'Outro'
+)
+setShopCyberneticLocation(
+  typeof cyberneticData?.location === 'string' ? cyberneticData.location : ''
+)
+setShopCyberneticLoad(
+  String(cyberneticData?.biologicalLoad ?? item.metadata?.biologicalLoad ?? 0)
+)
+setShopCyberneticEffects(
+  typeof cyberneticData?.effects === 'string' ? cyberneticData.effects : ''
+)
   setShopItemArmorClass(item.metadata?.armorClass === 'media' || item.metadata?.armorClass === 'pesada' ? item.metadata.armorClass : 'leve')
   setShopItemArmorCoverage(item.metadata?.armorCoverage === 'especial_bruto' || item.metadata?.armorCoverage === 'todos' ? item.metadata.armorCoverage : 'cortante_perfurante')
   setShopItemProtectionTier(item.metadata?.protectionTier === 'moderada' || item.metadata?.protectionTier === 'avancada' ? item.metadata.protectionTier : 'basica')
@@ -2486,6 +2548,146 @@ if (insertError || !data) {
     }
   }
 
+async function clearCharacterInitiative(characterId: string, seasonId: string) {
+  if (!isMaster || !characterId || !seasonId) {
+    setError('Não foi possível limpar a iniciativa.')
+    return
+  }
+
+  setSheetSaving(true)
+  setError('')
+  setNotice('')
+
+  try {
+    const { data: latest, error: loadError } = await supabase
+      .from('character_sheets')
+      .select('id, character_id, season_id, sheet_data')
+      .eq('character_id', characterId)
+      .eq('season_id', seasonId)
+      .maybeSingle()
+
+    if (loadError) throw loadError
+
+    if (!latest) {
+      setNotice('Não há iniciativa registrada para limpar.')
+      return
+    }
+
+    const baseData = latest.sheet_data as Record<string, any>
+    const currentCombat = { ...(baseData.combat ?? {}) }
+
+    delete currentCombat.initiative
+
+    const nextData = {
+      ...baseData,
+      combat: currentCombat,
+    }
+
+    const { error: updateError } = await supabase
+      .from('character_sheets')
+      .update({ sheet_data: nextData })
+      .eq('id', latest.id)
+
+    if (updateError) throw updateError
+
+    setMasterShieldSheets(current => ({
+      ...current,
+      [characterId]: nextData,
+    }))
+
+    setNotice('Iniciativa removida com sucesso.')
+  } catch (e) {
+    setError(e instanceof Error ? e.message : 'Erro ao limpar a iniciativa.')
+  } finally {
+    setSheetSaving(false)
+  }
+}
+
+async function clearAllCharacterInitiatives(seasonId: string) {
+  if (!isMaster || !seasonId) {
+    setError('Não foi possível limpar as iniciativas.')
+    return
+  }
+
+  const participatingIds = characters
+    .filter(character =>
+      masterShieldSheets[character.id]?.seasonParticipation === true
+    )
+    .map(character => character.id)
+
+  if (participatingIds.length === 0) {
+    setNotice('Nenhum personagem participa desta temporada.')
+    return
+  }
+
+  if (!window.confirm(
+    'Tem certeza de que deseja limpar todas as iniciativas desta temporada?'
+  )) return
+
+  setSheetSaving(true)
+  setError('')
+  setNotice('')
+
+  try {
+    const { data: sheets, error: loadError } = await supabase
+      .from('character_sheets')
+      .select('id, character_id, sheet_data')
+      .eq('season_id', seasonId)
+      .in('character_id', participatingIds)
+
+    if (loadError) throw loadError
+
+    const updatedSheets: Record<string, Record<string, any>> = {}
+
+    for (const item of sheets ?? []) {
+      const baseData = (item.sheet_data ?? {}) as Record<string, any>
+      const currentCombat = { ...(baseData.combat ?? {}) }
+
+      if (
+        currentCombat.initiative === undefined ||
+        currentCombat.initiative === null ||
+        currentCombat.initiative === ''
+      ) continue
+
+      delete currentCombat.initiative
+
+      const nextData = {
+        ...baseData,
+        combat: currentCombat,
+      }
+
+      const { error: updateError } = await supabase
+        .from('character_sheets')
+        .update({ sheet_data: nextData })
+        .eq('id', item.id)
+
+      if (updateError) throw updateError
+
+      updatedSheets[item.character_id] = nextData
+    }
+
+    if (Object.keys(updatedSheets).length === 0) {
+      setNotice('Não há iniciativas registradas para limpar.')
+      return
+    }
+
+    setMasterShieldSheets(current => ({
+      ...current,
+      ...updatedSheets,
+    }))
+
+    setNotice('Todas as iniciativas foram removidas com sucesso.')
+  } catch (e) {
+    setError(
+      e instanceof Error
+        ? e.message
+        : 'Erro ao limpar todas as iniciativas.'
+    )
+  } finally {
+    setSheetSaving(false)
+  }
+}
+
   async function saveCharacterSheet(draftOverride?: string, automatic = false) {
     if (
   !selectedCharacterId ||
@@ -2599,6 +2801,7 @@ setError('')
         setCharacters(current => current.map(character => character.id === selectedCharacterId ? updatedCharacter as Character : character))
       }
     }
+
 const savedDraft = JSON.stringify(parsed, null, 2)
 
 lastSavedSheetDraftRef.current = savedDraft
@@ -2616,6 +2819,115 @@ if (automatic) {
 saveInFlightRef.current = false
 setSheetSaving(false)
   }
+
+async function saveCharacterCybernetics(
+  characterId: string,
+  seasonId: string,
+  cybernetics: Record<string, unknown>,
+): Promise<void> {
+  if (!session?.user?.id) {
+    throw new Error('Você precisa estar autenticado.')
+  }
+
+  if (saveInFlightRef.current) {
+    throw new Error('Aguarde o salvamento da ficha terminar.')
+  }
+
+  saveInFlightRef.current = true
+  setSheetSaving(true)
+  setError('')
+
+  try {
+    const { data, error: cyberneticsError } = await supabase.rpc(
+      'update_character_cybernetics',
+      {
+        p_character_id: characterId,
+        p_season_id: seasonId,
+        p_cybernetics: cybernetics,
+      },
+    )
+
+    if (cyberneticsError) {
+      throw cyberneticsError
+    }
+
+    // Evita atualizar a ficha errada caso o usuário tenha trocado
+    // de personagem ou temporada enquanto o salvamento acontecia.
+    if (
+      selectedCharacterId !== characterId ||
+      selectedSeasonId !== seasonId
+    ) {
+      return
+    }
+
+    const savedCybernetics = data ?? cybernetics
+
+    setSheet(current => {
+      if (
+        !current ||
+        current.character_id !== characterId ||
+        current.season_id !== seasonId
+      ) {
+        return current
+      }
+
+      return {
+        ...current,
+        sheet_data: {
+          ...current.sheet_data,
+          cybernetics: savedCybernetics,
+        },
+      }
+    })
+
+    // Atualiza apenas a parte cibernética do rascunho,
+    // preservando eventuais alterações feitas em outros campos.
+    let currentDraft: Record<string, any> = {}
+
+    try {
+      currentDraft = JSON.parse(sheetDraftRef.current || '{}')
+    } catch {
+      currentDraft = {}
+    }
+
+    const nextDraft = JSON.stringify(
+      {
+        ...currentDraft,
+        cybernetics: savedCybernetics,
+      },
+      null,
+      2,
+    )
+
+    const persistedSheetData = sheet
+      ? {
+          ...sheet.sheet_data,
+          cybernetics: savedCybernetics,
+        }
+      : null
+
+    if (persistedSheetData) {
+      lastSavedSheetDraftRef.current = JSON.stringify(
+        persistedSheetData,
+        null,
+        2,
+      )
+    }
+
+    sheetDraftRef.current = nextDraft
+    setSheetDraft(nextDraft)
+  } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : 'Não foi possível salvar os implantes.'
+
+    setError(message)
+    throw new Error(message)
+  } finally {
+    saveInFlightRef.current = false
+    setSheetSaving(false)
+  }
+}
 
   async function saveCharacterConditions(draftOverride?: Record<string, unknown>) {
     if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
@@ -3128,7 +3440,7 @@ async function deleteCharacter(character: Character) {
 
   function getAutomaticItemWeight(
     categories: string[],
-    equipmentType: 'none' | 'armor' | 'protection',
+    equipmentType: 'none' | 'armor' | 'protection' | 'cybernetic',
     armorClass: 'leve' | 'media' | 'pesada',
     weaponClass: string,
   ): number | null {
@@ -3154,6 +3466,10 @@ async function deleteCharacter(character: Character) {
     setNewItemCurrencyId(selectedCampaign?.currency_config?.currencies?.[0]?.id ?? '')
     setNewItemEmoji('📦')
     setNewEquipmentType('none')
+    setNewCyberneticCategory('Outro')
+    setNewCyberneticLocation('')
+    setNewCyberneticLoad('0')
+    setNewCyberneticEffects('')
     setNewArmorClass('leve')
     setNewArmorCoverage('cortante_perfurante')
     setNewProtectionTier('basica')
@@ -3176,7 +3492,30 @@ async function deleteCharacter(character: Character) {
     setNewScarcityExhausted(item.metadata?.scarcityExhausted === true)
     setNewItemCategories(Array.isArray(item.metadata?.categories) ? item.metadata.categories.filter((value): value is string => typeof value === 'string') : [item.category])
     setNewWeaponClass(typeof item.metadata?.weaponClass === 'string' ? item.metadata.weaponClass : 'improvised')
-    setNewEquipmentType(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' ? item.metadata.equipmentType : 'none')
+    setNewEquipmentType(
+  item.metadata?.equipmentType === 'armor' ||
+  item.metadata?.equipmentType === 'protection' ||
+  (isCyberFlowerSystem && item.metadata?.equipmentType === 'cybernetic')
+    ? item.metadata.equipmentType
+    : 'none'
+)
+
+const cyberneticData = isCyberFlowerSystem
+  ? item.metadata?.cyberneticData as Record<string, unknown> | undefined
+  : undefined
+
+setNewCyberneticCategory(
+  typeof cyberneticData?.category === 'string' ? cyberneticData.category : 'Outro'
+)
+setNewCyberneticLocation(
+  typeof cyberneticData?.location === 'string' ? cyberneticData.location : ''
+)
+setNewCyberneticLoad(
+  String(cyberneticData?.biologicalLoad ?? item.metadata?.biologicalLoad ?? 0)
+)
+setNewCyberneticEffects(
+  typeof cyberneticData?.effects === 'string' ? cyberneticData.effects : ''
+)
     setNewArmorClass(item.metadata?.armorClass === 'media' || item.metadata?.armorClass === 'pesada' ? item.metadata.armorClass : 'leve')
     setNewArmorCoverage(item.metadata?.armorCoverage === 'especial_bruto' || item.metadata?.armorCoverage === 'todos' ? item.metadata.armorCoverage : 'cortante_perfurante')
     setNewProtectionTier(item.metadata?.protectionTier === 'moderada' || item.metadata?.protectionTier === 'avancada' ? item.metadata.protectionTier : 'basica')
@@ -3232,7 +3571,30 @@ const weight = newItemCategories.includes('Consumíveis')
   icon: newItemEmoji,
   rarity: newItemRarity,
   categories: newItemCategories.length ? newItemCategories : [newItemCategory],
-  equipmentType: newEquipmentType,
+  equipmentType: isCyberFlowerSystem ? newEquipmentType : (
+  newEquipmentType === 'cybernetic' ? 'none' : newEquipmentType
+),
+  cybernetic: isCyberFlowerSystem && newEquipmentType === 'cybernetic',
+cyberneticEquipped: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
+  ? editingItem?.metadata?.cyberneticEquipped === true
+  : false,
+biologicalLoad: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
+  ? Math.max(0, Number(newCyberneticLoad) || 0)
+  : null,
+cyberneticData: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
+  ? {
+      name: newItemName.trim(),
+      category: newCyberneticCategory,
+      description: newItemDescription.trim(),
+      location: newCyberneticLocation.trim(),
+      biologicalLoad: Math.max(0, Number(newCyberneticLoad) || 0),
+      cost: String(Number(newItemUnitPrice.replace(',', '.')) || 0),
+      effects: newCyberneticEffects.trim(),
+      status: editingItem?.metadata?.cyberneticEquipped === true
+        ? 'installed'
+        : 'stored',
+    }
+  : null,
   armorClass: newEquipmentType === 'armor' ? newArmorClass : null,
   armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : newArmorCoverage) : null,
   protectionTier: newEquipmentType === 'protection' ? newProtectionTier : null,
@@ -3420,9 +3782,21 @@ const weight = newItemCategories.includes('Consumíveis')
     setNotice(!isFavorite ? `"${item.name}" adicionado aos favoritos.` : `"${item.name}" removido dos favoritos.`)
   }
 
-  async function duplicateItem(item: Item) {
-    setError('')
-    setNotice('')
+async function duplicateItem(item: Item) {
+  const isInstalledCybernetic =
+    item.metadata?.cybernetic === true &&
+    (
+      item.metadata?.cyberneticEquipped === true ||
+      (item.metadata?.cyberneticData as Record<string, unknown> | undefined)?.status === 'installed'
+    )
+
+  if (isInstalledCybernetic) {
+    setError('Não é possível duplicar um implante cibernético instalado. Desequipe-o primeiro.')
+    return
+  }
+
+  setError('')
+  setNotice('')
 
     const { data, error: insertError } = await supabase
       .from('inventory_items')
@@ -3435,7 +3809,19 @@ const weight = newItemCategories.includes('Consumíveis')
         weight: item.weight,
         unit_price: item.unit_price ?? 0,
         currency_id: item.currency_id ?? null,
-        metadata: { ...(item.metadata ?? {}), favorite: false },
+        metadata: {
+  ...(item.metadata ?? {}),
+  favorite: false,
+  equipmentType: isCyberFlowerSystem && item.metadata?.equipmentType === 'cybernetic'
+    ? 'cybernetic'
+    : item.metadata?.equipmentType === 'cybernetic'
+      ? 'none'
+      : item.metadata?.equipmentType,
+  cybernetic: isCyberFlowerSystem && item.metadata?.cybernetic === true,
+  cyberneticEquipped: false,
+  biologicalLoad: isCyberFlowerSystem ? item.metadata?.biologicalLoad ?? null : null,
+  cyberneticData: isCyberFlowerSystem ? item.metadata?.cyberneticData ?? null : null,
+},
       })
       .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
       .single()
@@ -3546,6 +3932,76 @@ const weight = newItemCategories.includes('Consumíveis')
   // Quem recebeu acesso ao personagem pode consultar a carteira e ajustar
   // as condições atuais da ficha; o banco continua validando a permissão.
   const canEditSelectedSheet = canAccessSelectedCharacter
+
+const isMechanic = Boolean(
+  isCyberFlowerSystem &&
+  session?.user?.id &&
+  characters.some(character => {
+    const sheetData = cyberneticsArchetypeSheets[character.id] ?? {}
+    const identity = sheetData.identity ?? {}
+
+    const normalizeArchetype = (value: unknown) =>
+      String(value ?? '')
+        .trim()
+        .toLocaleLowerCase('pt-BR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+
+    const isAssignedToUser =
+      character.user_id === session.user.id ||
+      character.current_player_id === session.user.id
+
+    return (
+      isAssignedToUser &&
+      (
+        normalizeArchetype(identity.primaryArchetype) === 'medcanico' ||
+        normalizeArchetype(identity.secondaryArchetype) === 'medcanico'
+      )
+    )
+  })
+)
+
+const canManageCybernetics = Boolean(isCyberFlowerSystem && (isMaster || isMechanic))
+
+useEffect(() => {
+  if (!selectedSeasonId || !characters.length) {
+    setCyberneticsArchetypeSheets({})
+    return
+  }
+
+  let cancelled = false
+
+  async function loadCyberneticsArchetypes() {
+    const ids = characters.map(character => character.id)
+
+    const { data, error: loadError } = await supabase
+      .from('character_sheets')
+      .select('character_id, sheet_data')
+      .eq('season_id', selectedSeasonId)
+      .in('character_id', ids)
+
+    if (cancelled) return
+
+    if (loadError) {
+      setError(`Erro ao verificar arquétipos: ${loadError.message}`)
+      return
+    }
+
+    const result: Record<string, Record<string, any>> = {}
+
+    for (const row of data ?? []) {
+      result[row.character_id] = (row.sheet_data ?? {}) as Record<string, any>
+    }
+
+    setCyberneticsArchetypeSheets(result)
+  }
+
+  void loadCyberneticsArchetypes()
+
+  return () => {
+    cancelled = true
+  }
+}, [selectedSeasonId, characters])
 
 useEffect(() => {
   const ownerKey = `${selectedCharacterId ?? ''}:${selectedSeasonId ?? ''}`
@@ -3910,7 +4366,13 @@ useEffect(() => {
         <div className="nav-label">MENU PRINCIPAL</div>
 
         <nav className="navigation">
-          <a className="nav-link" href="#inicio"><span>◫</span> Visão geral</a>
+          <button
+  className={`nav-link ${activePage === 'overview' ? 'active' : ''}`}
+  onClick={() => setActivePage('overview')}
+  disabled={!selectedCampaignId}
+>
+  <span>◫</span> Visão geral
+</button>
           {isMaster && <button className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId}>
             <span>♜</span> Escudo do mestre
           </button>}
@@ -3999,6 +4461,13 @@ onClick={() => {
 
         <div className={`page-content page-${activePage}`}>
           <style>{`
+          .page-content.page-overview > * {
+  display: none !important;
+}
+
+.page-content.page-overview > .overview-page-panel {
+  display: block !important;
+}
           .page-content.page-shops > * {
   display: none !important;
 }
@@ -4019,7 +4488,106 @@ onClick={() => {
             }
             .page-content.page-inventory > .season-sheet-section { display: none !important; }
           `}</style>
+
+{activePage === 'overview' && (
+            <section className="inventory-section overview-page-panel">
+              <div className="master-shield-heading">
+                <div>
+                  <span className="master-shield-eyebrow">HÄXBAG</span>
+                  <h2>Visão geral</h2>
+                  <p>Um resumo da sua jornada e da campanha atual.</p>
+                </div>
+                <span className="master-shield-icon" aria-hidden="true">◫</span>
+              </div>
+
+              {selectedCampaign ? (
+                <>
+                  <div className="master-shield-grid">
+                    <article className="master-shield-stat">
+                      <span>Campanha</span>
+                      <strong>{selectedCampaign.name}</strong>
+                    </article>
+                    <article className="master-shield-stat">
+                      <span>Sistema</span>
+                      <strong>{selectedCampaign.system_name || 'Não definido'}</strong>
+                    </article>
+                    <article className="master-shield-stat">
+                      <span>Personagens</span>
+                      <strong>{characters.length}</strong>
+                    </article>
+                    <article className="master-shield-stat">
+                      <span>Temporadas</span>
+                      <strong>{seasons.length}</strong>
+                    </article>
+                    <article className="master-shield-stat">
+                      <span>Lojas</span>
+                      <strong>{shops.length}</strong>
+                    </article>
+                  </div>
+
+                  {selectedCampaign.description && (
+                    <div className="master-shield-description">
+                      <strong>Sobre a campanha</strong>
+                      <p>{selectedCampaign.description}</p>
+                    </div>
+                  )}
+
+                  <div className="master-shield-columns">
+                    <div>
+                      <h3>Temporadas</h3>
+                      {seasons.length > 0 ? (
+                        <ul>
+                          {seasons.map(season => (
+                            <li key={season.id}>
+                              <span>T{season.season_number} · {season.name}</span>
+                              <small>{season.status}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="master-shield-empty">Nenhuma temporada cadastrada.</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3>Personagens</h3>
+                      {characters.length > 0 ? (
+                        <ul>
+                          {characters.map(character => (
+                            <li key={character.id}>
+                              <span>
+                                {character.emoji ? `${character.emoji} ` : ''}
+                                {character.name}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="master-shield-empty">Nenhum personagem cadastrado.</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="master-shield-description">
+                  <strong>Nenhuma campanha selecionada</strong>
+                  <p>Escolha uma campanha para visualizar suas informações.</p>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    onClick={() => setActivePage('campaigns')}
+                  >
+                    Ver campanhas
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
           <section className="welcome-row">
+
+
+
             <div>
               <div className="eyebrow">
                 <span /> SUA JORNADA COMEÇA AQUI
@@ -4157,7 +4725,26 @@ onClick={() => {
                     borderRadius: 14,
                     background: 'var(--season-surface-alt, #211c31)',
                   }}>
-                    <h3 style={{ marginTop: 0 }}>⚡ Iniciativa da party</h3>
+                    <div style={{
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  flexWrap: 'wrap',
+  marginBottom: 14,
+}}>
+  <h3 style={{ margin: 0 }}>⚡ Iniciativa da party</h3>
+
+  <button
+    type="button"
+    className="secondary-button"
+    style={{ padding: '8px 12px', fontSize: 12 }}
+    disabled={sheetSaving}
+    onClick={() => void clearAllCharacterInitiatives(masterShieldSeasonId)}
+  >
+    Limpar todas
+  </button>
+</div>
 
                     {characters.filter(character =>
                       masterShieldSheets[character.id]?.seasonParticipation === true
@@ -4279,14 +4866,31 @@ onClick={() => {
                                   <span>{character.emoji ? `${character.emoji} ` : ''}{character.name}</span>
                                 </div>
 
-                                <strong style={{
-                                  fontSize: 20,
-                                  color: hasInitiative
-                                    ? 'var(--season-primary, #b49aff)'
-                                    : 'var(--season-muted, #b9b4c2)',
-                                }}>
-                                  {hasInitiative ? Number(raw) : 'Não rolou'}
-                                </strong>
+<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+  <strong style={{
+    fontSize: 20,
+    color: hasInitiative
+      ? 'var(--season-primary, #b49aff)'
+      : 'var(--season-muted, #b9b4c2)',
+  }}>
+    {hasInitiative ? Number(raw) : 'Não rolou'}
+  </strong>
+
+  {hasInitiative && (
+    <button
+      type="button"
+      className="secondary-button"
+      style={{ padding: '6px 10px', fontSize: 12 }}
+      disabled={sheetSaving}
+      onClick={event => {
+        event.stopPropagation()
+        void clearCharacterInitiative(character.id, masterShieldSeasonId)
+      }}
+    >
+      Limpar
+    </button>
+  )}
+</div>
                               </div>
                             )
                           })}
@@ -4348,16 +4952,6 @@ onClick={() => {
                     <p style={{color:'var(--season-muted, #b9b4c2)',margin:0}}>Consulte os dados calculados da ficha. As alterações ficam concentradas no modo de edição.</p>
                     {canEditSelectedSheet && (
   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-    {editingSheet && (
-      <button
-        className="primary-button"
-        type="button"
-        disabled={sheetSaving}
-        onClick={()=>void saveCharacterSheet()}
-      >
-        {sheetSaving?'Salvando…':'Salvar ficha'}
-      </button>
-    )}
 
     <button
       className="primary-button"
@@ -4393,6 +4987,12 @@ onClick={() => {
                       node[parts[parts.length - 1]] = value
                       setSheetDraft(JSON.stringify(next, null, 2))
                     }
+
+                    const currentSystem = String(
+                      read('progression.system', selectedCampaign?.system_name || '')
+                    )
+                    const systemFeatures = getSystemByName(currentSystem)?.data?.features
+
                     const familyTierKey = String(read('family.tier', '5'))
                     const usesFamilyTiers = systemFeatures?.usesFamilyTiers ?? false
 
@@ -4420,7 +5020,7 @@ onClick={() => {
                     const allocation = (source: string, key: string) => { if (!(familyAllocationKeys as readonly string[]).includes(key)) return 0; const own = Math.max(0, Math.floor(Number(read(`progression.allocations.${source}.${key}`, 0)) || 0)); const legacyClass = source === 'extra' ? Math.max(0, Math.floor(Number(read(`progression.allocations.class.${key}`, 0)) || 0)) : 0; return own + legacyClass }
                     // Pontos extras de atributos concedidos por graduação, conforme benefícios explicitamente documentados.
                     // Graduações sem quantidade definida no material não concedem pontos automáticos aqui.
-                    const rankIdForAttributes = String(read('progression.rankId', ''))
+                    const rankIdForAttributes = String(read('progression.rankId', 'zaidan'))
 
                     const rankIdForStatus = rankIdForAttributes
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
@@ -4512,7 +5112,7 @@ onClick={() => {
                       if (!source) return 0
 
                       if (source.pool === 'rankBenefits') {
-                        const rankBenefitsText = findSystemRank(rankIdForStatus)?.benefits || ''
+                        const rankBenefitsText = getSystemRank(rankIdForStatus)?.benefits || ''
                         const pattern = source.rankBenefitsPattern || '(\\d+) pontos? de perícias?'
                         try {
                           return Number(rankBenefitsText.match(new RegExp(pattern, 'i'))?.[1] || 0)
@@ -4592,29 +5192,8 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                     const equippedProtection = items.filter(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'protection')
                     const armorClass = String(equippedArmor?.metadata?.armorClass || 'leve')
                     const armorDexterity = !equippedArmor ? dexterity : armorClass === 'pesada' ? 0 : armorClass === 'media' ? Math.floor(dexterity / 2) : dexterity
-                    const counterAttackConfig = activeSystem?.data?.combatActions?.['Contra-ataque']
+                    const counterAttackDT = combat + armorDexterity
 
-const counterAttackUsesDexterity = /destreza|dexterity/i.test(
-  `${counterAttackConfig?.attribute ?? ''} ${counterAttackConfig?.attributeLabel ?? ''}`
-)
-
-const counterAttackUsesDexterityBonus = /destreza|dexterity/i.test(
-  `${counterAttackConfig?.bonus ?? ''} ${counterAttackConfig?.bonusLabel ?? ''}`
-)
-
-const counterAttackAttribute = counterAttackConfig
-  ? counterAttackUsesDexterity
-    ? armorDexterity
-    : Number(read(counterAttackConfig.attribute, 0))
-  : 0
-
-const counterAttackBonus = counterAttackConfig
-  ? counterAttackUsesDexterityBonus
-    ? armorDexterity
-    : Number(read(counterAttackConfig.bonus, 0))
-  : 0
-
-const counterAttackDT = counterAttackAttribute + counterAttackBonus
                     const armorResistance = armorClass === 'pesada' ? resistance * 2 + 8 : armorClass === 'media' ? resistance + 6 : Math.floor(resistance / 2) + 4
                     const armorCovers = (type: 'cortante_perfurante' | 'especial_bruto') => !!equippedArmor && (armorClass === 'pesada' || equippedArmor.metadata?.armorCoverage === type)
                     const protectionFraction = (item: Item) => item.metadata?.protectionTier === 'avancada' ? 1 : item.metadata?.protectionTier === 'moderada' ? 0.5 : 0.25
@@ -4623,6 +5202,36 @@ const counterAttackDT = counterAttackAttribute + counterAttackBonus
                     const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
                     const criticalValue = Math.max(1, Math.min(20, Math.floor(num('combat.critical') || 20)))
                     const rollD20 = () => Math.floor(Math.random() * 20) + 1
+
+const rollAttributeDice = (
+  diceCount: number,
+  usesAgility = false
+) => {
+  const effectiveDiceCount = Math.max(
+    0,
+    Math.floor(diceCount) - (isOverloaded && usesAgility ? 1 : 0)
+  )
+
+  const hasDisadvantage = effectiveDiceCount === 0
+  const rolledDiceCount = hasDisadvantage ? 2 : effectiveDiceCount
+
+  const rolls = Array.from(
+    { length: rolledDiceCount },
+    () => rollD20()
+  )
+
+  const selectedDice = hasDisadvantage
+    ? [Math.min(...rolls)]
+    : rolls
+
+  return {
+    rolls,
+    selectedDice,
+    result: Math.max(...selectedDice),
+    effectiveDiceCount,
+    hasDisadvantage,
+  }
+}
 
 const performCombatRoll = (
   kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Bloqueio' | 'Esquiva',
@@ -4633,11 +5242,11 @@ const performCombatRoll = (
   const constitution =
     Number(read('attributes.constitution', 0)) || resistance + vigor
 
-  const attribute =
-    kind === 'Ataque bruto' ? strength :
-    kind === 'Ataque ágil' || kind === 'Esquiva' ? agility :
-    kind === 'Ataque especial' ? resistance :
-    defense
+const attribute =
+  kind === 'Ataque bruto' ? strength :
+  kind === 'Ataque ágil' || kind === 'Esquiva' ? agility :
+  kind === 'Ataque especial' ? breathing :
+  defense
 
   const bonus =
     kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
@@ -4647,32 +5256,16 @@ const performCombatRoll = (
 
   const diceCount = 1 + Math.max(0, Math.floor(attribute))
   const usesAgility = kind === 'Ataque ágil' || kind === 'Esquiva'
-  const hasDisadvantage = isOverloaded && usesAgility
 
-  const rolledDiceCount = hasDisadvantage && diceCount === 1
-    ? 2
-    : diceCount
+  const roll = rollAttributeDice(diceCount, usesAgility)
 
-  const dice = Array.from(
-    { length: rolledDiceCount },
-    () => rollD20()
-  )
-
-  const sortedDice = [...dice].sort((a, b) => b - a)
-
-  const selectedDice = hasDisadvantage
-    ? diceCount === 1
-      ? [sortedDice[sortedDice.length - 1]]
-      : sortedDice.slice(0, -1)
-    : dice
-
-  const highest = Math.max(...selectedDice)
+  const dice = roll.rolls
+  const highest = roll.result
   const total = highest + bonus
 
-  const diceDescription = hasDisadvantage
-    ? `${rolledDiceCount}D20 = [${dice.join(', ')}] (desvantagem: ${diceCount === 1 ? 'menor resultado' : 'descartando o menor'}; utilizado: ${selectedDice.join(', ')}; resultado: ${highest})`
-    : `${diceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
-
+  const diceDescription = roll.hasDisadvantage
+    ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem: utilizando o menor resultado ${highest})`
+    : `${roll.effectiveDiceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
   if (kind === 'Bloqueio') {
     const critical = highest >= criticalValue
 
@@ -4787,6 +5380,7 @@ setBlockDamageReduction(
                       setBlockIncomingDamage('')
                       setError('')
                     }
+
                     const rankStatus = systemFeatures?.usesRanks
                       ? getSystemRankStatus(rankIdForStatus)
                       : { pv: 0, ps: 0, pr: 0 }
@@ -4807,12 +5401,42 @@ setBlockDamageReduction(
                       ['Pontos de Sanidade (PS)', mental * 10 + familyPS + classPS + progressionPS, `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
                       [resourcePointsLabel, (breathing + ability) * 10 + familyPR + classPR + progressionPR, `(${resourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
                     ] as const
-                    const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => { const limit = path.startsWith('attributes.') ? 5 : path.startsWith('skills.') ? 12 : undefined; return <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<input type={type} min={type === 'number' ? 0 : undefined} max={type === 'number' ? limit : undefined} step="1" value={String(read(path, type === 'number' ? 0 : ''))} onChange={e => write(path, type === 'number' ? Math.min(limit ?? 999, Math.max(0, e.target.value === '' ? 0 : Number(e.target.value))) : e.target.value)} style={inputStyle}/>{hint && <small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}{limit ? ` · máximo ${limit}` : ''}</small>}</label> }
+const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => {
+  const limit = path.startsWith('attributes.')
+    ? 5
+    : path.startsWith('skills.')
+      ? maxSkillLevel
+      : undefined
+
+  return (
+    <label key={path} style={{...labelStyle, display:'flex', flexDirection:'column', gap:6}}>
+      {label}
+      <input
+        type={type}
+        min={type === 'number' ? 0 : undefined}
+        max={type === 'number' ? limit : undefined}
+        step="1"
+        value={String(read(path, type === 'number' ? 0 : ''))}
+        onChange={e => write(
+          path,
+          type === 'number'
+            ? Math.min(limit ?? 999, Math.max(0, e.target.value === '' ? 0 : Number(e.target.value)))
+            : e.target.value
+        )}
+        style={inputStyle}
+      />
+      {hint && <small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}{limit ? ` · máximo ${limit}` : ''}</small>}
+    </label>
+  )
+}
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
                     const panel = (title: string, children: any) => <details className="sheet-editor-accordion" style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><summary>{title}</summary><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:14}}>{children}</div></details>
+
+
+
                     return (
                       <>
-  {systemFeatures.usesRanks && (
+  {systemFeatures?.usesRanks && (
     <section
       aria-label="Graduação atual"
       style={{
@@ -4897,11 +5521,15 @@ setBlockDamageReduction(
                             }
                         const rankId = String(read('progression.rankId', 'zaidan'))
                         const rank = getSystemRank(rankId)
-                        const rankBenefits = String(rank?.benefits ?? '')
-                        // Aceita “pontos de atributos” e “atributo(s) extra(s)”.
-                        const rankAttributeMatch = rankBenefits.match(/(?:([0-9]+)\s+pontos?\s+de\s+atributos?|\+?([0-9]+)\s+atributos?\s+extras?)/i)
-                        const rankAttributePoints = Math.max(0, Number(rankAttributeMatch?.[1] ?? rankAttributeMatch?.[2] ?? 0))
-                        const allocationPool = (source: typeof allocationSources[number]) => {
+const rankAttributePoints = Math.max(
+  0,
+  Math.floor(
+    Number(
+      getSystemByName(system)?.logic?.getRankAttributePoints?.(rankId) ?? 0
+    )
+  )
+)
+const allocationPool = (source: typeof allocationSources[number]) => {
   if (source === 'family') {
     return usesFamilyTiers
       ? Math.max(0, Math.floor(Number(tier.points) || 0))
@@ -4920,39 +5548,77 @@ setBlockDamageReduction(
 }
                         const promotionLog: any[] = Array.isArray(read('progression.promotionLog', [])) ? read('progression.promotionLog', []) : []
                         const benefitsApplied: string[] = Array.isArray(read('progression.appliedPromotionIds', [])) ? read('progression.appliedPromotionIds', []) : []
-                        const changeRank = (nextId: string) => {
-                          const transition = getSystemPromotionId(rankId, nextId)
+          const changeRank = (nextId: string) => {
+  const transition = getSystemPromotionId(rankId, nextId)
 
-                          if (hasSystemPromotion(promotionLog, transition)) {
-                            setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.')
-                            return
-                          }
+  if (hasSystemPromotion(promotionLog, transition)) {
+    setError('Esta promoção já está registrada no histórico. Confira o registro existente para evitar duplicar benefícios.')
+    return
+  }
 
-                          const description = window.prompt(
-                            'Descrição desta promoção (motivo, missão, observações):',
-                            ''
-                          ) ?? ''
+  const description = window.prompt(
+    'Descrição desta promoção (motivo, missão, observações):',
+    ''
+  ) ?? ''
 
-                          const promotionEntry = createSystemPromotionEntry(
-                            rankId,
-                            nextId,
-                            `${Date.now()}-${transition}`,
-                            new Date().toISOString(),
-                            description
-                          )
+  const promotionEntry = createSystemPromotionEntry(
+    rankId,
+    nextId,
+    `${Date.now()}-${transition}`,
+    new Date().toISOString(),
+    description
+  )
 
-                          const next = {
-                            ...data,
-                            progression: {
-                              ...(data.progression || {}),
-                              rankId: nextId,
-                              rankName: promotionEntry.to,
-                              promotionLog: [...promotionLog, promotionEntry],
-                            },
-                          }
+  const oldRankStatus = getSystemRankStatus(rankId)
+  const newRankStatus = getSystemRankStatus(nextId)
 
-                          setSheetDraft(JSON.stringify(next, null, 2))
-                        }
+  const pvGain = newRankStatus.pv - oldRankStatus.pv
+  const psGain = newRankStatus.ps - oldRankStatus.ps
+  const prGain = newRankStatus.pr - oldRankStatus.pr
+
+  const oldMaxPV = Number(derived[0][1]) || 0
+  const oldMaxPS = Number(derived[1][1]) || 0
+  const oldMaxPR = Number(derived[2][1]) || 0
+
+  const newMaxPS = oldMaxPS + psGain
+  const newMaxPR = oldMaxPR + prGain
+
+  const currentStatus = data.status?.current || {}
+
+  const currentPV = Number(currentStatus.pv ?? oldMaxPV) || 0
+  const currentPS = Number(currentStatus.ps ?? oldMaxPS) || 0
+  const currentPR = Number(currentStatus.pr ?? oldMaxPR) || 0
+
+  const next = {
+    ...data,
+    progression: {
+      ...(data.progression || {}),
+      rankId: nextId,
+      rankName: promotionEntry.to,
+      promotionLog: [
+        ...promotionLog,
+        {
+          ...promotionEntry,
+          applied: true,
+        },
+      ],
+      appliedPromotionIds: Array.from(
+        new Set([...benefitsApplied, transition])
+      ),
+    },
+    status: {
+      ...(data.status || {}),
+      current: {
+        ...currentStatus,
+        pv: Math.max(0, currentPV + pvGain),
+        ps: Math.max(0, Math.min(newMaxPS, currentPS + psGain)),
+        pr: Math.max(0, Math.min(newMaxPR, currentPR + prGain)),
+      },
+    },
+  }
+
+  setSheetDraft(JSON.stringify(next, null, 2))
+}
                         return <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
                           <h3 style={{marginTop:0}}>Gerenciador de Família, Classe, Progressão e Atributos</h3>
                                                     <label style={labelStyle}>
@@ -5497,9 +6163,10 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
       ['Deslocamento', Math.max(1, Math.floor((movementActions * dexterity) / (isOverloaded ? 2 : 1)))],
       ['Ações', movementActions + extraActions],
       ['Reações', reactions],
-['Contra-ataque', counterAttackConfig ? counterAttackDT : '—'],
-      ['Constituição', resistance + vigor],
-      ...(usesFamilyTiers ? [['Essência', read('combat.essence', '—')]] : [])
+['Contra-ataque', counterAttackDT],
+['Constituição', resistance + vigor],
+['Crítico', criticalValue],
+...(usesFamilyTiers ? [['Essência', read('combat.essence', '—')]] : [])
     ].map(([label, value]) => (
       <div key={String(label)}>
         <span>{label}</span>
@@ -5546,7 +6213,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
                               <span className="combat-action-icon">✦</span>
                               <strong>Ataque Especial</strong>
-                              <small>{1 + resistance}D20 + Habilidade ({ability})</small>
+                              <small>{1 + breathing}D20 + Habilidade ({ability})</small>
                             </button>
                           </div>
                           <div className="combat-complementary-section">
@@ -5637,8 +6304,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="combat-reactions-section">
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>1 + {defense} D20 (maior) + Constituição</small></button>
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>1 + {agility} D20 (maior) + Destreza</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.max(0, Math.floor(defense))}D20 + Constituição</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
+  {isOverloaded && Math.max(0, Math.floor(agility)) === 0
+    ? '2D20 (desvantagem: menor) + Destreza'
+    : `${Math.max(0, 1 + Math.floor(agility) - (isOverloaded ? 1 : 0))}D20 + Destreza`}
+</small></button>
                               <button
                                 type="button"
                                 className="combat-action-card"
@@ -5947,10 +6618,13 @@ counterAttackDT
 
                       <label>
                         Tipo de equipamento
-                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
+                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
                           <option value="none">Item comum</option>
                           <option value="armor">Armadura</option>
-                          <option value="protection">Proteção</option>
+<option value="protection">Proteção</option>
+{isCyberFlowerSystem && (
+  <option value="cybernetic">Cibernética</option>
+)}
                         </select>
                       </label>
 
@@ -5991,6 +6665,54 @@ counterAttackDT
                         <label>Tipo de resistência<select value={newProtectionMode} onChange={event => setNewProtectionMode(event.target.value as 'resistencia' | 'sanidade')}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
                         <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0</p><p>Proteção: {newProtectionTier === 'basica' ? '¼' : newProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {newProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {newProtectionTier === 'basica' ? '1d8' : newProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
                       </>}
+
+{isCyberFlowerSystem && newEquipmentType === 'cybernetic' && <>
+  <label>
+    Categoria da cibernética
+    <select
+      value={newCyberneticCategory}
+      onChange={event => setNewCyberneticCategory(event.target.value)}
+    >
+      <option value="Neurológico">Neurológico</option>
+      <option value="Sensorial">Sensorial</option>
+      <option value="Órgãos">Órgãos</option>
+      <option value="Membros">Membros</option>
+      <option value="Estrutural">Estrutural</option>
+      <option value="Armamento">Armamento</option>
+      <option value="Suporte">Suporte</option>
+      <option value="Outro">Outro</option>
+    </select>
+  </label>
+
+  <label>
+    Localização no corpo
+    <input
+      value={newCyberneticLocation}
+      onChange={event => setNewCyberneticLocation(event.target.value)}
+      placeholder="Ex.: Crânio, braço esquerdo..."
+    />
+  </label>
+
+  <label>
+    Carga biológica
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={newCyberneticLoad}
+      onChange={event => setNewCyberneticLoad(event.target.value)}
+    />
+  </label>
+
+  <label>
+    Efeitos
+    <textarea
+      value={newCyberneticEffects}
+      onChange={event => setNewCyberneticEffects(event.target.value)}
+      placeholder="Descreva os efeitos da cibernética..."
+    />
+  </label>
+</>}
 
                       {newItemCategories.includes('Armas') && <>
                         <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
@@ -6231,8 +6953,19 @@ style={{cursor:'pointer'}}>
     <CyberneticsInventory
       sheetDraft={sheetDraft}
       setSheetDraft={setSheetDraft}
-      canEditSelectedSheet={canEditSelectedSheet}
+      characterId={selectedCharacter.id}
+      seasonId={selectedSeasonId}
+      canManageCybernetics={canManageCybernetics}
       sheetSaving={sheetSaving}
+      inventoryItems={items}
+      onInventoryItemsChange={setItems}
+      onSaveCybernetics={(cybernetics) =>
+        saveCharacterCybernetics(
+          selectedCharacter.id,
+          selectedSeasonId,
+          cybernetics,
+        )
+      }
     />
   )}
 
@@ -7495,6 +8228,10 @@ disabled={
                               setShopItemEmoji('📦')
                               setShopItemCategories(['Diversos'])
                               setShopItemEquipmentType('none')
+                              setShopCyberneticCategory('Outro')
+                              setShopCyberneticLocation('')
+                              setShopCyberneticLoad('0')
+                              setShopCyberneticEffects('')
                               setShopItemArmorClass('leve')
                               setShopItemArmorCoverage('cortante_perfurante')
                               setShopItemProtectionTier('basica')
@@ -7677,9 +8414,28 @@ disabled={
                               </div>
 
                               <label style={labelStyle}>Tipo de equipamento
-                                <select value={shopItemEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection'; setShopItemEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(shopItemCategories, nextType, shopItemArmorClass, shopItemWeaponClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}>
-                                  <option value="none">Item comum</option><option value="armor">Armadura</option><option value="protection">Proteção</option>
-                                </select>
+<select
+  value={shopItemEquipmentType}
+  onChange={event => {
+    const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'
+    setShopItemEquipmentType(nextType)
+    const automaticWeight = getAutomaticItemWeight(
+      shopItemCategories,
+      nextType,
+      shopItemArmorClass,
+      shopItemWeaponClass
+    )
+    if (automaticWeight !== null) setShopItemWeight(String(automaticWeight))
+  }}
+  style={inputStyle}
+>
+  <option value="none">Item comum</option>
+  <option value="armor">Armadura</option>
+<option value="protection">Proteção</option>
+{isCyberFlowerSystem && (
+  <option value="cybernetic">Cibernética</option>
+)}
+</select>
                               </label>
 
                               {shopItemEquipmentType === 'armor' && <>
@@ -7693,6 +8449,59 @@ disabled={
                                 <label style={labelStyle}>Tipo de resistência<select value={shopItemProtectionMode} onChange={event => setShopItemProtectionMode(event.target.value as 'resistencia' | 'sanidade')} style={inputStyle}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
                                 <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0 kg</p><p>Proteção: {shopItemProtectionTier === 'basica' ? '¼' : shopItemProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {shopItemProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {shopItemProtectionTier === 'basica' ? '1d8' : shopItemProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
                               </>}
+
+
+{isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic' && <>
+  <label style={labelStyle}>
+    Categoria da cibernética
+    <select
+      value={shopCyberneticCategory}
+      onChange={event => setShopCyberneticCategory(event.target.value)}
+      style={inputStyle}
+    >
+      <option value="Neurológico">Neurológico</option>
+      <option value="Sensorial">Sensorial</option>
+      <option value="Órgãos">Órgãos</option>
+      <option value="Membros">Membros</option>
+      <option value="Estrutural">Estrutural</option>
+      <option value="Armamento">Armamento</option>
+      <option value="Suporte">Suporte</option>
+      <option value="Outro">Outro</option>
+    </select>
+  </label>
+
+  <label style={labelStyle}>
+    Localização no corpo
+    <input
+      value={shopCyberneticLocation}
+      onChange={event => setShopCyberneticLocation(event.target.value)}
+      placeholder="Ex.: Braço esquerdo, coluna, crânio..."
+      style={inputStyle}
+    />
+  </label>
+
+  <label style={labelStyle}>
+    Carga biológica
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={shopCyberneticLoad}
+      onChange={event => setShopCyberneticLoad(event.target.value)}
+      style={inputStyle}
+    />
+  </label>
+
+  <label style={labelStyle}>
+    Efeitos da cibernética
+    <textarea
+      value={shopCyberneticEffects}
+      onChange={event => setShopCyberneticEffects(event.target.value)}
+      placeholder="Descreva os efeitos e benefícios do implante..."
+      style={inputStyle}
+    />
+  </label>
+</>}
 
                               {shopItemCategories.includes('Armas') && <>
                                 <label style={labelStyle}>Classificação da arma<select value={shopItemWeaponClass} onChange={event => { const nextClass = event.target.value; setShopItemWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, nextClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
@@ -8960,10 +9769,13 @@ disabled={
 
                       <label>
                         Tipo de equipamento
-                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
+                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
                           <option value="none">Item comum</option>
                           <option value="armor">Armadura</option>
-                          <option value="protection">Proteção</option>
+<option value="protection">Proteção</option>
+{isCyberFlowerSystem && (
+  <option value="cybernetic">Cibernética</option>
+)}
                         </select>
                       </label>
 
@@ -8978,6 +9790,54 @@ disabled={
                         <label>Tipo de resistência<select value={newProtectionMode} onChange={event => setNewProtectionMode(event.target.value as 'resistencia' | 'sanidade')}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
                         <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0</p><p>Proteção: {newProtectionTier === 'basica' ? '¼' : newProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {newProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {newProtectionTier === 'basica' ? '1d8' : newProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
                       </>}
+
+{isCyberFlowerSystem && newEquipmentType === 'cybernetic' && <>
+  <label>
+    Categoria da cibernética
+    <select
+      value={newCyberneticCategory}
+      onChange={event => setNewCyberneticCategory(event.target.value)}
+    >
+      <option value="Neurológico">Neurológico</option>
+      <option value="Sensorial">Sensorial</option>
+      <option value="Órgãos">Órgãos</option>
+      <option value="Membros">Membros</option>
+      <option value="Estrutural">Estrutural</option>
+      <option value="Armamento">Armamento</option>
+      <option value="Suporte">Suporte</option>
+      <option value="Outro">Outro</option>
+    </select>
+  </label>
+
+  <label>
+    Localização no corpo
+    <input
+      value={newCyberneticLocation}
+      onChange={event => setNewCyberneticLocation(event.target.value)}
+      placeholder="Ex.: Crânio, braço esquerdo..."
+    />
+  </label>
+
+  <label>
+    Carga biológica
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={newCyberneticLoad}
+      onChange={event => setNewCyberneticLoad(event.target.value)}
+    />
+  </label>
+
+  <label>
+    Efeitos
+    <textarea
+      value={newCyberneticEffects}
+      onChange={event => setNewCyberneticEffects(event.target.value)}
+      placeholder="Descreva os efeitos da cibernética..."
+    />
+  </label>
+</>}
 
                       {newItemCategories.includes('Armas') && <>
                         <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
@@ -9328,85 +10188,127 @@ disabled={
 
           {loading && <p role="status">Salvando ou carregando...</p>}
 
-          {emojiPickerCharacter && (
-            <div className="emoji-modal-backdrop" onClick={() => setEmojiPickerCharacter(null)}>
-              <section className="emoji-modal" role="dialog" aria-modal="true" aria-labelledby="character-emoji-modal-title" onClick={(event) => event.stopPropagation()}>
-                <div className="emoji-modal-heading">
-                  <div>
-                    <h3 id="character-emoji-modal-title">Escolher emoji</h3>
-                    <p>{emojiPickerCharacter.name}</p>
-                  </div>
-                  <button type="button" className="item-menu" onClick={() => setEmojiPickerCharacter(null)} aria-label="Fechar seletor de emoji">×</button>
-                </div>
-                <div className="emoji-grid">
-                  {availableEmojis.map((emoji) => (
-                    <button key={emoji} type="button" className={emojiPickerCharacter.emoji === emoji ? 'emoji-option selected' : 'emoji-option'} onClick={() => void changeCharacterEmoji(emojiPickerCharacter, emoji)} aria-label={`Usar emoji ${emoji}`} aria-pressed={emojiPickerCharacter.emoji === emoji}>{emoji}</button>
-                  ))}
-                </div>
-                <button type="button" className="secondary-button" onClick={() => setEmojiPickerCharacter(null)}>Cancelar</button>
-              </section>
-            </div>
-          )}
+{emojiPickerCharacter && createPortal((
+  <div
+    className="emoji-modal-backdrop"
+    onClick={() => setEmojiPickerCharacter(null)}
+    style={{ zIndex: 11000 }}
+  >
+    <section
+      className="emoji-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="character-emoji-modal-title"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="emoji-modal-heading">
+        <div>
+          <h3 id="character-emoji-modal-title">Escolher emoji</h3>
+          <p>{emojiPickerCharacter.name}</p>
+        </div>
 
-          {emojiPickerItem && (
-            <div
-              className="emoji-modal-backdrop"
-              onClick={() => setEmojiPickerItem(null)}
-            >
-              <section
-                className="emoji-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="emoji-modal-title"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="emoji-modal-heading">
-                  <div>
-                    <h3 id="emoji-modal-title">Escolher emoji</h3>
-                    <p>{emojiPickerItem.name}</p>
-                  </div>
+        <button
+          type="button"
+          className="item-menu"
+          onClick={() => setEmojiPickerCharacter(null)}
+          aria-label="Fechar seletor de emoji"
+        >
+          ×
+        </button>
+      </div>
 
-                  <button
-                    type="button"
-                    className="item-menu"
-                    onClick={() => setEmojiPickerItem(null)}
-                    aria-label="Fechar seletor de emoji"
-                  >
-                    ×
-                  </button>
-                </div>
+      <div className="emoji-grid">
+        {availableEmojis.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            className={
+              emojiPickerCharacter.emoji === emoji
+                ? 'emoji-option selected'
+                : 'emoji-option'
+            }
+            onClick={() =>
+              void changeCharacterEmoji(emojiPickerCharacter, emoji)
+            }
+            aria-label={`Usar emoji ${emoji}`}
+            aria-pressed={emojiPickerCharacter.emoji === emoji}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
 
-                <div className="emoji-grid">
-                  {availableEmojis.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className={
-                        emojiPickerItem.metadata?.icon === emoji
-                          ? 'emoji-option selected'
-                          : 'emoji-option'
-                      }
-                      onClick={() =>
-                        void changeItemEmoji(emojiPickerItem, emoji)
-                      }
-                      aria-label={`Usar emoji ${emoji}`}
-                      aria-pressed={emojiPickerItem.metadata?.icon === emoji}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={() => setEmojiPickerCharacter(null)}
+      >
+        Cancelar
+      </button>
+    </section>
+  </div>
+), document.body)}
 
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setEmojiPickerItem(null)}
-                >
-                  Cancelar
-                </button>
-              </section>
-            </div>
-          )}
+{emojiPickerItem && createPortal((
+  <div
+    className="emoji-modal-backdrop"
+    onClick={() => setEmojiPickerItem(null)}
+    style={{ zIndex: 11000 }}
+  >
+    <section
+      className="emoji-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="emoji-modal-title"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="emoji-modal-heading">
+        <div>
+          <h3 id="emoji-modal-title">Escolher emoji</h3>
+          <p>{emojiPickerItem.name}</p>
+        </div>
+
+        <button
+          type="button"
+          className="item-menu"
+          onClick={() => setEmojiPickerItem(null)}
+          aria-label="Fechar seletor de emoji"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="emoji-grid">
+        {availableEmojis.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            className={
+              emojiPickerItem.metadata?.icon === emoji
+                ? 'emoji-option selected'
+                : 'emoji-option'
+            }
+            onClick={() =>
+              void changeItemEmoji(emojiPickerItem, emoji)
+            }
+            aria-label={`Usar emoji ${emoji}`}
+            aria-pressed={emojiPickerItem.metadata?.icon === emoji}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={() => setEmojiPickerItem(null)}
+      >
+        Cancelar
+      </button>
+    </section>
+  </div>
+), document.body)}
 
 {selectedItemDetails && createPortal((
   <div className="modal-overlay" onClick={() => setSelectedItemDetails(null)} style={{position:'fixed',inset:0,zIndex:10000,display:'grid',placeItems:'center',padding:20,background:'rgba(5,5,9,.78)',backdropFilter:'blur(7px)'}}>

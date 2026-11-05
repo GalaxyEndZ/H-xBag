@@ -1,8 +1,24 @@
 
-import { useState } from 'react'
+import { supabase } from '../../supabase'
+import { useEffect, useState } from 'react'
+
+type Item = {
+  id: string
+  character_id: string
+  name: string
+  description: string | null
+  category: string
+  quantity: number
+  weight: number
+  unit_price: number
+  currency_id: string | null
+  metadata: Record<string, unknown> | null
+  sale_blocked: boolean
+}
 
 type CyberneticImplant = {
   id: string
+  inventoryItemId?: string
   name: string
   category: string
   description: string
@@ -10,14 +26,21 @@ type CyberneticImplant = {
   biologicalLoad: number
   cost: string
   effects: string
-  status: 'installed' | 'stored'
+  status?: 'installed' | 'stored'
 }
 
 type CyberneticsInventoryProps = {
   sheetDraft: string
   setSheetDraft: React.Dispatch<React.SetStateAction<string>>
-  canEditSelectedSheet: boolean
+  characterId: string
+  seasonId: string
+  canManageCybernetics: boolean
   sheetSaving: boolean
+  inventoryItems: Item[]
+  onInventoryItemsChange: React.Dispatch<React.SetStateAction<Item[]>>
+  onSaveCybernetics?: (
+    cybernetics: Record<string, unknown>
+  ) => Promise<void>
 }
 
 const emptyImplant: Omit<CyberneticImplant, 'id'> = {
@@ -28,7 +51,7 @@ const emptyImplant: Omit<CyberneticImplant, 'id'> = {
   biologicalLoad: 0,
   cost: '',
   effects: '',
-  status: 'stored',
+  status: 'installed',
 }
 
 const categories = [
@@ -45,14 +68,26 @@ const categories = [
 export default function CyberneticsInventory({
   sheetDraft,
   setSheetDraft,
-  canEditSelectedSheet,
+  characterId,
+  seasonId,
+  canManageCybernetics,
   sheetSaving,
+  inventoryItems,
+  onInventoryItemsChange,
+  onSaveCybernetics,
 }: CyberneticsInventoryProps) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyImplant)
+  const [savingCybernetics, setSavingCybernetics] = useState(false)
+  const [migrationLoading, setMigrationLoading] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
-  const canEdit = canEditSelectedSheet && !sheetSaving
+  const canEdit =
+    canManageCybernetics &&
+    !sheetSaving &&
+    !savingCybernetics &&
+    Boolean(onSaveCybernetics)
 
   let sheet: Record<string, any> = {}
 
@@ -68,37 +103,134 @@ export default function CyberneticsInventory({
     ? cybernetics.implants
     : []
 
-  const biologicalLoadRaw = Number(cybernetics.biologicalLoad ?? 0)
+  const availableImplants = inventoryItems.filter(item =>
+    item.metadata?.cybernetic === true &&
+    item.metadata?.cyberneticEquipped !== true
+  )
 
-  const biologicalLoad = Number.isFinite(biologicalLoadRaw)
-    ? Math.max(0, biologicalLoadRaw)
-    : 0
+  const biologicalLoad = implants.reduce((total, implant) => {
+    const load = Number(implant.biologicalLoad)
+
+    return total + (
+      Number.isFinite(load)
+        ? Math.max(0, load)
+        : 0
+    )
+  }, 0)
 
   const cyberpsychosis = biologicalLoad > 100
 
-  function updateCybernetics(changes: Record<string, unknown>) {
-    let next: Record<string, any> = {}
+  async function refreshSheet() {
+    const { data, error } = await supabase
+      .from('character_sheets')
+      .select('sheet_data')
+      .eq('character_id', characterId)
+      .eq('season_id', seasonId)
+      .maybeSingle()
 
-    try {
-      next = JSON.parse(sheetDraft || '{}')
-    } catch {
-      next = {}
+    if (error) throw error
+    if (!data) throw new Error('Ficha da temporada não encontrada.')
+
+    setSheetDraft(JSON.stringify(data.sheet_data ?? {}))
+  }
+
+  async function refreshInventory() {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select(
+        'id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked'
+      )
+      .eq('character_id', characterId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    onInventoryItemsChange(
+      ((data ?? []) as Item[]).filter(
+        item =>
+          item.metadata?.cybernetic !== true ||
+          item.metadata?.cyberneticEquipped !== true
+      )
+    )
+  }
+
+  async function refreshAll() {
+    await Promise.all([
+      refreshSheet(),
+      refreshInventory(),
+    ])
+  }
+
+  // Migra implantes antigos que ainda não possuem registro no inventário.
+  useEffect(() => {
+    if (!canManageCybernetics || !characterId || !seasonId) return
+
+    let cancelled = false
+
+    async function migrateLegacyImplants() {
+      setMigrationLoading(true)
+      setSaveError('')
+
+      try {
+        const { error } = await supabase.rpc(
+          'migrate_legacy_cybernetic_implants',
+          {
+            p_character_id: characterId,
+            p_season_id: seasonId,
+          }
+        )
+
+        if (error) throw error
+
+        if (!cancelled) {
+          await refreshAll()
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setSaveError(
+            error instanceof Error
+              ? error.message
+              : 'Não foi possível migrar os implantes antigos.'
+          )
+        }
+      } finally {
+        if (!cancelled) setMigrationLoading(false)
+      }
     }
 
-    next.cybernetics = {
-      ...(next.cybernetics ?? {}),
+    void migrateLegacyImplants()
+
+    return () => {
+      cancelled = true
+    }
+  }, [characterId, seasonId, canManageCybernetics])
+
+  async function updateCybernetics(
+    changes: Record<string, unknown>
+  ): Promise<boolean> {
+    if (!canEdit || !onSaveCybernetics) return false
+
+    const nextCybernetics = {
+      ...cybernetics,
       ...changes,
     }
 
-    setSheetDraft(JSON.stringify(next, null, 2))
-  }
+    setSavingCybernetics(true)
+    setSaveError('')
 
-  function updateBiologicalLoad(value: number) {
-    if (!canEdit) return
-
-    updateCybernetics({
-      biologicalLoad: Math.max(0, Number.isFinite(value) ? value : 0),
-    })
+    try {
+      await onSaveCybernetics(nextCybernetics)
+      return true
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível salvar os implantes.'
+      )
+      return false
+    } finally {
+      setSavingCybernetics(false)
+    }
   }
 
   function resetForm() {
@@ -118,62 +250,170 @@ export default function CyberneticsInventory({
       biologicalLoad: Number(implant.biologicalLoad) || 0,
       cost: implant.cost ?? '',
       effects: implant.effects ?? '',
-      status: implant.status === 'installed' ? 'installed' : 'stored',
+      status: 'installed',
     })
 
     setEditingId(implant.id)
     setShowForm(true)
   }
 
-  function saveImplant() {
+  async function saveImplant() {
     if (!canEdit || !form.name.trim()) return
 
     const implant: CyberneticImplant = {
       ...form,
       id: editingId ?? crypto.randomUUID(),
       name: form.name.trim(),
-      biologicalLoad: Math.max(0, Number(form.biologicalLoad) || 0),
+      biologicalLoad: Math.max(
+        0,
+        Number(form.biologicalLoad) || 0
+      ),
+      status: 'installed',
     }
+
+    const existingImplant = implants.find(
+      item => item.id === editingId
+    )
 
     const nextImplants = editingId
       ? implants.map(item =>
-          item.id === editingId ? implant : item,
+          item.id === editingId
+            ? {
+                ...implant,
+                inventoryItemId: existingImplant?.inventoryItemId,
+              }
+            : item
         )
       : [...implants, implant]
 
-    updateCybernetics({ implants: nextImplants })
-    resetForm()
+    const saved = await updateCybernetics({
+      implants: nextImplants,
+    })
+
+    if (!saved) return
+
+    try {
+      if (editingId && existingImplant?.inventoryItemId) {
+        const inventoryItem = inventoryItems.find(
+          item => item.id === existingImplant.inventoryItemId
+        )
+
+        if (inventoryItem) {
+          const { error } = await supabase
+            .from('inventory_items')
+            .update({
+              name: implant.name,
+              description: implant.description || null,
+              metadata: {
+                ...inventoryItem.metadata,
+                cybernetic: true,
+                cyberneticEquipped: true,
+                biologicalLoad: implant.biologicalLoad,
+                cyberneticData: implant,
+              },
+            })
+            .eq('id', existingImplant.inventoryItemId)
+            .eq('character_id', characterId)
+
+          if (error) throw error
+        }
+      } else if (!editingId) {
+        // Cria o registro correspondente no inventário.
+        const { error } = await supabase.rpc(
+          'migrate_legacy_cybernetic_implants',
+          {
+            p_character_id: characterId,
+            p_season_id: seasonId,
+          }
+        )
+
+        if (error) throw error
+      }
+
+      await refreshAll()
+      resetForm()
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'O implante foi salvo, mas houve um erro ao sincronizar o inventário.'
+      )
+    }
   }
 
-  function removeImplant(id: string) {
+  async function unequipImplant(implant: CyberneticImplant) {
     if (!canEdit) return
 
-    if (!window.confirm('Deseja remover este implante do inventário?')) {
+    if (!implant.inventoryItemId) {
+      setSaveError(
+        'Este implante ainda não possui registro no inventário. Atualize a migração antes de desequipá-lo.'
+      )
       return
     }
 
-    updateCybernetics({
-      implants: implants.filter(item => item.id !== id),
-    })
+    if (!window.confirm(
+      `Deseja desequipar "${implant.name}" e transferi-lo para o inventário normal?`
+    )) {
+      return
+    }
 
-    if (editingId === id) {
-      resetForm()
+    setSavingCybernetics(true)
+    setSaveError('')
+
+    try {
+      const { error } = await supabase.rpc(
+        'unequip_cybernetic_implant',
+        {
+          p_character_id: characterId,
+          p_season_id: seasonId,
+          p_inventory_item_id: implant.inventoryItemId,
+        }
+      )
+
+      if (error) throw error
+
+      await refreshAll()
+
+      if (editingId === implant.id) resetForm()
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível desequipar o implante.'
+      )
+    } finally {
+      setSavingCybernetics(false)
     }
   }
 
-  function toggleStatus(implant: CyberneticImplant) {
+  async function equipImplant(item: Item) {
     if (!canEdit) return
 
-    updateCybernetics({
-      implants: implants.map(item =>
-        item.id === implant.id
-          ? {
-              ...item,
-              status: item.status === 'installed' ? 'stored' : 'installed',
-            }
-          : item,
-      ),
-    })
+    setSavingCybernetics(true)
+    setSaveError('')
+
+    try {
+      const { error } = await supabase.rpc(
+        'equip_cybernetic_implant',
+        {
+          p_character_id: characterId,
+          p_season_id: seasonId,
+          p_inventory_item_id: item.id,
+        }
+      )
+
+      if (error) throw error
+
+      await refreshAll()
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível equipar o implante.'
+      )
+    } finally {
+      setSavingCybernetics(false)
+    }
   }
 
   return (
@@ -204,20 +444,10 @@ export default function CyberneticsInventory({
             <strong>Carga Biológica</strong>
           </div>
 
-          <label className="biological-load-value">
-            <input
-              aria-label="Carga Biológica em porcentagem"
-              type="number"
-              min="0"
-              step="1"
-              value={biologicalLoad}
-              disabled={!canEdit}
-              onChange={event =>
-                updateBiologicalLoad(Number(event.target.value))
-              }
-            />
+          <div className="biological-load-value">
+            <strong>{biologicalLoad}</strong>
             <span>%</span>
-          </label>
+          </div>
         </div>
 
         <div
@@ -262,14 +492,28 @@ export default function CyberneticsInventory({
         )}
       </div>
 
+      {migrationLoading && (
+        <p role="status">Sincronizando implantes antigos...</p>
+      )}
+
+      {savingCybernetics && (
+        <p role="status">Processando transferência de implantes...</p>
+      )}
+
+      {saveError && (
+        <p role="alert" className="cybernetics-save-error">
+          {saveError}
+        </p>
+      )}
+
       <div className="cybernetics-inventory-heading">
         <div>
-          <h4>Inventário de implantes</h4>
+          <h4>Implantes equipados</h4>
           <p>
             {implants.length}{' '}
             {implants.length === 1
-              ? 'implante cadastrado'
-              : 'implantes cadastrados'}
+              ? 'implante instalado'
+              : 'implantes instalados'}
           </p>
         </div>
 
@@ -295,7 +539,9 @@ export default function CyberneticsInventory({
 
       {showForm && canEdit && (
         <div className="cybernetics-form">
-          <h4>{editingId ? 'Editar implante' : 'Cadastrar implante'}</h4>
+          <h4>
+            {editingId ? 'Editar implante' : 'Cadastrar implante equipado'}
+          </h4>
 
           <div className="cybernetics-form-grid">
             <label>
@@ -349,7 +595,7 @@ export default function CyberneticsInventory({
                     ...form,
                     biologicalLoad: Math.max(
                       0,
-                      Number(event.target.value) || 0,
+                      Number(event.target.value) || 0
                     ),
                   })
                 }
@@ -365,22 +611,6 @@ export default function CyberneticsInventory({
                 }
                 placeholder="Ex.: 500 ₰"
               />
-            </label>
-
-            <label>
-              Status
-              <select
-                value={form.status}
-                onChange={event =>
-                  setForm({
-                    ...form,
-                    status: event.target.value as CyberneticImplant['status'],
-                  })
-                }
-              >
-                <option value="installed">Instalado</option>
-                <option value="stored">Armazenado</option>
-              </select>
             </label>
 
             <label className="cybernetics-form-full">
@@ -420,7 +650,7 @@ export default function CyberneticsInventory({
             <button
               type="button"
               className="primary-button"
-              onClick={saveImplant}
+              onClick={() => void saveImplant()}
               disabled={!form.name.trim() || !canEdit}
             >
               {editingId ? 'Salvar alterações' : 'Adicionar implante'}
@@ -432,9 +662,9 @@ export default function CyberneticsInventory({
       {implants.length === 0 ? (
         <div className="cybernetics-empty">
           <span>⌬</span>
-          <strong>Nenhum implante cadastrado</strong>
+          <strong>Nenhum implante equipado</strong>
           <p>
-            Os implantes e modificações cibernéticas aparecerão aqui.
+            Os implantes instalados aparecerão aqui.
           </p>
         </div>
       ) : (
@@ -452,12 +682,8 @@ export default function CyberneticsInventory({
                   <h4>{implant.name}</h4>
                 </div>
 
-                <span
-                  className={`cybernetics-status ${implant.status}`}
-                >
-                  {implant.status === 'installed'
-                    ? 'Instalado'
-                    : 'Armazenado'}
+                <span className="cybernetics-status installed">
+                  Equipado
                 </span>
               </div>
 
@@ -490,11 +716,10 @@ export default function CyberneticsInventory({
                 <div className="cybernetics-implant-actions">
                   <button
                     type="button"
-                    onClick={() => toggleStatus(implant)}
+                    onClick={() => void unequipImplant(implant)}
+                    disabled={savingCybernetics || !implant.inventoryItemId}
                   >
-                    {implant.status === 'installed'
-                      ? 'Armazenar'
-                      : 'Instalar'}
+                    Desequipar
                   </button>
 
                   <button
@@ -503,18 +728,92 @@ export default function CyberneticsInventory({
                   >
                     Editar
                   </button>
-
-                  <button
-                    type="button"
-                    className="danger-text"
-                    onClick={() => removeImplant(implant.id)}
-                  >
-                    Remover
-                  </button>
                 </div>
               )}
             </article>
           ))}
+        </div>
+      )}
+
+      <div className="cybernetics-inventory-heading" style={{ marginTop: 28 }}>
+        <div>
+          <h4>Implantes no inventário normal</h4>
+          <p>
+            {availableImplants.length}{' '}
+            {availableImplants.length === 1
+              ? 'implante disponível'
+              : 'implantes disponíveis'}
+          </p>
+        </div>
+      </div>
+
+      {availableImplants.length === 0 ? (
+        <div className="cybernetics-empty">
+          <span>⌬</span>
+          <strong>Nenhum implante disponível</strong>
+          <p>
+            Implantes desequipados aparecerão aqui para serem equipados novamente.
+          </p>
+        </div>
+      ) : (
+        <div className="cybernetics-implant-list">
+          {availableImplants.map(item => {
+            const data = item.metadata?.cyberneticData as
+              | Partial<CyberneticImplant>
+              | undefined
+
+            return (
+              <article
+                className="cybernetics-implant-card"
+                key={item.id}
+              >
+                <div className="cybernetics-implant-top">
+                  <div>
+                    <span className="cybernetics-implant-category">
+                      {data?.category ?? 'Cibernética'}
+                    </span>
+                    <h4>{item.name}</h4>
+                  </div>
+
+                  <span className="cybernetics-status stored">
+                    No inventário
+                  </span>
+                </div>
+
+                {item.description && (
+                  <p>{item.description}</p>
+                )}
+
+                {data?.location && (
+                  <div className="cybernetics-implant-details">
+                    <span>⌖ {data.location}</span>
+                    <span>
+                      ⌬ {Number(data.biologicalLoad) || 0}% de carga
+                    </span>
+                  </div>
+                )}
+
+                {data?.effects && (
+                  <div className="cybernetics-implant-effects">
+                    <strong>Efeitos</strong>
+                    <p>{data.effects}</p>
+                  </div>
+                )}
+
+                {canEdit && (
+                  <div className="cybernetics-implant-actions">
+                    <button
+                      type="button"
+                      onClick={() => void equipImplant(item)}
+                      disabled={savingCybernetics}
+                    >
+                      Equipar
+                    </button>
+                  </div>
+                )}
+              </article>
+            )
+          })}
         </div>
       )}
     </section>

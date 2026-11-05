@@ -93,7 +93,7 @@ export const KISATSUTAI_SYSTEM: RPGSystem = {
           label: 'Hierarquia',
           color: '#8bc8a7',
           pool: 'rankBenefits',
-          rankBenefitsPattern: '(\\d+) pontos? de perícias?',
+          rankBenefitsPattern: '(\\d+) pontos?(?: para distribuir em)? (?:de )?perícias?(?: principais)?',
         },
         {
           id: 'intellect',

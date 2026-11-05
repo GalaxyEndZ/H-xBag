@@ -942,7 +942,7 @@ button:disabled { opacity: .5; cursor: not-allowed !important; }
 .strength-editor label { min-width: 110px; }
 .emoji-field { display: flex; align-items: center; gap: 10px; }
 .emoji-preview { display: grid; place-items: center; width: 45px; height: 45px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--season-surface-alt, var(--season-bg, #100e19)); font-size: 22px; }
-.emoji-modal-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; background: color-mix(in srgb, var(--season-surface-alt, #211c31) 78%, transparent); backdrop-filter: blur(8px); }
+.emoji-modal-backdrop { position: fixed; z-index: 2000; inset: 0; display: grid; place-items: center; padding: 20px; background: color-mix(in srgb, var(--season-surface-alt, #211c31) 78%, transparent); backdrop-filter: blur(8px); }
 .emoji-modal { width: min(480px, 100%); max-height: min(650px, 90vh); overflow: auto; padding: 22px; border: 1px solid var(--border-strong); border-radius: 20px; background: var(--season-bg, var(--season-bg, #100e19)); box-shadow: 0 25px 80px rgba(0,0,0,.45); }
 .emoji-modal-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .emoji-modal-heading h2 { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 19px; }

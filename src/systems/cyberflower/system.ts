@@ -7,6 +7,9 @@ export const CYBERFLOWER_SYSTEM: RPGSystem = {
   matches: systemName =>
     String(systemName ?? '').trim().toLowerCase() === 'cyberflower',
   data: {
+    archetypes: [
+      'Medcânico',
+    ],
     features: {
       usesLevels: true,
       usesRanks: false,
