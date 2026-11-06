@@ -431,66 +431,68 @@ export default function CyberneticsInventory({
         </span>
       </div>
 
-      <div
-        className={`biological-load-card ${
-          cyberpsychosis ? 'is-cyberpsychosis' : ''
-        }`}
-      >
-        <div className="biological-load-heading">
-          <div>
-            <span className="biological-load-eyebrow">
-              INTEGRIDADE ORGÂNICA
-            </span>
-            <strong>Carga Biológica</strong>
-          </div>
-
-          <div className="biological-load-value">
-            <strong>{biologicalLoad}</strong>
-            <span>%</span>
-          </div>
-        </div>
-
+      {canManageCybernetics && (
         <div
-          className="biological-load-track"
-          role="progressbar"
-          aria-label="Carga Biológica"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.min(100, biologicalLoad)}
-          aria-valuetext={`${biologicalLoad}%`}
+          className={`biological-load-card ${
+            cyberpsychosis ? 'is-cyberpsychosis' : ''
+          }`}
         >
-          <div
-            className="biological-load-fill"
-            style={{
-              width: `${Math.min(100, biologicalLoad)}%`,
-            }}
-          />
-        </div>
-
-        <div className="biological-load-scale">
-          <span>0%</span>
-          <span>100%</span>
-        </div>
-
-        {cyberpsychosis ? (
-          <div className="cyberpsychosis-indicator" role="status">
-            <span className="cyberpsychosis-pulse" />
-
+          <div className="biological-load-heading">
             <div>
-              <strong>CYBERPSICOSE</strong>
-              <small>
-                Carga biológica excedeu o limite seguro em{' '}
-                {biologicalLoad - 100}%.
-              </small>
+              <span className="biological-load-eyebrow">
+                INTEGRIDADE ORGÂNICA
+              </span>
+              <strong>Carga Biológica</strong>
+            </div>
+
+            <div className="biological-load-value">
+              <strong>{biologicalLoad}</strong>
+              <span>%</span>
             </div>
           </div>
-        ) : (
-          <p className="biological-load-note">
-            Limite seguro: até 100%. O indicador de Cyberpsicose será ativado
-            acima desse valor.
-          </p>
-        )}
-      </div>
+
+          <div
+            className="biological-load-track"
+            role="progressbar"
+            aria-label="Carga Biológica"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.min(100, biologicalLoad)}
+            aria-valuetext={`${biologicalLoad}%`}
+          >
+            <div
+              className="biological-load-fill"
+              style={{
+                width: `${Math.min(100, biologicalLoad)}%`,
+              }}
+            />
+          </div>
+
+          <div className="biological-load-scale">
+            <span>0%</span>
+            <span>100%</span>
+          </div>
+
+          {cyberpsychosis ? (
+            <div className="cyberpsychosis-indicator" role="status">
+              <span className="cyberpsychosis-pulse" />
+
+              <div>
+                <strong>CYBERPSICOSE</strong>
+                <small>
+                  Carga biológica excedeu o limite seguro em{' '}
+                  {biologicalLoad - 100}%.
+                </small>
+              </div>
+            </div>
+          ) : (
+            <p className="biological-load-note">
+              Limite seguro: até 100%. O indicador de Cyberpsicose será ativado
+              acima desse valor.
+            </p>
+          )}
+        </div>
+      )}
 
       {migrationLoading && (
         <p role="status">Sincronizando implantes antigos...</p>
@@ -696,9 +698,11 @@ export default function CyberneticsInventory({
                   <span>⌖ {implant.location}</span>
                 )}
 
-                <span>
-                  ⌬ {Number(implant.biologicalLoad) || 0}% de carga
-                </span>
+                {canManageCybernetics && (
+                  <span>
+                    ⌬ {Number(implant.biologicalLoad) || 0}% de carga
+                  </span>
+                )}
 
                 {implant.cost && (
                   <span>◈ {implant.cost}</span>
@@ -787,9 +791,12 @@ export default function CyberneticsInventory({
                 {data?.location && (
                   <div className="cybernetics-implant-details">
                     <span>⌖ {data.location}</span>
-                    <span>
-                      ⌬ {Number(data.biologicalLoad) || 0}% de carga
-                    </span>
+
+                    {canManageCybernetics && (
+                      <span>
+                        ⌬ {Number(data.biologicalLoad) || 0}% de carga
+                      </span>
+                    )}
                   </div>
                 )}
 

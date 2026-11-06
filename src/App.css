@@ -5801,62 +5801,396 @@ button:disabled { opacity: .58; }
   font-weight: 900;
   letter-spacing: .16em;
 }
-.shops-heading h2, .shop-catalog-heading h2 { margin-top: 0; }
+/* ===== HäxBag — Redesign visual das lojas ===== */
+
+.shops-page-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.shops-heading {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 28%, var(--season-line, #393342));
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 95% 0%, color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent), transparent 45%),
+    linear-gradient(145deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .14);
+}
+
+.shops-heading h2,
+.shop-catalog-heading h2 {
+  margin: 4px 0 0;
+  font-size: clamp(21px, 3vw, 28px);
+  font-weight: 900;
+  letter-spacing: -.6px;
+}
+
+.shops-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--season-primary, #c8b5ff);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.shops-heading > button {
+  min-height: 43px;
+  padding: 0 17px;
+  border-radius: 12px;
+  font-weight: 850;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, .16);
+}
+
 .shop-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 17px;
 }
+
 .shop-card {
   position: relative;
   min-width: 0;
-  padding: 17px;
+  padding: 18px;
   overflow: hidden;
   border: 1px solid var(--season-line, #393342);
-  border-radius: 16px;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--season-primary, #b49aff) 7%, var(--season-surface, #17151f)), var(--season-surface, #17151f) 65%);
-  box-shadow: 0 7px 20px rgba(0,0,0,.12);
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  border-radius: 19px;
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--season-primary, #b49aff) 10%, transparent), transparent 52%),
+    linear-gradient(150deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f) 75%);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .13);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
+
 .shop-card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 58%, var(--season-line, #393342));
-  box-shadow: 0 13px 28px rgba(0,0,0,.2);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 55%, var(--season-line, #393342));
+  box-shadow: 0 15px 32px rgba(0, 0, 0, .22);
 }
+
 .shop-card.is-selected {
   border-color: var(--season-primary, #b49aff);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent), 0 12px 28px rgba(0,0,0,.2);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent),
+    0 12px 30px rgba(0, 0, 0, .2);
 }
-.shop-card > button:first-child { min-height: 145px; }
+
+.shop-card > button:first-child {
+  min-height: 155px;
+}
+
 .shop-card .item-art {
   display: grid;
-  width: 54px; height: 54px;
+  width: 58px;
+  height: 58px;
   place-items: center;
-  margin-bottom: 14px;
-  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 30%, transparent);
-  border-radius: 15px;
+  margin-bottom: 15px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent);
+  border-radius: 17px;
   background: color-mix(in srgb, var(--season-primary, #b49aff) 13%, var(--season-surface, #17151f));
-  font-size: 27px;
+  font-size: 29px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .06);
 }
-.shop-card h3 { margin: 0 0 7px; font-size: 17px; font-weight: 850; }
-.shop-card .item-description { min-height: 38px; color: var(--season-muted, #b9b4c2); line-height: 1.5; }
-.shop-card small { color: var(--season-primary, #c8b5ff); font-weight: 800; }
+
+.shop-card h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -.2px;
+}
+
+.shop-card .item-description {
+  min-height: 40px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.shop-card small {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--season-primary, #c8b5ff);
+  font-size: 11px;
+  font-weight: 850;
+}
+
 .shop-card > .form-row {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding-top: 13px; margin-top: 12px !important;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  margin-top: 14px !important;
   border-top: 1px solid color-mix(in srgb, var(--season-line, #393342) 75%, transparent);
 }
-.shop-card > .form-row button { flex: 1 1 auto; min-width: 90px; }
-.shop-catalog-heading {
-  padding: 18px 20px;
-  margin-top: 6px;
-  border-left: 3px solid var(--season-primary, #b49aff);
-  border-radius: 0 13px 13px 0;
-  background: color-mix(in srgb, var(--season-surface, #17151f) 85%, var(--season-primary, #b49aff));
+
+.shop-card > .form-row button {
+  flex: 1 1 auto;
+  min-width: 90px;
+  min-height: 36px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
 }
+
+.shop-catalog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 19px 22px;
+  margin-top: 5px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 20%, var(--season-line, #393342));
+  border-left: 4px solid var(--season-primary, #b49aff);
+  border-radius: 0 16px 16px 0;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--season-primary, #b49aff) 10%, var(--season-surface, #17151f)), var(--season-surface, #17151f));
+}
+
+.shop-catalog-heading p {
+  margin: 5px 0 0;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shop-sale-item-card {
+  border-radius: 17px;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.shop-sale-item-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 45%, var(--season-line, #393342));
+  box-shadow: 0 12px 25px rgba(0, 0, 0, .17);
+}
+
+.shop-item-editor {
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .14);
+}
+
 @media (max-width: 640px) {
-  .shops-heading { align-items: stretch; padding: 17px; }
-  .shop-cards-grid { grid-template-columns: 1fr; }
+  .shops-heading {
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .shops-heading > button {
+    width: 100%;
+  }
+
+  .shop-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-catalog-heading {
+    align-items: flex-start;
+    padding: 16px;
+  }
+}/* ===== HäxBag — Redesign visual das lojas ===== */
+
+.shops-page-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.shops-heading {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 28%, var(--season-line, #393342));
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 95% 0%, color-mix(in srgb, var(--season-primary, #b49aff) 17%, transparent), transparent 45%),
+    linear-gradient(145deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .14);
+}
+
+.shops-heading h2,
+.shop-catalog-heading h2 {
+  margin: 4px 0 0;
+  font-size: clamp(21px, 3vw, 28px);
+  font-weight: 900;
+  letter-spacing: -.6px;
+}
+
+.shops-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--season-primary, #c8b5ff);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+
+.shops-heading > button {
+  min-height: 43px;
+  padding: 0 17px;
+  border-radius: 12px;
+  font-weight: 850;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, .16);
+}
+
+.shop-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 17px;
+}
+
+.shop-card {
+  position: relative;
+  min-width: 0;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 19px;
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--season-primary, #b49aff) 10%, transparent), transparent 52%),
+    linear-gradient(150deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f) 75%);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .13);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.shop-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 55%, var(--season-line, #393342));
+  box-shadow: 0 15px 32px rgba(0, 0, 0, .22);
+}
+
+.shop-card.is-selected {
+  border-color: var(--season-primary, #b49aff);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent),
+    0 12px 30px rgba(0, 0, 0, .2);
+}
+
+.shop-card > button:first-child {
+  min-height: 155px;
+}
+
+.shop-card .item-art {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  margin-bottom: 15px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent);
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 13%, var(--season-surface, #17151f));
+  font-size: 29px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .06);
+}
+
+.shop-card h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -.2px;
+}
+
+.shop-card .item-description {
+  min-height: 40px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.shop-card small {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--season-primary, #c8b5ff);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.shop-card > .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  margin-top: 14px !important;
+  border-top: 1px solid color-mix(in srgb, var(--season-line, #393342) 75%, transparent);
+}
+
+.shop-card > .form-row button {
+  flex: 1 1 auto;
+  min-width: 90px;
+  min-height: 36px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.shop-catalog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 19px 22px;
+  margin-top: 5px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 20%, var(--season-line, #393342));
+  border-left: 4px solid var(--season-primary, #b49aff);
+  border-radius: 0 16px 16px 0;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--season-primary, #b49aff) 10%, var(--season-surface, #17151f)), var(--season-surface, #17151f));
+}
+
+.shop-catalog-heading p {
+  margin: 5px 0 0;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shop-sale-item-card {
+  border-radius: 17px;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.shop-sale-item-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 45%, var(--season-line, #393342));
+  box-shadow: 0 12px 25px rgba(0, 0, 0, .17);
+}
+
+.shop-item-editor {
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--season-surface-alt, #211c31), var(--season-surface, #17151f));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .14);
+}
+
+@media (max-width: 640px) {
+  .shops-heading {
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .shops-heading > button {
+    width: 100%;
+  }
+
+  .shop-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shop-catalog-heading {
+    align-items: flex-start;
+    padding: 16px;
+  }
 }
 
 /* Controles de dano integrados aos cartões de status correspondentes */
@@ -10338,4 +10672,2406 @@ button:disabled { opacity: .58; }
 .campaign-activity-content p,
 .campaign-activity-content small {
   text-align: left;
+}
+
+.campaign-activity-marker {
+  margin-left: 5px;
+}
+
+.season-order-panel {
+  margin-top: 16px;
+}
+
+.season-editor-toggle {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.season-editor-toggle {
+  margin-bottom: 12px;
+}
+
+.item-grid + .season-editor-toggle {
+  margin-top: 0;
+}
+
+.campaign-editor-grid + .season-editor-toggle {
+  margin-top: 12px !important;
+}
+
+.season-editor-toggle + .season-editor-panel {
+  margin-top: 12px;
+}
+
+/* ================================
+   BESTIÁRIO
+================================ */
+
+.bestiary-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.bestiary-toolbar input,
+.bestiary-toolbar select {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 15px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  background: var(--card-bg, rgba(255,255,255,0.04));
+  color: var(--text-primary, #fff);
+  font: inherit;
+  outline: none;
+}
+
+.bestiary-toolbar input:focus,
+.bestiary-toolbar select:focus {
+  border-color: var(--accent-color, #d97735);
+}
+
+.bestiary-toolbar select option {
+  background: #202020;
+  color: #fff;
+}
+
+.bestiary-creature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.bestiary-creature-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.035);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.bestiary-creature-card {
+  position: relative;
+}
+
+/* Botão de ocultar/revelar */
+.bestiary-creature-visibility {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 17px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: 0.2s ease;
+}
+
+.bestiary-creature-visibility:hover {
+  background: var(--accent-color, #d97735);
+  transform: scale(1.08);
+}
+
+/* Aparência dos monstros ocultos */
+.bestiary-creature-card.is-hidden {
+  border-color: rgba(217, 119, 53, 0.35);
+  opacity: 0.72;
+}
+
+.bestiary-creature-card.is-hidden:hover {
+  opacity: 1;
+}
+
+.bestiary-creature-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent-color, #d97735);
+  background: rgba(255,255,255,0.065);
+}
+
+.bestiary-creature-image,
+.bestiary-creature-placeholder {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+}
+
+.bestiary-creature-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #292929, #171717);
+  color: var(--accent-color, #d97735);
+  font-size: 52px;
+}
+
+.bestiary-creature-info {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px;
+}
+
+.bestiary-creature-info > span {
+  color: var(--accent-color, #d97735);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.bestiary-creature-info h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.bestiary-creature-info p {
+  margin: 0;
+  color: var(--text-secondary, #999);
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .bestiary-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .bestiary-creature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .bestiary-creature-image,
+  .bestiary-creature-placeholder {
+    height: 130px;
+  }
+}
+
+/* ================================
+   BESTIÁRIO — FORMULÁRIO
+================================ */
+
+.bestiary-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 1px solid var(--accent-color, #d97735);
+  border-radius: 12px;
+  background: var(--accent-color, #d97735);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+  white-space: nowrap;
+}
+
+.bestiary-add-button:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+
+.bestiary-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(7px);
+}
+
+.bestiary-modal {
+  width: min(100%, 650px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background: var(--card-bg, #202020);
+  color: var(--text-primary, #fff);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+}
+
+.bestiary-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 26px;
+}
+
+.bestiary-modal-header h2 {
+  margin: 8px 0;
+  font-size: 24px;
+}
+
+.bestiary-modal-header p {
+  margin: 0;
+  color: var(--text-secondary, #aaa);
+  font-size: 13px;
+}
+
+.bestiary-modal-header > button {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.bestiary-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.bestiary-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-primary, #eee);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bestiary-form input,
+.bestiary-form select,
+.bestiary-form textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 11px;
+  background: rgba(0,0,0,0.2);
+  color: var(--text-primary, #fff);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.bestiary-form input:focus,
+.bestiary-form select:focus,
+.bestiary-form textarea:focus {
+  border-color: var(--accent-color, #d97735);
+}
+
+.bestiary-form select option {
+  background: #202020;
+  color: #fff;
+}
+
+.bestiary-form textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.bestiary-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.bestiary-stats-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bestiary-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.bestiary-modal-actions button {
+  padding: 12px 18px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 11px;
+  background: rgba(255,255,255,0.05);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.bestiary-modal-actions button:last-child {
+  border-color: var(--accent-color, #d97735);
+  background: var(--accent-color, #d97735);
+  color: #fff;
+}
+
+.bestiary-modal-actions button:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.bestiary-modal-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .bestiary-modal {
+    padding: 20px;
+  }
+
+  .bestiary-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .bestiary-stats-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bestiary-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .bestiary-modal-actions button {
+    width: 100%;
+  }
+}
+
+/* ================================
+   BESTIÁRIO — FICHA DE CONSULTA
+================================ */
+
+.bestiary-detail-modal {
+  width: min(100%, 760px);
+}
+
+.bestiary-detail-image {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.bestiary-detail-section {
+  margin: 22px 0;
+}
+
+.bestiary-detail-section h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.bestiary-detail-section p {
+  margin: 0;
+  color: var(--text-secondary, #bbb);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.bestiary-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.bestiary-detail-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 12px;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+}
+
+.bestiary-detail-stats span {
+  color: var(--text-secondary, #aaa);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.bestiary-detail-stats strong {
+  font-size: 26px;
+}
+
+@media (max-width: 600px) {
+  .bestiary-detail-stats {
+    gap: 8px;
+  }
+
+  .bestiary-detail-stats > div {
+    padding: 16px 8px;
+  }
+}
+
+/* BESTIÁRIO — ETIQUETAS DE RESISTÊNCIAS */
+
+.bestiary-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.bestiary-detail-tags span {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 13px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary, #eee);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bestiary-creature-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.bestiary-creature-status.is-visible {
+  color: #86d9a0;
+  background: rgba(76, 175, 110, 0.13);
+  border: 1px solid rgba(76, 175, 110, 0.25);
+}
+
+.bestiary-creature-status.is-hidden {
+  color: #e6a16e;
+  background: rgba(217, 119, 53, 0.13);
+  border: 1px solid rgba(217, 119, 53, 0.25);
+}
+
+/* Carga biológica: número e porcentagem lado a lado */
+.app-shell .cybernetics-section .biological-load-heading > .biological-load-value {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.app-shell .cybernetics-section .biological-load-value strong,
+.app-shell .cybernetics-section .biological-load-value span {
+  display: inline;
+  margin: 0;
+  line-height: 1;
+}
+
+.creature-image-preview {
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.creature-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+
+/* ===== HäxBag — Cartões premium do catálogo de lojas ===== */
+
+.shops-page-panel .item-grid {
+  gap: 18px;
+}
+
+.shops-page-panel .shop-product-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 19px;
+  overflow: hidden;
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 100% 0%,
+      color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent),
+      transparent 48%),
+    linear-gradient(155deg,
+      var(--season-surface-alt, #211c31),
+      var(--season-surface, #17151f) 75%);
+  box-shadow: 0 9px 25px rgba(0, 0, 0, .15);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.shops-page-panel .shop-product-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--season-primary, #b49aff) 55%, var(--season-line, #393342));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, .23);
+}
+
+.shops-page-panel .shop-product-art {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  flex: 0 0 76px;
+  place-items: center;
+  margin: 0 0 16px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 35%, transparent);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 13%, var(--season-surface, #17151f));
+  font-size: 39px;
+  box-shadow: inset 0 1px rgba(255,255,255,.07), 0 7px 17px rgba(0,0,0,.13);
+}
+
+.shops-page-panel .shop-product-category {
+  align-self: flex-start;
+  padding: 5px 9px;
+  margin-bottom: 9px;
+  border: 1px solid color-mix(in srgb, var(--season-primary, #b49aff) 27%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent);
+  color: var(--season-primary, #c8b5ff);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.shops-page-panel .shop-product-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: -.35px;
+}
+
+.shops-page-panel .shop-product-card > .item-description {
+  min-height: 43px;
+  margin: 0 0 16px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.shops-page-panel .shop-product-economics {
+  display: grid;
+  grid-template-columns: 1.2fr .8fr;
+  gap: 9px;
+  margin-top: auto;
+  padding: 12px 0;
+  border-top: 1px solid var(--season-line, rgba(255,255,255,.1));
+  border-bottom: 1px solid var(--season-line, rgba(255,255,255,.1));
+}
+
+.shops-page-panel .shop-product-economics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.shops-page-panel .shop-product-economics span {
+  color: var(--season-muted, #aaa);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.shops-page-panel .shop-product-economics strong {
+  color: var(--season-text, #f4f0fa);
+  font-size: 17px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.shops-page-panel .shop-product-economics > div:first-child strong {
+  color: var(--season-primary, #d0baff);
+  font-size: 20px;
+}
+
+.shops-page-panel .shop-product-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 15px;
+  color: #85d6a4;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.shops-page-panel .shop-stock-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #70ce91;
+  box-shadow: 0 0 9px rgba(112, 206, 145, .35);
+}
+
+.shops-page-panel .shop-product-stock.is-empty {
+  color: #ed929b;
+}
+
+.shops-page-panel .shop-product-stock.is-empty .shop-stock-dot {
+  background: #ed929b;
+  box-shadow: 0 0 9px rgba(237, 146, 155, .3);
+}
+
+/* Seletores de compra */
+
+.shops-page-panel .shop-purchase-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0 0 12px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.shops-page-panel .shop-purchase-field select,
+.shops-page-panel .shop-purchase-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 10px;
+  background: var(--season-bg, #101014);
+  color: var(--season-text, #f4f0fa);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.shops-page-panel .shop-purchase-field select:focus,
+.shops-page-panel .shop-purchase-field input:focus {
+  border-color: var(--season-primary, #b49aff);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent);
+}
+
+.shops-page-panel .shop-purchase-field small {
+  color: var(--season-muted, #aaa);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Botão de compra */
+
+.shops-page-panel .shop-buy-button {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 3px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .025em;
+  box-shadow: 0 6px 16px rgba(0,0,0,.17);
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.shops-page-panel .shop-buy-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+
+.shops-page-panel .shop-buy-button:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Área administrativa */
+
+.shops-page-panel .shop-product-card > .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  margin: 0 0 14px !important;
+  border: 1px solid var(--season-line, #393342);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--season-bg, #101014) 65%, transparent);
+}
+
+.shops-page-panel .shop-product-card > .form-row button {
+  flex: 1;
+  min-height: 34px;
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.shops-page-panel .shop-product-card > .form-row label {
+  width: 100%;
+  margin-top: 3px !important;
+  color: var(--season-muted, #b9b4c2) !important;
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.shops-page-panel .shop-product-card > .form-row input[type="checkbox"] {
+  accent-color: var(--season-primary, #b49aff);
+}
+
+@media (max-width: 600px) {
+  .shops-page-panel .shop-product-card {
+    padding: 16px;
+    border-radius: 17px;
+  }
+
+  .shops-page-panel .shop-product-art {
+    width: 65px;
+    height: 65px;
+    flex-basis: 65px;
+    font-size: 34px;
+  }
+}
+
+/* Correção do indicador de estoque nas lojas */
+.shops-page-panel .shop-product-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  line-height: 1.4;
+}
+
+.shops-page-panel .shop-stock-dot {
+  display: block;
+  width: 8px !important;
+  min-width: 8px !important;
+  max-width: 8px !important;
+  height: 8px !important;
+  min-height: 8px !important;
+  max-height: 8px !important;
+  flex: 0 0 8px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+}
+
+.shops-page-panel .shop-product-stock.is-empty .shop-stock-dot {
+  background: #ed929b;
+}
+
+.shops-page-panel .shop-product-stock:not(.is-empty) .shop-stock-dot {
+  background: #70ce91;
+}
+
+
+/* ========================================
+   CARTÕES DAS LOJAS — REFINAMENTO VISUAL
+======================================== */
+
+.shops-page-panel .shop-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--season-line, rgba(180, 154, 255, .2));
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      var(--season-surface, rgba(30, 26, 40, .96)),
+      var(--season-background, rgba(18, 16, 25, .96))
+    );
+  transition:
+    transform .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease,
+    background .2s ease;
+}
+
+.shops-page-panel .shop-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--season-primary, #b49aff);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .2);
+}
+
+/* Área clicável da loja */
+.shops-page-panel .shop-card > button:first-child {
+  position: relative;
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  min-height: 205px;
+  padding: 20px !important;
+  text-align: left;
+}
+
+/* Ícone da loja */
+.shops-page-panel .shop-card > button:first-child .item-art {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 0 0 18px;
+  border: 1px solid var(--season-line, rgba(180, 154, 255, .2));
+  border-radius: 17px;
+  background: var(--season-surface-alt, rgba(180, 154, 255, .09));
+  font-size: 32px;
+  transition: transform .2s ease, background .2s ease;
+}
+
+.shops-page-panel .shop-card:hover .item-art {
+  transform: translateY(-2px) scale(1.04);
+  background: var(--season-surface-alt, rgba(180, 154, 255, .16));
+}
+
+/* Nome */
+.shops-page-panel .shop-card > button:first-child h3 {
+  margin: 0 0 8px;
+  color: var(--season-text, #f4f0fa);
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -.025em;
+  line-height: 1.3;
+}
+
+/* Descrição */
+.shops-page-panel .shop-card > button:first-child .item-description {
+  margin: 0 0 16px;
+  color: var(--season-muted, #aaa);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+/* Quantidade de produtos */
+.shops-page-panel .shop-card > button:first-child small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--season-line, rgba(180, 154, 255, .2));
+  border-radius: 8px;
+  background: var(--season-surface-alt, rgba(180, 154, 255, .07));
+  color: var(--season-primary, #c6b3ff);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Loja selecionada */
+.shops-page-panel .shop-card.is-selected {
+  border-color: var(--season-primary, #b49aff);
+  background:
+    linear-gradient(
+      145deg,
+      var(--season-surface-alt, rgba(180, 154, 255, .13)),
+      var(--season-surface, rgba(30, 26, 40, .96))
+    );
+  box-shadow:
+    0 0 0 1px var(--season-primary, #b49aff),
+    0 10px 28px rgba(0, 0, 0, .18);
+}
+
+.shops-page-panel .shop-card.is-selected::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  border-radius: 0 0 5px 5px;
+  background: var(--season-primary, #b49aff);
+}
+
+.shops-page-panel .shop-card.is-selected > button:first-child .item-art {
+  border-color: var(--season-primary, #b49aff);
+  background: var(--season-surface-alt, rgba(180, 154, 255, .18));
+}
+
+/* Ações do mestre */
+.shops-page-panel .shop-card > .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 !important;
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--season-line, rgba(180, 154, 255, .16));
+  background: rgba(0, 0, 0, .08);
+}
+
+.shops-page-panel .shop-card > .form-row button {
+  flex: 1 1 auto;
+  min-width: 90px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.shops-page-panel .shop-card > .form-row small {
+  flex: 0 0 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+}
+
+/* Responsividade */
+@media (max-width: 640px) {
+  .shops-page-panel .shop-cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 12px;
+  }
+
+  .shops-page-panel .shop-card > button:first-child {
+    min-height: 190px;
+    padding: 15px !important;
+  }
+
+  .shops-page-panel .shop-card > button:first-child .item-art {
+    width: 54px;
+    height: 54px;
+    font-size: 28px;
+  }
+
+  .shops-page-panel .shop-card > .form-row {
+    padding: 12px;
+  }
+}
+
+
+/* ========================================
+   HÄXBAG — NOVO LAYOUT DO MERCADO
+======================================== */
+
+.shops-workspace {
+  display: grid;
+  grid-template-columns: minmax(245px, 290px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.shops-sidebar {
+  position: sticky;
+  top: 20px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--season-line);
+  border-radius: 18px;
+  background: var(--season-surface);
+}
+
+.shops-sidebar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.shops-sidebar-heading > div > span {
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+
+.shops-sidebar-heading h3 {
+  margin: 5px 0 0;
+  font-size: 17px;
+}
+
+.shops-count {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.shops-sidebar-list {
+  display: grid;
+  gap: 10px;
+}
+
+.shops-sidebar-list .shop-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--season-line);
+  border-radius: 13px;
+  background: var(--season-surface-alt);
+  transition: border-color .2s, background .2s, transform .2s;
+}
+
+.shops-sidebar-list .shop-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--season-primary);
+}
+
+.shops-sidebar-list .shop-card.is-selected {
+  border-color: var(--season-primary);
+  background: var(--season-surface);
+  box-shadow: 0 0 0 1px var(--season-primary);
+}
+
+.shops-sidebar-list .shop-card > button:first-child {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 11px;
+}
+
+.shops-sidebar-list .shop-card .item-art {
+  grid-row: span 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin: 0;
+  border-radius: 12px;
+  background: var(--season-surface);
+  font-size: 23px;
+}
+
+.shops-sidebar-list .shop-card h3 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.shops-sidebar-list .shop-card .item-description {
+  grid-column: 2;
+  margin: 3px 0;
+  font-size: 11px;
+}
+
+.shops-sidebar-list .shop-card small {
+  grid-column: 2;
+  color: var(--season-muted);
+  font-size: 10px;
+}
+
+.shops-sidebar-list .shop-card > .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px !important;
+}
+
+.shops-sidebar-list .shop-card > .form-row button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.shops-sidebar-list .shop-card > .form-row small {
+  flex-basis: 100%;
+  grid-column: auto;
+}
+
+.shops-main {
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+
+.shops-main > div:first-child {
+  margin-top: 0 !important;
+}
+
+.shops-empty-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 340px;
+  padding: 35px;
+  border: 1px dashed var(--season-line);
+  border-radius: 20px;
+  background: var(--season-surface);
+  text-align: center;
+}
+
+.shops-empty-selection > span {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 16px;
+  border-radius: 22px;
+  background: var(--season-surface-alt);
+  font-size: 38px;
+}
+
+.shops-empty-selection h3 {
+  margin: 0 0 8px;
+}
+
+.shops-empty-selection p {
+  max-width: 360px;
+  margin: 0;
+  color: var(--season-muted);
+  line-height: 1.6;
+}
+
+.shops-main .shop-catalog-heading {
+  padding: 22px;
+  border: 1px solid var(--season-line);
+  border-radius: 18px;
+  background: var(--season-surface);
+}
+
+@media (max-width: 850px) {
+  .shops-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .shops-sidebar {
+    position: static;
+  }
+
+  .shops-sidebar-list {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 2px 10px;
+  }
+
+  .shops-sidebar-list .shop-card {
+    flex: 0 0 220px;
+  }
+}
+
+@media (max-width: 520px) {
+  .shops-sidebar {
+    padding: 13px;
+  }
+
+  .shops-sidebar-list .shop-card {
+    flex-basis: 190px;
+  }
+
+  .shops-main .shop-catalog-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .shops-empty-selection {
+    min-height: 250px;
+    padding: 22px;
+  }
+}
+
+/* ========================================
+   HÄXBAG — CABEÇALHO DA LOJA
+======================================== */
+
+.shops-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 0;
+  padding: 26px;
+  overflow: hidden;
+  border: 1px solid var(--season-line);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      color-mix(in srgb, var(--season-primary) 13%, transparent),
+      transparent 55%
+    ),
+    var(--season-surface);
+}
+
+.shops-hero::after {
+  content: '';
+  position: absolute;
+  top: -65px;
+  right: 16%;
+  width: 180px;
+  height: 180px;
+  border: 1px solid var(--season-line);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: .45;
+}
+
+.shops-hero-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 19px;
+  min-width: 0;
+}
+
+.shops-hero-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--season-line);
+  border-radius: 21px;
+  background: var(--season-surface-alt);
+  font-size: 38px;
+}
+
+.shops-hero-copy {
+  min-width: 0;
+}
+
+.shops-hero-copy .shops-eyebrow {
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.shops-hero-copy h2 {
+  margin: 7px 0 5px;
+  overflow-wrap: anywhere;
+  font-size: clamp(23px, 3vw, 30px);
+  line-height: 1.2;
+}
+
+.shops-hero-copy > p {
+  margin: 0;
+  color: var(--season-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.shops-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.shops-hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--season-line);
+  border-radius: 9px;
+  background: var(--season-surface-alt);
+  color: var(--season-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.shops-new-product-button {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 43px;
+  padding: 0 17px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.shops-new-product-button > span {
+  font-size: 19px;
+  line-height: 1;
+}
+
+@media (max-width: 650px) {
+  .shops-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 19px;
+  }
+
+  .shops-hero-main {
+    align-items: flex-start;
+    gap: 13px;
+  }
+
+  .shops-hero-icon {
+    flex-basis: 54px;
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    font-size: 28px;
+  }
+
+  .shops-new-product-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 400px) {
+  .shops-hero-main {
+    flex-direction: column;
+  }
+}
+
+/* ========================================
+   HÄXBAG — PAINEL DE VENDA
+======================================== */
+
+.shops-main > .inventory-section {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--season-line);
+  border-radius: 18px;
+  background: var(--season-surface);
+}
+
+.shops-main > .inventory-section > .inventory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.shops-main > .inventory-section > .inventory-heading h2 {
+  margin: 0 0 5px;
+  font-size: 19px;
+}
+
+.shops-main > .inventory-section > .inventory-heading p {
+  margin: 0;
+  color: var(--season-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shops-main > .inventory-section > label {
+  display: block;
+  max-width: 340px;
+  margin-bottom: 20px;
+}
+
+.shops-main .shop-sale-item-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--season-line);
+  border-radius: 15px;
+  background: var(--season-surface-alt);
+  transition: transform .2s, border-color .2s;
+}
+
+.shops-main .shop-sale-item-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--season-primary);
+}
+
+.shops-main .shop-sale-item-card .item-art {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 12px;
+  border: 1px solid var(--season-line);
+  border-radius: 15px;
+  background: var(--season-surface);
+  font-size: 30px;
+}
+
+.shops-main .shop-sale-item-name {
+  margin: 0 0 10px;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shops-main .shop-sale-item-card > p {
+  margin: 3px 0;
+  color: var(--season-muted);
+  font-size: 12px;
+}
+
+.shops-main .shop-sale-item-card label {
+  margin-top: 12px;
+}
+
+.shops-main .shop-sale-item-card button {
+  width: 100%;
+  margin-top: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.shops-main .shop-sale-item-card button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 520px) {
+  .shops-main > .inventory-section {
+    padding: 15px;
+  }
+}
+
+/* ========================================
+   HÄXBAG — CARTÕES DO CATÁLOGO
+======================================== */
+
+.shops-main .shop-product-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid var(--season-line);
+  border-radius: 17px;
+  background: var(--season-surface);
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+
+.shops-main .shop-product-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--season-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .13);
+}
+
+.shop-product-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.shops-main .shop-product-art {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  margin: 0;
+  border: 1px solid var(--season-line);
+  border-radius: 17px;
+  background: var(--season-surface-alt);
+  font-size: 34px;
+}
+
+.shop-product-status {
+  padding: 5px 9px;
+  border: 1px solid var(--season-line);
+  border-radius: 20px;
+  background: var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.shop-product-status.is-empty {
+  color: #df8585;
+  border-color: rgba(223, 133, 133, .3);
+}
+
+.shops-main .shop-product-category {
+  margin-bottom: 7px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.shops-main .shop-product-title {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.shops-main .shop-product-card > .item-description {
+  min-height: 42px;
+  margin: 0 0 17px;
+  color: var(--season-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.shops-main .shop-product-economics {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid var(--season-line);
+  border-radius: 12px;
+  background: var(--season-surface-alt);
+}
+
+.shop-product-economics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.shop-product-economics span {
+  color: var(--season-muted);
+  font-size: 10px;
+}
+
+.shop-product-economics strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.shop-product-price strong {
+  color: var(--season-primary);
+  font-size: 16px;
+}
+
+.shop-product-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 13px 0;
+  font-size: 11px;
+}
+
+.shop-product-admin {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--season-line);
+  border-bottom: 1px solid var(--season-line);
+}
+
+.shop-product-admin-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.shop-product-admin-actions button {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  font-size: 11px;
+}
+
+.shop-product-restriction {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--season-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.shop-product-restriction input {
+  flex: 0 0 auto;
+}
+
+.shop-product-purchase {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 15px;
+}
+
+.shops-main .shop-product-purchase .shop-purchase-field {
+  margin: 0;
+  font-size: 11px;
+}
+
+.shop-product-purchase .shop-purchase-field small {
+  color: var(--season-muted);
+  font-size: 10px;
+}
+
+.shop-product-blocked {
+  margin: 0;
+  color: #e6a36d;
+  font-size: 11px;
+}
+
+.shops-main .shop-product-purchase .shop-buy-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 3px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.shops-main .shop-product-purchase .shop-buy-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 520px) {
+  .shops-main .shop-product-card {
+    padding: 14px;
+  }
+}
+
+/* ========================================
+   HÄXBAG — CARTÕES DE PRODUTOS DA LOJA
+======================================== */
+
+.shops-main .shop-product-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 19px;
+  overflow: hidden;
+  border: 1px solid var(--season-line);
+  border-radius: 17px;
+  background: var(--season-surface);
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+
+.shops-main .shop-product-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--season-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .13);
+}
+
+.shops-main .shop-product-art {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 0 15px;
+  border: 1px solid var(--season-line);
+  border-radius: 17px;
+  background: var(--season-surface-alt);
+  font-size: 36px;
+}
+
+.shops-main .shop-product-category {
+  align-self: flex-start;
+  margin-bottom: 7px;
+  padding: 5px 9px;
+  border: 1px solid var(--season-line);
+  border-radius: 7px;
+  background: var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.shops-main .shop-product-title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.shops-main .shop-product-card > .item-description {
+  min-height: 42px;
+  margin: 0 0 17px;
+  color: var(--season-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.shops-main .shop-product-economics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin-top: auto;
+  padding: 13px 0;
+  border-top: 1px solid var(--season-line);
+  border-bottom: 1px solid var(--season-line);
+}
+
+.shops-main .shop-product-economics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.shops-main .shop-product-economics span {
+  color: var(--season-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.shops-main .shop-product-economics strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.shops-main .shop-product-stock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 13px 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Administração do produto */
+
+.shops-main .shop-product-card > .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 5px 0 13px;
+}
+
+.shops-main .shop-product-card > .form-row button {
+  flex: 1;
+  min-width: 75px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.shops-main .shop-product-card > .form-row label {
+  flex-basis: 100%;
+  margin-top: 3px !important;
+  font-size: 11px !important;
+}
+
+/* Compra */
+
+.shops-main .shop-product-card .shop-purchase-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 9px 0 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.shops-main .shop-product-card .shop-purchase-field select,
+.shops-main .shop-product-card .shop-purchase-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.shops-main .shop-product-card .shop-purchase-field small {
+  color: var(--season-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.shops-main .shop-product-card > p[style] {
+  margin: 10px 0;
+  padding: 9px;
+  border: 1px solid rgba(230, 163, 109, .25);
+  border-radius: 9px;
+  background: rgba(230, 163, 109, .08);
+}
+
+.shops-main .shop-product-card .shop-buy-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.shops-main .shop-product-card .shop-buy-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 520px) {
+  .shops-main .shop-product-card {
+    padding: 14px;
+  }
+
+  .shops-main .shop-product-title {
+    font-size: 15px;
+  }
+}
+
+/* ========================================
+   HÄXBAG — SEÇÕES DO EDITOR DE PRODUTOS
+======================================== */
+
+.shop-editor-section {
+  position: relative;
+  min-width: 0;
+  margin-bottom: 24px !important;
+  padding: 18px;
+  border: 1px solid var(--season-line);
+  border-radius: 15px;
+  background: var(--season-surface-alt);
+}
+
+.shop-editor-section > strong {
+  display: block;
+  margin-bottom: 16px !important;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--season-line);
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+
+.shop-editor-identification {
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      color-mix(in srgb, var(--season-primary) 7%, transparent),
+      transparent 55%
+    ),
+    var(--season-surface-alt);
+}
+
+.shop-item-editor label {
+  min-width: 0;
+}
+
+.shop-item-editor label input,
+.shop-item-editor label select,
+.shop-item-editor label textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.shop-item-editor .item-classifications-panel {
+  margin: 18px 0;
+  padding: 15px;
+  border: 1px solid var(--season-line);
+  border-radius: 13px;
+  background: var(--season-surface);
+}
+
+.shop-item-editor .item-classifications-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.shop-item-editor .item-classifications-heading p {
+  margin: 5px 0 0;
+  color: var(--season-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.shop-item-editor .item-classifications-heading > span {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.shop-item-editor .item-classifications-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 8px;
+}
+
+.shop-item-editor .item-classification-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 9px;
+  border: 1px solid var(--season-line);
+  border-radius: 9px;
+  background: var(--season-surface-alt);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+
+.shop-item-editor .item-classification-option.selected {
+  border-color: var(--season-primary);
+  background: color-mix(in srgb, var(--season-primary) 10%, var(--season-surface-alt));
+}
+
+.shop-item-editor .item-classification-option input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--season-primary);
+}
+
+.shop-item-editor .item-classification-check {
+  color: var(--season-primary);
+  font-weight: 900;
+}
+
+.shop-item-editor .item-classifications-hint {
+  margin: 10px 0 0;
+  color: var(--season-muted);
+  font-size: 11px;
+}
+
+.shop-item-editor .item-rarity-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.shop-item-editor .item-rarity-field > label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ========================================
+   HÄXBAG — PREÇO E INVENTÁRIO
+======================================== */
+
+.shop-item-editor .shop-editor-section-title {
+  display: block;
+  margin-bottom: 15px !important;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--season-line);
+  font-size: 13px;
+  letter-spacing: .04em;
+}
+
+.shop-item-editor .form-row {
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.shop-item-editor .form-row > label {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--season-line);
+  border-radius: 12px;
+  background: var(--season-surface-alt);
+}
+
+.shop-item-editor .form-row > label > input,
+.shop-item-editor .form-row > label > select {
+  margin-top: 7px;
+}
+
+.shop-item-editor .form-row > label small {
+  display: block;
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .shop-item-editor .form-row {
+    flex-direction: column;
+  }
+
+  .shop-item-editor .form-row > label {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* ========================================
+   HÄXBAG — SELEÇÃO DE ÍCONE
+======================================== */
+
+.shop-item-editor .shop-editor-icon-section {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid var(--season-line);
+  border-radius: 15px;
+  background: var(--season-surface-alt);
+}
+
+.shop-item-editor .shop-editor-icon-section .shop-editor-section-title {
+  display: block;
+  margin-bottom: 15px !important;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--season-line);
+  font-size: 13px;
+}
+
+.shop-item-editor .shop-editor-icon-section button[aria-label^="Usar ícone"] {
+  transition: transform .15s, border-color .15s, background .15s;
+}
+
+.shop-item-editor .shop-editor-icon-section button[aria-label^="Usar ícone"]:hover {
+  transform: translateY(-2px);
+  border-color: var(--season-primary) !important;
+}
+
+.shop-item-editor .shop-editor-icon-section button[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--season-primary) 22%, transparent);
+}
+
+.shop-item-editor .shop-editor-icon-section > label {
+  margin-top: 16px !important;
+}
+
+/* ========================================
+   HÄXBAG — REGRAS DE EQUIPAMENTOS
+======================================== */
+
+.shop-item-editor .equipment-rules-preview {
+  margin: 14px 0 18px;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, var(--season-primary) 25%, var(--season-line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--season-primary) 6%, var(--season-surface));
+}
+
+.shop-item-editor .equipment-rules-preview > strong {
+  display: block;
+  margin-bottom: 11px;
+  color: var(--season-primary);
+  font-size: 11px;
+  letter-spacing: .07em;
+}
+
+.shop-item-editor .equipment-rules-preview p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 7px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--season-line);
+  color: var(--season-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.shop-item-editor .scarcity-editor-card {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 17px;
+  border: 1px solid var(--season-line);
+  border-radius: 14px;
+  background: var(--season-surface);
+}
+
+.shop-item-editor .scarcity-editor-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shop-item-editor .scarcity-editor-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 21px;
+}
+
+.shop-item-editor .scarcity-editor-heading p {
+  margin: 4px 0 0;
+  color: var(--season-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.shop-item-editor .scarcity-editor-card > label:not(.scarcity-exhausted-toggle) {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shop-item-editor .scarcity-level-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.shop-item-editor .scarcity-level-preview > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--season-line);
+  border-radius: 10px;
+  background: var(--season-surface-alt);
+}
+
+.shop-item-editor .scarcity-level-preview span {
+  color: var(--season-muted);
+  font-size: 10px;
+}
+
+.shop-item-editor .scarcity-level-preview strong {
+  color: var(--season-primary);
+  font-size: 17px;
+}
+
+.shop-item-editor .scarcity-editor-note {
+  margin: 0;
+  color: var(--season-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.shop-item-editor .scarcity-exhausted-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--season-line);
+  border-radius: 10px;
+  background: var(--season-surface-alt);
+  cursor: pointer;
+}
+
+.shop-item-editor .scarcity-exhausted-toggle input {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--season-primary);
+}
+
+.shop-item-editor .scarcity-exhausted-toggle span {
+  display: grid;
+  gap: 4px;
+}
+
+.shop-item-editor .scarcity-exhausted-toggle small {
+  color: var(--season-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+/* ========================================
+   HÄXBAG — AÇÕES DO EDITOR
+======================================== */
+
+.shop-item-editor .shop-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--season-line);
+}
+
+.shop-item-editor .shop-editor-actions button {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 800;
+  transition: transform .18s, filter .18s;
+}
+
+.shop-item-editor .shop-editor-actions button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+}
+
+.shop-item-editor .shop-editor-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 480px) {
+  .shop-item-editor .shop-editor-actions {
+    flex-direction: column;
+  }
+
+  .shop-item-editor .shop-editor-actions button {
+    width: 100%;
+  }
+}
+
+/* ========================================
+   HÄXBAG — PRÉVIA DO PRODUTO
+======================================== */
+
+.shop-item-editor > .shop-editor-preview {
+  min-width: 0;
+  padding: 20px !important;
+  border: 1px solid var(--season-line) !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--season-primary) 10%, transparent),
+      transparent 55%
+    ),
+    var(--season-surface-alt) !important;
+}
+
+.shop-editor-preview > small {
+  display: block;
+  color: var(--season-primary) !important;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em !important;
+}
+
+.shop-editor-preview > div:nth-child(2) {
+  padding: 26px 8px 20px !important;
+}
+
+.shop-editor-preview > div:nth-child(2) > div:first-child {
+  display: grid;
+  place-items: center;
+  width: 94px;
+  height: 94px;
+  margin: 0 auto 15px;
+  border: 1px solid var(--season-line);
+  border-radius: 25px;
+  background: var(--season-surface);
+  font-size: 48px !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+}
+
+.shop-editor-preview > div:nth-child(2) h3 {
+  margin: 12px 0 8px !important;
+  font-size: 19px !important;
+  overflow-wrap: anywhere;
+}
+
+.shop-editor-preview > div:last-child > div {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--season-line);
+}
+
+.shop-editor-preview > div:last-child > div:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .shop-item-editor > .shop-editor-preview {
+    position: static !important;
+  }
+}
+
+/* Correção do alinhamento dos cartões de estabelecimentos */
+
+.shops-sidebar-list .shop-card > button:first-child {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 11px !important;
+  width: 100%;
+  text-align: left;
+}
+
+.shops-sidebar-list .shop-card .item-art {
+  position: static !important;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  margin: 0 !important;
+}
+
+.shops-sidebar-list .shop-card > button:first-child > div:not(.item-art) {
+  flex: 1;
+  min-width: 0;
+}
+
+.shops-sidebar-list .shop-card h3 {
+  margin: 0 0 4px !important;
+  line-height: 1.3;
+}
+
+.shops-sidebar-list .shop-card .item-description {
+  margin: 0 0 4px !important;
+  line-height: 1.4;
+}
+
+.shops-sidebar-list .shop-card small {
+  display: block;
+  margin: 0;
+}
+
+.shops-sidebar-list {
+  gap: 12px;
+}
+
+.shops-sidebar-list .shop-card {
+  padding: 14px;
+}
+
+.shops-sidebar-list .shop-card > button:first-child {
+  align-items: center !important;
+}
+
+.shops-sidebar-list .shop-card .item-art {
+  align-self: center;
+}
+
+.shops-sidebar-list .shop-card .item-description {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.shops-sidebar-list .shop-card h3 {
+  font-size: 14px;
 }
