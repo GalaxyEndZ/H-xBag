@@ -10315,3 +10315,27 @@ button:disabled { opacity: .58; }
   .campaign-activity-panel { padding: 15px; }
   .campaign-activity-heading { flex-direction: column; }
 }
+
+/* Alinhamento das atividades recentes */
+.campaign-activity-list li {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.campaign-activity-content {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.campaign-activity-content strong,
+.campaign-activity-content p,
+.campaign-activity-content small {
+  text-align: left;
+}
