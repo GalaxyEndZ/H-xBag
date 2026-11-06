@@ -54,6 +54,18 @@ type CharacterGrant = {
 }
 
 type Season = { id: string; campaign_id: string; name: string; description: string | null; season_number: number; status: 'draft' | 'active' | 'completed' | 'archived'; theme_key?: string | null }
+type CampaignActivity = {
+  id: string
+  campaign_id: string
+  actor_id: string | null
+  actor_name: string
+  activity_type: string
+  title: string
+  description: string | null
+  entity_type: string | null
+  entity_id: string | null
+  created_at: string
+}
 type CharacterSheet = { id: string; character_id: string; season_id: string; sheet_data: Record<string, unknown> }
 type Item = {
   id: string
@@ -298,6 +310,9 @@ function App() {
   const [shopLoading, setShopLoading] = useState(false)
   const [shopPurchaseLoading, setShopPurchaseLoading] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
+  const [campaignActivities, setCampaignActivities] = useState<CampaignActivity[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityTableMissing, setActivityTableMissing] = useState(false)
   const [selectedSeasonId, setSelectedSeasonId] = useState('')
   const [masterShieldSeasonId, setMasterShieldSeasonId] = useState('')
   const [masterShieldSheets, setMasterShieldSheets] = useState<Record<string, Record<string, any>>>({})
@@ -308,6 +323,50 @@ function App() {
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
   const [seasonOrderSaving, setSeasonOrderSaving] = useState(false)
+  async function recordCampaignActivity(input: {
+    activityType: string
+    title: string
+    description?: string | null
+    entityType?: string | null
+    entityId?: string | null
+    campaignId?: string
+  }) {
+    const campaignId = input.campaignId ?? selectedCampaignId
+    if (!campaignId || !session?.user.id) return
+
+    const payload = {
+      campaign_id: campaignId,
+      actor_id: session.user.id,
+      actor_name: displayNameForMembers(session),
+      activity_type: input.activityType,
+      title: input.title,
+      description: input.description ?? null,
+      entity_type: input.entityType ?? null,
+      entity_id: input.entityId ?? null,
+    }
+
+    const { data, error: insertError } = await supabase
+      .from('campaign_activity')
+      .insert(payload)
+      .select('id,campaign_id,actor_id,actor_name,activity_type,title,description,entity_type,entity_id,created_at')
+      .single()
+
+    if (insertError) {
+      // A tabela será criada na próxima etapa, após a aplicação da migração SQL.
+      if (insertError.code === '42P01' || insertError.code === 'PGRST205') {
+        setActivityTableMissing(true)
+      } else {
+        console.warn('Não foi possível registrar atividade da campanha:', insertError.message)
+      }
+      return
+    }
+
+    const activity = data as CampaignActivity
+    setCampaignActivities(current =>
+      [activity, ...current.filter(entry => entry.id !== activity.id)].slice(0, 30)
+    )
+  }
+
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
   const activeTheme = seasonThemes[activeThemeKey]
@@ -541,6 +600,46 @@ function App() {
       setSelectedSeasonId(current => rows.some(row => row.id === current) ? current : (rows.find(row => row.status === 'active')?.id ?? rows[0]?.id ?? ''))
     }
     void loadSeasons()
+    return () => { cancelled = true }
+  }, [selectedCampaignId])
+
+  useEffect(() => {
+    if (!selectedCampaignId) {
+      setCampaignActivities([])
+      setActivityTableMissing(false)
+      setActivityLoading(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function loadCampaignActivities() {
+      setActivityLoading(true)
+      const { data, error: loadError } = await supabase
+        .from('campaign_activity')
+        .select('id,campaign_id,actor_id,actor_name,activity_type,title,description,entity_type,entity_id,created_at')
+        .eq('campaign_id', selectedCampaignId)
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      if (cancelled) return
+
+      if (loadError) {
+        setCampaignActivities([])
+        if (loadError.code === '42P01' || loadError.code === 'PGRST205') {
+          setActivityTableMissing(true)
+        } else {
+          console.warn('Não foi possível carregar o histórico da campanha:', loadError.message)
+        }
+      } else {
+        setActivityTableMissing(false)
+        setCampaignActivities((data ?? []) as CampaignActivity[])
+      }
+
+      setActivityLoading(false)
+    }
+
+    void loadCampaignActivities()
     return () => { cancelled = true }
   }, [selectedCampaignId])
 
@@ -1445,6 +1544,14 @@ async function purchaseShopItem(
     setNotice(
       `${result.quantity ?? quantity}x ${result.item_name ?? item.name} comprado com sucesso!`,
     )
+    const purchasedCharacter = characters.find(character => character.id === shopPurchaseCharacterId)
+    void recordCampaignActivity({
+      activityType: 'shop_purchase',
+      title: 'Compra realizada',
+      description: `${result.quantity ?? quantity}x ${result.item_name ?? item.name}${purchasedCharacter ? ` · ${purchasedCharacter.name}` : ''}`,
+      entityType: 'item',
+      entityId: item.id,
+    })
     setShopPurchaseQuantities(current => ({
   ...current,
   [item.id]: '1',
@@ -2088,6 +2195,7 @@ async function handleCurrencyConversion() {
     setCampaignSystemChoice('')
     setShowCampaignForm(false)
     setNotice('Campanha criada e salva!')
+    void recordCampaignActivity({ activityType: 'campaign_created', title: 'Campanha criada', description: campaignToUse.name, entityType: 'campaign', entityId: newCampaignId, campaignId: newCampaignId })
     setLoading(false)
   }
 
@@ -2243,7 +2351,7 @@ async function deleteCampaign(campaign: Campaign) {
       const { error: versionError } = await supabase.from('character_sheet_versions').insert({ character_sheet_id: newSheet.id, character_id: character.id, season_id: season.id, sheet_data: initialData, milestone_type: 'season_start', milestone_name: `Início da temporada ${season.name}`, notes: 'Snapshot automático no início da temporada.', created_by: session!.user.id })
       if (versionError) { setError(`Ficha de ${character.name} criada, mas o snapshot inicial falhou: ${versionError.message}`); setLoading(false); return }
     }
-    setSeasons(current => [...current, season].sort((a,b) => a.season_number-b.season_number)); setSelectedSeasonId(season.id); setNewSeasonName(''); setNewSeasonDescription(''); setNotice(`Temporada “${season.name}” criada.`); setLoading(false)
+    setSeasons(current => [...current, season].sort((a,b) => a.season_number-b.season_number)); setSelectedSeasonId(season.id); setNewSeasonName(''); setNewSeasonDescription(''); setNotice(`Temporada “${season.name}” criada.`); void recordCampaignActivity({ activityType: 'season_created', title: 'Temporada criada', description: `T${season.season_number} · ${season.name}`, entityType: 'season', entityId: season.id }); setLoading(false)
   }
 
   async function saveSeasonTheme(themeKey: keyof typeof seasonThemes) {
@@ -2255,6 +2363,7 @@ async function deleteCampaign(campaign: Campaign) {
     if (updateError || !data) { setError(`Não foi possível salvar o tema: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry))
     setNotice(`Tema “${seasonThemes[themeKey].label}” aplicado à temporada.`)
+    void recordCampaignActivity({ activityType: 'season_theme_changed', title: 'Tema da temporada alterado', description: `${season.name} · ${seasonThemes[themeKey].label}`, entityType: 'season', entityId: season.id })
   }
 
   async function saveSeasonDetails() {
@@ -2262,7 +2371,7 @@ async function deleteCampaign(campaign: Campaign) {
     if (!season || !isMaster || !seasonNameDraft.trim()) return
     const { data, error: updateError } = await supabase.from('campaign_seasons').update({ name: seasonNameDraft.trim(), description: seasonDescriptionDraft.trim() || null }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
     if (updateError || !data) { setError(`Não foi possível atualizar a temporada: ${updateError?.message ?? 'resposta vazia'}`); return }
-    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice('Dados da temporada atualizados.')
+    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice('Dados da temporada atualizados.'); void recordCampaignActivity({ activityType: 'season_updated', title: 'Temporada atualizada', description: seasonNameDraft.trim(), entityType: 'season', entityId: season.id })
   }
 
   async function changeSeasonStatus(status: Season['status']) {
@@ -2271,7 +2380,7 @@ async function deleteCampaign(campaign: Campaign) {
     if (status === 'active' && seasons.some(entry => entry.status === 'active' && entry.id !== season.id)) { setError('Já existe uma temporada ativa. Conclua ou arquive a atual antes de ativar outra.'); return }
     const { data, error: updateError } = await supabase.from('campaign_seasons').update({ status }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
     if (updateError || !data) { setError(`Não foi possível mudar o status: ${updateError?.message ?? 'resposta vazia'}`); return }
-    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`)
+    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`); void recordCampaignActivity({ activityType: 'season_status_changed', title: 'Status da temporada alterado', description: `${season.name} · ${status}`, entityType: 'season', entityId: season.id })
   }
 
 async function moveSeason(seasonId: string, direction: -1 | 1) {
@@ -3188,6 +3297,7 @@ setCharacterRank('zaidan')
 setCharacterFamilyTier('5')
 setShowCharacterForm(false)
 setNotice('Personagem criado e salvo!')
+void recordCampaignActivity({ activityType: 'character_created', title: 'Personagem criado', description: `${createdCharacter.emoji ? `${createdCharacter.emoji} ` : ''}${createdCharacter.name}`, entityType: 'character', entityId: createdCharacter.id })
 setLoading(false)
   }
 
@@ -4566,6 +4676,39 @@ onClick={() => {
                         <p className="master-shield-empty">Nenhum personagem cadastrado.</p>
                       )}
                     </div>
+                  </div>
+
+                  <div className="campaign-activity-panel">
+                    <div className="campaign-activity-heading">
+                      <div>
+                        <h3>Atividades recentes</h3>
+                        <p>Acompanhe as novidades desta campanha.</p>
+                      </div>
+                      <span>{campaignActivities.length} registros</span>
+                    </div>
+
+                    {activityLoading ? (
+                      <p className="master-shield-empty">Carregando atividades...</p>
+                    ) : activityTableMissing ? (
+                      <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
+                    ) : campaignActivities.length > 0 ? (
+                      <ul className="campaign-activity-list">
+                        {campaignActivities.map(activity => (
+                          <li key={activity.id}>
+                            <span className="campaign-activity-marker" aria-hidden="true">•</span>
+                            <div className="campaign-activity-content">
+                              <strong>{activity.title}</strong>
+                              {activity.description && <p>{activity.description}</p>}
+                              <small>
+                                {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                              </small>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
+                    )}
                   </div>
                 </>
               ) : (
