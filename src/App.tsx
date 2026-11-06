@@ -4766,39 +4766,6 @@ onClick={() => {
                 </div>
                 {selectedCampaign.description && <div className="master-shield-description"><strong>Descrição da campanha</strong><p>{selectedCampaign.description}</p></div>}
             
-<div className="campaign-activity-panel">
-  <div className="campaign-activity-heading">
-    <div>
-      <h3>Atividades recentes</h3>
-      <p>Acompanhe as novidades desta campanha.</p>
-    </div>
-    <span>{campaignActivities.length} registros</span>
-  </div>
-
-  {activityLoading ? (
-    <p className="master-shield-empty">Carregando atividades...</p>
-  ) : activityTableMissing ? (
-    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
-  ) : campaignActivities.length > 0 ? (
-    <ul className="campaign-activity-list">
-      {campaignActivities.map(activity => (
-        <li key={activity.id}>
-          <span className="campaign-activity-marker" aria-hidden="true">•</span>
-          <div className="campaign-activity-content">
-            <strong>{activity.title}</strong>
-            {activity.description && <p>{activity.description}</p>}
-            <small>
-              {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-            </small>
-          </div>
-        </li>
-      ))}
-    </ul>
-  ) : (
-    <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
-  )}
-</div>
-            
                 <div className="master-shield-columns">
                   <div><h3>Integrantes da party</h3>{masterShieldPartyMembers.length ? <ul>{masterShieldPartyMembers.map(member => <li key={member.user_id}><span>{member.display_name}</span><small>{member.role === 'master' ? 'Mestre' : 'Jogador'}</small></li>)}</ul> : <p className="master-shield-empty">Nenhum integrante encontrado.</p>}</div>
                   <div>
@@ -4878,6 +4845,41 @@ onClick={() => {
                       return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || getSystemRankName(rankId) || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
                     })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
                   </div>
+
+<div className="campaign-activity-panel">
+  <div className="campaign-activity-heading">
+    <div>
+      <h3>Atividades recentes</h3>
+      <p>Acompanhe as novidades desta campanha.</p>
+    </div>
+    <span>{campaignActivities.length} registros</span>
+  </div>
+
+  {activityLoading ? (
+    <p className="master-shield-empty">Carregando atividades...</p>
+  ) : activityTableMissing ? (
+    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
+  ) : campaignActivities.length > 0 ? (
+    <ul className="campaign-activity-list">
+      {campaignActivities.map(activity => (
+        <li key={activity.id}>
+          <span className="campaign-activity-marker" aria-hidden="true">•</span>
+          <div className="campaign-activity-content">
+            <strong>{activity.title}</strong>
+            {activity.description && <p>{activity.description}</p>}
+            <small>
+              {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+            </small>
+          </div>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
+  )}
+</div>
+
+
                 </div>
                                 {masterShieldSeasonId && !masterShieldLoading && (
                   <div style={{
