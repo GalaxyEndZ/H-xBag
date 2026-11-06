@@ -324,27 +324,37 @@ function App() {
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
   const [seasonOrderSaving, setSeasonOrderSaving] = useState(false)
   async function recordCampaignActivity(input: {
-    activityType: string
-    title: string
-    description?: string | null
-    entityType?: string | null
-    entityId?: string | null
-    campaignId?: string
-  }) {
-    const campaignId = input.campaignId ?? selectedCampaignId
-    if (!campaignId || !session?.user.id) return
+  activityType: string
+  title: string
+  description?: string | null
+  entityType?: string | null
+  entityId?: string | null
+  campaignId?: string
+}) {
+  const campaignId = input.campaignId ?? selectedCampaignId
 
-    const payload = {
-      campaign_id: campaignId,
-      actor_id: session.user.id,
-      actor_name: displayNameForMembers(session),
-      activity_type: input.activityType,
-      title: input.title,
-      description: input.description ?? null,
-      entity_type: input.entityType ?? null,
-      entity_id: input.entityId ?? null,
-    }
+  if (!campaignId || !session?.user.id) {
+    const reason = !campaignId
+      ? 'Nenhuma campanha foi identificada.'
+      : 'Nenhum usuário autenticado foi identificado.'
 
+    console.error('Histórico de atividades:', reason)
+    setError(`Não foi possível registrar a atividade: ${reason}`)
+    return
+  }
+
+  const payload = {
+    campaign_id: campaignId,
+    actor_id: session.user.id,
+    actor_name: displayNameForMembers(session),
+    activity_type: input.activityType,
+    title: input.title,
+    description: input.description ?? null,
+    entity_type: input.entityType ?? null,
+    entity_id: input.entityId ?? null,
+  }
+
+  try {
     const { data, error: insertError } = await supabase
       .from('campaign_activity')
       .insert(payload)
@@ -352,20 +362,27 @@ function App() {
       .single()
 
     if (insertError) {
-      // A tabela será criada na próxima etapa, após a aplicação da migração SQL.
-      if (insertError.code === '42P01' || insertError.code === 'PGRST205') {
-        setActivityTableMissing(true)
-      } else {
-        console.warn('Não foi possível registrar atividade da campanha:', insertError.message)
-      }
+      console.error('Erro ao registrar atividade:', insertError)
+      setError(
+        `Falha ao registrar atividade: ${insertError.message} (código: ${insertError.code ?? 'desconhecido'})`
+      )
       return
     }
 
     const activity = data as CampaignActivity
+
     setCampaignActivities(current =>
       [activity, ...current.filter(entry => entry.id !== activity.id)].slice(0, 30)
     )
+  } catch (err) {
+    console.error('Erro inesperado no histórico:', err)
+    setError(
+      `Erro inesperado ao registrar atividade: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+    )
   }
+}
 
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
@@ -4678,38 +4695,6 @@ onClick={() => {
                     </div>
                   </div>
 
-                  <div className="campaign-activity-panel">
-                    <div className="campaign-activity-heading">
-                      <div>
-                        <h3>Atividades recentes</h3>
-                        <p>Acompanhe as novidades desta campanha.</p>
-                      </div>
-                      <span>{campaignActivities.length} registros</span>
-                    </div>
-
-                    {activityLoading ? (
-                      <p className="master-shield-empty">Carregando atividades...</p>
-                    ) : activityTableMissing ? (
-                      <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
-                    ) : campaignActivities.length > 0 ? (
-                      <ul className="campaign-activity-list">
-                        {campaignActivities.map(activity => (
-                          <li key={activity.id}>
-                            <span className="campaign-activity-marker" aria-hidden="true">•</span>
-                            <div className="campaign-activity-content">
-                              <strong>{activity.title}</strong>
-                              {activity.description && <p>{activity.description}</p>}
-                              <small>
-                                {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                              </small>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
-                    )}
-                  </div>
                 </>
               ) : (
                 <div className="master-shield-description">
@@ -4780,6 +4765,40 @@ onClick={() => {
                   <article className="master-shield-stat"><span>Personagens</span><strong>{characters.length}</strong></article>
                 </div>
                 {selectedCampaign.description && <div className="master-shield-description"><strong>Descrição da campanha</strong><p>{selectedCampaign.description}</p></div>}
+            
+<div className="campaign-activity-panel">
+  <div className="campaign-activity-heading">
+    <div>
+      <h3>Atividades recentes</h3>
+      <p>Acompanhe as novidades desta campanha.</p>
+    </div>
+    <span>{campaignActivities.length} registros</span>
+  </div>
+
+  {activityLoading ? (
+    <p className="master-shield-empty">Carregando atividades...</p>
+  ) : activityTableMissing ? (
+    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
+  ) : campaignActivities.length > 0 ? (
+    <ul className="campaign-activity-list">
+      {campaignActivities.map(activity => (
+        <li key={activity.id}>
+          <span className="campaign-activity-marker" aria-hidden="true">•</span>
+          <div className="campaign-activity-content">
+            <strong>{activity.title}</strong>
+            {activity.description && <p>{activity.description}</p>}
+            <small>
+              {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+            </small>
+          </div>
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
+  )}
+</div>
+            
                 <div className="master-shield-columns">
                   <div><h3>Integrantes da party</h3>{masterShieldPartyMembers.length ? <ul>{masterShieldPartyMembers.map(member => <li key={member.user_id}><span>{member.display_name}</span><small>{member.role === 'master' ? 'Mestre' : 'Jogador'}</small></li>)}</ul> : <p className="master-shield-empty">Nenhum integrante encontrado.</p>}</div>
                   <div>
