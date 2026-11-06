@@ -10228,6 +10228,7 @@ button:disabled { opacity: .58; }
 }
 /* Histórico de atividades da campanha */
 .campaign-activity-panel {
+  grid-column: 1 / -1;
   margin-top: 24px;
   padding: 20px;
   border: 1px solid var(--season-line, rgba(255,255,255,.1));
