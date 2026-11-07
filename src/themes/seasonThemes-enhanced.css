@@ -1,0 +1,85 @@
+/* HÄXBAG · TEMAS DE TEMPORADA — GALERIA CROMÁTICA V10
+   Um acabamento por paleta; funciona com temas atuais e futuros. */
+.app-shell .season-theme-panel {
+  --hb-theme-ambient:color-mix(in srgb,var(--season-primary) 8%,transparent);
+  position:relative;
+  border-color:color-mix(in srgb,var(--season-primary) 34%,var(--season-line));
+  border-radius:18px;
+  background:
+    radial-gradient(ellipse at 98% 0%,var(--hb-theme-ambient),transparent 58%),
+    linear-gradient(140deg,var(--season-surface),var(--season-bg));
+  box-shadow:0 16px 34px rgba(0,0,0,.15),inset 0 1px 0 color-mix(in srgb,var(--season-primary) 10%,transparent);
+}
+.app-shell .season-theme-heading {
+  padding-bottom:13px;
+  border-bottom:1px solid color-mix(in srgb,var(--season-primary) 24%,transparent);
+}
+.app-shell .season-theme-heading strong {
+  font-family:Georgia,'Times New Roman',serif;
+  font-size:clamp(17px,2vw,23px);
+  letter-spacing:.015em;
+}
+.app-shell .season-theme-current-swatch {
+  width:52px;height:36px;border:2px solid color-mix(in srgb,var(--season-primary) 50%,transparent);
+  border-radius:11px;
+  box-shadow:0 0 21px var(--season-glow),inset 0 1px 0 rgba(255,255,255,.20);
+}
+.app-shell .season-visual-group-heading {
+  border-bottom-color:color-mix(in srgb,var(--season-primary) 20%,transparent);
+}
+.app-shell .season-theme-options {
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px;
+}
+.app-shell .season-theme-option {
+  --hb-palette-first:var(--season-primary);
+  --hb-palette-second:var(--season-secondary);
+  position:relative;isolation:isolate;overflow:hidden;
+  display:flex;align-items:center;gap:11px;
+  min-height:64px;padding:12px 13px;
+  border:1px solid color-mix(in srgb,var(--hb-palette-first) 31%,var(--season-line));
+  border-radius:11px;
+  color:var(--season-text,#eee8f4);
+  background:
+    radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--hb-palette-second) 16%,transparent),transparent 70%),
+    linear-gradient(135deg,color-mix(in srgb,var(--hb-palette-first) 12%,var(--season-surface)),var(--season-surface));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.028),0 5px 15px rgba(0,0,0,.08);
+  transition:border-color .2s,box-shadow .2s,transform .2s;
+}
+.app-shell .season-theme-option::before {
+  content:'';position:absolute;inset:0 auto 0 0;width:3px;
+  background:linear-gradient(180deg,var(--hb-palette-first),var(--hb-palette-second));
+  opacity:.67;pointer-events:none;
+}
+.app-shell .season-theme-option:hover:not(:disabled) {
+  transform:translateY(-2px);
+  border-color:var(--hb-palette-first);
+  box-shadow:0 8px 20px rgba(0,0,0,.17),0 0 14px color-mix(in srgb,var(--hb-palette-first) 12%,transparent);
+}
+.app-shell .season-theme-option.active {
+  border-color:var(--hb-palette-first);
+  background:radial-gradient(ellipse at 90% 0%,color-mix(in srgb,var(--hb-palette-second) 17%,transparent),transparent 68%),
+    linear-gradient(140deg,color-mix(in srgb,var(--hb-palette-first) 15%,var(--season-surface)),var(--season-surface));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--hb-palette-first) 20%,transparent),0 10px 22px rgba(0,0,0,.15);
+}
+.app-shell .season-theme-option b {color:var(--hb-palette-first);font-size:14px;}
+.app-shell .season-theme-swatches {flex:0 0 34px;}
+.app-shell .season-theme-swatches i {
+  width:21px;height:30px;border-radius:7px;
+  border:2px solid var(--season-surface);
+  box-shadow:0 2px 7px rgba(0,0,0,.2);
+}
+.app-shell .season-theme-swatches i+i {margin-left:-7px;}
+.app-shell .season-theme-option:focus-visible {
+  outline:2px solid var(--hb-palette-first);outline-offset:3px;
+}
+@media(max-width:600px) {
+  .app-shell .season-theme-options {grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;}
+  .app-shell .season-theme-option {min-height:56px;padding:10px;}
+}
+@media(max-width:390px) {
+  .app-shell .season-theme-options {grid-template-columns:1fr;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .app-shell .season-theme-option {transition:none;}
+  .app-shell .season-theme-option:hover:not(:disabled){transform:none;}
+}

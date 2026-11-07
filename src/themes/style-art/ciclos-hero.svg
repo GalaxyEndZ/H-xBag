@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 300" fill="none" aria-hidden="true">
+<defs><linearGradient id="gold"><stop stop-color="#fff0bc"/><stop offset=".5" stop-color="#d8ae67"/><stop offset="1" stop-color="#86613a"/></linearGradient>
+<linearGradient id="fade"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".33" stop-color="#fff" stop-opacity=".35"/><stop offset=".81" stop-color="#fff"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<mask id="f"><rect width="860" height="300" fill="url(#fade)"/></mask>
+</defs><g mask="url(#f)">
+<circle cx="713" cy="151" r="119" stroke="url(#gold)" opacity=".45" stroke-width="2"/>
+<circle cx="713" cy="151" r="104" stroke="url(#gold)" opacity=".74" stroke-width="2.5"/>
+<circle cx="713" cy="151" r="94" stroke="#d8aa6a" opacity=".36" stroke-width=".9" stroke-dasharray="2 7"/>
+<circle cx="713" cy="151" r="72" stroke="url(#gold)" opacity=".62" stroke-width="1.5"/>
+<circle cx="713" cy="151" r="58" stroke="#b4844e" opacity=".35" stroke-width="1"/>
+<g stroke="#b99b62" opacity=".43" stroke-width="1"><path d="M595 151h236M713 32v238M630 68l166 166M630 234L796 68"/></g>
+<g fill="url(#gold)" stroke="#f2d29a" stroke-width=".7">
+<path d="M713 55l11 85 76 11-76 11-11 85-11-85-76-11 76-11z" opacity=".94"/>
+<path d="M646 84l58 58 9-9 9 9 58-58-55 63 55 71-67-56-67 56 56-68z" opacity=".48"/>
+</g><circle cx="713" cy="151" r="23" fill="#18171c" stroke="#e9c786" stroke-width="2.4"/>
+<circle cx="713" cy="151" r="13" stroke="#b98a57" stroke-width="1.5"/>
+<g stroke="#e3bd79" stroke-width="1.5" opacity=".76"><path d="M713 18V3m0 296v-14M575 151h-17m306 0h-18"/></g>
+<!-- Four enamel banners: time / seasons. -->
+<g stroke="#dab77a" stroke-width="1.3" opacity=".75"><path d="M453 27h48v113l-24-14-24 14z" fill="#633728"/><path d="M507 27h48v113l-24-14-24 14z" fill="#263e45"/><path d="M561 27h48v113l-24-14-24 14z" fill="#3b5030"/></g>
+<g stroke="#ecd5a0" stroke-width="1.6" opacity=".82"><path d="M477 61v49m-15-32 15 18 15-18"/><path d="M531 62v50m-15-26h30m-27-15 24 29m0-29-24 29"/><path d="M584 59v49m-14-32q15-14 28 0q-13 19-28 0"/></g>
+<g stroke="#d0a46a" stroke-width="2" fill="none" opacity=".54"><path d="M438 272c24-25 44-14 56-34s3-37 37-46M465 267c32-13 32-43 62-54M829 258q-23-10-27-35t-26-27"/></g>
+<g fill="#ba9a5b" opacity=".55"><path d="M475 250q-15-19-27-10 5 23 27 10M509 223q-7-26-24-27-2 23 24 27M805 228q4-24 20-27 0 21-20 27M792 205q-18-20-30-11 7 17 30 11"/></g>
+<g stroke="url(#gold)" stroke-width="1.2" opacity=".7"><path d="M841 10h-37m37 0v36M839 288h-38m38 0v-37"/></g>
+</g></svg>

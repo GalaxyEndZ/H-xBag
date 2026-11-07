@@ -9,6 +9,7 @@ import { supabase } from './supabase'
 import Auth from './Auth'
 import './App.css'
 import './themes/seasonThemes.css'
+import './themes/seasonThemes-enhanced.css'
 import './themes/visualStyles.css'
 import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
@@ -11078,7 +11079,7 @@ disabled={
                   </div>
                   <div className="season-visual-group">
                     <div className="season-visual-group-heading"><span>01 · Tema</span><strong>{activeTheme.label}</strong><small>Define as cores da temporada.</small></div>
-                    {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
+                    {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
                   </div>
                   <div className="season-visual-group season-visual-style-group">
                     <div className="season-visual-group-heading"><span>02 · Estilo</span><strong>{activeVisualStyle.label}</strong><small>Transforma todas as páginas, incluindo menus e janelas, preservando as cores do tema.</small></div>
