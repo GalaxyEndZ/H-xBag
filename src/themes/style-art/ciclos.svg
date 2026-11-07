@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270" role="img" aria-hidden="true">
+<g fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+
+<!-- Embossed illuminated shield -->
+<path d="M334 30Q366 44 389 41V133Q392 194 334 229Q276 194 279 133V41Q301 44 334 30Z" stroke-width="2.7" opacity=".95"/>
+<path d="M334 43Q361 53 378 51V129Q382 183 334 213Q286 183 290 129V51Q308 53 334 43Z" stroke-width="1.3" opacity=".72"/>
+<path d="M334 65V182 M297 119H372" stroke-width="1.3" opacity=".6"/>
+<path d="M311 78L334 92 357 78 M310 163Q333 151 358 163" stroke-width="1" opacity=".64"/>
+<path d="M324 108Q334 90 344 108L339 135H329Z" fill="white" stroke="none" opacity=".63"/>
+<path d="M334 94V73 M312 117L297 111 M355 117L371 111" stroke-width="1.5" opacity=".72"/>
+<path d="M334 138L342 151 334 170 326 151Z" stroke-width="1.4" opacity=".67"/>
+<path d="M253 224Q209 170 218 105Q223 70 241 45" stroke-width="1.5" opacity=".69"/>
+<path d="M233.0 68.0Q247.0 41.0 234.0 53.0Q247.0 63.0 233.0 68.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M230.0 92.0Q216.0 65.0 203.0 77.0Q216.0 87.0 230.0 92.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M227.0 119.0Q241.0 92.0 228.0 104.0Q241.0 114.0 227.0 119.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M224.0 148.0Q210.0 121.0 197.0 133.0Q210.0 143.0 224.0 148.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M221.0 178.0Q235.0 151.0 222.0 163.0Q235.0 173.0 221.0 178.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M218.0 204.0Q204.0 177.0 191.0 189.0Q204.0 199.0 218.0 204.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M415 224Q459 170 450 105Q445 70 427 45" stroke-width="1.5" opacity=".69"/>
+<path d="M435.0 68.0Q421.0 41.0 434.0 53.0Q421.0 63.0 435.0 68.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M438.0 92.0Q452.0 65.0 465.0 77.0Q452.0 87.0 438.0 92.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M441.0 119.0Q427.0 92.0 440.0 104.0Q427.0 114.0 441.0 119.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M444.0 148.0Q458.0 121.0 471.0 133.0Q458.0 143.0 444.0 148.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M447.0 178.0Q433.0 151.0 446.0 163.0Q433.0 173.0 447.0 178.0Z" fill="white" stroke="none" opacity=".34"/>
+<path d="M450.0 204.0Q464.0 177.0 477.0 189.0Q464.0 199.0 450.0 204.0Z" fill="white" stroke="none" opacity=".34"/>
+<!-- Medieval scrollwork and heraldic cornering -->
+<path d="M134 233Q195 222 216 183T268 143" stroke-width="1.8" opacity=".5"/>
+<path d="M130 219Q165 182 198 202Q212 212 200 220Q189 224 185 213" stroke-width="1.5" opacity=".58"/>
+<path d="M138 77Q176 38 214 58Q235 77 217 90Q206 97 199 80" stroke-width="1.3" opacity=".58"/>
+<path d="M424 29Q458 51 442 88Q431 107 417 91Q416 81 428 82" stroke-width="1.4" opacity=".54"/>
+<path d="M424 224Q454 203 446 176Q443 165 429 174" stroke-width="1.4" opacity=".48"/>
+<path d="M239 34L248 47L239 60L230 47Z" stroke-width="1.1" opacity=".64"/>
+<path d="M451 124l7 9-7 9-7-9z" stroke-width="1.2" opacity=".52"/>
+<path d="M162 247H472 M161 20H471" stroke-width=".7" opacity=".23"/>
+
+</g></svg>

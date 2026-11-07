@@ -1,0 +1,1327 @@
+/*
+ * HäxBag · Estilos visuais complementares aos temas de temporada.
+ * A paleta pertence ao tema; o estilo define formas, texturas e tipografia.
+ * Não altera fichas, regras, dados nem os elementos interativos do mapa VTT.
+ */
+
+/* Seletor de estilos na área Identidade visual */
+.app-shell .season-visual-group {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.app-shell .season-visual-group + .season-visual-group {
+  padding-top: 17px;
+  border-top: 1px solid color-mix(in srgb, var(--season-primary) 18%, var(--season-line));
+}
+.app-shell .season-visual-group-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 10px;
+}
+.app-shell .season-visual-group-heading > span {
+  color: var(--season-primary);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.app-shell .season-visual-group-heading > strong {
+  color: #f5f1f6;
+  font-size: 13px;
+}
+.app-shell .season-visual-group-heading > small {
+  width: 100%;
+  color: #b6b0be;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.app-shell .season-style-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.app-shell .season-style-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  gap: 11px 12px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid color-mix(in srgb, var(--season-primary) 22%, var(--season-line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--season-surface) 85%, var(--season-bg));
+  color: #f4eff5;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s, background-color .18s, transform .18s;
+}
+.app-shell .season-style-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--season-primary);
+}
+.app-shell .season-style-card.active {
+  border-color: var(--season-primary);
+  background: color-mix(in srgb, var(--season-primary) 11%, var(--season-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--season-primary) 18%, transparent);
+}
+.app-shell .season-style-card:focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 3px;
+}
+.app-shell .season-style-card:disabled { cursor: default; }
+.app-shell .season-style-card:disabled:not(.active) { opacity: .76; }
+.app-shell .season-style-preview {
+  position: relative;
+  display: block;
+  grid-column: 1 / -1;
+  height: 92px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--season-primary) 23%, transparent);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 78% 38%, color-mix(in srgb, var(--season-primary) 15%, transparent), transparent 45%),
+    linear-gradient(140deg, var(--season-bg), var(--season-surface-alt));
+}
+.app-shell .season-style-preview-orb {
+  position: absolute;
+  top: 14px;
+  right: 24px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--season-primary) 60%, transparent);
+  background: color-mix(in srgb, var(--season-primary) 14%, transparent);
+}
+.app-shell .season-style-preview-glyph {
+  position: absolute;
+  top: 11px;
+  left: 19px;
+  color: var(--season-primary);
+  font-size: 39px;
+  line-height: 1.5;
+  font-family: Georgia, serif;
+}
+.app-shell .season-style-preview-lines {
+  position: absolute;
+  right: 18px;
+  bottom: 15px;
+  left: 18px;
+  display: grid;
+  gap: 5px;
+}
+.app-shell .season-style-preview-lines i {
+  display: block;
+  height: 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--season-primary) 29%, var(--season-surface-alt));
+}
+.app-shell .season-style-preview-lines i:nth-child(2) { width: 77%; }
+.app-shell .season-style-preview-lines i:nth-child(3) { width: 55%; }
+.app-shell .season-style-japanese .season-style-preview {
+  border-radius: 2px;
+  background:
+    repeating-radial-gradient(circle at 50% 105%, transparent 0 13px, color-mix(in srgb, var(--season-primary) 18%, transparent) 14px 15px, transparent 16px 27px) 0 40px / 54px 40px repeat-x,
+    linear-gradient(135deg, var(--season-bg), var(--season-surface-alt));
+}
+.app-shell .season-style-japanese .season-style-preview-orb {
+  right: 31px;
+  top: 9px;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: color-mix(in srgb, var(--season-primary) 34%, transparent);
+}
+.app-shell .season-style-japanese .season-style-preview-glyph {
+  top: 9px;
+  left: 22px;
+  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif;
+  font-size: 38px;
+}
+.app-shell .season-style-japanese .season-style-preview-lines { left: 20px; bottom: 12px; }
+.app-shell .season-style-japanese .season-style-preview-lines i { height: 1px; border-radius: 0; }
+.app-shell .season-style-card-info { display: grid; gap: 5px; min-width: 0; }
+.app-shell .season-style-card-info strong { font-size: 13px; }
+.app-shell .season-style-card-info small { color: #bbb4c3; font-size: 10px; line-height: 1.6; }
+.app-shell .season-style-card-check {
+  display: grid;
+  align-self: start;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid color-mix(in srgb, var(--season-primary) 36%, transparent);
+  border-radius: 50%;
+  color: var(--season-primary);
+  font-size: 14px;
+}
+.app-shell .season-style-card.active .season-style-card-check {
+  background: var(--season-primary);
+  color: var(--season-on-primary, var(--season-bg));
+}
+.app-shell .season-style-hint {
+  margin: 0;
+  color: #b6b0be;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.app-shell .season-style-hint b { color: var(--season-primary); }
+.app-shell .season-style-readonly { color: #b6b0be; font-size: 11px; }
+
+/* Estilo Japonês: o tema continua controlando todas as cores. */
+.app-shell.visual-style-japanese {
+  --japan-rule: color-mix(in srgb, var(--season-primary) 32%, var(--season-line));
+  --japan-soft: color-mix(in srgb, var(--season-primary) 9%, transparent);
+  --japan-serif: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif;
+}
+.app-shell.visual-style-japanese .main-content {
+  background-image:
+    radial-gradient(ellipse at 90% 6%, var(--japan-soft), transparent 34%),
+    repeating-linear-gradient(0deg, transparent 0 6px, rgba(238, 226, 207, .008) 6px 7px);
+}
+.app-shell.visual-style-japanese .sidebar {
+  border-right: 1px solid var(--japan-rule);
+}
+.app-shell.visual-style-japanese .topbar {
+  border-bottom-color: var(--japan-rule);
+}
+.app-shell.visual-style-japanese .page-content :is(h1, h2, h3) {
+  font-family: var(--japan-serif);
+  letter-spacing: .018em;
+}
+.app-shell.visual-style-japanese .page-content h1 {
+  padding-bottom: 14px;
+  background-image: linear-gradient(90deg, var(--season-primary), color-mix(in srgb, var(--season-primary) 18%, transparent), transparent);
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: min(210px, 100%) 1px;
+}
+.app-shell.visual-style-japanese :is(.hb-sidebar-group-title, .eyebrow, .sheet-card-title > div > span, .enemy-hub-scene-kicker) {
+  letter-spacing: .19em;
+}
+.app-shell.visual-style-japanese :is(.hb-sidebar-brand-copy strong, .sheet-summary-season, .sheet-summary-card h3) {
+  font-family: var(--japan-serif);
+}
+.app-shell.visual-style-japanese :is(.nav-link.active, .hb-sidebar-workspace, .hb-sidebar-invite, .season-theme-panel) {
+  border-left: 2px solid var(--japan-rule);
+}
+.app-shell.visual-style-japanese .nav-link.active { border-left-color: var(--season-primary); }
+.app-shell.visual-style-japanese .page-content :is(
+  .card, .panel, .stat-card, .sheet-card, .sheet-summary-card, .sheet-summary-status-card,
+  .campaign-card, .season-card, .content-card, .item-card, .sheet-library-card,
+  .sheet-actions-premium, .sheet-inventory-section, .season-theme-panel,
+  .enemy-hub-card, .enemy-library-card
+) { border-radius: 7px !important; }
+.app-shell.visual-style-japanese :is(
+  .primary-button, .secondary-button, .nav-link, .sheet-quick-nav button,
+  .season-theme-option, .season-style-card, .campaign-select
+) { border-radius: 5px !important; }
+.app-shell.visual-style-japanese :is(.sheet-card, .sheet-summary-card, .panel, .card, .stat-card, .season-theme-panel) {
+  border-top-color: var(--japan-rule);
+}
+.app-shell.visual-style-japanese .page-content :is(.sheet-card-title, .inventory-heading, .sheet-section-heading) {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--japan-rule);
+}
+.app-shell.visual-style-japanese .page-content :is(.character-banner, .sheet-page-hero) {
+  border-radius: 6px !important;
+  background-image:
+    radial-gradient(circle at 89% 26%, color-mix(in srgb, var(--season-primary) 11%, transparent) 0 50px, transparent 51px),
+    linear-gradient(120deg, var(--season-surface), var(--season-bg));
+}
+.app-shell.visual-style-japanese .page-content .sheet-page-hero h2 {
+  font-family: var(--japan-serif);
+}
+.app-shell.visual-style-japanese .page-content :is(.sheet-summary-attributes article, .sheet-summary-values > div) {
+  border-radius: 4px;
+}
+.app-shell.visual-style-japanese .season-style-japanese .season-style-preview {
+  border-color: var(--season-primary);
+}
+
+@media (max-width: 640px) {
+  .app-shell .season-style-grid { grid-template-columns: 1fr; }
+  .app-shell .season-style-preview { height: 80px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .season-style-card { transition: none; }
+  .app-shell .season-style-card:hover:not(:disabled) { transform: none; }
+}
+
+/* Selo discreto e ondas seigaiha no cartão da campanha. */
+.app-shell.visual-style-japanese .hb-sidebar-brand-copy strong {
+  font-family: var(--japan-serif) !important;
+  letter-spacing: .015em !important;
+}
+.app-shell.visual-style-japanese .hb-sidebar-brand-spark { font-size: 0 !important; }
+.app-shell.visual-style-japanese .hb-sidebar-brand-spark::before {
+  content: '和';
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid var(--season-primary);
+  border-radius: 3px;
+  color: var(--season-primary);
+  font: 14px/1 var(--japan-serif);
+}
+.app-shell.visual-style-japanese .hb-sidebar-workspace {
+  border-radius: 6px !important;
+  background-image:
+    repeating-radial-gradient(circle at 50% 100%, transparent 0 9px, color-mix(in srgb, var(--season-primary) 10%, transparent) 10px 11px, transparent 12px 20px),
+    linear-gradient(145deg, color-mix(in srgb, var(--season-primary) 9%, var(--season-surface)), var(--season-surface));
+  background-size: 42px 24px, auto;
+  background-position: left bottom, center;
+  background-repeat: repeat-x, no-repeat;
+}
+
+/* ========================================================================
+   HÄXBAG — ESTILOS EM TODAS AS PÁGINAS
+   Identidade visual de temporada. Estrutura, NÃO substitui a paleta do tema.
+   Escopo: painel inteiro + modais renderizados por portal no <body>.
+   ======================================================================== */
+
+/* Seletor adaptável com três estilos. */
+.app-shell .season-style-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.app-shell .season-style-card { align-content: start; }
+.app-shell .season-style-preview { height: 110px; }
+.app-shell .season-style-card-info { align-content: start; }
+.app-shell .season-style-card-info small { min-height: 46px; }
+.app-shell .season-style-cyberpunk .season-style-preview {
+  border-radius: 2px;
+  border-color: color-mix(in srgb, var(--season-primary) 70%, transparent);
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  background:
+    linear-gradient(125deg, transparent 47%, color-mix(in srgb, var(--season-primary) 22%, transparent) 48% 49%, transparent 50%),
+    linear-gradient(90deg, color-mix(in srgb, var(--season-primary) 12%, transparent) 1px, transparent 1px) 0 0 / 17px 17px,
+    linear-gradient(0deg, color-mix(in srgb, var(--season-primary) 12%, transparent) 1px, transparent 1px) 0 0 / 17px 17px,
+    linear-gradient(140deg, var(--season-bg), var(--season-surface-alt));
+}
+.app-shell .season-style-cyberpunk .season-style-preview-orb {
+  top: 17px; right: 21px;
+  width: 57px; height: 57px;
+  border: 2px solid var(--season-primary);
+  border-radius: 0;
+  transform: rotate(45deg);
+  background: transparent;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--season-primary) 29%, transparent), inset 0 0 12px color-mix(in srgb, var(--season-primary) 10%, transparent);
+}
+.app-shell .season-style-cyberpunk .season-style-preview-orb::after {
+  content: ''; position: absolute; inset: 9px;
+  border: 1px solid color-mix(in srgb, var(--season-secondary) 66%, var(--season-primary));
+}
+.app-shell .season-style-cyberpunk .season-style-preview-glyph {
+  top: 14px; left: 19px;
+  font: 800 39px/1.25 Consolas, 'Courier New', monospace;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--season-primary) 58%, transparent);
+}
+.app-shell .season-style-cyberpunk .season-style-preview-lines { left: 17px; right: 88px; bottom: 15px; gap: 5px; }
+.app-shell .season-style-cyberpunk .season-style-preview-lines i { height: 3px; border-radius: 0; box-shadow: 0 0 8px color-mix(in srgb, var(--season-primary) 30%, transparent); }
+@media (max-width: 1040px) {
+  .app-shell .season-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 580px) {
+  .app-shell .season-style-grid { grid-template-columns: 1fr; }
+  .app-shell .season-style-card { grid-template-columns: minmax(0, 1fr) 24px; }
+  .app-shell .season-style-preview { height: 95px; }
+  .app-shell .season-style-card-info small { min-height: 0; }
+}
+
+/* Elementos compartilhados: páginas, cards, filtros, formulários e seções.
+   Os nomes de classe cobrem os layouts independentes de cada área. */
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) {
+  --style-edge: color-mix(in srgb, var(--season-primary) 31%, var(--season-line));
+  --style-wash: color-mix(in srgb, var(--season-primary) 7%, transparent);
+}
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .page-content {
+  position: relative;
+}
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .page-content :is(
+  .overview-page-panel, .sheet-page-panel, .enemies-page-panel, .shops-page-panel,
+  .bestiary-page-panel, .campaigns-page-panel, .master-shield-page-panel
+) { min-width: 0; }
+
+/* ===== JAPONÊS • sumi-e / madeira / papel ===== */
+.app-shell.visual-style-japanese {
+  --style-edge: color-mix(in srgb, var(--season-primary) 42%, var(--season-line));
+  --style-wash: color-mix(in srgb, var(--season-primary) 8%, transparent);
+}
+.app-shell.visual-style-japanese .main-content {
+  background-image:
+    radial-gradient(ellipse at 95% 4%, color-mix(in srgb, var(--season-primary) 9%, transparent), transparent 33%),
+    repeating-linear-gradient(0deg, transparent 0 7px, rgba(250, 238, 215, .012) 7px 8px);
+}
+.app-shell.visual-style-japanese .hb-sidebar {
+  background-image:
+    repeating-radial-gradient(circle at 100% 105%, transparent 0 20px, color-mix(in srgb, var(--season-primary) 10%, transparent) 21px 22px, transparent 23px 41px),
+    linear-gradient(180deg, var(--season-bg), color-mix(in srgb, var(--season-primary) 6%, var(--season-bg)));
+  border-right: 1px solid var(--style-edge);
+}
+.app-shell.visual-style-japanese .topbar {
+  border-bottom: 1px solid var(--style-edge);
+  background-image: linear-gradient(90deg, transparent, var(--style-wash));
+}
+.app-shell.visual-style-japanese .hb-sidebar-brand-copy strong,
+.app-shell.visual-style-japanese .topbar strong,
+.app-shell.visual-style-japanese .page-content :is(h1, h2, h3),
+.app-shell.visual-style-japanese :is(.hb-ms-hero, .enemy-hub-hero, .hb-beast-detail-hero) h2 {
+  font-family: var(--japan-serif);
+  letter-spacing: .02em;
+}
+.app-shell.visual-style-japanese .hb-sidebar-group-title,
+.app-shell.visual-style-japanese .page-content :is(.eyebrow, .sheet-page-eyebrow, .hb-beast-card-category, .enemy-hub-eyebrow, .hb-ms-group-heading) {
+  letter-spacing: .16em;
+}
+.app-shell.visual-style-japanese .page-content :is(
+  .hb-hero, .sheet-page-hero, .enemy-hub-hero, .hb-beast-hero,
+  .hb-beast-detail-hero, .hb-ms-hero, .shops-hero, .campaigns-hero,
+  .overview-hero, .bestiary-hero
+) {
+  border-radius: 6px !important;
+  border-color: var(--style-edge) !important;
+  background-image:
+    radial-gradient(circle at 88% 30%, transparent 0 50px, color-mix(in srgb, var(--season-primary) 17%, transparent) 51px 52px, transparent 53px),
+    linear-gradient(130deg, var(--season-surface), var(--season-bg)) !important;
+}
+.app-shell.visual-style-japanese .page-content :is(
+  .card, .panel, .hb-panel, .stat-card, .sheet-card, .sheet-summary-card,
+  .sheet-summary-status-card, .sheet-library-card, .sheet-inventory-section,
+  .sheet-distribution-panel, .sheet-editor-manager, .sheet-editor-accordion,
+  .campaign-card, .season-card, .content-card, .item-card, .inventory-section,
+  .hb-ms-pane, .hb-ms-card, .hb-ms-section, .hb-enemy-party-card,
+  .enemy-hub-metric, .enemy-hub-scene, .enemy-hub-card,
+  .hb-beast-card, .hb-beast-detail-section, .hb-beast-form-section,
+  .shop-card, .shop-item-card, .shops-page-panel .shop-product-card,
+  .season-theme-panel, .armor-equipped-card, .armor-select-card,
+  .combat-action-card, .combat-armor-panel, .combat-reactions-section,
+  .campaign-activity-panel, .currency-conversion-panel,
+  .sheet-page-panel .hb-character-form
+) {
+  border-radius: 7px !important;
+  border-top-color: var(--style-edge) !important;
+}
+.app-shell.visual-style-japanese .page-content :is(
+  .sheet-card, .sheet-summary-card, .sheet-library-card, .enemy-hub-card,
+  .enemy-hub-scene, .hb-beast-card, .shop-card, .campaign-card, .season-card,
+  .sheet-page-hero, .hb-ms-pane
+) {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--season-primary) 19%, transparent), 0 12px 25px rgba(0,0,0,.10);
+}
+.app-shell.visual-style-japanese .page-content :is(
+  .sheet-card-title, .sheet-section-heading, .inventory-heading, .hb-panel-heading,
+  .enemy-hub-section-heading, .hb-beast-library-head, .hb-ms-group-heading,
+  .bestiary-toolbar, .shops-toolbar
+) {
+  border-bottom: 1px solid var(--style-edge);
+  padding-bottom: 10px;
+}
+.app-shell.visual-style-japanese :is(
+  .nav-link, .primary-button, .secondary-button, .hb-sidebar-create,
+  .hb-sidebar-invite-button, .sheet-quick-nav button, .season-theme-option,
+  .season-style-card, .category-tabs button, .currency-tabs button,
+  .enemy-hub-view-switch button, .enemy-hub-controls button,
+  .sheet-editor-expand, .campaign-select
+) { border-radius: 5px !important; }
+.app-shell.visual-style-japanese .page-content :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+  border-radius: 5px !important;
+}
+.app-shell.visual-style-japanese .page-content :is(.sheet-toolbar, .enemy-sheet-toolbar, .enemy-hub-toolbar, .bestiary-toolbar, .hb-ms-quicknav) {
+  border-radius: 5px !important;
+}
+.app-shell.visual-style-japanese .page-content :is(.sheet-library-avatar, .enemy-hub-avatar, .enemy-hub-scene-face, .hb-heading-icon) {
+  border-radius: 5px !important;
+}
+.app-shell.visual-style-japanese .page-content :is(
+  .page-overview, .page-bestiary, .page-shops, .page-campaigns,
+  .page-master-shield, .page-sheets, .page-enemies
+) h2 { text-wrap: balance; }
+/* Mesa dos jogadores: decorar apenas os painéis, sem alterar o mapa ou as peças. */
+.app-shell.visual-style-japanese .hvtt {
+  border-radius: 7px;
+  border-color: var(--style-edge);
+}
+.app-shell.visual-style-japanese .hvtt :is(.hvtt-topbar, .hvtt-side-head) {
+  border-color: var(--style-edge);
+  background-image: linear-gradient(90deg, var(--style-wash), transparent);
+}
+.app-shell.visual-style-japanese .hvtt :is(.hvtt-left, .hvtt-right, .hvtt-turn-panel, .hvtt-modal, .hvtt-inspector) {
+  border-color: var(--style-edge);
+}
+.app-shell.visual-style-japanese .hvtt :is(.hvtt-brand strong, .hvtt-side-head strong, .hvtt-modal h3) {
+  font-family: var(--japan-serif);
+}
+.app-shell.visual-style-japanese .hvtt :is(.hvtt-primary, .hvtt-add-button, .hvtt-plain, .hvtt-modal, .hvtt-turn-panel) {
+  border-radius: 5px;
+}
+
+/* ===== CYBERPUNK • HUD / tecnologia / luminosidade ===== */
+.app-shell.visual-style-cyberpunk {
+  --cyber-font: 'Cascadia Code', 'Segoe UI', Consolas, monospace;
+  --cyber-edge: color-mix(in srgb, var(--season-primary) 53%, var(--season-line));
+  --cyber-glow: color-mix(in srgb, var(--season-primary) 27%, transparent);
+  --cyber-wash: color-mix(in srgb, var(--season-primary) 8%, transparent);
+  --cyber-grid: color-mix(in srgb, var(--season-primary) 7%, transparent);
+  --style-edge: var(--cyber-edge);
+  --style-wash: var(--cyber-wash);
+}
+.app-shell.visual-style-cyberpunk .main-content {
+  background-image:
+    linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px),
+    linear-gradient(0deg, var(--cyber-grid) 1px, transparent 1px),
+    radial-gradient(ellipse at 80% 2%, var(--cyber-wash), transparent 46%);
+  background-size: 32px 32px, 32px 32px, auto;
+  background-attachment: local;
+}
+.app-shell.visual-style-cyberpunk .hb-sidebar {
+  background-image:
+    linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px),
+    linear-gradient(180deg, color-mix(in srgb, var(--season-primary) 9%, var(--season-bg)), var(--season-bg));
+  background-size: 20px 20px, auto;
+  border-right: 1px solid var(--cyber-edge);
+  box-shadow: inset -3px 0 0 color-mix(in srgb, var(--season-primary) 8%, transparent);
+}
+.app-shell.visual-style-cyberpunk .topbar {
+  border-bottom: 1px solid var(--cyber-edge);
+  background-image: linear-gradient(90deg, var(--cyber-wash), transparent 65%);
+  box-shadow: 0 1px 11px var(--cyber-glow);
+}
+.app-shell.visual-style-cyberpunk :is(
+  .hb-sidebar-brand-copy strong, .topbar strong, .hb-sidebar-group-title,
+  .page-content h1, .page-content h2, .page-content h3,
+  .hvtt-brand strong, .hvtt-side-head strong
+) {
+  font-family: var(--cyber-font);
+  letter-spacing: .025em;
+}
+.app-shell.visual-style-cyberpunk .page-content :is(h1, .sheet-page-hero h2, .enemy-hub-hero h2, .hb-hero h2) {
+  text-shadow: 0 0 17px color-mix(in srgb, var(--season-primary) 25%, transparent);
+}
+.app-shell.visual-style-cyberpunk .page-content h1 {
+  padding-bottom: 14px;
+  background: linear-gradient(90deg, var(--season-primary), var(--cyber-edge), transparent) left bottom / 250px 2px no-repeat;
+}
+.app-shell.visual-style-cyberpunk :is(
+  .hb-sidebar-eyebrow, .hb-sidebar-group-title, .sheet-page-eyebrow,
+  .enemy-hub-eyebrow, .hb-beast-card-category, .hb-ms-group-heading,
+  .eyebrow, .season-visual-group-heading > span
+) {
+  font-family: var(--cyber-font);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.app-shell.visual-style-cyberpunk .hb-sidebar-nav .nav-link.active {
+  border-left: 2px solid var(--season-primary);
+  background: linear-gradient(90deg, var(--cyber-wash), transparent);
+  box-shadow: inset 2px 0 0 var(--season-primary), 0 0 15px var(--cyber-glow);
+}
+.app-shell.visual-style-cyberpunk .hb-sidebar-nav-icon,
+.app-shell.visual-style-cyberpunk .hb-sidebar-workspace,
+.app-shell.visual-style-cyberpunk .hb-sidebar-invite {
+  border-radius: 3px;
+  border-color: var(--cyber-edge);
+}
+.app-shell.visual-style-cyberpunk .hb-sidebar-brand-spark { text-shadow: 0 0 12px var(--season-primary); }
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .hb-hero, .sheet-page-hero, .enemy-hub-hero, .hb-beast-hero,
+  .hb-beast-detail-hero, .hb-ms-hero, .shops-hero, .campaigns-hero,
+  .overview-hero, .bestiary-hero
+) {
+  position: relative;
+  border-radius: 3px !important;
+  border-color: var(--cyber-edge) !important;
+  background-image:
+    linear-gradient(140deg, var(--cyber-wash), transparent 45%),
+    linear-gradient(90deg, var(--cyber-grid) 1px, transparent 1px),
+    linear-gradient(180deg, var(--cyber-grid) 1px, transparent 1px),
+    linear-gradient(130deg, var(--season-surface), var(--season-bg)) !important;
+  background-size: auto, 26px 26px, 26px 26px, auto;
+  box-shadow: 0 0 22px var(--cyber-glow), inset 0 0 0 1px color-mix(in srgb, var(--season-primary) 9%, transparent);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .card, .panel, .hb-panel, .stat-card, .sheet-card, .sheet-summary-card,
+  .sheet-summary-status-card, .sheet-library-card, .sheet-inventory-section,
+  .sheet-distribution-panel, .sheet-editor-manager, .sheet-editor-accordion,
+  .campaign-card, .season-card, .content-card, .item-card, .inventory-section,
+  .hb-ms-pane, .hb-ms-card, .hb-ms-section, .hb-enemy-party-card,
+  .enemy-hub-metric, .enemy-hub-scene, .enemy-hub-card,
+  .hb-beast-card, .hb-beast-detail-section, .hb-beast-form-section,
+  .shop-card, .shop-item-card, .shops-page-panel .shop-product-card,
+  .season-theme-panel, .armor-equipped-card, .armor-select-card,
+  .combat-action-card, .combat-armor-panel, .combat-reactions-section,
+  .campaign-activity-panel, .currency-conversion-panel,
+  .sheet-page-panel .hb-character-form
+) {
+  border-radius: 3px !important;
+  border-color: var(--cyber-edge);
+  background-image: linear-gradient(135deg, var(--cyber-wash), transparent 43%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--season-primary) 18%, transparent), 0 0 10px color-mix(in srgb, var(--season-primary) 7%, transparent);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .sheet-card-title, .sheet-section-heading, .inventory-heading, .hb-panel-heading,
+  .enemy-hub-section-heading, .hb-beast-library-head, .hb-ms-group-heading,
+  .bestiary-toolbar, .shops-toolbar
+) {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--cyber-edge);
+}
+.app-shell.visual-style-cyberpunk :is(
+  .nav-link, .primary-button, .secondary-button, .hb-sidebar-create,
+  .hb-sidebar-invite-button, .sheet-quick-nav button, .season-theme-option,
+  .season-style-card, .category-tabs button, .currency-tabs button,
+  .enemy-hub-view-switch button, .enemy-hub-controls button,
+  .sheet-editor-expand, .campaign-select
+) {
+  border-radius: 3px !important;
+}
+.app-shell.visual-style-cyberpunk .page-content :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+  border-radius: 2px !important;
+}
+.app-shell.visual-style-cyberpunk :is(.primary-button, .hb-sidebar-create, .hb-sidebar-invite-button) {
+  box-shadow: 0 0 13px var(--cyber-glow);
+}
+.app-shell.visual-style-cyberpunk :is(.primary-button, .secondary-button, .season-style-card, .nav-link):hover:not(:disabled) {
+  border-color: var(--season-primary);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(.sheet-toolbar, .enemy-sheet-toolbar, .enemy-hub-toolbar, .bestiary-toolbar, .hb-ms-quicknav) {
+  border-radius: 3px !important;
+  border-color: var(--cyber-edge);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(.sheet-library-avatar, .enemy-hub-avatar, .enemy-hub-scene-face, .hb-heading-icon) {
+  border-radius: 2px !important;
+}
+.app-shell.visual-style-cyberpunk .season-style-card.active {
+  box-shadow: inset 0 0 0 1px var(--season-primary), 0 0 15px var(--cyber-glow);
+}
+/* VTT: apenas o chrome recebe o HUD; mapa, imagens e tokens ficam intactos. */
+.app-shell.visual-style-cyberpunk .hvtt {
+  border-radius: 3px;
+  border-color: var(--cyber-edge);
+  box-shadow: 0 0 24px var(--cyber-glow), 0 20px 40px rgba(0,0,0,.33);
+}
+.app-shell.visual-style-cyberpunk .hvtt :is(.hvtt-topbar, .hvtt-side-head) {
+  border-color: var(--cyber-edge);
+  background-image: linear-gradient(90deg, var(--cyber-wash), transparent);
+}
+.app-shell.visual-style-cyberpunk .hvtt :is(.hvtt-left, .hvtt-right, .hvtt-turn-panel, .hvtt-modal, .hvtt-inspector) {
+  border-color: var(--cyber-edge);
+}
+.app-shell.visual-style-cyberpunk .hvtt :is(.hvtt-primary, .hvtt-add-button, .hvtt-plain, .hvtt-modal, .hvtt-turn-panel) {
+  border-radius: 3px;
+}
+.app-shell.visual-style-cyberpunk .hvtt :is(.hvtt-brand strong, .hvtt-side-head strong, .hvtt-panel-title) {
+  font-family: var(--cyber-font);
+  letter-spacing: .035em;
+}
+.app-shell.visual-style-cyberpunk .hvtt .hvtt-topbar {
+  box-shadow: inset 0 -1px 0 var(--cyber-glow);
+}
+
+/* ===== PORTAIS • criados em document.body, fora da .app-shell ===== */
+body[data-hb-visual-style="japanese"] :is(
+  .bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-details-modal,
+  .item-modal-content, .modal-content, .sheet-item-modal, .sheet-item-editor-modal
+) {
+  border-radius: 7px !important;
+  border-color: color-mix(in srgb, var(--season-primary) 40%, var(--season-line)) !important;
+  box-shadow: inset 0 1px color-mix(in srgb, var(--season-primary) 13%, transparent), 0 25px 60px rgba(0,0,0,.38);
+}
+body[data-hb-visual-style="japanese"] :is(
+  .bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-details-modal,
+  .item-modal-content, .modal-content
+) :is(h2,h3,h4) { font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif; }
+body[data-hb-visual-style="japanese"] :is(.bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-modal-content) :is(button, input:not([type="checkbox"]), textarea, select) {
+  border-radius: 5px !important;
+}
+body[data-hb-visual-style="cyberpunk"] :is(
+  .bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-details-modal,
+  .item-modal-content, .modal-content, .sheet-item-modal, .sheet-item-editor-modal
+) {
+  border-radius: 3px !important;
+  border-color: color-mix(in srgb, var(--season-primary) 52%, var(--season-line)) !important;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--season-primary) 21%, transparent), 0 26px 65px rgba(0,0,0,.42);
+  background-image:
+    linear-gradient(90deg, color-mix(in srgb, var(--season-primary) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(0deg, color-mix(in srgb, var(--season-primary) 5%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+body[data-hb-visual-style="cyberpunk"] :is(
+  .bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-details-modal,
+  .item-modal-content, .modal-content
+) :is(h2,h3,h4) {
+  font-family: 'Cascadia Code', 'Segoe UI', Consolas, monospace;
+  letter-spacing: .025em;
+}
+body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-modal-content) :is(button, input:not([type="checkbox"]), textarea, select) {
+  border-radius: 3px !important;
+}
+body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-modal-content) :is(input, textarea, select):focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.visual-style-cyberpunk :is(.season-style-card, .nav-link, .primary-button, .secondary-button),
+  .app-shell.visual-style-japanese :is(.season-style-card, .nav-link, .primary-button, .secondary-button) {
+    animation: none !important;
+    transition-duration: 0s !important;
+  }
+}
+
+
+/* Ajuste fino dos ornamentos: não cruzar ícones ou informações do cabeçalho.
+   Preserva o desenho original de ambos os estilos e as cores da temporada. */
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .shops-hero::after {
+  /* O círculo antigo atravessava o ícone da loja em diferentes larguras. */
+  content: none;
+}
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .shops-hero {
+  isolation: isolate;
+  overflow: hidden;
+}
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .shops-hero-main,
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .shops-hero-icon,
+.app-shell:is(.visual-style-japanese, .visual-style-cyberpunk) .shops-hero-copy {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ============================================================================
+   HÄXBAG · ATELIÊ DE ESTILOS — V7
+   Arte vetorial original para Eclipse, Kisatsutai, Cyberflower e Ciclos.
+   As variáveis --season-* continuam definindo as cores da campanha.
+   Os ornamentos vivem atrás do conteúdo; nunca cobrem texto ou imagens.
+   ============================================================================ */
+
+/* 01. Linguagem visual por campanha -------------------------------------- */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) {
+  --hb-art-ink: color-mix(in srgb, var(--season-primary) 69%, #dec29a);
+  --hb-art-ink-soft: color-mix(in srgb, var(--season-primary) 25%, transparent);
+  --hb-art-rule: color-mix(in srgb, var(--season-primary) 31%, var(--season-line));
+  --hb-art-veil: color-mix(in srgb, var(--season-primary) 7%, transparent);
+  --hb-art-ambient: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-art-shadow: 0 16px 38px rgba(0,0,0,.17), inset 0 1px 0 rgba(255,255,255,.04);
+  --hb-art-serif: Georgia, 'Times New Roman', serif;
+  --hb-art-radius: 17px;
+  --hb-art-control-radius: 10px;
+  --hb-art-title-spacing: -.017em;
+  --hb-art-background: linear-gradient(120deg, var(--hb-art-ambient), transparent 56%),
+    linear-gradient(135deg, var(--season-surface), var(--season-bg));
+}
+.app-shell.visual-style-classic {
+  --hb-art-sigil: url('./style-art/eclipse.svg');
+  --hb-art-serif: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --hb-art-ink: color-mix(in srgb, var(--season-primary) 75%, #dfb87c);
+  --hb-art-rule: color-mix(in srgb, var(--season-primary) 27%, #806a58);
+  --hb-art-radius: 20px;
+  --hb-art-control-radius: 11px;
+  --hb-art-background:
+    radial-gradient(ellipse at 90% 15%, color-mix(in srgb, var(--season-primary) 12%, transparent), transparent 52%),
+    linear-gradient(130deg, var(--season-surface), var(--season-bg));
+}
+.app-shell.visual-style-japanese {
+  --hb-art-sigil: url('./style-art/kisatsutai.svg');
+  --hb-art-serif: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif;
+  --hb-art-ink: color-mix(in srgb, var(--season-primary) 76%, #d48c83);
+  --hb-art-rule: color-mix(in srgb, var(--season-primary) 38%, #99817a);
+  --hb-art-radius: 9px;
+  --hb-art-control-radius: 6px;
+  --hb-art-title-spacing: .007em;
+  --hb-art-background:
+    linear-gradient(118deg, color-mix(in srgb, var(--season-primary) 11%, transparent), transparent 47%),
+    linear-gradient(135deg, var(--season-surface), var(--season-bg));
+}
+.app-shell.visual-style-cyberpunk {
+  --hb-art-sigil: url('./style-art/cyberflower.svg');
+  --hb-art-serif: 'Cascadia Code', 'Segoe UI', Consolas, monospace;
+  --hb-art-ink: color-mix(in srgb, var(--season-primary) 73%, #56c5c4);
+  --hb-art-rule: color-mix(in srgb, var(--season-primary) 46%, #4e9097);
+  --hb-art-radius: 5px;
+  --hb-art-control-radius: 4px;
+  --hb-art-title-spacing: -.022em;
+  --hb-art-background:
+    linear-gradient(125deg, color-mix(in srgb, var(--season-primary) 14%, transparent), transparent 51%),
+    linear-gradient(133deg, var(--season-surface), var(--season-bg));
+}
+.app-shell.visual-style-ciclos {
+  --hb-art-sigil: url('./style-art/ciclos.svg');
+  --hb-art-serif: Georgia, 'Times New Roman', serif;
+  --hb-art-ink: color-mix(in srgb, var(--season-primary) 72%, #d1a875);
+  --hb-art-rule: color-mix(in srgb, var(--season-primary) 36%, #876f53);
+  --hb-art-radius: 13px;
+  --hb-art-control-radius: 8px;
+  --hb-art-title-spacing: -.014em;
+  --hb-art-background:
+    linear-gradient(115deg, color-mix(in srgb, var(--season-primary) 9%, transparent), transparent 60%),
+    linear-gradient(132deg, var(--season-surface), var(--season-bg));
+}
+
+/* 02. Cabeçalhos: cancela os círculos originais SOMENTE em estilos não
+   correspondentes e substitui por gravuras exclusivas, sem sobreposição. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero
+) {
+  position: relative !important;
+  isolation: isolate !important;
+  overflow: hidden !important;
+  border-radius: var(--hb-art-radius) !important;
+  border: 1px solid var(--hb-art-rule) !important;
+  background: var(--hb-art-background) !important;
+  box-shadow: var(--hb-art-shadow) !important;
+}
+/* Recoloca a forma do emblema por cima, mantendo qualquer ícone ou emoji intacto. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero
+)::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: min(43%, 410px) !important;
+  height: 100% !important;
+  z-index: 0 !important;
+  opacity: .34 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  margin: 0 !important;
+  background: var(--hb-art-ink) !important;
+  -webkit-mask-image: var(--hb-art-sigil);
+  mask-image: var(--hb-art-sigil);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: 100% 50%;
+  mask-position: 100% 50%;
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero
+)::after { content: none !important; }
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero
+) > * { position: relative; z-index: 1; }
+
+/* Hero-specific silhouettes. */
+.app-shell.visual-style-classic .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero) {
+  border-top: 2px solid var(--hb-art-ink) !important;
+}
+.app-shell.visual-style-japanese .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero) {
+  border-left: 3px solid var(--hb-art-ink) !important;
+}
+.app-shell.visual-style-cyberpunk .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero) {
+  border-left: 3px solid var(--hb-art-ink) !important;
+  box-shadow: var(--hb-art-shadow), 0 0 18px color-mix(in srgb, var(--season-primary) 9%, transparent) !important;
+}
+.app-shell.visual-style-ciclos .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero) {
+  border-top: 2px solid var(--hb-art-ink) !important;
+  border-bottom: 2px solid var(--hb-art-rule) !important;
+}
+
+/* 03. Tipografia e navegação: quatro personalidades. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(.hb-hero h2,.sheet-page-hero h2,.enemy-hub-hero h2,.hb-beast-hero h2,.hb-ms-hero h2,.shops-hero h2) {
+  font-family: var(--hb-art-serif) !important;
+  letter-spacing: var(--hb-art-title-spacing) !important;
+  text-wrap: balance;
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(.sheet-card-title h3,.sheet-section-heading h3,.hb-beast-library-head h3,.hb-ms-group-heading h3,.enemy-hub-section-heading h3) {
+  font-family: var(--hb-art-serif);
+  letter-spacing: .008em;
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+:is(.hb-sidebar,.topbar) { border-color: var(--hb-art-rule); }
+.app-shell.visual-style-classic .hb-sidebar {
+  background-image: radial-gradient(circle at 100% 12%, var(--hb-art-ambient), transparent 39%),
+    linear-gradient(180deg, var(--season-bg), var(--season-surface));
+}
+.app-shell.visual-style-japanese .hb-sidebar {
+  background-image: repeating-linear-gradient(0deg, transparent 0 11px, rgba(230,220,200,.015) 11px 12px),
+    radial-gradient(ellipse at 100% 8%, var(--hb-art-ambient), transparent 38%),
+    linear-gradient(180deg, var(--season-bg), var(--season-surface));
+}
+.app-shell.visual-style-cyberpunk .hb-sidebar {
+  background-image: linear-gradient(90deg, color-mix(in srgb,var(--season-primary) 3%,transparent) 1px, transparent 1px),
+    linear-gradient(0deg, color-mix(in srgb,var(--season-primary) 3%,transparent) 1px, transparent 1px),
+    linear-gradient(180deg, var(--season-bg), var(--season-surface));
+  background-size: 30px 30px,30px 30px,auto;
+}
+.app-shell.visual-style-ciclos .hb-sidebar {
+  background-image: repeating-linear-gradient(0deg,transparent 0 8px,rgba(223,186,135,.012) 8px 9px),
+    radial-gradient(ellipse at 100% 10%, var(--hb-art-ambient), transparent 42%),
+    linear-gradient(180deg, var(--season-bg), var(--season-surface));
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.hb-sidebar-brand-copy strong { font-family: var(--hb-art-serif); letter-spacing: .005em; }
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.hb-sidebar-nav .nav-link.active {
+  border-left: 2px solid var(--hb-art-ink) !important;
+  box-shadow: inset 2px 0 0 var(--hb-art-rule),0 4px 12px rgba(0,0,0,.09);
+  background-image: linear-gradient(90deg, var(--hb-art-ambient),transparent 84%);
+}
+.app-shell.visual-style-classic .hb-sidebar-nav .nav-link.active { border-radius: 13px !important; }
+.app-shell.visual-style-japanese .hb-sidebar-nav .nav-link.active { border-radius: 5px !important; }
+.app-shell.visual-style-cyberpunk .hb-sidebar-nav .nav-link.active {
+  border-radius: 3px !important;
+  box-shadow: inset 3px 0 0 var(--hb-art-ink), 0 0 13px var(--hb-art-ambient);
+}
+.app-shell.visual-style-ciclos .hb-sidebar-nav .nav-link.active { border-radius: 8px !important; }
+
+/* 04. Seções e cartões reais: destaque sem modificar altura, grid ou dados. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .sheet-card,.sheet-summary-card,.sheet-summary-status-card,.sheet-library-card,
+  .sheet-inventory-section,.sheet-distribution-panel,.sheet-editor-accordion,
+  .enemy-hub-card,.enemy-hub-scene,.enemy-hub-metric,.hb-beast-card,
+  .hb-beast-detail-section,.hb-ms-pane,.hb-ms-card,.shop-card,.shop-item-card,
+  .shops-page-panel .shop-product-card,.campaign-card,.season-card,.season-theme-panel,
+  .armor-equipped-card,.combat-action-card,.combat-armor-panel,.currency-conversion-panel
+) {
+  border-color: var(--hb-art-rule);
+  border-radius: var(--hb-art-radius);
+  box-shadow: 0 10px 25px rgba(0,0,0,.11), inset 0 1px 0 var(--hb-art-veil);
+  background-image: linear-gradient(137deg, var(--hb-art-veil), transparent 52%);
+  background-clip: padding-box;
+}
+.app-shell.visual-style-classic .page-content :is(.sheet-card,.sheet-summary-card,.enemy-hub-card,.hb-beast-card,.shop-item-card,.hb-ms-pane,.campaign-card) {
+  border-top-color: var(--hb-art-ink);
+}
+.app-shell.visual-style-japanese .page-content :is(.sheet-card,.sheet-summary-card,.enemy-hub-card,.hb-beast-card,.shop-item-card,.hb-ms-pane,.campaign-card) {
+  border-bottom: 2px solid var(--hb-art-rule);
+  border-top: 1px solid var(--hb-art-ink);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(.sheet-card,.sheet-summary-card,.enemy-hub-card,.hb-beast-card,.shop-item-card,.hb-ms-pane,.campaign-card) {
+  border-left: 2px solid var(--hb-art-ink);
+  box-shadow: 0 11px 26px rgba(0,0,0,.12), inset 2px 0 12px var(--hb-art-veil);
+}
+.app-shell.visual-style-ciclos .page-content :is(.sheet-card,.sheet-summary-card,.enemy-hub-card,.hb-beast-card,.shop-item-card,.hb-ms-pane,.campaign-card) {
+  border-top: 2px solid var(--hb-art-rule);
+  border-bottom: 2px solid var(--hb-art-rule);
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .sheet-section-heading,.inventory-heading:not(.sheet-page-hero),.sheet-card-title,
+  .enemy-hub-section-heading,.hb-beast-library-head,.hb-ms-group-heading,
+  .shops-toolbar,.bestiary-toolbar
+) {
+  border-bottom-color: var(--hb-art-rule);
+}
+
+/* 05. Símbolos, indicadores e botões com acabamentos individuais. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(
+  .sheet-page-hero-icon,.hb-hero-emblem,.enemy-hub-hero-symbol,.hb-beast-hero-symbol,.shops-hero-icon
+) {
+  border-color: var(--hb-art-rule);
+  border-radius: var(--hb-art-control-radius);
+  background-image: linear-gradient(145deg, var(--hb-art-ambient),var(--season-surface-alt));
+  box-shadow: inset 0 1px 0 var(--hb-art-ink-soft),0 8px 21px rgba(0,0,0,.11);
+}
+.app-shell.visual-style-classic .page-content :is(.sheet-page-hero-icon,.hb-hero-emblem,.shops-hero-icon) { border-radius: 18px; }
+.app-shell.visual-style-japanese .page-content :is(.sheet-page-hero-icon,.hb-hero-emblem,.shops-hero-icon) { border-radius: 7px; }
+.app-shell.visual-style-cyberpunk .page-content :is(.sheet-page-hero-icon,.hb-hero-emblem,.shops-hero-icon) { border-radius: 3px; }
+.app-shell.visual-style-ciclos .page-content :is(.sheet-page-hero-icon,.hb-hero-emblem,.shops-hero-icon) { border-radius: 9px; }
+
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+:is(
+  .secondary-button,.sheet-page-back,.enemy-hub-back,
+  .hb-sidebar-create,.hb-sidebar-invite-button,.sheet-quick-nav button,
+  .enemy-hub-view-switch button,.category-tabs button,.currency-tabs button
+) {
+  border-radius: var(--hb-art-control-radius) !important;
+  border-color: var(--hb-art-rule);
+  transition: border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(.secondary-button,.sheet-page-back,.enemy-hub-back) {
+  background-image: linear-gradient(140deg, var(--hb-art-veil), var(--season-surface));
+  box-shadow: inset 0 1px 0 var(--hb-art-veil);
+}
+.app-shell.visual-style-classic .page-content :is(.secondary-button,.sheet-page-back,.enemy-hub-back) { border-bottom: 1px solid var(--hb-art-ink); }
+.app-shell.visual-style-japanese .page-content :is(.secondary-button,.sheet-page-back,.enemy-hub-back) { border-bottom: 2px solid var(--hb-art-rule); font-family: var(--hb-art-serif); }
+.app-shell.visual-style-cyberpunk .page-content :is(.secondary-button,.sheet-page-back,.enemy-hub-back) { border-left: 2px solid var(--hb-art-ink); letter-spacing: .035em; }
+.app-shell.visual-style-ciclos .page-content :is(.secondary-button,.sheet-page-back,.enemy-hub-back) { border-block: 1px solid var(--hb-art-ink); font-family: var(--hb-art-serif); }
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(.secondary-button,.sheet-page-back,.enemy-hub-back):hover:not(:disabled) {
+  border-color: var(--season-primary);
+  box-shadow: 0 6px 19px var(--hb-art-veil);
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(input:not([type=checkbox]):not([type=radio]),select,textarea) {
+  border-color: var(--hb-art-rule);
+  border-radius: var(--hb-art-control-radius);
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(input,select,textarea):focus-visible,
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content button:focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 2px;
+}
+/* The VTT is intentionally exempt from the form/button treatment above. */
+.app-shell .hvtt :is(input,select,textarea,button) { --hb-art-control-radius: initial; }
+
+/* 06. Identidade visual: galeria ilustrada, não mais uma grade de botões. */
+.app-shell .season-visual-style-group {
+  padding: clamp(17px,2.3vw,26px);
+  border: 1px solid color-mix(in srgb,var(--season-primary) 33%,var(--season-line));
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 90% 0%,color-mix(in srgb,var(--season-primary) 11%,transparent),transparent 55%),
+    linear-gradient(145deg,var(--season-surface),var(--season-bg));
+  box-shadow: 0 18px 38px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.app-shell .season-visual-style-group .season-visual-group-heading { padding-bottom: 9px; }
+.app-shell .season-visual-style-group .season-visual-group-heading > strong {
+  font: 600 clamp(17px,2.1vw,24px)/1.3 Georgia,'Times New Roman',serif;
+  color: #f5ead9;
+}
+.app-shell .season-style-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: clamp(12px,1.5vw,20px);
+}
+.app-shell .season-style-card {
+  --card-art: color-mix(in srgb, var(--season-primary) 72%, #cda775);
+  --card-art-wash: color-mix(in srgb, var(--card-art) 24%, transparent);
+  --card-art-rule: color-mix(in srgb, var(--card-art) 55%, transparent);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 25px;
+  align-content: start;
+  gap: 11px 13px;
+  min-width: 0;
+  padding: clamp(13px,1.6vw,18px);
+  border: 1px solid var(--card-art-rule) !important;
+  border-radius: 13px !important;
+  background: radial-gradient(ellipse at 99% 0%,var(--card-art-wash),transparent 53%),
+    linear-gradient(145deg,var(--season-surface),var(--season-bg));
+  box-shadow: 0 11px 26px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.05);
+  color: #f4f0eb;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color .2s,box-shadow .2s,transform .2s;
+}
+.app-shell .season-style-card::before,
+.app-shell .season-style-card::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: .75;
+}
+.app-shell .season-style-card::before {
+  top: 5px;left:5px;
+  border-top: 1px solid var(--card-art-rule);
+  border-left: 1px solid var(--card-art-rule);
+}
+.app-shell .season-style-card::after {
+  right:5px;bottom:5px;
+  border-right: 1px solid var(--card-art-rule);
+  border-bottom: 1px solid var(--card-art-rule);
+}
+.app-shell .season-style-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: var(--card-art) !important;
+  box-shadow: 0 18px 34px rgba(0,0,0,.27),0 0 20px var(--card-art-wash);
+}
+.app-shell .season-style-card.active {
+  border-color: var(--card-art) !important;
+  box-shadow: 0 0 0 1px var(--card-art-wash),0 17px 34px rgba(0,0,0,.26);
+}
+.app-shell .season-style-card:disabled:not(.active) { opacity: .72; cursor: not-allowed; }
+.app-shell .season-style-card:focus-visible { outline: 2px solid var(--card-art); outline-offset: 3px; }
+.app-shell .season-style-signature {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 14px;
+  color: var(--card-art);
+  font: 750 9px/1.2 'Cascadia Code','Segoe UI',Consolas,sans-serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: .92;
+}
+.app-shell .season-style-signature span { font-size: 8px; opacity: .75; }
+.app-shell .season-style-preview {
+  grid-column: 1/-1;
+  position: relative;
+  display: block;
+  height: clamp(120px,14vw,176px);
+  overflow: hidden;
+  border: 1px solid var(--card-art-rule);
+  border-radius: 7px;
+  background: radial-gradient(ellipse at 85% 27%,var(--card-art-wash),transparent 60%),
+    linear-gradient(145deg,var(--season-bg),var(--season-surface-alt));
+  box-shadow: inset 0 0 0 3px rgba(0,0,0,.20),0 7px 18px rgba(0,0,0,.16);
+}
+.app-shell .season-style-preview::before {
+  content:'';
+  position:absolute;
+  inset: 0;
+  pointer-events:none;
+  z-index:1;
+  background: var(--card-art);
+  opacity: .73;
+  -webkit-mask-image: var(--card-art-image);
+  mask-image: var(--card-art-image);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 100% 50%;
+  mask-position: 100% 50%;
+}
+.app-shell .season-style-preview::after {
+  content:'';
+  position:absolute;
+  inset: 9px;
+  border: 1px solid color-mix(in srgb,var(--card-art) 29%,transparent);
+  border-radius: 3px;
+  pointer-events:none;
+  z-index: 2;
+}
+.app-shell .season-style-preview-orb { display: none; }
+.app-shell .season-style-preview-glyph {
+  position:absolute;
+  z-index:2;
+  top: 11px;
+  left: 18px;
+  font: 400 clamp(30px,4vw,45px)/1.3 Georgia,serif;
+  color: var(--card-art);
+  text-shadow: 0 0 17px var(--card-art-wash);
+}
+.app-shell .season-style-preview-lines {
+  z-index:2;
+  left: 18px;
+  right: auto;
+  width: min(35%,160px);
+  bottom: 16px;
+  gap: 7px;
+}
+.app-shell .season-style-preview-lines i {
+  height: 2px;
+  border-radius: 0;
+  background: color-mix(in srgb,var(--card-art) 60%,transparent);
+  box-shadow: 0 0 9px var(--card-art-wash);
+}
+.app-shell .season-style-preview-lines i:nth-child(2) { width: 72%; }
+.app-shell .season-style-preview-lines i:nth-child(3) { width: 45%; }
+.app-shell .season-style-card-info { min-width:0; display:grid;gap:7px;padding:2px 2px 3px;align-content:start; }
+.app-shell .season-style-card-info strong {
+  font: 650 clamp(17px,1.8vw,23px)/1.17 Georgia,'Times New Roman',serif;
+  color: #f4eada;
+  letter-spacing: -.016em;
+}
+.app-shell .season-style-card-info small {
+  min-height: 0;
+  color: #c8c0ca;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.app-shell .season-style-card-check {
+  align-self:start;
+  display:grid;place-items:center;
+  width:25px;height:25px;
+  border:1px solid var(--card-art-rule);
+  border-radius:50%;
+  color:var(--card-art);
+  font-size: 15px;
+}
+.app-shell .season-style-card.active .season-style-card-check {
+  background:var(--card-art);
+  color:#111016;
+}
+.app-shell .season-style-hint {
+  padding: 12px 14px;
+  border-left: 2px solid color-mix(in srgb,var(--season-primary) 48%,transparent);
+  border-radius: 0 7px 7px 0;
+  background: color-mix(in srgb,var(--season-primary) 6%,transparent);
+  font-size: 11px;
+}
+/* Four distinct illustrations on the real selection cards. */
+.app-shell .season-style-classic {
+  --card-art: color-mix(in srgb,var(--season-primary) 70%,#dcb474);
+  --card-art-image: url('./style-art/eclipse.svg');
+}
+.app-shell .season-style-japanese {
+  --card-art: color-mix(in srgb,var(--season-primary) 72%,#d67770);
+  --card-art-image: url('./style-art/kisatsutai.svg');
+}
+.app-shell .season-style-cyberpunk {
+  --card-art: color-mix(in srgb,var(--season-primary) 73%,#5cc9bd);
+  --card-art-image: url('./style-art/cyberflower.svg');
+}
+.app-shell .season-style-ciclos {
+  --card-art: color-mix(in srgb,var(--season-primary) 72%,#d0a66b);
+  --card-art-image: url('./style-art/ciclos.svg');
+}
+.app-shell .season-style-classic .season-style-preview {
+  background: radial-gradient(circle at 78% 41%,rgba(204,151,92,.17),transparent 38%),
+    linear-gradient(130deg,#101017,color-mix(in srgb,var(--season-primary) 10%,#18141a));
+}
+.app-shell .season-style-japanese .season-style-preview {
+  background: radial-gradient(circle at 76% 42%,rgba(158,43,59,.19),transparent 48%),
+    linear-gradient(130deg,#171017,color-mix(in srgb,var(--season-primary) 8%,#21131b));
+}
+.app-shell .season-style-cyberpunk .season-style-preview {
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg,rgba(75,215,213,.08) 1px,transparent 1px) 0 0/28px 28px,
+    linear-gradient(0deg,rgba(75,215,213,.08) 1px,transparent 1px) 0 0/28px 28px,
+    radial-gradient(circle at 77% 43%,rgba(70,180,185,.17),transparent 50%),
+    linear-gradient(135deg,#09151a,#171621);
+}
+.app-shell .season-style-cyberpunk .season-style-preview::after {
+  border-radius: 0;
+  clip-path: polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
+}
+.app-shell .season-style-cyberpunk .season-style-preview-glyph {
+  font-family: 'Cascadia Code',Consolas,monospace;
+}
+.app-shell .season-style-ciclos .season-style-preview {
+  background: radial-gradient(ellipse at 76% 42%,rgba(174,135,69,.18),transparent 47%),
+    repeating-linear-gradient(0deg,transparent 0 7px,rgba(225,193,130,.012) 7px 8px),
+    linear-gradient(135deg,#16120f,#282018);
+}
+
+/* 07. Portal dialogs, including those mounted outside the React root. */
+body:is([data-hb-visual-style="classic"],[data-hb-visual-style="japanese"],
+[data-hb-visual-style="cyberpunk"],[data-hb-visual-style="ciclos"])
+:is(
+  .bestiary-modal,.enemy-hub-modal,.emoji-modal,.item-details-modal,
+  .item-modal-content,.modal-content,.sheet-item-modal,.sheet-item-editor-modal
+) {
+  border: 1px solid color-mix(in srgb,var(--season-primary) 34%,var(--season-line));
+  box-shadow: 0 25px 60px rgba(0,0,0,.38),inset 0 1px 0 color-mix(in srgb,var(--season-primary) 14%,transparent);
+}
+body[data-hb-visual-style="classic"] :is(.modal-content,.bestiary-modal,.enemy-hub-modal,.sheet-item-modal) {
+  border-top: 2px solid color-mix(in srgb,var(--season-primary) 65%,#d5aa6f);
+  border-radius: 15px;
+}
+body[data-hb-visual-style="japanese"] :is(.modal-content,.bestiary-modal,.enemy-hub-modal,.sheet-item-modal) {
+  border-left: 3px solid color-mix(in srgb,var(--season-primary) 60%,#d67b6d);
+  border-radius: 8px;
+}
+body[data-hb-visual-style="cyberpunk"] :is(.modal-content,.bestiary-modal,.enemy-hub-modal,.sheet-item-modal) {
+  border-left: 3px solid color-mix(in srgb,var(--season-primary) 67%,#63c6c9);
+  border-radius: 4px;
+}
+body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hub-modal,.sheet-item-modal) {
+  border-top: 2px solid color-mix(in srgb,var(--season-primary) 60%,#d5b075);
+  border-radius: 12px;
+}
+
+/* 08. Mesa dos jogadores: toque nas ferramentas, nunca no tabuleiro. */
+.app-shell.visual-style-classic .hvtt :is(.hvtt-topbar,.hvtt-side-head) {
+  border-color:var(--hb-art-rule);
+  background-image:linear-gradient(115deg,var(--hb-art-veil),transparent);
+}
+.app-shell.visual-style-japanese .hvtt :is(.hvtt-topbar,.hvtt-side-head) {
+  border-color:var(--hb-art-rule);
+  background-image:linear-gradient(115deg,var(--hb-art-veil),transparent);
+}
+.app-shell.visual-style-cyberpunk .hvtt :is(.hvtt-topbar,.hvtt-side-head) {
+  border-color:var(--hb-art-rule);
+  background-image:linear-gradient(115deg,var(--hb-art-ambient),transparent);
+}
+.app-shell.visual-style-ciclos .hvtt :is(.hvtt-topbar,.hvtt-side-head) {
+  border-color:var(--hb-art-rule);
+  background-image:linear-gradient(115deg,var(--hb-art-veil),transparent);
+}
+
+/* 09. Identidade visual acompanha diferentes tamanhos e acessibilidade. */
+@media (max-width:1040px) {
+  .app-shell .season-style-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:720px) {
+  .app-shell .season-style-grid { grid-template-columns: 1fr; }
+  .app-shell .season-style-preview { height: 145px; }
+  .app-shell .season-style-signature { letter-spacing: .13em; }
+  .app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+  .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-ms-hero,.shops-hero)::before {
+    width: 46% !important;
+    opacity: .20 !important;
+  }
+}
+@media (max-width:430px) {
+  .app-shell .season-visual-style-group { padding: 12px; }
+  .app-shell .season-style-card { padding: 12px; }
+  .app-shell .season-style-preview { height: 125px; }
+  .app-shell .season-style-preview-glyph { font-size: 33px; }
+  .app-shell .season-style-signature { font-size: 8px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .app-shell .season-style-card,
+  .app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+  :is(.secondary-button,.sheet-page-back,.enemy-hub-back) {
+    animation:none !important;
+    transition:none !important;
+  }
+  .app-shell .season-style-card:hover:not(:disabled) { transform:none; }
+}
+
+/* 10. O editor de Identidade visual também respeita o estilo ativo:
+   remove o eclipse genérico do painel quando outra estética estiver escolhida. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content .season-theme-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content .season-theme-panel::after { content:none !important; }
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content .season-theme-panel::before {
+  content:'';
+  display:block;
+  position:absolute;
+  top: 0;right:0;
+  width:min(42%,350px);height:230px;
+  z-index:0;
+  pointer-events:none;
+  opacity:.13;
+  background:var(--hb-art-ink);
+  -webkit-mask:var(--hb-art-sigil) no-repeat center / contain;
+  mask:var(--hb-art-sigil) no-repeat center / contain;
+}
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content .season-theme-panel > * {position:relative;z-index:1;}
+
+/* The gallery is independent of which card is already selected. */
+.app-shell .season-visual-style-group .season-style-card {border-radius:13px !important;}
+.app-shell .season-visual-style-group .season-style-card.active {
+  border-color:var(--card-art) !important;
+  box-shadow:0 0 0 1px var(--card-art-wash),0 17px 34px rgba(0,0,0,.26) !important;
+}
+.app-shell .season-visual-style-group .season-style-cyberpunk {border-radius:5px !important;}
+.app-shell .season-visual-style-group .season-style-japanese {border-radius:7px !important;}
+.app-shell .season-visual-style-group .season-style-ciclos {border-radius:10px !important;}
+
+/* Map editor fields retain the VTT controls' own visual language. */
+.app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(input:not([type=checkbox]):not([type=radio]),select,textarea):not(.hvtt *) {
+  border-color:var(--hb-art-rule);
+  border-radius:var(--hb-art-control-radius);
+}

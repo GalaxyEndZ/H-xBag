@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 270" role="img" aria-hidden="true">
+<g fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+
+<!-- Painted disc and temple roofline -->
+<circle cx="339" cy="115" r="63" stroke-width="1.2" opacity=".8"/>
+<path d="M295 155 A64 64 0 1 1 383 155 Z" fill="white" stroke="none" opacity=".2"/>
+<path d="M280 153L304 137 329 155 357 122 387 157 410 152" stroke-width="1.7" opacity=".65"/>
+<path d="M286 160Q333 166 392 160" stroke-width="1.3" opacity=".55"/>
+<path d="M288 172H409 M290 177H407" stroke-width="1" opacity=".42"/>
+<!-- flowering branch -->
+<path d="M73 0C106 41 114 66 160 77 S203 106 224 119" stroke-width="3.4" opacity=".75"/>
+<path d="M121 51Q145 32 157 24 M158 76Q172 61 191 56 M180 91Q183 112 197 125 M103 34Q89 49 82 64" stroke-width="2.3" opacity=".69"/>
+<path d="M136 50Q151 38 157 39 M169 72Q182 65 187 69" stroke-width="1" opacity=".47"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(194 40) rotate(-35) scale(1)" fill="white" opacity=".48" stroke="none"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(161 72) rotate(25) scale(0.7)" fill="white" opacity=".48" stroke="none"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(213 89) rotate(17) scale(0.8)" fill="white" opacity=".48" stroke="none"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(116 110) rotate(0) scale(0.65)" fill="white" opacity=".48" stroke="none"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(244 38) rotate(55) scale(0.72)" fill="white" opacity=".48" stroke="none"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(173 134) rotate(120) scale(0.55)" fill="white" opacity=".48" stroke="none"/>
+<path d="M0 -9 Q10 -17 12 -4 Q19 7 3 8 Q-6 18 -11 6 Q-20 -2 -7 -8 Z" transform="translate(112 55) rotate(-20) scale(0.6)" fill="white" opacity=".48" stroke="none"/>
+<path d="M124 212 Q150 179 176 212" stroke-width="1.5" opacity=".63"/>
+<path d="M132 214 Q150 190 168 214" stroke-width=".8" opacity=".45"/>
+<path d="M176 212 Q202 179 228 212" stroke-width="1.5" opacity=".63"/>
+<path d="M184 214 Q202 190 220 214" stroke-width=".8" opacity=".45"/>
+<path d="M228 212 Q254 179 280 212" stroke-width="1.5" opacity=".63"/>
+<path d="M236 214 Q254 190 272 214" stroke-width=".8" opacity=".45"/>
+<path d="M280 212 Q306 179 332 212" stroke-width="1.5" opacity=".63"/>
+<path d="M288 214 Q306 190 324 214" stroke-width=".8" opacity=".45"/>
+<path d="M332 212 Q358 179 384 212" stroke-width="1.5" opacity=".63"/>
+<path d="M340 214 Q358 190 376 214" stroke-width=".8" opacity=".45"/>
+<path d="M384 212 Q410 179 436 212" stroke-width="1.5" opacity=".63"/>
+<path d="M392 214 Q410 190 428 214" stroke-width=".8" opacity=".45"/>
+<path d="M436 212 Q462 179 488 212" stroke-width="1.5" opacity=".63"/>
+<path d="M444 214 Q462 190 480 214" stroke-width=".8" opacity=".45"/>
+<path d="M150 236 Q176 203 202 236" stroke-width="1.5" opacity=".63"/>
+<path d="M158 238 Q176 214 194 238" stroke-width=".8" opacity=".45"/>
+<path d="M202 236 Q228 203 254 236" stroke-width="1.5" opacity=".63"/>
+<path d="M210 238 Q228 214 246 238" stroke-width=".8" opacity=".45"/>
+<path d="M254 236 Q280 203 306 236" stroke-width="1.5" opacity=".63"/>
+<path d="M262 238 Q280 214 298 238" stroke-width=".8" opacity=".45"/>
+<path d="M306 236 Q332 203 358 236" stroke-width="1.5" opacity=".63"/>
+<path d="M314 238 Q332 214 350 238" stroke-width=".8" opacity=".45"/>
+<path d="M358 236 Q384 203 410 236" stroke-width="1.5" opacity=".63"/>
+<path d="M366 238 Q384 214 402 238" stroke-width=".8" opacity=".45"/>
+<path d="M410 236 Q436 203 462 236" stroke-width="1.5" opacity=".63"/>
+<path d="M418 238 Q436 214 454 238" stroke-width=".8" opacity=".45"/>
+<path d="M124 260 Q150 227 176 260" stroke-width="1.5" opacity=".63"/>
+<path d="M132 262 Q150 238 168 262" stroke-width=".8" opacity=".45"/>
+<path d="M176 260 Q202 227 228 260" stroke-width="1.5" opacity=".63"/>
+<path d="M184 262 Q202 238 220 262" stroke-width=".8" opacity=".45"/>
+<path d="M228 260 Q254 227 280 260" stroke-width="1.5" opacity=".63"/>
+<path d="M236 262 Q254 238 272 262" stroke-width=".8" opacity=".45"/>
+<path d="M280 260 Q306 227 332 260" stroke-width="1.5" opacity=".63"/>
+<path d="M288 262 Q306 238 324 262" stroke-width=".8" opacity=".45"/>
+<path d="M332 260 Q358 227 384 260" stroke-width="1.5" opacity=".63"/>
+<path d="M340 262 Q358 238 376 262" stroke-width=".8" opacity=".45"/>
+<path d="M384 260 Q410 227 436 260" stroke-width="1.5" opacity=".63"/>
+<path d="M392 262 Q410 238 428 262" stroke-width=".8" opacity=".45"/>
+<path d="M436 260 Q462 227 488 260" stroke-width="1.5" opacity=".63"/>
+<path d="M444 262 Q462 238 480 262" stroke-width=".8" opacity=".45"/>
+<path d="M150 284 Q176 251 202 284" stroke-width="1.5" opacity=".63"/>
+<path d="M158 286 Q176 262 194 286" stroke-width=".8" opacity=".45"/>
+<path d="M202 284 Q228 251 254 284" stroke-width="1.5" opacity=".63"/>
+<path d="M210 286 Q228 262 246 286" stroke-width=".8" opacity=".45"/>
+<path d="M254 284 Q280 251 306 284" stroke-width="1.5" opacity=".63"/>
+<path d="M262 286 Q280 262 298 286" stroke-width=".8" opacity=".45"/>
+<path d="M306 284 Q332 251 358 284" stroke-width="1.5" opacity=".63"/>
+<path d="M314 286 Q332 262 350 286" stroke-width=".8" opacity=".45"/>
+<path d="M358 284 Q384 251 410 284" stroke-width="1.5" opacity=".63"/>
+<path d="M366 286 Q384 262 402 286" stroke-width=".8" opacity=".45"/>
+<path d="M410 284 Q436 251 462 284" stroke-width="1.5" opacity=".63"/>
+<path d="M418 286 Q436 262 454 286" stroke-width=".8" opacity=".45"/>
+<path d="M128 225H450" stroke-width=".8" opacity=".3"/>
+<path d="M275 58l5 12 12 5-12 5-5 12-5-12-12-5 12-5z" stroke-width=".8" opacity=".32"/>
+
+</g></svg>

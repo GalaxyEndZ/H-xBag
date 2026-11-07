@@ -9,7 +9,9 @@ import { supabase } from './supabase'
 import Auth from './Auth'
 import './App.css'
 import './themes/seasonThemes.css'
+import './themes/visualStyles.css'
 import { seasonThemes } from './themes'
+import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import HaxTable from './components/HaxTable'
 
@@ -230,7 +232,7 @@ type CharacterGrant = {
   user_id: string
 }
 
-type Season = { id: string; campaign_id: string; name: string; description: string | null; season_number: number; status: 'draft' | 'active' | 'completed' | 'archived'; theme_key?: string | null }
+type Season = { id: string; campaign_id: string; name: string; description: string | null; season_number: number; status: 'draft' | 'active' | 'completed' | 'archived'; theme_key?: string | null; visual_style_key?: string | null }
 type CampaignActivity = {
   id: string
   campaign_id: string
@@ -658,6 +660,7 @@ const resetCreatureFilters = () => {
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
+  const [seasonVisualStyleSaving, setSeasonVisualStyleSaving] = useState(false)
   const [seasonOrderSaving, setSeasonOrderSaving] = useState(false)
   const [showSeasonEditor, setShowSeasonEditor] = useState(false)
 
@@ -725,6 +728,42 @@ const resetCreatureFilters = () => {
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
   const activeTheme = seasonThemes[activeThemeKey]
+  const activeVisualStyleKey: VisualStyleKey = activeSeason?.visual_style_key && activeSeason.visual_style_key in visualStyles ? activeSeason.visual_style_key as VisualStyleKey : 'classic'
+  const activeVisualStyle = visualStyles[activeVisualStyleKey]
+
+  // Janelas renderizadas por createPortal ficam fora de .app-shell.
+  // Espelhamos o estilo e a paleta no body para modais e seletores flutuantes,
+  // restaurando os valores anteriores ao trocar de tema ou desmontar o app.
+  useEffect(() => {
+    const body = document.body
+    const oldStyle = body.getAttribute('data-hb-visual-style')
+    const palette: Record<string, string> = {
+      '--season-primary': activeTheme.primary,
+      '--season-secondary': activeTheme.secondary,
+      '--season-glow': activeTheme.glow,
+      '--season-bg': activeTheme.bg,
+      '--season-surface': activeTheme.surface,
+      '--season-surface-alt': activeTheme.surfaceAlt,
+      '--season-line': activeTheme.line,
+      '--season-muted': '#b9b4c2',
+      '--season-on-primary': activeTheme.onPrimary,
+    }
+    const oldProperties = Object.entries(palette).map(([property, value]) => {
+      const previousValue = body.style.getPropertyValue(property)
+      const previousPriority = body.style.getPropertyPriority(property)
+      body.style.setProperty(property, value)
+      return { property, previousValue, previousPriority }
+    })
+    body.dataset.hbVisualStyle = activeVisualStyleKey
+    return () => {
+      if (oldStyle === null) body.removeAttribute('data-hb-visual-style')
+      else body.setAttribute('data-hb-visual-style', oldStyle)
+      oldProperties.forEach(({ property, previousValue, previousPriority }) => {
+        if (previousValue) body.style.setProperty(property, previousValue, previousPriority)
+        else body.style.removeProperty(property)
+      })
+    }
+  }, [activeThemeKey, activeVisualStyleKey])
 
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
@@ -1239,7 +1278,7 @@ useEffect(() => {
     if (!selectedCampaignId) { setSeasons([]); setSelectedSeasonId(''); return }
     let cancelled = false
     async function loadSeasons() {
-      const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('id,campaign_id,name,description,season_number,status,theme_key').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
+      const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('*').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
       if (cancelled) return
       if (seasonsError) { setError(`Erro ao carregar temporadas: ${seasonsError.message}`); setSeasons([]); setSelectedSeasonId(''); return }
       const rows = (data ?? []) as Season[]
@@ -1247,7 +1286,19 @@ useEffect(() => {
       setSelectedSeasonId(current => rows.some(row => row.id === current) ? current : (rows.find(row => row.status === 'active')?.id ?? rows[0]?.id ?? ''))
     }
     void loadSeasons()
-    return () => { cancelled = true }
+    const channel = supabase.channel(`campaign-seasons-visual-${selectedCampaignId}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'campaign_seasons',
+        filter: `campaign_id=eq.${selectedCampaignId}`,
+      }, () => { void loadSeasons() })
+      .subscribe()
+    const refreshOnFocus = () => { void loadSeasons() }
+    window.addEventListener('focus', refreshOnFocus)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', refreshOnFocus)
+      void supabase.removeChannel(channel)
+    }
   }, [selectedCampaignId])
 
   useEffect(() => {
@@ -3904,7 +3955,7 @@ async function deleteCampaign(campaign: Campaign) {
     if (!selectedCampaignId || !isMaster || !newSeasonName.trim()) return
     setLoading(true); setError(''); setNotice('')
     const nextNumber = Math.max(0, ...seasons.map(season => season.season_number)) + 1
-    const { data: created, error: createError } = await supabase.from('campaign_seasons').insert({ campaign_id: selectedCampaignId, name: newSeasonName.trim(), description: newSeasonDescription.trim() || null, season_number: nextNumber, status: seasons.some(season => season.status === 'active') ? 'draft' : 'active', created_by: session!.user.id }).select('id,campaign_id,name,description,season_number,status,theme_key').single()
+    const { data: created, error: createError } = await supabase.from('campaign_seasons').insert({ campaign_id: selectedCampaignId, name: newSeasonName.trim(), description: newSeasonDescription.trim() || null, season_number: nextNumber, status: seasons.some(season => season.status === 'active') ? 'draft' : 'active', created_by: session!.user.id }).select('*').single()
     if (createError || !created) { setError(`Não foi possível criar a temporada: ${createError?.message ?? 'resposta vazia'}`); setLoading(false); return }
     const season = created as Season
     for (const character of characters) {
@@ -3926,7 +3977,7 @@ async function deleteCampaign(campaign: Campaign) {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
     if (!season || !isMaster || seasonThemeSaving) return
     setSeasonThemeSaving(true)
-    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ theme_key: themeKey }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ theme_key: themeKey }).eq('id', season.id).select('*').single()
     setSeasonThemeSaving(false)
     if (updateError || !data) { setError(`Não foi possível salvar o tema: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry))
@@ -3934,10 +3985,36 @@ async function deleteCampaign(campaign: Campaign) {
     void recordCampaignActivity({ activityType: 'season_theme_changed', title: 'Tema da temporada alterado', description: `${season.name} · ${seasonThemes[themeKey].label}`, entityType: 'season', entityId: season.id })
   }
 
+  async function saveSeasonVisualStyle(styleKey: VisualStyleKey) {
+    const season = seasons.find(entry => entry.id === selectedSeasonId)
+    if (!season || !isMaster || seasonVisualStyleSaving || activeVisualStyleKey === styleKey) return
+    setSeasonVisualStyleSaving(true)
+    const { data, error: updateError } = await supabase.from('campaign_seasons')
+      .update({ visual_style_key: styleKey })
+      .eq('id', season.id)
+      .select('*')
+      .single()
+    setSeasonVisualStyleSaving(false)
+    if (updateError || !data) {
+      const missingColumn = updateError?.code === '42703' || /visual_style_key/i.test(updateError?.message ?? '')
+      setError(missingColumn
+        ? 'Para ativar os estilos, execute o arquivo SQL de estilos visuais no Supabase e tente novamente.'
+        : `Não foi possível salvar o estilo: ${updateError?.message ?? 'resposta vazia'}`)
+      return
+    }
+    setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry))
+    setNotice(`Estilo “${visualStyles[styleKey].label}” aplicado à temporada junto do tema “${activeTheme.label}”.`)
+    void recordCampaignActivity({
+      activityType: 'season_visual_style_changed', title: 'Estilo visual da temporada alterado',
+      description: `${season.name} · ${visualStyles[styleKey].label}`,
+      entityType: 'season', entityId: season.id,
+    })
+  }
+
   async function saveSeasonDetails() {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
     if (!season || !isMaster || !seasonNameDraft.trim()) return
-    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ name: seasonNameDraft.trim(), description: seasonDescriptionDraft.trim() || null }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ name: seasonNameDraft.trim(), description: seasonDescriptionDraft.trim() || null }).eq('id', season.id).select('*').single()
     if (updateError || !data) { setError(`Não foi possível atualizar a temporada: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice('Dados da temporada atualizados.'); void recordCampaignActivity({ activityType: 'season_updated', title: 'Temporada atualizada', description: seasonNameDraft.trim(), entityType: 'season', entityId: season.id })
   }
@@ -3946,7 +4023,7 @@ async function deleteCampaign(campaign: Campaign) {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
     if (!season || !isMaster) return
     if (status === 'active' && seasons.some(entry => entry.status === 'active' && entry.id !== season.id)) { setError('Já existe uma temporada ativa. Conclua ou arquive a atual antes de ativar outra.'); return }
-    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ status }).eq('id', season.id).select('id,campaign_id,name,description,season_number,status,theme_key').single()
+    const { data, error: updateError } = await supabase.from('campaign_seasons').update({ status }).eq('id', season.id).select('*').single()
     if (updateError || !data) { setError(`Não foi possível mudar o status: ${updateError?.message ?? 'resposta vazia'}`); return }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry)); setNotice(`Status da temporada: ${status}.`); void recordCampaignActivity({ activityType: 'season_status_changed', title: 'Status da temporada alterado', description: `${season.name} · ${status}`, entityType: 'season', entityId: season.id })
   }
@@ -8185,7 +8262,7 @@ counterAttackDT
   if (!session) return <Auth />
 
   return (
-    <div className={`app-shell hb-polish theme-${activeThemeKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
+    <div className={`app-shell hb-polish theme-${activeThemeKey} visual-style-${activeVisualStyleKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
       <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
           <span className="brand-mark">H</span>
@@ -10980,10 +11057,37 @@ disabled={
   )
 })()}
                 {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
-                {selectedSeasonId && <div className="season-theme-panel">
-                  <div className="season-theme-heading"><div><strong>Identidade visual</strong><small>Tema desta temporada: <b>{activeTheme.label}</b></small></div><span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} /></div>
-                  {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
-                </div>}
+                {selectedSeasonId && <section className="season-theme-panel" aria-label="Identidade visual da temporada">
+                  <div className="season-theme-heading">
+                    <div><strong>Identidade visual</strong><small>Combine uma paleta de cores com um estilo de interface.</small></div>
+                    <span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} />
+                  </div>
+                  <div className="season-visual-group">
+                    <div className="season-visual-group-heading"><span>01 · Tema</span><strong>{activeTheme.label}</strong><small>Define as cores da temporada.</small></div>
+                    {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
+                  </div>
+                  <div className="season-visual-group season-visual-style-group">
+                    <div className="season-visual-group-heading"><span>02 · Estilo</span><strong>{activeVisualStyle.label}</strong><small>Transforma todas as páginas, incluindo menus e janelas, preservando as cores do tema.</small></div>
+                    <div className="season-style-grid">
+                      {(Object.entries(visualStyles) as [VisualStyleKey, typeof visualStyles[VisualStyleKey]][]).map(([key, style]) => (
+                        <button key={key} type="button" aria-pressed={activeVisualStyleKey === key}
+                          disabled={!isMaster || seasonVisualStyleSaving} onClick={() => void saveSeasonVisualStyle(key)}
+                          className={`season-style-card season-style-${key} ${activeVisualStyleKey === key ? 'active' : ''}`}>
+                          <span className="season-style-signature" aria-hidden="true"><span>✦</span>{style.signature}<span>✦</span></span>
+                          <span className="season-style-preview" aria-hidden="true">
+                            <span className="season-style-preview-orb" />
+                            <span className="season-style-preview-glyph">{style.symbol}</span>
+                            <span className="season-style-preview-lines"><i /><i /><i /></span>
+                          </span>
+                          <span className="season-style-card-info"><strong>{style.label}</strong><small>{style.description}</small></span>
+                          <span className="season-style-card-check" aria-hidden="true">{activeVisualStyleKey === key ? '✓' : '＋'}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {!isMaster && <small className="season-style-readonly">O mestre escolhe o estilo desta temporada.</small>}
+                    <p className="season-style-hint">Combinação atual: <b>{activeTheme.label}</b> + <b>{activeVisualStyle.label}</b>. O estilo modifica apenas a aparência: regras e dados da temporada continuam iguais.</p>
+                  </div>
+                </section>}
 
                 {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
                   <div className="sheet-toolbar">
