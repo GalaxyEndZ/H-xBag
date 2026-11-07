@@ -534,6 +534,10 @@ function App() {
   const [creaturesLoading, setCreaturesLoading] = useState(false)
   const [creatureSearch, setCreatureSearch] = useState('')
   const [creatureCategoryFilter, setCreatureCategoryFilter] = useState('Todas')
+  const [creatureThreatFilter, setCreatureThreatFilter] = useState('Todas')
+  const [creatureVisibilityFilter, setCreatureVisibilityFilter] = useState<'all' | 'visible' | 'hidden'>('all')
+  const [creatureSortOrder, setCreatureSortOrder] = useState<'name' | 'threat' | 'recent'>('name')
+  const [creatureViewMode, setCreatureViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedCreatureId, setSelectedCreatureId] = useState<string | null>(null)
   const [showCreatureForm, setShowCreatureForm] = useState(false)
   const [editingCreatureId, setEditingCreatureId] = useState<string | null>(null)
@@ -553,27 +557,55 @@ function App() {
   const [creatureWeaknesses, setCreatureWeaknesses] = useState('')
   const [creatureImmunities, setCreatureImmunities] = useState('')
 
+const accessibleCreatures = isMaster ? creatures : creatures.filter(creature => !creature.is_hidden)
+const creatureThreatOrder = ['Comum', 'Baixo', 'Moderado', 'Alto', 'Lua Inferior', 'Extremo', 'Lua Superior', 'Lendário']
+const creatureThreatTone = (level: string) =>
+  ['Lendário', 'Lua Superior', 'Extremo'].includes(level) ? 'extreme' :
+  ['Lua Inferior', 'Alto'].includes(level) ? 'high' :
+  level === 'Moderado' ? 'moderate' : 'common'
 const creatureCategories = [
   'Todas',
-  ...Array.from(new Set(creatures.map(creature => creature.category))).sort((a, b) =>
+  ...Array.from(new Set(accessibleCreatures.map(creature => creature.category))).sort((a, b) =>
     a.localeCompare(b, 'pt-BR')
   ),
 ]
-
-const filteredCreatures = creatures.filter(creature => {
-  const matchesSearch = creature.name
-    .toLocaleLowerCase('pt-BR')
-    .includes(creatureSearch.toLocaleLowerCase('pt-BR'))
-
-  const matchesCategory =
-    creatureCategoryFilter === 'Todas' ||
-    creature.category === creatureCategoryFilter
-
-  return matchesSearch && matchesCategory
+const creatureThreatLevels = [
+  'Todas',
+  ...Array.from(new Set(accessibleCreatures.map(creature => creature.threat_level))).sort((a, b) =>
+    (creatureThreatOrder.indexOf(a) < 0 ? 99 : creatureThreatOrder.indexOf(a)) -
+    (creatureThreatOrder.indexOf(b) < 0 ? 99 : creatureThreatOrder.indexOf(b))
+  ),
+]
+const filteredCreatures = accessibleCreatures.filter(creature => {
+  const query = creatureSearch.trim().toLocaleLowerCase('pt-BR')
+  const searchText = [creature.name, creature.category, creature.threat_level,
+    creature.description ?? '', ...(creature.resistances ?? []),
+    ...(creature.weaknesses ?? []), ...(creature.immunities ?? []),
+  ].join(' ').toLocaleLowerCase('pt-BR')
+  return (!query || searchText.includes(query)) &&
+    (creatureCategoryFilter === 'Todas' || creature.category === creatureCategoryFilter) &&
+    (creatureThreatFilter === 'Todas' || creature.threat_level === creatureThreatFilter) &&
+    (!isMaster || creatureVisibilityFilter === 'all' ||
+      (creatureVisibilityFilter === 'hidden' ? creature.is_hidden : !creature.is_hidden))
+}).sort((a, b) => {
+  if (creatureSortOrder === 'recent') return Date.parse(b.created_at) - Date.parse(a.created_at)
+  if (creatureSortOrder === 'threat') {
+    const aRank = creatureThreatOrder.indexOf(a.threat_level)
+    const bRank = creatureThreatOrder.indexOf(b.threat_level)
+    const difference = (bRank < 0 ? -1 : bRank) - (aRank < 0 ? -1 : aRank)
+    if (difference) return difference
+  }
+  return a.name.localeCompare(b.name, 'pt-BR')
 })
-const selectedCreature = creatures.find(
-  creature => creature.id === selectedCreatureId
-) ?? null
+const selectedCreature = accessibleCreatures.find(creature => creature.id === selectedCreatureId) ?? null
+const creatureFiltersActive = Boolean(creatureSearch.trim()) || creatureCategoryFilter !== 'Todas' ||
+  creatureThreatFilter !== 'Todas' || (isMaster && creatureVisibilityFilter !== 'all')
+const resetCreatureFilters = () => {
+  setCreatureSearch('')
+  setCreatureCategoryFilter('Todas')
+  setCreatureThreatFilter('Todas')
+  setCreatureVisibilityFilter('all')
+}
   const [shopItems, setShopItems] = useState<CampaignShopItem[]>([])
   const [selectedShopId, setSelectedShopId] = useState('')
   const [shopPurchaseCharacterId, setShopPurchaseCharacterId] = useState('')
@@ -1554,6 +1586,16 @@ useEffect(() => {
 }, [enemySheetDirty])
 
 useEffect(() => {
+  setCreatureSearch('')
+  setCreatureCategoryFilter('Todas')
+  setCreatureThreatFilter('Todas')
+  setCreatureVisibilityFilter('all')
+  setSelectedCreatureId(null)
+  setShowCreatureForm(false)
+  setEditingCreatureId(null)
+}, [selectedCampaignId])
+
+useEffect(() => {
   if (!selectedCampaignId) {
     setCreatures([])
     return
@@ -1581,6 +1623,9 @@ useEffect(() => {
   const creaturesWithImages = await Promise.all(
     loadedCreatures.map(async creature => {
       if (!creature.image_url) return creature
+      if (/^https?:\/\//i.test(creature.image_url)) {
+        return { ...creature, image_display_url: creature.image_url }
+      }
 
       const { data: signedImage, error: signedError } = await supabase.storage
         .from('campaign-creatures')
@@ -1903,6 +1948,34 @@ return {
     }
   }, [selectedCharacterId])
 
+useEffect(() => {
+  if (!creatureImageFile) {
+    setCreatureImagePreview('')
+    return
+  }
+  const previewUrl = URL.createObjectURL(creatureImageFile)
+  setCreatureImagePreview(previewUrl)
+  return () => URL.revokeObjectURL(previewUrl)
+}, [creatureImageFile])
+
+function openNewCreatureForm() {
+  setEditingCreatureId(null)
+  setCreatureName('')
+  setCreatureCategory('Outros')
+  setCreatureDescription('')
+  setCreatureImageUrl('')
+  setCreatureImageFile(null)
+  setCreatureStoredImagePreview('')
+  setCreatureThreatLevel('Comum')
+  setCreaturePv('')
+  setCreaturePs('')
+  setCreaturePr('')
+  setCreatureResistances('')
+  setCreatureWeaknesses('')
+  setCreatureImmunities('')
+  setShowCreatureForm(true)
+}
+
 function openCreatureEditor(creature: CampaignCreature) {
   setEditingCreatureId(creature.id)
   setCreatureName(creature.name)
@@ -1949,16 +2022,17 @@ async function toggleCreatureVisibility(creature: CampaignCreature) {
 let updatedCreature = data as CampaignCreature
 
 if (updatedCreature.image_url) {
-  const { data: signedImage, error: signedError } = await supabase.storage
-    .from('campaign-creatures')
-    .createSignedUrl(updatedCreature.image_url, 60 * 60)
+  if (/^https?:\/\//i.test(updatedCreature.image_url)) {
+    updatedCreature = { ...updatedCreature, image_display_url: updatedCreature.image_url }
+  } else {
+    const { data: signedImage, error: signedError } = await supabase.storage
+      .from('campaign-creatures')
+      .createSignedUrl(updatedCreature.image_url, 60 * 60)
 
-if (!signedError && signedImage) {
-  updatedCreature = {
-    ...updatedCreature,
-    image_display_url: signedImage.signedUrl,
+    if (!signedError && signedImage) {
+      updatedCreature = { ...updatedCreature, image_display_url: signedImage.signedUrl }
+    }
   }
-}
 }
 
 setCreatures(current =>
@@ -1988,6 +2062,10 @@ async function saveCreature() {
   setError('')
   setNotice('')
 
+  const existingCreature = editingCreatureId
+    ? creatures.find(creature => creature.id === editingCreatureId)
+    : null
+
   const payload = {
     campaign_id: selectedCampaignId,
     name: creatureName.trim(),
@@ -2000,7 +2078,7 @@ async function saveCreature() {
     pv: creaturePv.trim() === '' ? null : Number(creaturePv),
     ps: creaturePs.trim() === '' ? null : Number(creaturePs),
     pr: creaturePr.trim() === '' ? null : Number(creaturePr),
-    attributes: {},
+    attributes: existingCreature?.attributes ?? {},
 resistances: creatureResistances
   .split('\n')
   .map(value => value.trim())
@@ -2015,10 +2093,10 @@ immunities: creatureImmunities
   .split('\n')
   .map(value => value.trim())
   .filter(Boolean),
-    abilities: [],
-    attacks: [],
-    rewards: [],
-    created_by: session?.user.id ?? null,
+    abilities: existingCreature?.abilities ?? [],
+    attacks: existingCreature?.attacks ?? [],
+    rewards: existingCreature?.rewards ?? [],
+    created_by: existingCreature?.created_by ?? session?.user.id ?? null,
   }
 
   try {
@@ -8992,6 +9070,146 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .hb-polish .hb-bestiary-card .bestiary-creature-info p strong { color:var(--hb-fg); }
 .hb-polish .hb-danger-indicator { width:7px; height:7px; background:#e28a64; border-radius:100%; }
 .hb-polish .hb-bestiary-card .bestiary-creature-status { font-size:10px; line-height:1.5; }
+
+/* Bestiário 2026 — catálogo responsivo, sem afetar as outras páginas */
+.hb-polish .hb-beast { width:100%; min-width:0; }
+.hb-polish .hb-beast .hb-beast-hero { align-items:center; padding:clamp(22px,3vw,34px); margin-bottom:16px; background:radial-gradient(ellipse at 5% 0%,color-mix(in srgb,var(--hb-accent) 17%,transparent),transparent 52%),linear-gradient(135deg,var(--hb-surface),var(--season-bg,#141218)); }
+.hb-beast-hero-copy { flex:1 1 370px; min-width:0; position:relative; z-index:1; }
+.hb-beast-hero-meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:17px; }
+.hb-beast-hero-meta span { display:inline-flex; align-items:center; min-height:30px; padding:6px 11px; border:1px solid var(--hb-line); border-radius:999px; color:var(--hb-fg); background:color-mix(in srgb,var(--hb-surface-alt) 75%,transparent); font-size:11px; font-weight:700; }
+.hb-beast-hero-side { position:relative; z-index:1; display:flex; align-items:center; gap:18px; }
+.hb-beast-hero-symbol { width:82px; height:82px; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--hb-accent) 32%,transparent); border-radius:25px; background:color-mix(in srgb,var(--hb-accent) 12%,transparent); color:var(--hb-accent); font-size:52px; box-shadow:inset 0 1px rgba(255,255,255,.05); }
+.hb-polish .hb-beast .hb-beast-create { min-height:46px; padding:10px 18px; background:var(--hb-accent); color:var(--season-bg,#181318); border:1px solid transparent; border-radius:12px; font-weight:850; white-space:nowrap; box-shadow:0 9px 22px color-mix(in srgb,var(--hb-accent) 17%,transparent); }
+.hb-polish .hb-beast .hb-beast-create:hover { filter:brightness(1.07); transform:translateY(-1px); }
+.hb-polish .hb-beast .hb-beast-metrics { margin:0 0 18px; }
+.hb-polish .hb-beast .hb-beast-metrics .hb-metric { min-height:112px; }
+.hb-polish .hb-beast-library { padding:clamp(16px,2vw,24px); border:1px solid var(--hb-line); border-radius:22px; background:linear-gradient(155deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 35%,var(--hb-surface))); box-shadow:0 10px 30px rgba(0,0,0,.1); }
+.hb-beast-library-head { display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:17px; }
+.hb-beast-library-head h3 { margin:5px 0 4px; font-family:'Space Grotesk',Manrope,sans-serif; font-size:clamp(19px,2vw,23px); letter-spacing:-.03em; color:var(--hb-fg); }
+.hb-beast-library-head p { margin:0; color:var(--hb-muted); font-size:12px; line-height:1.55; }
+.hb-beast-result-count { flex-shrink:0; padding:8px 12px; border-radius:999px; border:1px solid var(--hb-line); background:var(--hb-soft); color:var(--hb-accent); font-size:11px; font-weight:800; }
+.hb-polish .hb-beast .hb-beast-toolbar { display:flex; align-items:flex-end; flex-wrap:wrap; gap:9px; margin:0 0 12px; padding:12px; border:1px solid var(--hb-line); border-radius:14px; background:color-mix(in srgb,var(--season-bg,#131118) 68%,transparent); }
+.hb-beast-search { display:flex; align-items:center; position:relative; flex:1 1 230px; min-width:170px; }
+.hb-beast-search > span { position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:24px; color:var(--hb-accent); pointer-events:none; }
+.hb-polish .hb-beast .hb-beast-search input { flex:1; width:100%; min-width:0; min-height:43px; padding:10px 12px 10px 40px; background:var(--hb-surface); border:1px solid var(--hb-line); border-radius:10px; color:var(--hb-fg); font-size:12px; }
+.hb-beast-filter { display:grid; gap:4px; flex:0 1 156px; min-width:132px; color:var(--hb-muted); font-size:10px; font-weight:800; }
+.hb-polish .hb-beast .hb-beast-filter select { width:100%; min-width:0; min-height:43px; padding:8px 10px; background:var(--hb-surface); border:1px solid var(--hb-line); border-radius:10px; color:var(--hb-fg); font-size:12px; }
+.hb-polish .hb-beast .hb-beast-toolbar :is(input,select):focus-visible { outline:2px solid var(--hb-accent); outline-offset:2px; }
+.hb-beast-view-toggle { display:flex; align-items:center; gap:4px; padding:3px; border:1px solid var(--hb-line); border-radius:10px; background:var(--hb-surface); }
+.hb-beast-view-toggle button { display:grid; place-items:center; width:36px; height:36px; padding:0; border:0; border-radius:7px; background:transparent; color:var(--hb-muted); font-size:19px; cursor:pointer; }
+.hb-beast-view-toggle button.active { background:var(--hb-soft); color:var(--hb-accent); }
+.hb-beast-category-row { display:flex; align-items:center; flex-wrap:wrap; gap:7px; margin-bottom:21px; }
+.hb-beast-category-row button { display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:7px 11px; border:1px solid var(--hb-line); border-radius:999px; background:color-mix(in srgb,var(--hb-surface-alt) 68%,transparent); color:var(--hb-muted); font-size:11px; font-weight:750; cursor:pointer; }
+.hb-beast-category-row button span { opacity:.8; font-size:10px; }
+.hb-beast-category-row button.active { border-color:color-mix(in srgb,var(--hb-accent) 42%,var(--hb-line)); background:var(--hb-soft); color:var(--hb-accent); }
+.hb-beast-category-row button:hover { color:var(--hb-fg); border-color:var(--hb-accent); }
+.hb-beast-category-row .hb-beast-clear { margin-left:auto; background:transparent; color:var(--hb-accent); }
+.hb-polish .hb-beast .hb-beast-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr)); gap:15px; margin:0; }
+.hb-polish .hb-beast .hb-beast-card { position:relative; min-width:0; display:flex; flex-direction:column; border:1px solid var(--hb-line); border-radius:17px; overflow:hidden; background:var(--hb-surface-alt); opacity:1; box-shadow:0 5px 18px rgba(0,0,0,.1); transition:transform .18s,border-color .18s,box-shadow .18s; }
+.hb-polish .hb-beast .hb-beast-card:hover { transform:translateY(-3px); border-color:color-mix(in srgb,var(--hb-accent) 55%,var(--hb-line)); box-shadow:0 12px 30px rgba(0,0,0,.2); }
+.hb-polish .hb-beast .hb-beast-card:focus-visible { outline:2px solid var(--hb-accent); outline-offset:3px; }
+.hb-beast-card-media { position:relative; height:183px; flex:0 0 183px; overflow:hidden; background:linear-gradient(135deg,color-mix(in srgb,var(--hb-accent) 11%,var(--hb-surface)),var(--season-bg,#141118)); }
+.hb-polish .hb-beast .hb-beast-card-media .bestiary-creature-image,.hb-polish .hb-beast .hb-beast-card-media .bestiary-creature-placeholder { width:100%; height:100%; display:block; object-fit:cover; }
+.hb-polish .hb-beast .hb-beast-card-media .bestiary-creature-placeholder { display:grid; place-items:center; background:radial-gradient(circle at 50% 45%,var(--hb-soft),var(--hb-surface-alt)); color:var(--hb-accent); font-size:66px; }
+.hb-beast-card-shade { position:absolute; inset:0; pointer-events:none; background:linear-gradient(180deg,rgba(9,11,15,.55),transparent 40%,rgba(9,11,15,.66)); }
+.hb-beast-card-top { position:absolute; top:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.hb-beast-threat { display:inline-flex; align-items:center; gap:5px; min-height:27px; padding:6px 9px; border:1px solid rgba(255,255,255,.2); border-radius:999px; background:rgba(25,30,36,.86); backdrop-filter:blur(9px); color:#dbe4e9; font-size:10px; font-weight:850; white-space:nowrap; }
+.hb-beast-threat-moderate { color:#f3cf8e; border-color:rgba(240,196,118,.42); }
+.hb-beast-threat-high { color:#ffb28c; border-color:rgba(239,132,91,.45); }
+.hb-beast-threat-extreme { color:#ff9296; border-color:rgba(244,102,112,.52); background:rgba(66,24,33,.87); }
+.hb-polish .hb-beast .hb-beast-visibility { position:static; flex:0 0 31px; width:31px; height:31px; border:1px solid rgba(255,255,255,.22); border-radius:9px; background:rgba(15,18,22,.8); color:#f1f4f7; font-size:17px; }
+.hb-polish .hb-beast .hb-beast-visibility:hover { background:var(--hb-accent); color:var(--season-bg,#141118); }
+.hb-beast-card-category { position:absolute; bottom:11px; left:12px; display:inline-flex; padding:5px 9px; border-radius:6px; background:rgba(10,14,18,.72); color:#f4f4f4; font-size:10px; font-weight:850; letter-spacing:.04em; }
+.hb-polish .hb-beast .hb-beast-card-body { display:flex; flex:1; flex-direction:column; gap:0; min-height:0; padding:16px; }
+.hb-polish .hb-beast .hb-beast-card-body h3 { margin:0 0 8px; font-size:18px; line-height:1.3; letter-spacing:-.02em; color:var(--hb-fg); }
+.hb-polish .hb-beast .hb-beast-card-body .hb-beast-card-description { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:35px; margin:0 0 14px; font-size:11px; line-height:1.55; color:var(--hb-muted); }
+.hb-beast-card-resources { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:auto; }
+.hb-beast-card-resources > span { display:flex; justify-content:space-between; align-items:center; gap:4px; min-width:0; padding:9px 8px; border:1px solid var(--hb-line); border-radius:9px; background:color-mix(in srgb,var(--hb-surface) 65%,transparent); }
+.hb-beast-card-resources small { font-size:10px; color:var(--hb-muted); font-weight:850; }
+.hb-beast-card-resources strong { font-size:13px; color:var(--hb-fg); font-variant-numeric:tabular-nums; }
+.hb-beast-card-traits { display:flex; gap:5px; flex-wrap:wrap; min-height:24px; margin:11px 0 7px; }
+.hb-beast-card-traits span { display:inline-flex; align-items:center; padding:4px 7px; border:1px solid var(--hb-line); border-radius:6px; color:var(--hb-muted); font-size:10px; }
+.hb-beast-card-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:7px; padding-top:12px; border-top:1px solid var(--hb-line); }
+.hb-beast-card-status { color:#79cba9; font-size:10px; font-weight:750; }
+.hb-beast-card-status.secret { color:#f0bb7e; }
+.hb-beast-card-open { display:inline-flex; align-items:center; gap:5px; color:var(--hb-accent); font-size:11px; font-weight:800; }
+.hb-beast-card-edit { width:100%; margin-top:10px; padding:9px; border:1px solid var(--hb-line); border-radius:8px; background:color-mix(in srgb,var(--hb-accent) 7%,transparent); color:var(--hb-fg); font-size:11px; font-weight:750; cursor:pointer; }
+.hb-beast-card-edit:hover { border-color:var(--hb-accent); color:var(--hb-accent); }
+.hb-polish .hb-beast .hb-beast-grid.hb-beast-list-mode { grid-template-columns:1fr; }
+.hb-beast-list-mode .hb-beast-card { flex-direction:row !important; min-height:178px; }
+.hb-beast-list-mode .hb-beast-card-media { width:220px; height:auto; flex:0 0 220px; }
+.hb-beast-list-mode .hb-beast-card-body { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(165px,220px); column-gap:18px; align-content:center; }
+.hb-beast-list-mode .hb-beast-card-body h3,.hb-beast-list-mode .hb-beast-card-description { grid-column:1; }
+.hb-beast-list-mode .hb-beast-card-resources { grid-column:2; grid-row:1 / span 2; align-self:center; }
+.hb-beast-list-mode .hb-beast-card-traits { grid-column:1; }
+.hb-beast-list-mode .hb-beast-card-footer { grid-column:1 / -1; }
+.hb-beast-list-mode .hb-beast-card-edit { grid-column:1 / -1; }
+.hb-beast-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; min-height:270px; padding:30px; border:1px dashed var(--hb-line); border-radius:17px; background:color-mix(in srgb,var(--hb-surface-alt) 65%,transparent); text-align:center; }
+.hb-beast-empty-icon { display:grid; place-items:center; width:65px; height:65px; border:1px solid color-mix(in srgb,var(--hb-accent) 30%,var(--hb-line)); border-radius:19px; background:var(--hb-soft); color:var(--hb-accent); font-size:38px; }
+.hb-beast-empty h3 { margin:4px 0 0; font-size:19px; color:var(--hb-fg); }
+.hb-beast-empty p { margin:0 0 8px; max-width:390px; color:var(--hb-muted); font-size:12px; line-height:1.65; }
+.hb-beast-empty button { margin-top:3px; }
+/* Editor e ficha de criatura */
+.hb-polish .hb-beast .hb-beast-editor { width:min(800px,calc(100vw - 24px)); max-height:calc(100dvh - 38px); overflow-y:auto; padding:0; border:1px solid var(--hb-line); border-radius:20px; background:var(--hb-surface); }
+.hb-beast-editor-header { position:sticky; top:0; z-index:2; margin-bottom:0; padding:22px 26px; border-bottom:1px solid var(--hb-line); background:var(--hb-surface); }
+.hb-beast-editor-header h2 { margin:5px 0 6px; }
+.hb-beast-editor-header p { margin:0; }
+.hb-beast-editor-body { display:grid; gap:0; padding:0 26px; }
+.hb-beast-form-section { display:grid; gap:14px; padding:22px 0; border-bottom:1px solid var(--hb-line); }
+.hb-beast-form-section:last-child { border-bottom:0; }
+.hb-beast-form-heading { display:flex; align-items:center; gap:12px; }
+.hb-beast-form-heading > span { display:grid; place-items:center; flex:0 0 36px; height:36px; border:1px solid color-mix(in srgb,var(--hb-accent) 27%,var(--hb-line)); border-radius:11px; background:var(--hb-soft); color:var(--hb-accent); font-size:12px; font-weight:900; }
+.hb-beast-form-heading h3 { margin:0; color:var(--hb-fg); font-size:15px; }
+.hb-beast-form-heading p { margin:3px 0 0; color:var(--hb-muted); font-size:11px; }
+.hb-beast-upload-row { display:flex; align-items:center; gap:15px; }
+.hb-beast-upload-preview { display:grid; place-items:center; flex:0 0 106px; width:106px; height:106px; border:1px solid var(--hb-line); border-radius:14px; background:var(--hb-soft); overflow:hidden; color:var(--hb-accent); font-size:48px; }
+.hb-beast-upload-preview img { width:100%; height:100%; object-fit:cover; }
+.hb-beast-upload-label { flex:1; min-width:0; }
+.hb-beast-upload-label input { width:100%; max-width:100%; }
+.hb-beast-upload-label small { color:var(--hb-muted); overflow-wrap:anywhere; }
+.hb-beast-trait-inputs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.hb-beast-trait-inputs label { min-width:0; }
+.hb-beast-trait-inputs textarea { width:100%; min-height:100px; }
+.hb-polish .hb-beast .hb-beast-editor-actions { position:sticky; bottom:0; z-index:2; display:flex; justify-content:flex-end; gap:9px; padding:16px 26px; margin:0; border-top:1px solid var(--hb-line); background:var(--hb-surface); }
+.hb-polish .hb-beast .hb-beast-editor-actions button { min-height:42px; border-radius:10px; }
+.hb-polish .hb-beast .hb-beast-detail { width:min(850px,calc(100vw - 24px)); max-height:calc(100dvh - 36px); overflow-y:auto; padding:0; border:1px solid var(--hb-line); border-radius:20px; background:var(--hb-surface); }
+.hb-beast-detail-hero { position:relative; height:290px; overflow:hidden; background:radial-gradient(circle at 50% 35%,var(--hb-soft),var(--hb-surface-alt)); }
+.hb-beast-detail-hero > img,.hb-beast-detail-placeholder { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.hb-beast-detail-placeholder { display:grid; place-items:center; color:var(--hb-accent); font-size:130px; }
+.hb-beast-detail-shade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(12,13,18,.24),rgba(12,13,18,.18) 30%,rgba(12,13,18,.96) 100%); }
+.hb-beast-detail-identity { position:absolute; left:28px; right:28px; bottom:24px; color:#fff; }
+.hb-beast-detail-category { display:inline-block; margin-left:8px; padding:5px 9px; border:1px solid rgba(255,255,255,.22); border-radius:999px; background:rgba(12,15,19,.62); font-size:10px; font-weight:850; }
+.hb-beast-detail-identity h2 { margin:11px 0 5px; color:#fff; font-size:clamp(25px,4vw,36px); line-height:1.1; letter-spacing:-.035em; }
+.hb-beast-detail-identity p { margin:0; color:#d9e0e5; font-size:11px; }
+.hb-beast-detail-close { position:absolute; top:16px; right:16px; display:grid; place-items:center; width:35px; height:35px; border:1px solid rgba(255,255,255,.22); border-radius:10px; background:rgba(16,19,24,.76); color:#fff; font-size:24px; cursor:pointer; }
+.hb-beast-detail-content { padding:24px 28px 28px; }
+.hb-beast-detail-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.hb-beast-detail-stats article { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:16px; border:1px solid var(--hb-line); border-radius:12px; background:var(--hb-surface-alt); }
+.hb-beast-detail-stats article > span { color:var(--hb-muted); font-size:10px; font-weight:850; letter-spacing:.035em; }
+.hb-beast-detail-stats article strong { color:var(--hb-fg); font-size:29px; line-height:1.15; font-variant-numeric:tabular-nums; }
+.hb-beast-detail-stats article small { position:absolute; right:15px; bottom:15px; color:var(--hb-accent); font-size:11px; font-weight:850; }
+.hb-beast-detail-section { margin-top:25px; }
+.hb-beast-detail-section-title { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.hb-beast-detail-section-title span { color:var(--hb-accent); font-size:11px; font-weight:900; }
+.hb-beast-detail-section-title h3 { margin:0; color:var(--hb-fg); font-size:16px; }
+.hb-beast-detail-section p { margin:0; color:var(--hb-muted); font-size:13px; line-height:1.75; white-space:pre-wrap; }
+.hb-beast-detail-traits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:24px; }
+.hb-beast-trait-panel { min-width:0; padding:15px; border:1px solid var(--hb-line); border-radius:12px; background:var(--hb-surface-alt); }
+.hb-beast-trait-panel h3 { display:flex; align-items:center; gap:6px; margin:0 0 12px; color:var(--hb-fg); font-size:12px; }
+.hb-beast-trait-panel h3 span { color:var(--hb-accent); font-size:16px; }
+.hb-beast-trait-panel h3 small { margin-left:auto; color:var(--hb-muted); font-size:10px; }
+.hb-beast-trait-tags { display:flex; flex-wrap:wrap; gap:6px; }
+.hb-beast-trait-tags span { padding:6px 8px; border:1px solid var(--hb-line); border-radius:7px; background:var(--hb-surface); color:var(--hb-fg); font-size:11px; overflow-wrap:anywhere; }
+.hb-beast-trait-panel > p { margin:0; color:var(--hb-muted); font-size:11px; }
+.hb-beast-trait-weakness h3 span { color:#e8a074; }
+.hb-beast-trait-immunity h3 span { color:#7dcbb9; }
+.hb-beast-detail-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:9px; margin-top:24px; padding-top:18px; border-top:1px solid var(--hb-line); }
+.hb-beast-detail-actions button { min-height:42px; border-radius:10px; }
+@media(max-width:950px) { .hb-beast-hero-symbol { display:none; } .hb-beast-list-mode .hb-beast-card-media { width:185px; flex-basis:185px; } }
+@media(max-width:700px) { .hb-beast-hero-side { width:100%; } .hb-beast-hero-side .hb-beast-create { width:100%; } .hb-polish .hb-beast .hb-beast-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .hb-beast-library-head { align-items:flex-start; } .hb-beast-library-head p { display:none; } .hb-beast-filter { flex:1 1 145px; } .hb-beast-view-toggle { margin-left:auto; } .hb-beast-list-mode .hb-beast-card-media { width:140px; flex-basis:140px; } .hb-beast-list-mode .hb-beast-card-body { display:flex !important; } .hb-beast-detail-traits { grid-template-columns:1fr; } .hb-beast-trait-inputs { grid-template-columns:1fr; } }
+@media(max-width:500px) { .hb-polish .hb-beast-library { padding:13px; } .hb-polish .hb-beast .hb-beast-grid { grid-template-columns:1fr; } .hb-beast-list-mode .hb-beast-card { flex-direction:column !important; } .hb-beast-list-mode .hb-beast-card-media { width:100%; height:160px; flex-basis:160px; } .hb-beast-library-head { flex-wrap:wrap; } .hb-beast-detail-hero { height:230px; } .hb-beast-detail-identity { left:17px; right:17px; bottom:17px; } .hb-beast-detail-content { padding:17px; } .hb-beast-detail-stats { gap:6px; } .hb-beast-detail-stats article { padding:10px; } .hb-beast-detail-stats article > span { font-size:9px; } .hb-beast-detail-stats article strong { font-size:22px; } .hb-beast-editor-body { padding:0 17px; } .hb-beast-editor-header { padding:17px; } .hb-polish .hb-beast .hb-beast-editor-actions { padding:12px 17px; } .hb-beast-upload-row { align-items:flex-start; } .hb-beast-upload-preview { width:80px; height:80px; flex-basis:80px; } }
+@media(prefers-reduced-motion:reduce) { .hb-beast-card,.hb-beast-category-row button,.hb-beast-create { transition:none !important; } }
+
 /* Loja: unificar as areas existentes com a nova linguagem visual */
 .hb-polish .hb-shops-hero { margin-bottom:18px; }
 .hb-polish .hb-market-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
@@ -11733,440 +11951,169 @@ style={{cursor:'pointer'}}>
         <p>Selecione uma campanha para acessar o bestiário.</p>
       </div>
     ) : (
-<div className="bestiary-container hb-bestiary">
-<div className="inventory-heading hb-hero hb-bestiary-hero">
-  <div>
-    <span className="hb-kicker">♞ ARQUIVO DE CRIATURAS</span>
-    <h2>Bestiário<span className="hb-title-dot">.</span></h2>
-    <p>
-      Consulte monstros, ameaças e seres encontrados nas suas aventuras.
-    </p>
-  </div>
-
-  {isMaster && (
-    <button
-      type="button"
-      className="bestiary-add-button"
-onClick={() => {
-  setEditingCreatureId(null)
-  setCreatureName('')
-  setCreatureCategory('Outros')
-  setCreatureDescription('')
-  setCreatureImageUrl('')
-  setCreatureImageFile(null)
-  setCreatureStoredImagePreview('')
-  setCreatureThreatLevel('Comum')
-  setCreaturePv('')
-  setCreaturePs('')
-  setCreaturePr('')
-  setShowCreatureForm(true)
-}}
-    >
-      <span>＋</span> Nova criatura
-    </button>
-  )}
-</div>
-
-  <div className="hb-bestiary-metrics hb-metric-grid">
-    <article className="hb-metric"><span className="hb-metric-icon">♞</span><span className="hb-metric-content"><span className="hb-metric-label">Criaturas</span><strong>{creatures.length}</strong><small>Registros da campanha</small></span></article>
-    <article className="hb-metric"><span className="hb-metric-icon">◉</span><span className="hb-metric-content"><span className="hb-metric-label">Visíveis</span><strong>{creatures.filter(creature => !creature.is_hidden).length}</strong><small>Disponíveis aos jogadores</small></span></article>
-    {isMaster && <article className="hb-metric"><span className="hb-metric-icon">◌</span><span className="hb-metric-content"><span className="hb-metric-label">Ocultas</span><strong>{creatures.filter(creature => creature.is_hidden).length}</strong><small>Apenas para mestres</small></span></article>}
-    <article className="hb-metric"><span className="hb-metric-icon">✦</span><span className="hb-metric-content"><span className="hb-metric-label">Categorias</span><strong>{Math.max(0, creatureCategories.length - 1)}</strong><small>Tipos catalogados</small></span></article>
-  </div>
-  <div className="hb-toolbar-label"><span className="hb-kicker">EXPLORAR ARQUIVO</span><strong>{filteredCreatures.length} {filteredCreatures.length === 1 ? 'resultado' : 'resultados'}</strong></div>
-  <div className="bestiary-toolbar hb-bestiary-toolbar">
-    <span className="hb-search-symbol" aria-hidden="true">⌕</span>
-    <input
-      type="text"
-      placeholder="Pesquisar criatura..."
-      value={creatureSearch}
-      onChange={event => setCreatureSearch(event.target.value)}
-    />
-
-    <select
-      value={creatureCategoryFilter}
-      onChange={event => setCreatureCategoryFilter(event.target.value)}
-    >
-      {creatureCategories.map(category => (
-        <option key={category} value={category}>
-          {category}
-        </option>
-      ))}
-    </select>
-    {(creatureSearch || creatureCategoryFilter !== 'Todas') && <button type="button" className="secondary-button hb-reset-filters" onClick={() => { setCreatureSearch(''); setCreatureCategoryFilter('Todas') }}>Limpar filtros</button>}
-  </div>
-
-{showCreatureForm && (
-  <div className="bestiary-modal-overlay">
-    <div className="bestiary-modal">
-      <div className="bestiary-modal-header">
-        <div>
-          <span className="shops-eyebrow">✦ NOVO REGISTRO</span>
-          <h2>Cadastrar criatura</h2>
-          <p>Adicione uma nova criatura ao bestiário da campanha.</p>
+      <div className="bestiary-container hb-bestiary hb-beast">
+        <div className="inventory-heading hb-hero hb-bestiary-hero hb-beast-hero">
+          <div className="hb-beast-hero-copy">
+            <span className="hb-kicker">✦ ARQUIVO DE CRIATURAS</span>
+            <h2>Bestiário<span className="hb-title-dot">.</span></h2>
+            <p>Um catálogo vivo de criaturas, ameaças e descobertas da sua campanha.</p>
+            <div className="hb-beast-hero-meta">
+              <span>◈ {selectedCampaign?.name ?? 'Campanha'}</span>
+              <span>{isMaster ? '♜ Visão do mestre' : '◉ Criaturas reveladas'}</span>
+            </div>
+          </div>
+          <div className="hb-beast-hero-side">
+            <div className="hb-beast-hero-symbol" aria-hidden="true">♞</div>
+            {isMaster && (
+              <button type="button" className="bestiary-add-button hb-beast-create" onClick={openNewCreatureForm}>
+                <span aria-hidden="true">＋</span> Nova criatura
+              </button>
+            )}
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-  setShowCreatureForm(false)
-  setEditingCreatureId(null)
-}}
-          aria-label="Fechar"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="bestiary-form">
-        <label>
-          Nome da criatura *
-          <input
-            type="text"
-            value={creatureName}
-            onChange={event => setCreatureName(event.target.value)}
-            placeholder="Ex.: Oni das Sombras"
-          />
-        </label>
-
-        <div className="bestiary-form-row">
-          <label>
-            Categoria
-            <select
-              value={creatureCategory}
-              onChange={event => setCreatureCategory(event.target.value)}
-            >
-              {['Outros', 'Humanoide', 'Fera', 'Monstro', 'Espírito', 'Demônio', 'Morto-vivo', 'Chefe'].map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Nível de ameaça
-            <select
-              value={creatureThreatLevel}
-              onChange={event => setCreatureThreatLevel(event.target.value)}
-            >
-{[
-  'Comum',
-  'Baixo',
-  'Moderado',
-  'Alto',
-  'Extremo',
-  ...(isKisatsutaiSystem ? ['Lua Inferior', 'Lua Superior'] : []),
-  'Lendário',
-].map(level => (
-  <option key={level} value={level}>{level}</option>
-))}
-            </select>
-          </label>
+        <div className="hb-bestiary-metrics hb-metric-grid hb-beast-metrics">
+          <article className="hb-metric"><span className="hb-metric-icon">♞</span><span className="hb-metric-content"><span className="hb-metric-label">Catalogadas</span><strong>{accessibleCreatures.length}</strong><small>Registros disponíveis</small></span></article>
+          <article className="hb-metric"><span className="hb-metric-icon">◉</span><span className="hb-metric-content"><span className="hb-metric-label">Reveladas</span><strong>{accessibleCreatures.filter(creature => !creature.is_hidden).length}</strong><small>Conhecidas pelos jogadores</small></span></article>
+          {isMaster ? (
+            <article className="hb-metric"><span className="hb-metric-icon">◌</span><span className="hb-metric-content"><span className="hb-metric-label">Em segredo</span><strong>{creatures.filter(creature => creature.is_hidden).length}</strong><small>Exclusivas do mestre</small></span></article>
+          ) : (
+            <article className="hb-metric"><span className="hb-metric-icon">⚔</span><span className="hb-metric-content"><span className="hb-metric-label">Ameaças elevadas</span><strong>{accessibleCreatures.filter(creature => ['Alto','Extremo','Lua Inferior','Lua Superior','Lendário'].includes(creature.threat_level)).length}</strong><small>Desafios catalogados</small></span></article>
+          )}
+          <article className="hb-metric"><span className="hb-metric-icon">✧</span><span className="hb-metric-content"><span className="hb-metric-label">Categorias</span><strong>{Math.max(0, creatureCategories.length - 1)}</strong><small>Tipos encontrados</small></span></article>
         </div>
 
-<label>
-  Imagem da criatura
-  <input
-    type="file"
-    accept="image/png,image/jpeg,image/webp"
-    onChange={event => {
-      setCreatureImageFile(event.target.files?.[0] ?? null)
-    }}
-  />
-</label>
+        <div className="hb-beast-library">
+          <div className="hb-beast-library-head">
+            <div><span className="hb-kicker">EXPLORAR REGISTROS</span><h3>Catálogo de criaturas</h3><p>Pesquise por nome, ameaça, descrição, resistência ou fraqueza.</p></div>
+            <span className="hb-beast-result-count">{filteredCreatures.length} {filteredCreatures.length === 1 ? 'criatura' : 'criaturas'}</span>
+          </div>
 
-{(creatureImagePreview ||
-  creatureStoredImagePreview ||
-  creatureImageUrl) && (
-  <div className="creature-image-preview">
-    <img
-      src={
-        creatureImagePreview ||
-        creatureStoredImagePreview ||
-        creatureImageUrl
-      }
-      alt="Pré-visualização da criatura"
-    />
-  </div>
-)}
+          <div className="bestiary-toolbar hb-bestiary-toolbar hb-beast-toolbar">
+            <label className="hb-beast-search">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" aria-label="Pesquisar criaturas" placeholder="Pesquisar no bestiário..." value={creatureSearch} onChange={event => setCreatureSearch(event.target.value)}/>
+            </label>
+            <label className="hb-beast-filter"><span>Ameaça</span><select aria-label="Filtrar por nível de ameaça" value={creatureThreatFilter} onChange={event => setCreatureThreatFilter(event.target.value)}>{creatureThreatLevels.map(level => <option key={level} value={level}>{level === 'Todas' ? 'Todas as ameaças' : level}</option>)}</select></label>
+            {isMaster && <label className="hb-beast-filter"><span>Visibilidade</span><select aria-label="Filtrar por visibilidade" value={creatureVisibilityFilter} onChange={event => setCreatureVisibilityFilter(event.target.value as 'all' | 'visible' | 'hidden')}><option value="all">Todos os registros</option><option value="visible">Revelados</option><option value="hidden">Ocultos</option></select></label>}
+            <label className="hb-beast-filter"><span>Ordenar</span><select aria-label="Ordenar criaturas" value={creatureSortOrder} onChange={event => setCreatureSortOrder(event.target.value as 'name' | 'threat' | 'recent')}><option value="name">Nome A–Z</option><option value="threat">Maior ameaça</option><option value="recent">Mais recentes</option></select></label>
+            <div className="hb-beast-view-toggle" role="group" aria-label="Modo de exibição"><button type="button" className={creatureViewMode === 'grid' ? 'active' : ''} aria-label="Visualizar cartões" aria-pressed={creatureViewMode === 'grid'} title="Cartões" onClick={() => setCreatureViewMode('grid')}>▦</button><button type="button" className={creatureViewMode === 'list' ? 'active' : ''} aria-label="Visualizar lista" aria-pressed={creatureViewMode === 'list'} title="Lista" onClick={() => setCreatureViewMode('list')}>☷</button></div>
+          </div>
+          <div className="hb-beast-category-row" aria-label="Categorias de criaturas">
+            {creatureCategories.map(category => (
+              <button type="button" key={category} className={creatureCategoryFilter === category ? 'active' : ''} aria-pressed={creatureCategoryFilter === category} onClick={() => setCreatureCategoryFilter(category)}>
+                {category}<span>{category === 'Todas' ? accessibleCreatures.length : accessibleCreatures.filter(creature => creature.category === category).length}</span>
+              </button>
+            ))}
+            {creatureFiltersActive && <button type="button" className="hb-beast-clear" onClick={resetCreatureFilters}>✕ Limpar filtros</button>}
+          </div>
 
-        <label>
-          Descrição
-          <textarea
-            value={creatureDescription}
-            onChange={event => setCreatureDescription(event.target.value)}
-            placeholder="Descreva a aparência, comportamento e origem..."
-            rows={4}
-          />
-        </label>
-
-<label>
-  Resistências
-  <textarea
-    value={creatureResistances}
-    onChange={event => setCreatureResistances(event.target.value)}
-    placeholder={'Uma resistência por linha...\nEx.: Fogo\nCorte'}
-    rows={3}
-  />
-</label>
-
-<label>
-  Fraquezas
-  <textarea
-    value={creatureWeaknesses}
-    onChange={event => setCreatureWeaknesses(event.target.value)}
-    placeholder={'Uma fraqueza por linha...\nEx.: Água\nLuz'}
-    rows={3}
-  />
-</label>
-
-<label>
-  Imunidades
-  <textarea
-    value={creatureImmunities}
-    onChange={event => setCreatureImmunities(event.target.value)}
-    placeholder={'Uma imunidade por linha...\nEx.: Veneno\nMedo'}
-    rows={3}
-  />
-</label>
-
-        <div className="bestiary-form-row bestiary-stats-row">
-          <label>
-            PV
-            <input
-              type="number"
-              min="0"
-              value={creaturePv}
-              onChange={event => setCreaturePv(event.target.value)}
-              placeholder="0"
-            />
-          </label>
-
-          <label>
-            PS
-            <input
-              type="number"
-              min="0"
-              value={creaturePs}
-              onChange={event => setCreaturePs(event.target.value)}
-              placeholder="0"
-            />
-          </label>
-
-<label>
-  Pontos de Sangue
-  <input
-    type="number"
-    min="0"
-    value={creaturePr}
-    onChange={event => setCreaturePr(event.target.value)}
-    placeholder="0"
-  />
-</label>
-        </div>
-      </div>
-
-      <div className="bestiary-modal-actions">
-        <button
-          type="button"
-          onClick={() => {
-  setShowCreatureForm(false)
-  setEditingCreatureId(null)
-}}
-          disabled={creatureSaving}
-        >
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          onClick={() => void saveCreature()}
-          disabled={creatureSaving || !creatureName.trim()}
-        >
-          {creatureSaving ? 'Salvando...' : 'Cadastrar criatura'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{selectedCreature && (
-  <div className="bestiary-modal-overlay">
-    <div className="bestiary-modal bestiary-detail-modal">
-      <div className="bestiary-modal-header">
-        <div>
-          <span className="shops-eyebrow">
-            ✦ REGISTRO DO BESTIÁRIO
-          </span>
-          <h2>{selectedCreature.name}</h2>
-          <p>
-            {selectedCreature.category} · {selectedCreature.threat_level}
-          </p>
+          {creaturesLoading ? (
+            <div className="hb-beast-empty" role="status"><span className="hb-beast-empty-icon">◌</span><h3>Carregando registros...</h3><p>Consultando o catálogo da campanha.</p></div>
+          ) : filteredCreatures.length === 0 ? (
+            <div className="hb-beast-empty">
+              <span className="hb-beast-empty-icon">♞</span>
+              <h3>{accessibleCreatures.length === 0 ? 'Seu bestiário está esperando a primeira criatura' : 'Nenhuma criatura encontrada'}</h3>
+              <p>{accessibleCreatures.length === 0 ? 'Os registros cadastrados pelo mestre aparecerão aqui.' : 'Tente outro termo ou remova os filtros para explorar mais registros.'}</p>
+              {creatureFiltersActive && <button type="button" className="secondary-button" onClick={resetCreatureFilters}>Limpar filtros</button>}
+              {isMaster && accessibleCreatures.length === 0 && <button type="button" className="primary-button" onClick={openNewCreatureForm}>＋ Cadastrar primeira criatura</button>}
+            </div>
+          ) : (
+            <div className={`bestiary-creature-grid hb-beast-grid ${creatureViewMode === 'list' ? 'hb-beast-list-mode' : ''}`}>
+              {filteredCreatures.map(creature => {
+                const imageSrc = creature.image_display_url || (creature.image_url?.startsWith('http') ? creature.image_url : '')
+                return <article key={creature.id} className={`bestiary-creature-card hb-bestiary-card hb-beast-card ${creature.is_hidden ? 'is-hidden' : ''}`} role="button" tabIndex={0} aria-label={`Abrir registro de ${creature.name}`} onClick={() => setSelectedCreatureId(creature.id)} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setSelectedCreatureId(creature.id) } }}>
+                  <div className="hb-beast-card-media">
+                    {imageSrc ? <img src={imageSrc} alt="" className="bestiary-creature-image" loading="lazy"/> : <div className="bestiary-creature-placeholder"><span aria-hidden="true">♞</span></div>}
+                    <div className="hb-beast-card-shade"/>
+                    <div className="hb-beast-card-top">
+                      <span className={`hb-beast-threat hb-beast-threat-${creatureThreatTone(creature.threat_level)}`}>✦ {creature.threat_level}</span>
+                      {isMaster && <button type="button" className="bestiary-creature-visibility hb-beast-visibility" title={creature.is_hidden ? 'Revelar aos jogadores' : 'Ocultar dos jogadores'} aria-label={creature.is_hidden ? `Revelar ${creature.name}` : `Ocultar ${creature.name}`} onClick={event => { event.stopPropagation(); void toggleCreatureVisibility(creature) }}>{creature.is_hidden ? '◌' : '◉'}</button>}
+                    </div>
+                    <span className="hb-beast-card-category">{creature.category}</span>
+                  </div>
+                  <div className="bestiary-creature-info hb-beast-card-body">
+                    <h3>{creature.name}</h3>
+                    <p className="hb-beast-card-description">{creature.description?.trim() || 'Nenhuma descrição registrada para esta criatura.'}</p>
+                    <div className="hb-beast-card-resources" aria-label="Recursos da criatura">
+                      <span><small>PV</small><strong>{creature.pv ?? '—'}</strong></span>
+                      <span><small>PS</small><strong>{creature.ps ?? '—'}</strong></span>
+                      <span><small>SG</small><strong>{creature.pr ?? '—'}</strong></span>
+                    </div>
+                    <div className="hb-beast-card-traits">
+                      {(creature.resistances ?? []).length > 0 && <span>🛡 {creature.resistances.length} res.</span>}
+                      {(creature.weaknesses ?? []).length > 0 && <span>⚠ {creature.weaknesses.length} fraq.</span>}
+                      {(creature.immunities ?? []).length > 0 && <span>✧ {creature.immunities.length} imune</span>}
+                    </div>
+                    <div className="hb-beast-card-footer">
+                      {isMaster ? <span className={`hb-beast-card-status ${creature.is_hidden ? 'secret' : ''}`}>{creature.is_hidden ? '◌ Oculta' : '◉ Revelada'}</span> : <span className="hb-beast-card-status">◉ Catalogada</span>}
+                      <span className="hb-beast-card-open">Ver detalhes <span aria-hidden="true">↗</span></span>
+                    </div>
+                    {isMaster && <button type="button" className="hb-beast-card-edit" onClick={event => { event.stopPropagation(); openCreatureEditor(creature) }}>✎ Editar registro</button>}
+                  </div>
+                </article>
+              })}
+            </div>
+          )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setSelectedCreatureId(null)}
-          aria-label="Fechar"
-        >
-          ×
-        </button>
-      </div>
-
-{(selectedCreature.image_display_url ||
-  selectedCreature.image_url?.startsWith('http')) && (
-  <img
-    src={
-      selectedCreature.image_display_url ??
-      selectedCreature.image_url!
-    }
-    alt={selectedCreature.name}
-    className="bestiary-detail-image"
-  />
-)}
-
-      {selectedCreature.description && (
-        <div className="bestiary-detail-section">
-          <h3>Descrição</h3>
-          <p>{selectedCreature.description}</p>
-        </div>
-      )}
-
-      <div className="bestiary-detail-stats">
-        <div><span>Pontos de Vida</span><strong>{selectedCreature.pv ?? '—'}</strong></div>
-        <div><span>Pontos de Sanidade</span><strong>{selectedCreature.ps ?? '—'}</strong></div>
-        <div>
-  <span>Pontos de Sangue</span>
-  <strong>{selectedCreature.pr ?? '—'}</strong>
-</div>
-      </div>
-
-{[
-  {
-    title: 'Resistências',
-    items: selectedCreature.resistances,
-    icon: '🛡️',
-  },
-  {
-    title: 'Fraquezas',
-    items: selectedCreature.weaknesses,
-    icon: '⚠️',
-  },
-  {
-    title: 'Imunidades',
-    items: selectedCreature.immunities,
-    icon: '✨',
-  },
-].map(section => section.items.length > 0 && (
-  <div className="bestiary-detail-section" key={section.title}>
-    <h3>{section.icon} {section.title}</h3>
-    <div className="bestiary-detail-tags">
-      {section.items.map((item, index) => (
-        <span key={`${item}-${index}`}>{item}</span>
-      ))}
-    </div>
-  </div>
-))}
-
-      {isMaster && (
-        <div className="bestiary-modal-actions">
-          <button
-            type="button"
-            onClick={() => setSelectedCreatureId(null)}
-          >
-            Fechar
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCreatureId(null)
-              openCreatureEditor(selectedCreature)
-            }}
-          >
-            Editar criatura
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-)}
-
-{creaturesLoading ? (
-  <div className="empty-state">
-    <h3>Carregando criaturas...</h3>
-    <p>Consultando o bestiário desta campanha.</p>
-  </div>
-) : filteredCreatures.length === 0 ? (
-  <div className="empty-state">
-    <h3>
-      {creatures.length === 0
-        ? 'O bestiário ainda está vazio'
-        : 'Nenhuma criatura encontrada'}
-    </h3>
-    <p>
-      {creatures.length === 0
-        ? 'Ainda não existem criaturas cadastradas nesta campanha.'
-        : 'Tente alterar sua pesquisa ou selecionar outra categoria.'}
-    </p>
-  </div>
-) : (
-  <div className="bestiary-creature-grid">
-    {filteredCreatures.map(creature => (
-<article
-  key={creature.id}
-  className={`bestiary-creature-card hb-bestiary-card ${creature.is_hidden ? 'is-hidden' : ''}`}
-  onClick={() => setSelectedCreatureId(creature.id)}
-  role="button"
-  tabIndex={0}
-  onKeyDown={event => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      setSelectedCreatureId(creature.id)
-    }
-  }}
->
-  {isMaster && (
-  <button
-    type="button"
-    className="bestiary-creature-visibility"
-    title={creature.is_hidden ? 'Revelar monstro' : 'Ocultar monstro'}
-    aria-label={creature.is_hidden ? 'Revelar monstro' : 'Ocultar monstro'}
-    onClick={event => {
-  event.stopPropagation()
-  void toggleCreatureVisibility(creature)
-}}
-  >
-    👁️
-  </button>
-)}
-        {creature.image_url ? (
-          <img
-            src={creature.image_display_url ?? (creature.image_url?.startsWith('http') ? creature.image_url : '')}
-            alt={creature.name}
-            className="bestiary-creature-image"
-          />
-        ) : (
-          <div className="bestiary-creature-placeholder">
-            ♞
+        {showCreatureForm && (
+          <div className="bestiary-modal-overlay" role="presentation">
+            <div className="bestiary-modal hb-beast-editor" role="dialog" aria-modal="true" aria-labelledby="hb-beast-editor-title">
+              <div className="bestiary-modal-header hb-beast-editor-header">
+                <div><span className="shops-eyebrow">✦ {editingCreatureId ? 'EDITAR REGISTRO' : 'NOVO REGISTRO'}</span><h2 id="hb-beast-editor-title">{editingCreatureId ? 'Editar criatura' : 'Cadastrar criatura'}</h2><p>Organize as informações que aparecerão no catálogo da campanha.</p></div>
+                <button type="button" onClick={() => { setShowCreatureForm(false); setEditingCreatureId(null) }} disabled={creatureSaving} aria-label="Fechar">×</button>
+              </div>
+              <div className="bestiary-form hb-beast-editor-body">
+                <section className="hb-beast-form-section">
+                  <div className="hb-beast-form-heading"><span>01</span><div><h3>Identidade</h3><p>Como a criatura será reconhecida no bestiário.</p></div></div>
+                  <label>Nome da criatura *<input type="text" maxLength={100} value={creatureName} onChange={event => setCreatureName(event.target.value)} placeholder="Ex.: Oni das Sombras"/></label>
+                  <div className="bestiary-form-row"><label>Categoria<select value={creatureCategory} onChange={event => setCreatureCategory(event.target.value)}>{['Outros', 'Humanoide', 'Fera', 'Monstro', 'Espírito', 'Demônio', 'Morto-vivo', 'Chefe'].map(category => <option key={category} value={category}>{category}</option>)}</select></label><label>Nível de ameaça<select value={creatureThreatLevel} onChange={event => setCreatureThreatLevel(event.target.value)}>{['Comum','Baixo','Moderado','Alto','Extremo',...(isKisatsutaiSystem ? ['Lua Inferior','Lua Superior'] : []),'Lendário'].map(level => <option key={level} value={level}>{level}</option>)}</select></label></div>
+                  <label>Descrição<textarea value={creatureDescription} onChange={event => setCreatureDescription(event.target.value)} placeholder="Aparência, comportamento, origem e informações importantes..." rows={4}/></label>
+                </section>
+                <section className="hb-beast-form-section">
+                  <div className="hb-beast-form-heading"><span>02</span><div><h3>Retrato</h3><p>PNG, JPG ou WebP, até 5 MB. A imagem é exibida nos cartões e na ficha.</p></div></div>
+                  <div className="hb-beast-upload-row">
+                    <div className="hb-beast-upload-preview">{(creatureImagePreview || creatureStoredImagePreview || creatureImageUrl) ? <img src={creatureImagePreview || creatureStoredImagePreview || creatureImageUrl} alt="Pré-visualização da criatura"/> : <span aria-hidden="true">♞</span>}</div>
+                    <label className="hb-beast-upload-label">Selecionar imagem<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => { const file = event.target.files?.[0] ?? null; if (file && file.size > 5 * 1024 * 1024) { setError('A imagem deve ter no máximo 5 MB.'); setCreatureImageFile(null); event.target.value = ''; return } setCreatureImageFile(file) }}/><small>{creatureImageFile?.name || (creatureStoredImagePreview ? 'Imagem atual preservada' : 'Nenhuma imagem selecionada')}</small></label>
+                  </div>
+                </section>
+                <section className="hb-beast-form-section">
+                  <div className="hb-beast-form-heading"><span>03</span><div><h3>Recursos</h3><p>Valores de referência para consulta rápida.</p></div></div>
+                  <div className="bestiary-form-row bestiary-stats-row"><label>PV<input type="number" min="0" value={creaturePv} onChange={event => setCreaturePv(event.target.value)} placeholder="—"/></label><label>PS<input type="number" min="0" value={creaturePs} onChange={event => setCreaturePs(event.target.value)} placeholder="—"/></label><label>SG · Sangue<input type="number" min="0" value={creaturePr} onChange={event => setCreaturePr(event.target.value)} placeholder="—"/></label></div>
+                </section>
+                <section className="hb-beast-form-section">
+                  <div className="hb-beast-form-heading"><span>04</span><div><h3>Características</h3><p>Insira uma característica por linha.</p></div></div>
+                  <div className="hb-beast-trait-inputs"><label>🛡 Resistências<textarea value={creatureResistances} onChange={event => setCreatureResistances(event.target.value)} placeholder={'Fogo\nCorte'} rows={3}/></label><label>⚠ Fraquezas<textarea value={creatureWeaknesses} onChange={event => setCreatureWeaknesses(event.target.value)} placeholder={'Água\nLuz'} rows={3}/></label><label>✧ Imunidades<textarea value={creatureImmunities} onChange={event => setCreatureImmunities(event.target.value)} placeholder={'Veneno\nMedo'} rows={3}/></label></div>
+                </section>
+              </div>
+              <div className="bestiary-modal-actions hb-beast-editor-actions"><button type="button" disabled={creatureSaving} onClick={() => { setShowCreatureForm(false); setEditingCreatureId(null) }}>Cancelar</button><button type="button" disabled={creatureSaving || !creatureName.trim()} onClick={() => void saveCreature()}>{creatureSaving ? 'Salvando…' : editingCreatureId ? 'Salvar alterações' : 'Cadastrar criatura'}</button></div>
+            </div>
           </div>
         )}
 
-<div className="bestiary-creature-info">
-  <span className="hb-bestiary-category">{creature.category}</span>
-  <h3>{creature.name}</h3>
-  <p><span className="hb-danger-indicator"/> Nível de ameaça: <strong>{creature.threat_level}</strong></p>
-
-  {isMaster && (
-    <small className={`bestiary-creature-status ${creature.is_hidden ? 'is-hidden' : 'is-visible'}`}>
-      {creature.is_hidden
-        ? '🔒 Oculto dos jogadores'
-        : '🌐 Visível aos jogadores'}
-    </small>
-  )}
-</div>
-      </article>
-    ))}
-  </div>
-)}
+        {selectedCreature && (
+          <div className="bestiary-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedCreatureId(null) }}>
+            <div className="bestiary-modal bestiary-detail-modal hb-beast-detail" role="dialog" aria-modal="true" aria-labelledby="hb-beast-detail-title">
+              <div className="hb-beast-detail-hero">
+                {selectedCreature.image_display_url || selectedCreature.image_url?.startsWith('http') ? <img src={selectedCreature.image_display_url || selectedCreature.image_url || ''} alt=""/> : <div className="hb-beast-detail-placeholder" aria-hidden="true">♞</div>}
+                <div className="hb-beast-detail-shade"/>
+                <div className="hb-beast-detail-identity"><span className={`hb-beast-threat hb-beast-threat-${creatureThreatTone(selectedCreature.threat_level)}`}>✦ {selectedCreature.threat_level}</span><span className="hb-beast-detail-category">{selectedCreature.category}</span><h2 id="hb-beast-detail-title">{selectedCreature.name}</h2><p>{isMaster ? (selectedCreature.is_hidden ? '◌ Registro oculto dos jogadores' : '◉ Registro revelado aos jogadores') : '◉ Registro do bestiário'}</p></div>
+                <button type="button" className="hb-beast-detail-close" onClick={() => setSelectedCreatureId(null)} aria-label="Fechar detalhes">×</button>
+              </div>
+              <div className="hb-beast-detail-content">
+                <div className="hb-beast-detail-stats"><article><span>❤ PONTOS DE VIDA</span><strong>{selectedCreature.pv ?? '—'}</strong><small>PV</small></article><article><span>◈ SANIDADE</span><strong>{selectedCreature.ps ?? '—'}</strong><small>PS</small></article><article><span>◆ PONTOS DE SANGUE</span><strong>{selectedCreature.pr ?? '—'}</strong><small>SG</small></article></div>
+                {selectedCreature.description && <section className="hb-beast-detail-section"><div className="hb-beast-detail-section-title"><span>01</span><h3>Sobre a criatura</h3></div><p>{selectedCreature.description}</p></section>}
+                <div className="hb-beast-detail-traits">{[
+                  {title:'Resistências', icon:'🛡', items:selectedCreature.resistances ?? [], tone:'resistance'},
+                  {title:'Fraquezas', icon:'⚠', items:selectedCreature.weaknesses ?? [], tone:'weakness'},
+                  {title:'Imunidades', icon:'✧', items:selectedCreature.immunities ?? [], tone:'immunity'},
+                ].map(section => <section key={section.title} className={`hb-beast-trait-panel hb-beast-trait-${section.tone}`}><h3><span>{section.icon}</span>{section.title}<small>{section.items.length}</small></h3>{section.items.length > 0 ? <div className="hb-beast-trait-tags">{section.items.map((item,index) => <span key={`${item}-${index}`}>{item}</span>)}</div> : <p>Não registradas.</p>}</section>)}</div>
+                <div className="hb-beast-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedCreatureId(null)}>← Voltar ao catálogo</button>{isMaster && <button type="button" className="primary-button" onClick={() => { const creature = selectedCreature; setSelectedCreatureId(null); openCreatureEditor(creature) }}>✎ Editar criatura</button>}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )}
   </section>
