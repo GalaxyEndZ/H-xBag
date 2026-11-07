@@ -5937,6 +5937,8 @@ async function duplicateItem(item: Item) {
     setProfileNameDraft(String(displayName))
     setProfileAvatarDraft(accountAvatar)
     setProfileBioDraft(accountBio)
+    setError('')
+    setNotice('')
     setActivePage('profile')
   }
 
@@ -8359,7 +8361,7 @@ counterAttackDT
                 setSelectedCampaignId(campaignId)
                 const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
                 if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-                else setNotice('Campanha principal atualizada para este perfil.')
+                else if (activePage !== 'profile') setNotice('Campanha principal atualizada para este perfil.')
               }}
               aria-label="Selecionar campanha ativa"
             >
@@ -9674,11 +9676,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
 `}</style>
           {activePage === 'profile' && (
-            <section className="hb-profile-page hb-profile-page-v12" aria-labelledby="hb-profile-title">
+            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13" aria-labelledby="hb-profile-title">
               <header className="hb-profile-hero hb-profile-banner">
                 <span className="hb-profile-banner-art" aria-hidden="true" />
+                <span className="hb-profile-banner-stamp" aria-hidden="true">{activeVisualStyle.symbol}</span>
                 <div className="hb-profile-banner-body">
-                  <span className="hb-profile-overline">✦ IDENTIDADE DO AVENTUREIRO</span>
+                  <div className="hb-profile-banner-eyebrow"><span aria-hidden="true">✦</span> SEU ESPAÇO PESSOAL <span className="hb-profile-banner-line" /></div>
                   <div className="hb-profile-title-row">
                     <span className="hb-profile-avatar hb-profile-avatar-xl" aria-hidden="true">
                       {profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}
@@ -9686,13 +9689,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <div className="hb-profile-heading">
                       <h1 id="hb-profile-title">Meu perfil</h1>
                       <strong>{profileNameDraft.trim() || displayName}</strong>
-                      <p>Sua identidade no universo HäxBag. Personalize seu avatar e sua apresentação.</p>
+                      <p>O rosto e a história por trás das suas aventuras. Personalize sua presença no HäxBag.</p>
                     </div>
                   </div>
                   <div className="hb-profile-hero-tags">
-                    <span>✧ {campaigns.length} {campaigns.length === 1 ? 'campanha' : 'campanhas'}</span>
-                    <span>✦ {activeVisualStyle.label}</span>
-                    <span className="hb-profile-presence"><i aria-hidden="true" /> Conectado</span>
+                    <span className="hb-profile-presence"><i aria-hidden="true" /> Conta ativa</span>
+                    <span>✦ Identidade {activeVisualStyle.label}</span>
+                    <span>✧ Membro desde {accountCreatedAt}</span>
                   </div>
                 </div>
               </header>
@@ -9758,11 +9761,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 }}>
                   <div className="hb-profile-card-heading">
                     <span className="hb-profile-card-glyph" aria-hidden="true">✦</span>
-                    <div><span className="hb-kicker">PERSONALIZAÇÃO</span><h2>Sua identidade</h2><p>Escolha como seu perfil aparece para você.</p></div>
+                    <div><span className="hb-kicker">PERSONALIZAÇÃO</span><h2>Editar perfil</h2><p>Deixe sua marca no HäxBag. As mudanças aparecem na prévia ao lado.</p></div>
                   </div>
                   <fieldset className="hb-profile-avatar-fieldset">
                     <legend>Avatar do perfil</legend>
-                    <p>Escolha um símbolo para representar sua conta no menu principal.</p>
+                    <p>Escolha um símbolo para representar sua conta no menu principal e no seu cartão de perfil.</p>
                     <div className="hb-profile-avatar-options" role="group" aria-label="Escolha seu avatar">
                       <button type="button" className={`hb-profile-avatar-option ${profileAvatarDraft === '' ? 'active' : ''}`}
                         aria-label="Usar iniciais do nome" aria-pressed={profileAvatarDraft === ''} onClick={() => setProfileAvatarDraft('')}>
@@ -9777,15 +9780,16 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <label className="hb-profile-field">Nome de exibição
                     <input maxLength={60} required value={profileNameDraft} onChange={event => setProfileNameDraft(event.target.value)}
                       autoComplete="nickname" placeholder="Como os outros jogadores verão seu nome" />
-                    <small>Este nome também identifica você nas campanhas.</small>
+                    <small>Este nome também identifica você nas campanhas. {profileNameDraft.length}/60</small>
                   </label>
                   <label className="hb-profile-field">Sobre você <span className="hb-profile-optional">Opcional</span>
                     <textarea rows={4} maxLength={180} value={profileBioDraft} onChange={event => setProfileBioDraft(event.target.value)}
                       placeholder="Uma frase sobre suas aventuras, personagens ou histórias favoritas…" />
-                    <small>{profileBioDraft.length}/180 caracteres · Salvo na sua conta; por enquanto visível apenas neste perfil.</small>
+                    <span className="hb-profile-bio-meta"><small>Visível apenas para você nesta versão</small><small>{profileBioDraft.length}/180</small></span>
+                    <span className="hb-profile-bio-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, (profileBioDraft.length / 180) * 100)}%` }} /></span>
                   </label>
                   <div className="hb-profile-form-footer">
-                    <span className="hb-profile-save-status" aria-live="polite">{profileHasChanges ? '● Alterações não salvas' : '✓ Tudo atualizado'}</span>
+                    <span className={`hb-profile-save-status ${profileHasChanges ? 'has-changes' : 'is-saved'}`} aria-live="polite">{profileHasChanges ? '● Alterações não salvas' : '✓ Perfil atualizado'}</span>
                     <div className="hb-profile-form-actions">
                       <button type="button" className="secondary-button" disabled={profileSaving || !profileHasChanges}
                         onClick={() => { setProfileNameDraft(String(displayName)); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio) }}>Descartar</button>
@@ -9797,11 +9801,23 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </form>
 
                 <aside className="hb-profile-side-panel">
+                  <section className="hb-profile-side-card hb-profile-preview-panel" aria-label="Prévia do perfil">
+                    <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">EM TEMPO REAL</span><h2>Prévia do perfil</h2></div></div>
+                    <div className="hb-profile-preview-card">
+                      <span className="hb-profile-preview-art" aria-hidden="true" />
+                      <div className="hb-profile-preview-topline"><span>HÄXBAG</span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
+                      <span className="hb-profile-preview-avatar" aria-hidden="true">{profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}</span>
+                      <strong className="hb-profile-preview-name">{profileNameDraft.trim() || 'Seu nome de exibição'}</strong>
+                      <p className="hb-profile-preview-bio">{profileBioDraft.trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
+                      <span className="hb-profile-preview-signature">✦ IDENTIDADE DO AVENTUREIRO</span>
+                    </div>
+                    <p className="hb-profile-preview-help">Uma amostra de como seu perfil pode aparecer. Apenas o que você salvar ficará na sua conta.</p>
+                  </section>
                   <section className="hb-profile-side-card">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">⌘</span><div><span className="hb-kicker">DADOS DA CONTA</span><h2>Informações</h2></div></div>
                     <div className="hb-profile-account-line"><span>E-mail</span><strong title={session.user.email || ''}>{session.user.email || 'Indisponível'}</strong><small>Privado · não exibido para outros jogadores</small></div>
-                    <div className="hb-profile-account-line"><span>Campanha atual</span><strong>{selectedCampaign?.name || 'Nenhuma selecionada'}</strong></div>
-                    <div className="hb-profile-account-line"><span>Estilo visual</span><strong>{activeVisualStyle.symbol} {activeVisualStyle.label}</strong><small>Definido pela temporada ativa</small></div>
+                    <div className="hb-profile-account-line"><span>Tipo de acesso</span><strong>{selectedCampaign ? isMaster ? 'Mestre e jogador' : 'Jogador' : 'Conta pessoal'}</strong></div>
+                    <div className="hb-profile-account-line"><span>Estilo em uso</span><strong>{activeVisualStyle.symbol} {activeVisualStyle.label}</strong><small>O visual acompanha a temporada ativa</small></div>
                   </section>
                   <section className="hb-profile-side-card">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">↗</span><div><span className="hb-kicker">ACESSO RÁPIDO</span><h2>Continuar aventura</h2></div></div>
@@ -9894,7 +9910,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && (
           <section className="welcome-row">
 
 
