@@ -92,6 +92,7 @@ export function calculateKisatsutaiCombatRoll(
 
 // Pontos extras de atributos concedidos por graduação.
 export const KISATSUTAI_RANK_ATTRIBUTE_POINTS: Record<string, number> = {
+  civil: 0,
   zaidan: 1,
   mizunoto: 1,
   mizunoe: 2,

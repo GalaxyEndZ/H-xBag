@@ -229,7 +229,7 @@ export default function HaxTable(props: {
     if (!isMaster && !(item.kind === 'character' && canMove(item))) return
     const emoji = patch.emoji === undefined ? item.emoji : patch.emoji.trim()
     const imageUrl = patch.image_url === undefined ? item.image_url : patch.image_url.trim()
-    if (!imageUrl || /^https:\/\//i.test(imageUrl) || (isMaster && imageUrl.startsWith('storage:')) || imageUrl === item.image_url) {
+    if (!imageUrl || /^https:\/\//i.test(imageUrl) || (imageUrl.startsWith(`storage:${campaignId}/`) && (isMaster || (item.kind === 'character' && canMove(item)))) || imageUrl === item.image_url) {
       setError('')
       if (isMaster) {
         await patchObject(item.id, patch)
@@ -250,13 +250,13 @@ export default function HaxTable(props: {
   async function uploadAsset(event: ChangeEvent<HTMLInputElement>, target: 'background' | 'object' | 'token') {
     const file = event.target.files?.[0]
     event.target.value = ''
-    if (!file || !scene || !isMaster || (target === 'token' && !selected)) return
+    if (!file || !scene || assetUploading || (!isMaster && !(target === 'token' && selected?.kind === 'character' && canMove(selected))) || (target === 'token' && !selected)) return
     if (!['image/png', 'image/webp', 'image/jpeg'].includes(file.type) || file.size > 15 * 1024 * 1024) {
       setError('Use PNG, JPG ou WebP de até 15 MB.'); return
     }
     setAssetUploading(true); setError('')
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-    const path = `${campaignId}/${crypto.randomUUID()}.${ext}`
+    const path = `${campaignId}/${userId}/${crypto.randomUUID()}.${ext}`
     const { error: err } = await supabase.storage.from('hb-vtt-assets').upload(path, file, { upsert: false, contentType: file.type })
     if (err) setError('Falha ao enviar imagem: ' + err.message)
     else {
@@ -563,10 +563,10 @@ export default function HaxTable(props: {
           <div className="hvtt-appearance-input"><input aria-label="Emoji personalizado" placeholder="Outro emoji" value={tokenEmojiDraft} maxLength={32} onChange={event => setTokenEmojiDraft(event.target.value)}/><button type="button" onClick={() => void updateTokenAppearance(selected, { emoji: tokenEmojiDraft || '✦', image_url: '' })}>Usar</button></div>
           <label>Retrato por imagem HTTPS</label>
           <div className="hvtt-appearance-input"><input aria-label="URL do retrato da peça" placeholder="https://exemplo.com/personagem.png" value={tokenUrlDraft} maxLength={3000} onChange={event => setTokenUrlDraft(event.target.value)}/><button type="button" onClick={() => void updateTokenAppearance(selected, { image_url: tokenUrlDraft })}>Aplicar</button></div>
-          <div className="hvtt-appearance-actions">{isMaster && <label className="hvtt-upload">{assetUploading ? 'Enviando…' : '↑ Enviar retrato'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={assetUploading} onChange={event => void uploadAsset(event,'token')}/></label>}
+          <div className="hvtt-appearance-actions"><label className="hvtt-upload">{assetUploading ? 'Enviando…' : '↑ Enviar retrato'}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={assetUploading} onChange={event => void uploadAsset(event,'token')}/></label>
             {selected.image_url && <button type="button" onClick={() => void updateTokenAppearance(selected, { image_url: '' })}>Remover imagem</button>}
           </div>
-          {!isMaster && <p>Você pode personalizar os ícones dos personagens que controla. O mestre pode enviar imagens diretamente.</p>}
+          {!isMaster && <p>Você pode enviar imagens e personalizar os ícones dos personagens que controla.</p>}
         </section>}
         {isMaster && <><label>Nome<input value={selected.name} onChange={event => setObjects(old => old.map(obj => obj.id===selected.id ? {...obj,name:event.target.value}:obj))}
         onBlur={event => void patchObject(selected.id,{name:event.target.value})}/></label>

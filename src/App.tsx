@@ -37,7 +37,11 @@ function calculateSheetAttribute(
     0,
   )
   const legacyClass = nonnegativeInteger(read(`progression.allocations.class.${attribute}`, 0))
-  return Math.min(maxAttribute, Math.max(0, base + allocations + legacyClass + familyBonus))
+  // Penalidade voluntária independente dos pontos de família / tier.
+  // Só gera -1 quando o atributo efetivamente parte de zero, sem penalidade herdada.
+  const penalty = Number(read(`progression.attributePenalties.${attribute}`, 0)) === -1 &&
+    base + familyBonus === 0 && familyBonus >= 0 ? -1 : 0
+  return Math.min(maxAttribute, Math.max(-1, base + allocations + legacyClass + familyBonus + penalty))
 }
 
 type SheetSkill = 'vigor' | 'mental' | 'combat' | 'dexterity' | 'resistance' | 'ability'
@@ -766,6 +770,10 @@ const resetCreatureFilters = () => {
     }
   }, [activeThemeKey, activeVisualStyleKey])
 
+  const [creatingSeason, setCreatingSeason] = useState(false)
+  const creatingSeasonRef = useRef(false)
+  const [profileNameDraft, setProfileNameDraft] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
@@ -1077,7 +1085,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'shops' | 'master-shield' | 'bestiary' | 'enemies'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'shops' | 'master-shield' | 'bestiary' | 'enemies' | 'profile'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -1102,7 +1110,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [archetype, setArchetype] = useState('')
   const [primaryArchetype, setPrimaryArchetype] = useState('')
   const [secondaryArchetype, setSecondaryArchetype] = useState('')
-  const [characterRank, setCharacterRank] = useState('zaidan')
+  const [characterRank, setCharacterRank] = useState('civil')
   const [characterFamilyTier, setCharacterFamilyTier] = useState('5')
   const [characterLevel, setCharacterLevel] = useState('1')
 
@@ -3953,12 +3961,21 @@ async function deleteCampaign(campaign: Campaign) {
 
   async function createSeason(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedCampaignId || !isMaster || !newSeasonName.trim()) return
+    if (!selectedCampaignId || !isMaster || !newSeasonName.trim() || creatingSeasonRef.current) return
+    creatingSeasonRef.current = true
+    setCreatingSeason(true)
     setLoading(true); setError(''); setNotice('')
+    try {
     const nextNumber = Math.max(0, ...seasons.map(season => season.season_number)) + 1
     const { data: created, error: createError } = await supabase.from('campaign_seasons').insert({ campaign_id: selectedCampaignId, name: newSeasonName.trim(), description: newSeasonDescription.trim() || null, season_number: nextNumber, status: seasons.some(season => season.status === 'active') ? 'draft' : 'active', created_by: session!.user.id }).select('*').single()
     if (createError || !created) { setError(`Não foi possível criar a temporada: ${createError?.message ?? 'resposta vazia'}`); setLoading(false); return }
     const season = created as Season
+    // A temporada já existe no banco. Mostre-a imediatamente, mesmo se um snapshot falhar,
+    // para evitar que o mestre a crie novamente ao tentar corrigir o problema.
+    setSeasons(current => current.some(entry => entry.id === season.id) ? current : [...current, season].sort((a,b) => a.season_number-b.season_number))
+    setSelectedSeasonId(season.id)
+    setNewSeasonName('')
+    setNewSeasonDescription('')
     for (const character of characters) {
       let initialData: Record<string, unknown> = {}
       if (copyPreviousSheet && selectedSeasonId) {
@@ -3971,7 +3988,14 @@ async function deleteCampaign(campaign: Campaign) {
       const { error: versionError } = await supabase.from('character_sheet_versions').insert({ character_sheet_id: newSheet.id, character_id: character.id, season_id: season.id, sheet_data: initialData, milestone_type: 'season_start', milestone_name: `Início da temporada ${season.name}`, notes: 'Snapshot automático no início da temporada.', created_by: session!.user.id })
       if (versionError) { setError(`Ficha de ${character.name} criada, mas o snapshot inicial falhou: ${versionError.message}`); setLoading(false); return }
     }
-    setSeasons(current => [...current, season].sort((a,b) => a.season_number-b.season_number)); setSelectedSeasonId(season.id); setNewSeasonName(''); setNewSeasonDescription(''); setNotice(`Temporada “${season.name}” criada.`); void recordCampaignActivity({ activityType: 'season_created', title: 'Temporada criada', description: `T${season.season_number} · ${season.name}`, entityType: 'season', entityId: season.id }); setLoading(false)
+    setSeasons(current => current.some(entry => entry.id === season.id) ? current : [...current, season].sort((a,b) => a.season_number-b.season_number)); setSelectedSeasonId(season.id); setNewSeasonName(''); setNewSeasonDescription(''); setNotice(`Temporada “${season.name}” criada.`); void recordCampaignActivity({ activityType: 'season_created', title: 'Temporada criada', description: `T${season.season_number} · ${season.name}`, entityType: 'season', entityId: season.id }); setLoading(false)
+    } catch (err) {
+      setError('Não foi possível concluir a criação: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      creatingSeasonRef.current = false
+      setCreatingSeason(false)
+      setLoading(false)
+    }
   }
 
   async function saveSeasonTheme(themeKey: keyof typeof seasonThemes) {
@@ -5008,7 +5032,7 @@ setArchetype('')
 setPrimaryArchetype('')
 setSecondaryArchetype('')
 setCharacterLevel('1')
-setCharacterRank('zaidan')
+setCharacterRank('civil')
 setCharacterFamilyTier('5')
 setShowCharacterForm(false)
 setNotice('Personagem criado e salvo!')
@@ -6455,6 +6479,11 @@ useEffect(() => {
                     const rankIdForStatus = rankIdForAttributes
                     const numRaw = (path: string) => { const value = Number(read(path, 0)); return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0 }
 
+                    const voluntaryAttributeCredit = familyAllocationKeys.reduce((sum, key) => {
+                      const base = numRaw(`attributes.${key}`)
+                      const bonus = usesFamilyTiers ? getSystemAttributeBonus(familyTierKey, key) : 0
+                      return sum + (base + bonus === 0 && bonus >= 0 && Number(read(`progression.attributePenalties.${key}`, 0)) === -1 ? 1 : 0)
+                    }, 0)
                     const attributeTotalUsed = (source: typeof allocationSources[number]) =>
                       familyAllocationKeys.reduce(
                         (sum, key) => sum + allocation(source, key),
@@ -7346,7 +7375,8 @@ const allocationPool = (source: typeof allocationSources[number]) => {
   return (
     numRaw('progression.extraAttributePoints') +
     numRaw('progression.attributePoints') +
-    numRaw('progression.manualExtraAttributePoints')
+    numRaw('progression.manualExtraAttributePoints') +
+    voluntaryAttributeCredit
   )
 }
                         const promotionLog: any[] = Array.isArray(read('progression.promotionLog', [])) ? read('progression.promotionLog', []) : []
@@ -7557,7 +7587,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                                 </div>
                               </div>
 
-                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto distribuído aumenta o atributo em 1 nível. Limite: 5 por atributo.</p>
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto aumenta o atributo em 1. Você pode reduzir a −1 um atributo que começa em 0 para ganhar 1 ponto em Extras. Penalidades herdadas de família/tier não concedem pontos. Limite superior: 5.</p>
 
                               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>
                                 {allocationSources.map(source=>{
@@ -7604,23 +7634,19 @@ const familyBonus = usesFamilyTiers
   ? getSystemAttributeBonus(familyTierKey, key)
   : 0
 
-const minimum = Math.min(5, Math.max(0, baseValue + familyBonus))
-
-const current = Math.min(
-  5,
-  Math.max(0, baseValue + familyBonus + extra)
-)
+const innate = Math.min(5, Math.max(-1, baseValue + familyBonus))
+const canTakePenalty = innate === 0 && familyBonus >= 0
+const penalty = canTakePenalty && Number(read(`progression.attributePenalties.${key}`, 0)) === -1 ? -1 : 0
+const minimum = canTakePenalty ? -1 : innate
+const current = Math.min(5, Math.max(-1, baseValue + familyBonus + extra + penalty))
                                   return (
                                     <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}>
                                       <span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{({strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:sheetResourceName,intellect:'Intelecto'})[key]}</span>
-                                      <input type="number" min={minimum} max={5} defaultValue={current} key={`${key}-${minimum}`} onChange={e => {
+                                      <input type="number" min={minimum} max={5} defaultValue={current} key={`${key}-${current}-${minimum}`} disabled={!renderCanEdit} onChange={e => {
 
 if (e.target.value === '') return
 
-const wanted = Math.max(
-  minimum,
-  Math.min(5, Math.floor(Number(e.target.value) || 0))
-)
+const wanted = Math.max(minimum, Math.min(5, Math.floor(Number(e.target.value) || 0)))
 
 const familyBonus = usesFamilyTiers
   ? getSystemAttributeBonus(familyTierKey, key)
@@ -7642,6 +7668,10 @@ let remaining = Math.max(
     ...data,
     progression: {
       ...(data.progression || {}),
+      attributePenalties: {
+        ...(data.progression?.attributePenalties || {}),
+        [key]: wanted === -1 && canTakePenalty ? -1 : 0,
+      },
       allocations: {
         ...(data.progression?.allocations || {}),
         family: {
@@ -7658,6 +7688,15 @@ let remaining = Math.max(
         },
       },
     },
+  }
+
+  // Ao escolher -1, remove distribuições anteriores desse atributo,
+  // e o crédito passa a existir exclusivamente na reserva Extras.
+  if (wanted === -1 && canTakePenalty) {
+    for (const source of allocationSources) next.progression.allocations[source][key] = 0
+    next.progression.allocations.class[key] = 0
+    updateRenderDraft(JSON.stringify(next, null, 2))
+    return
   }
 
   for (const source of allocationSources) {
@@ -7688,7 +7727,7 @@ let remaining = Math.max(
 
     const capacity = Math.max(
       0,
-      allocationPool(source) - otherUsed
+      allocationPool(source) - (source === 'extra' && penalty === -1 ? 1 : 0) - otherUsed
     )
 
     const assigned = Math.min(remaining, capacity)
@@ -7707,7 +7746,7 @@ onBlur={e => {
   e.currentTarget.value = String(current)
 }}
 style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,borderRadius:8}}/>
-                                      <small style={{color:'var(--season-muted)',fontWeight:700}}>Total: {current}/5</small>
+                                      <small style={{color:'var(--season-muted)',fontWeight:700}}>{penalty === -1 ? "+1 ponto em Extras · " : ""}Total: {current}/5</small>
                                     </label>
                                   )
                                 })}
@@ -8351,6 +8390,12 @@ counterAttackDT
               <span className="hb-sidebar-nav-icon" aria-hidden="true">⚑</span><span className="hb-sidebar-nav-name">Campanhas</span><span className="nav-count">{campaigns.length}</span>
             </button>
           </div>
+          <div className="hb-sidebar-nav-group">
+            <span className="hb-sidebar-group-title">CONTA</span>
+            <button type="button" className={`nav-link ${activePage === 'profile' ? 'active' : ''}`} onClick={() => { setProfileNameDraft(String(displayName)); setActivePage('profile') }} aria-current={activePage === 'profile' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">♙</span><span className="hb-sidebar-nav-name">Meu perfil</span>
+            </button>
+          </div>
         </nav>
 
         <div className="sidebar-bottom hb-sidebar-footer">
@@ -8369,11 +8414,11 @@ counterAttackDT
               setNotice('Link copiado!')
             }}>⧉ Copiar link gerado</button>}
           </div>
-          <div className="profile hb-sidebar-profile">
+          <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={() => { setProfileNameDraft(String(displayName)); setActivePage('profile') }} title="Abrir meu perfil">
             <div className="avatar">{displayName.charAt(0).toUpperCase()}</div>
             <div className="profile-info"><strong>{displayName}</strong><small>{session.user.email}</small></div>
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -8383,7 +8428,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', 'player-table': 'Mesa dos jogadores' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -9607,6 +9652,35 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 @media(prefers-reduced-motion:reduce){.hb-polish .hb-ms-dashboard :is(.hb-ms-player-card,.hb-enemy-party-card,.hb-ms-initiative-row,.hb-ms-quicknav a){transition:none;transform:none}}
 
 `}</style>
+          {activePage === 'profile' && (
+            <section className="hb-profile-page" aria-labelledby="hb-profile-title">
+              <header className="hb-profile-hero">
+                <span className="hb-profile-avatar" aria-hidden="true">{String(displayName).charAt(0).toUpperCase()}</span>
+                <div><span className="hb-kicker">SUA IDENTIDADE</span><h1 id="hb-profile-title">Meu perfil</h1><p>Gerencie como seu nome aparece para os outros jogadores das campanhas.</p></div>
+              </header>
+              <form className="hb-profile-card" onSubmit={async event => {
+                event.preventDefault()
+                if (profileSaving) return
+                const nextName = profileNameDraft.trim()
+                if (!nextName || nextName.length > 60) { setError('O nome deve ter entre 1 e 60 caracteres.'); return }
+                setProfileSaving(true); setError('')
+                try {
+                  const { error: authError } = await supabase.auth.updateUser({ data: { display_name: nextName } })
+                  if (authError) throw authError
+                  const { error: profileError } = await supabase.from('profiles').update({ display_name: nextName }).eq('id', session.user.id)
+                  if (profileError) setNotice('Nome atualizado na conta. O nome visível aos membros poderá demorar a sincronizar: ' + profileError.message)
+                  else setNotice('Seu perfil foi atualizado.')
+                } catch (err) { setError('Erro ao atualizar perfil: ' + (err instanceof Error ? err.message : String(err))) }
+                finally { setProfileSaving(false) }
+              }}>
+                <span className="hb-kicker">DADOS DA CONTA</span>
+                <label>Nome de exibição<input maxLength={60} required value={profileNameDraft} onChange={event => setProfileNameDraft(event.target.value)} placeholder="Como os outros jogadores verão seu nome" /></label>
+                <label>E-mail da conta<input type="email" value={session.user.email || ''} readOnly aria-readonly="true" /></label>
+                <div className="hb-profile-metadata"><span>Campanhas: <strong>{campaigns.length}</strong></span><span>Status: <strong>Conectado</strong></span></div>
+                <button type="submit" className="primary-button" disabled={profileSaving}>{profileSaving ? 'Salvando…' : 'Salvar perfil'}</button>
+              </form>
+            </section>
+          )}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
     <header className="hb-hero hb-overview-hero">
@@ -13400,8 +13474,8 @@ style={{cursor:'pointer'}}>
         />
       </label>
 
-      <button className="primary-button" type="submit">
-        Criar temporada
+      <button className="primary-button" type="submit" disabled={creatingSeason || loading}>
+        {creatingSeason ? "Criando temporada…" : "Criar temporada"}
       </button>
     </form>
 

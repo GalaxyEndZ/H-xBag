@@ -2384,3 +2384,49 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 @media(prefers-reduced-motion:reduce) {
   .app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-ciclos) :is(.season-style-card,.nav-link,.primary-button,.secondary-button) {transition:none !important;}
 }
+
+/* v11 · galeria de estilos: somente a gravura principal, sem máscara antiga duplicada. */
+.app-shell .season-visual-style-group .season-style-preview::before {
+  content: none !important;
+  display: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+}
+.app-shell .season-visual-style-group .season-style-preview-orb { display: none !important; }
+.app-shell .season-visual-style-group .season-style-preview::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border: 1px solid color-mix(in srgb,var(--card-art) 38%,transparent);
+  box-shadow: none !important;
+  background: transparent !important;
+  pointer-events: none;
+}
+.app-shell .season-visual-style-group .season-style-card {
+  isolation: isolate;
+  overflow: hidden;
+  background-image: linear-gradient(145deg,var(--season-surface),var(--season-bg)) !important;
+  transform: none;
+}
+.app-shell .season-visual-style-group .season-style-card::before,
+.app-shell .season-visual-style-group .season-style-card::after {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.app-shell .season-visual-style-group .season-style-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.app-shell .season-visual-style-group .season-style-card.active { box-shadow:0 0 0 1px var(--card-art-wash),0 12px 30px rgba(0,0,0,.23) !important; }
+/* Exibir a marca de cada estilo apenas no cartão correspondente, sem interferência da identidade da página. */
+.app-shell .season-visual-style-group .season-style-classic .season-style-preview {
+ background:linear-gradient(90deg,#101014 0%,rgba(16,16,20,.6) 28%,transparent 70%),url('./style-art/eclipse-hero.svg') right center/cover no-repeat !important;
+}
+.app-shell .season-visual-style-group .season-style-japanese .season-style-preview {
+ background:linear-gradient(90deg,#141015 0%,rgba(20,16,21,.56) 28%,transparent 70%),url('./style-art/kisatsutai-hero.svg') right center/cover no-repeat !important;
+}
+.app-shell .season-visual-style-group .season-style-cyberpunk .season-style-preview {
+ background:linear-gradient(90deg,#0b101a 0%,rgba(11,16,26,.45) 35%,transparent 70%),url('./style-art/cyberflower-hero.svg') right center/cover no-repeat !important;
+}
+.app-shell .season-visual-style-group .season-style-ciclos .season-style-preview {
+ background:linear-gradient(90deg,#171511 0%,rgba(23,21,17,.55) 28%,transparent 70%),url('./style-art/ciclos-hero.svg') right center/cover no-repeat !important;
+}

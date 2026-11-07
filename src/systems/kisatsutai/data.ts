@@ -12,6 +12,13 @@ export const KISATSUTAI_FAMILY_TIERS = {
 
 export const KISATSUTAI_RANKS = [
   {
+    id: 'civil',
+    name: 'Civil',
+    group: 'Civil',
+    focus: '0',
+    benefits: 'Sem graduação na corporação. Não recebe bônus de hierarquia, atributos extras ou status.',
+  },
+  {
     id: 'zaidan',
     name: 'Zaidan',
     group: 'Carpa',
@@ -113,6 +120,7 @@ export const KISATSUTAI_ARCHETYPES = [
 ] as const
 
 export const KISATSUTAI_RANK_STATUS: Record<string, { pv: number; ps: number; pr: number }> = {
+  civil: { pv: 0, ps: 0, pr: 0 },
   zaidan: { pv: 15, ps: 10, pr: 0 },
   mizunoto: { pv: 30, ps: 25, pr: 5 },
   mizunoe: { pv: 35, ps: 30, pr: 10 },
@@ -128,6 +136,7 @@ export const KISATSUTAI_RANK_STATUS: Record<string, { pv: number; ps: number; pr
 }
 
 export const KISATSUTAI_PROMOTIONS: Record<string, string> = {
+  'civil>zaidan': 'Ingresso no Kisatsutai: passa a receber os benefícios da graduação Zaidan.',
   'zaidan>mizunoto': '+15 PV, +15 PS, +5 PR, +5 pontos de perícias principais; +1 ponto de foco; dano base 1d4 → 1d6; desbloqueia fluxo de atributo Raposa.',
 
   'mizunoto>mizunoe': '+5 PV, +5 PS, +5 PR; +1 ponto para distribuir em Atributos Extras; +2 pontos de foco.',
