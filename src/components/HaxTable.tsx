@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, ty
 import { supabase } from '../supabase'
 import './HaxTable.css'
 
-// Mesa independente: coordenadas livres (em pixels), cenas, objetos e chat em tabelas próprias.
+// Mesa independente: coordenadas livres (em pixels), cenas e objetos em tabelas próprias.
 // Segurança e autorização são verificadas novamente no Supabase (ver migração SQL).
 type Hero = { id: string; name: string; emoji?: string | null; user_id: string; current_player_id?: string | null }
 type Foe = { id: string; name: string; emoji?: string | null }
@@ -21,7 +21,6 @@ type SceneObject = {
   width: number; height: number; rotation: number; layer: number; locked: boolean;
   visible_to_players: boolean; style: Record<string, any>; updated_at: string
 }
-type Message = { id: string; scene_id: string; kind: 'chat' | 'roll'; sender: string; body: string; created_at: string; hidden: boolean }
 type Tool = 'select' | 'pan' | 'ruler' | 'draw' | 'reveal' | 'hide' | 'erase'
 type Drag = { kind: 'token' | 'pan' | 'draw' | 'fog' | 'ruler'; id?: string; start: Point; origin: Point; points: Point[]; tool: Tool; pointerId: number }
 const limit = (n: number, low: number, high: number) => Math.min(high, Math.max(low, n))
@@ -41,11 +40,10 @@ export default function HaxTable(props: {
   onSeasonChange: (id: string) => void; isMaster: boolean; userId: string; playerName: string;
   characters: Hero[]; enemies: Foe[]
 }) {
-  const { campaignId, campaignName, seasonId, seasons, onSeasonChange, isMaster, userId, playerName, characters, enemies } = props
+  const { campaignId, campaignName, seasonId, seasons, onSeasonChange, isMaster, userId, characters, enemies } = props
   const [scenes, setScenes] = useState<Scene[]>([])
   const [sceneId, setSceneId] = useState('')
   const [objects, setObjects] = useState<SceneObject[]>([])
-  const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
@@ -56,14 +54,11 @@ export default function HaxTable(props: {
   const [offset, setOffset] = useState<Point>(pt(30, 30))
   const [fullscreen, setFullscreen] = useState(false)
   const [showLayers, setShowLayers] = useState(true)
-  const [rightTab, setRightTab] = useState<'initiative' | 'chat'>('initiative')
   const [rosterSearch, setRosterSearch] = useState('')
   const [brush, setBrush] = useState(56)
   const [drawColor, setDrawColor] = useState('#ffd28a')
   const [draft, setDraft] = useState<Point[]>([])
   const [measure, setMeasure] = useState<{ start: Point; end: Point } | null>(null)
-  const [chatText, setChatText] = useState('')
-  const [dice, setDice] = useState('1d20')
   const [assetName, setAssetName] = useState('')
   const [assetUploading, setAssetUploading] = useState(false)
   const [tokenEmojiDraft, setTokenEmojiDraft] = useState('')
@@ -123,23 +118,20 @@ export default function HaxTable(props: {
   loadScenesRef.current = loadScenes
 
   const loadObjects = useCallback(async () => {
-    if (!sceneId) { setObjects([]); setMessages([]); return }
-    const [{ data, error: objError }, { data: logs, error: logError }] = await Promise.all([
-      supabase.from('hb_vtt_objects').select('*').eq('scene_id', sceneId).order('layer', { ascending: true }),
-      supabase.from('hb_vtt_messages').select('*').eq('scene_id', sceneId).order('created_at', { ascending: false }).limit(80),
-    ])
+    if (!sceneId) { setObjects([]); return }
+    const { data, error: objError } = await supabase.from('hb_vtt_objects')
+      .select('*').eq('scene_id', sceneId).order('layer', { ascending: true })
     if (objError) { setError(objError.message); return }
     setObjects(prev => {
       const draggedId = dragRef.current?.kind === 'token' ? dragRef.current.id : null
       const dragged = prev.find(item => item.id === draggedId)
       return (data ?? []).map(row => row.id === draggedId && dragged ? dragged : row) as SceneObject[]
     })
-    if (!logError) setMessages((logs ?? []).reverse() as Message[])
   }, [sceneId])
   loadSceneRef.current = loadObjects
 
   useEffect(() => {
-    setScenes([]); setSceneId(''); setObjects([]); setMessages([]); setError(''); setSelectedId('')
+    setScenes([]); setSceneId(''); setObjects([]); setError(''); setSelectedId('')
     void loadScenes()
   }, [loadScenes])
   useEffect(() => { void loadObjects() }, [loadObjects])
@@ -155,7 +147,6 @@ export default function HaxTable(props: {
     if (!sceneId) return
     const channel = supabase.channel(`hb-vtt-scene-${sceneId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hb_vtt_objects', filter: `scene_id=eq.${sceneId}` }, () => { void loadSceneRef.current() })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hb_vtt_messages', filter: `scene_id=eq.${sceneId}` }, () => { void loadSceneRef.current() })
       .subscribe()
     return () => { void supabase.removeChannel(channel) }
   }, [sceneId])
@@ -418,24 +409,6 @@ export default function HaxTable(props: {
     await patchScene({ active_object_id: initiative[nextIndex].id,
       round: Math.max(1, scene.round + (wrap ? 1 : rewind ? -1 : 0)) })
   }
-  async function sendMessage(kind: 'chat' | 'roll', body: string, hidden = false) {
-    if (!scene || !body.trim()) return
-    const { error: err } = await supabase.from('hb_vtt_messages').insert({
-      scene_id: scene.id, campaign_id: campaignId, kind, body: body.slice(0, 800), hidden,
-      sender: playerName.slice(0, 80), created_by: userId,
-    })
-    if (err) setError(err.message)
-    else { setChatText(''); void loadObjects() }
-  }
-  function rollDice() {
-    const match = dice.replace(/\s/g, '').match(/^(\d{1,2})d(4|6|8|10|12|20|100)([+-]\d{1,3})?$/i)
-    if (!match) { setError('Use uma expressão como 1d20, 2d6+3 ou 1d100.'); return }
-    const count = limit(Number(match[1]), 1, 20), faces = Number(match[2]), mod = Number(match[3] || 0)
-    const rolls = Array.from({ length: count }, () => Math.floor(Math.random() * faces) + 1)
-    const result = rolls.reduce((total, n) => total + n, mod)
-    void sendMessage('roll', `🎲 ${count}d${faces}${mod ? (mod >= 0 ? '+' : '') + mod : ''}: [${rolls.join(', ')}] = ${result}`)
-    setRightTab('chat')
-  }
   function titleOfObject(item: SceneObject) {
     return item.name || (item.kind === 'image' ? 'Imagem' : item.kind === 'drawing' ? 'Desenho' : 'Peça')
   }
@@ -550,8 +523,7 @@ export default function HaxTable(props: {
         </> : <div className="hvtt-empty"><span>✧</span><h2>{loading ? 'Carregando mesa…' : 'A mesa está pronta para receber sua primeira cena'}</h2><p>{isMaster ? 'Crie uma cena, envie um mapa e adicione os personagens.' : 'O mestre ainda não compartilhou uma cena nesta temporada.'}</p>{isMaster && <button className="hvtt-primary" onClick={() => void createScene()}>＋ Criar primeira cena</button>}</div>}
       </main>
       <aside className="hvtt-right">
-        <div className="hvtt-right-tabs"><button className={rightTab === 'initiative' ? 'active' : ''} onClick={() => setRightTab('initiative')}>⚔ Iniciativa</button><button className={rightTab === 'chat' ? 'active' : ''} onClick={() => setRightTab('chat')}>☰ Chat e dados</button></div>
-        {rightTab === 'initiative' ? <>
+        <div className="hvtt-side-head"><strong>⚔ Iniciativa</strong></div>
           <section className="hvtt-turn-panel"><small>RODADA</small><strong>{scene?.round ?? '—'}</strong><span>{initiative.find(item => item.id === scene?.active_object_id)?.name || 'Aguardando combate'}</span>
             {isMaster && <div><button onClick={() => void nextTurn(-1)}>←</button><button onClick={() => void nextTurn(1)}>Próximo →</button></div>}</section>
           <div className="hvtt-panel-title"><span>ORDEM DE COMBATE</span><span>{initiative.length}</span></div>
@@ -559,11 +531,6 @@ export default function HaxTable(props: {
             <span className="hvtt-init-rank">{String(index+1).padStart(2,'0')}</span><span className="hvtt-init-avatar">{item.emoji}</span><span className="hvtt-init-name"><strong>{item.name}</strong><small>{item.kind === 'enemy' ? 'Inimigo' : item.kind === 'character' ? 'Personagem' : 'Marcador'}</small></span>
             <span className="hvtt-init-value">{item.style?.initiative ?? '—'}</span>
           </button>)}{!initiative.length && <p className="hvtt-muted">Adicione peças para montar a iniciativa.</p>}</div>
-        </> : <>
-          <div className="hvtt-chat-list">{messages.map(item => <div className={`hvtt-chat-entry ${item.kind}`} key={item.id}><small>{item.sender} · {new Date(item.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</small><p>{item.body}</p></div>)}{!messages.length && <p className="hvtt-muted">Mensagens e rolagens aparecem aqui para todos.</p>}</div>
-          <form className="hvtt-chat-compose" onSubmit={event => {event.preventDefault();void sendMessage('chat',chatText)}}><input value={chatText} onChange={event => setChatText(event.target.value)} placeholder="Mensagem para a mesa…" maxLength={800}/><button disabled={!chatText.trim()} title="Enviar mensagem">➤</button></form>
-        </>}
-        <div className="hvtt-dice-box"><label>ROLADOR DE DADOS</label><div><input value={dice} onChange={event => setDice(event.target.value)} aria-label="Expressão de dados" placeholder="1d20+3"/><button onClick={rollDice} disabled={!scene}>🎲 Rolar</button></div><div className="hvtt-dice-shortcuts">{['1d4','1d6','1d8','1d10','1d12','1d20','1d100'].map(exp => <button key={exp} onClick={() => setDice(exp)}>{exp}</button>)}</div></div>
       </aside>
     </div>
     {isMaster && scene && showAssets && <div className="hvtt-modal-backdrop" role="presentation" onPointerDown={event => { if(event.target===event.currentTarget)setShowAssets(false)}}><div className="hvtt-modal" role="dialog" aria-modal="true" aria-label="Adicionar ao mapa">
