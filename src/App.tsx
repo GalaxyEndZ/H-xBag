@@ -8273,6 +8273,15 @@ counterAttackDT
           <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
         </a>
 
+        <div className="hb-sidebar-style-identity" aria-label={`Estilo visual ativo: ${activeVisualStyle.label}`}>
+          <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
+          <span className="hb-sidebar-style-text">
+            <small>IDENTIDADE VISUAL</small>
+            <strong>{activeVisualStyle.label}</strong>
+          </span>
+          <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
+        </div>
+
         <section className="hb-sidebar-workspace" aria-label="Campanha atual">
           <div className="hb-sidebar-workspace-top">
             <span className="hb-sidebar-eyebrow">✦ ESPAÇO DE JOGO</span>
@@ -8377,10 +8386,15 @@ counterAttackDT
           </div>
 
           <div className="topbar-right">
+            <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
+              <span aria-hidden="true">{activeVisualStyle.symbol}</span>
+              <strong>{activeVisualStyle.label}</strong>
+            </span>
             <span className="online-dot" />
             Conectado
             <button
               type="button"
+              className="hb-topbar-logout"
               onClick={handleSignOut}
               style={secondaryButtonStyle}
             >

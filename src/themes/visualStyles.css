@@ -1325,3 +1325,540 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   border-color:var(--hb-art-rule);
   border-radius:var(--hb-art-control-radius);
 }
+
+
+/* ========================================================================
+   HÄXBAG • ATELIÊ DE ESTILOS v8 — MENU PRINCIPAL COMPLETO
+   Responsivo e ornamental: quatro linguagens visuais para toda a navegação.
+   Sem alterar cores da temporada, permissões ou ações dos controles.
+   ======================================================================== */
+
+/* 01. Elementos compartilhados da navegação -------------------------------- */
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) {
+  --hb-menu-line: color-mix(in srgb,var(--season-primary) 35%,var(--season-line));
+  --hb-menu-wash: color-mix(in srgb,var(--season-primary) 9%,transparent);
+  --hb-menu-bright: color-mix(in srgb,var(--season-primary) 70%,#e2c99e);
+  --hb-menu-shadow: 0 13px 27px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.04);
+  --hb-menu-radius: var(--hb-art-control-radius);
+  --hb-menu-font: var(--hb-art-serif);
+  --hb-menu-ambient: radial-gradient(ellipse at 94% 12%,var(--hb-menu-wash),transparent 42%),
+    linear-gradient(180deg,var(--season-bg),color-mix(in srgb,var(--season-surface) 86%,var(--season-bg)));
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar {
+  position: relative;
+  isolation: isolate;
+  border-right: 1px solid var(--hb-menu-line);
+  background: var(--hb-menu-ambient) !important;
+  box-shadow: inset -1px 0 0 color-mix(in srgb,var(--season-primary) 10%,transparent),7px 0 26px rgba(0,0,0,.08);
+}
+/* Marca d'água editorial, atrás da navegação e recortada dentro do menu. */
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: 5px;
+  right: -51px;
+  width: 232px;
+  height: 208px;
+  background: var(--hb-art-ink);
+  opacity: .095;
+  pointer-events: none;
+  -webkit-mask: var(--hb-art-sigil) right center / contain no-repeat;
+  mask: var(--hb-art-sigil) right center / contain no-repeat;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-brand {
+  position: relative;
+  margin-bottom: 13px;
+  padding: 5px 7px 15px;
+  border-bottom: 1px solid var(--hb-menu-line);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-brand::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  left: 48px;
+  right: 48px;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg,transparent,var(--hb-menu-bright),transparent);
+  opacity: .72;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-brand .brand-mark {
+  position: relative;
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  background: radial-gradient(circle at 50% 16%,var(--hb-menu-wash),transparent 74%),var(--season-surface-alt);
+  color: var(--hb-menu-bright);
+  box-shadow: inset 0 1px 0 var(--hb-menu-wash),0 5px 15px rgba(0,0,0,.16);
+  font-family: var(--hb-menu-font);
+  text-shadow: 0 1px 12px var(--hb-menu-wash);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-brand-copy strong {
+  color: var(--season-text);
+  font-family: var(--hb-menu-font);
+  font-weight: 680;
+  letter-spacing: var(--hb-art-title-spacing);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-brand-copy small {
+  letter-spacing: .13em;
+  opacity: .93;
+}
+
+/* Chip do estilo ativo, mostrado no menu e no cabeçalho principal. */
+.app-shell.hb-polish .hb-sidebar-style-identity {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  margin: -1px 0 16px;
+  padding: 9px 11px;
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  background: linear-gradient(115deg,var(--hb-menu-wash),var(--season-surface));
+  box-shadow: inset 0 1px 0 var(--hb-menu-wash),0 6px 16px rgba(0,0,0,.085);
+  color: var(--season-text);
+}
+.app-shell.hb-polish .hb-sidebar-style-emblem {
+  display: grid;
+  flex: 0 0 33px;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  border-radius: calc(var(--hb-menu-radius) - 2px);
+  border: 1px solid var(--hb-menu-line);
+  background: var(--season-bg);
+  color: var(--hb-menu-bright);
+  font: 500 19px/1 var(--hb-menu-font);
+}
+.app-shell.hb-polish .hb-sidebar-style-text {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.app-shell.hb-polish .hb-sidebar-style-text small {
+  color: var(--season-muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.app-shell.hb-polish .hb-sidebar-style-text strong {
+  overflow: hidden;
+  color: var(--hb-menu-bright);
+  font: 650 15px/1.1 var(--hb-menu-font);
+  letter-spacing: .01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell.hb-polish .hb-sidebar-style-ornament {
+  margin-left: auto;
+  color: var(--hb-menu-bright);
+  font-size: 14px;
+  opacity: .62;
+}
+
+/* Menu: campanha ativa, grupos de navegação e estados de interação. */
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-workspace {
+  position: relative;
+  isolation: isolate;
+  padding: 15px 13px 14px;
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-art-radius);
+  background: linear-gradient(150deg,var(--hb-menu-wash),var(--season-surface) 60%);
+  box-shadow: var(--hb-menu-shadow);
+  overflow: hidden;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-workspace::before {
+  content: '';
+  position: absolute;
+  width: 85px;
+  height: 85px;
+  right: -25px;
+  top: -25px;
+  border: 1px solid var(--hb-menu-line);
+  transform: rotate(45deg);
+  opacity: .34;
+  pointer-events: none;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-workspace > * { position: relative; z-index: 1; }
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-role {
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  background: var(--hb-menu-wash);
+  color: var(--hb-menu-bright);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-campaign-field {
+  min-height: 45px;
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  background: var(--season-bg);
+  transition: border-color .18s,box-shadow .18s;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-campaign-field:focus-within {
+  border-color: var(--season-primary);
+  box-shadow: 0 0 0 2px var(--hb-menu-wash);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-create {
+  min-height: 40px;
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  background: linear-gradient(112deg,var(--hb-menu-wash),var(--season-surface-alt));
+  color: var(--hb-menu-bright);
+  font-weight: 800;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-create:hover:not(:disabled) {
+  border-color: var(--season-primary);
+  box-shadow: 0 6px 15px var(--hb-menu-wash);
+  transform: translateY(-1px);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav { gap: 18px; }
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-group-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--hb-menu-bright);
+  font: 800 9px/1.3 'Segoe UI',Arial,sans-serif;
+  letter-spacing: .14em;
+  opacity: .82;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-group-title::after {
+  content: '';
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  background: linear-gradient(90deg,var(--hb-menu-line),transparent);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav .nav-link {
+  position: relative;
+  min-height: 46px;
+  border: 1px solid transparent;
+  border-radius: var(--hb-menu-radius);
+  background: transparent;
+  color: var(--season-muted);
+  transition: background .17s,border-color .17s,box-shadow .17s,transform .17s;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav .nav-link:not(:disabled):hover {
+  border-color: var(--hb-menu-line);
+  background: var(--hb-menu-wash);
+  color: var(--season-text);
+  transform: translateX(2px);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav .nav-link.active {
+  border: 1px solid var(--hb-menu-line) !important;
+  border-left: 3px solid var(--hb-menu-bright) !important;
+  border-radius: var(--hb-menu-radius) !important;
+  background: linear-gradient(90deg,var(--hb-menu-wash),var(--season-surface-alt) 145%) !important;
+  color: var(--season-text);
+  box-shadow: 0 6px 19px rgba(0,0,0,.10),inset 0 1px 0 var(--hb-menu-wash) !important;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav-icon {
+  border: 1px solid var(--hb-menu-line);
+  border-radius: calc(var(--hb-menu-radius) - 2px);
+  background: color-mix(in srgb,var(--season-primary) 6%,var(--season-surface-alt));
+  color: var(--hb-menu-bright) !important;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav .nav-link.active .hb-sidebar-nav-icon {
+  border-color: var(--hb-menu-bright);
+  background: var(--hb-menu-wash);
+  box-shadow: 0 0 12px var(--hb-menu-wash);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav .nav-count {
+  border: 1px solid var(--hb-menu-line);
+  border-radius: calc(var(--hb-menu-radius) - 3px);
+  background: var(--season-surface-alt);
+  color: var(--season-text);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav-flair {
+  font-size: 8px;
+  letter-spacing: .06em;
+  color: var(--hb-menu-bright);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-nav .nav-link:focus-visible,
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-create:focus-visible,
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-topbar-logout:focus-visible {
+  outline: 2px solid var(--season-primary);
+  outline-offset: 3px;
+}
+
+/* Rodapé do menu: convites, perfil e estado de conexão. */
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-invite {
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-art-radius);
+  background: linear-gradient(125deg,var(--hb-menu-wash),var(--season-surface) 67%);
+  box-shadow: var(--hb-menu-shadow);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-invite .invite-icon {
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  color: var(--hb-menu-bright);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-invite-button {
+  border-radius: var(--hb-menu-radius);
+  background: linear-gradient(110deg,var(--hb-menu-wash),var(--season-surface-alt));
+  color: var(--hb-menu-bright);
+  transition: border-color .18s,box-shadow .18s,transform .18s;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-invite-button:hover:not(:disabled) {
+  border-color: var(--season-primary);
+  box-shadow: 0 0 13px var(--hb-menu-wash);
+  transform: translateY(-1px);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-profile {
+  border-top: 1px solid var(--hb-menu-line);
+  margin-top: 3px;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-profile .avatar {
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  box-shadow: inset 0 1px 0 var(--hb-menu-wash);
+}
+
+/* Topbar, breadcrumb e marcador de estilo atual. */
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .topbar {
+  border-bottom: 1px solid var(--hb-menu-line);
+  background: linear-gradient(90deg,var(--season-bg),color-mix(in srgb,var(--season-primary) 5%,var(--season-surface)));
+  box-shadow: 0 6px 15px rgba(0,0,0,.055);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-topbar-trail strong {
+  color: var(--hb-menu-bright);
+  font-family: var(--hb-menu-font);
+  letter-spacing: .006em;
+}
+.app-shell.hb-polish .hb-topbar-style-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  padding: 6px 9px;
+  border: 1px solid var(--hb-menu-line);
+  border-radius: var(--hb-menu-radius);
+  background: var(--hb-menu-wash);
+  color: var(--hb-menu-bright);
+  font: 550 11px/1.1 var(--hb-menu-font);
+}
+.app-shell.hb-polish .hb-topbar-style-badge > span { font-size: 15px; line-height: 1; }
+.app-shell.hb-polish .hb-topbar-style-badge strong { font-weight: 700; }
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-topbar-logout {
+  border-radius: var(--hb-menu-radius) !important;
+  border: 1px solid var(--hb-menu-line) !important;
+  background: var(--hb-menu-wash) !important;
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-topbar-logout:hover:not(:disabled) {
+  border-color: var(--season-primary) !important;
+}
+
+/* 02. ECLIPSE — arcano, cintilação cálida e moldura astral -------------- */
+.app-shell.hb-polish.visual-style-classic {
+  --hb-menu-radius: 13px;
+  --hb-menu-ambient: radial-gradient(ellipse at 100% 4%,color-mix(in srgb,var(--season-primary) 14%,transparent),transparent 48%),
+    radial-gradient(ellipse at -5% 89%,color-mix(in srgb,var(--season-primary) 7%,transparent),transparent 50%),
+    linear-gradient(180deg,var(--season-bg),var(--season-surface));
+}
+.app-shell.hb-polish.visual-style-classic .hb-sidebar-style-identity {
+  border-top: 2px solid var(--hb-menu-bright);
+  border-radius: 14px;
+}
+.app-shell.hb-polish.visual-style-classic .hb-sidebar-brand .brand-mark {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--season-bg),0 0 0 1px var(--hb-menu-line),0 0 16px var(--hb-menu-wash);
+}
+.app-shell.hb-polish.visual-style-classic .hb-sidebar-nav .nav-link.active {
+  border-top-color: color-mix(in srgb,var(--hb-menu-bright) 53%,transparent) !important;
+  border-left-color: var(--hb-menu-bright) !important;
+}
+.app-shell.hb-polish.visual-style-classic .hb-sidebar-group-title::before {
+  content: '✧';
+  color: var(--hb-menu-bright);
+  font-size: 12px;
+  line-height: 1;
+}
+.app-shell.hb-polish.visual-style-classic .hb-sidebar-workspace::before {
+  border-radius: 50%;
+  transform: none;
+  right: -30px;
+  top: -32px;
+}
+.app-shell.hb-polish.visual-style-classic .hb-topbar-style-badge { border-radius: 30px; }
+
+/* 03. KISATSUTAI — tinta, caligrafia e flor japonesa --------------------- */
+.app-shell.hb-polish.visual-style-japanese {
+  --hb-menu-radius: 6px;
+  --hb-menu-ambient: repeating-linear-gradient(0deg,transparent 0 11px,rgba(235,218,190,.012) 11px 12px),
+    radial-gradient(ellipse at 90% 2%,color-mix(in srgb,var(--season-primary) 14%,transparent),transparent 52%),
+    linear-gradient(180deg,var(--season-bg),var(--season-surface));
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-brand .brand-mark {
+  border-radius: 5px;
+  border-bottom: 3px solid var(--hb-menu-bright);
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-style-identity {
+  border-left: 3px solid var(--hb-menu-bright);
+  border-radius: 5px;
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-group-title::before {
+  content: '❀';
+  color: var(--hb-menu-bright);
+  font-size: 13px;
+  line-height: 1;
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-workspace {
+  border-top: 2px solid var(--hb-menu-bright);
+  border-bottom: 2px solid var(--hb-menu-line);
+  border-radius: 7px;
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-workspace::before {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  transform: none;
+  opacity: .19;
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-nav .nav-link.active {
+  border-left-color: var(--hb-menu-bright) !important;
+  box-shadow: 0 5px 16px rgba(0,0,0,.11),inset 0 -1px 0 var(--hb-menu-line) !important;
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-nav-icon {
+  border-bottom: 2px solid var(--hb-menu-line);
+  border-radius: 4px;
+}
+.app-shell.hb-polish.visual-style-japanese .hb-sidebar-invite { border-radius: 7px; }
+.app-shell.hb-polish.visual-style-japanese .hb-topbar-style-badge { border-radius: 4px; border-bottom: 2px solid var(--hb-menu-bright); }
+
+/* 04. CYBERFLOWER — HUD floral, circuitos e geometria tecnológica ------- */
+.app-shell.hb-polish.visual-style-cyberpunk {
+  --hb-menu-radius: 4px;
+  --hb-menu-font: 'Cascadia Code','Segoe UI',Consolas,sans-serif;
+  --hb-menu-ambient: linear-gradient(90deg,color-mix(in srgb,var(--season-primary) 4%,transparent) 1px,transparent 1px) 0 0 / 31px 31px,
+    linear-gradient(0deg,color-mix(in srgb,var(--season-primary) 4%,transparent) 1px,transparent 1px) 0 0 / 31px 31px,
+    radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--season-primary) 15%,transparent),transparent 53%),
+    linear-gradient(180deg,var(--season-bg),var(--season-surface));
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity {
+  border-left: 3px solid var(--hb-menu-bright);
+  border-right: 2px solid var(--hb-menu-line);
+  border-radius: 4px;
+  box-shadow: 0 0 14px var(--hb-menu-wash),inset 0 1px 0 var(--hb-menu-line);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-brand .brand-mark {
+  border-radius: 3px;
+  border-left: 3px solid var(--hb-menu-bright);
+  box-shadow: 0 0 14px var(--hb-menu-wash);
+  font-family: var(--hb-menu-font);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-group-title::before {
+  content: '[+';
+  font-family: var(--hb-menu-font);
+  color: var(--hb-menu-bright);
+  letter-spacing: -.1em;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-nav .nav-link {
+  border-radius: 3px;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-nav .nav-link.active {
+  border-left-color: var(--hb-menu-bright) !important;
+  box-shadow: inset 2px 0 0 var(--hb-menu-bright),0 0 12px var(--hb-menu-wash) !important;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-nav .nav-link.active .hb-sidebar-nav-icon {
+  box-shadow: 0 0 12px var(--hb-menu-wash);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-invite {
+  border-left: 3px solid var(--hb-menu-bright);
+  border-radius: 4px;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-topbar-style-badge {
+  border-left: 2px solid var(--hb-menu-bright);
+  border-radius: 3px;
+  box-shadow: 0 0 11px var(--hb-menu-wash);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .topbar {
+  background: repeating-linear-gradient(90deg,transparent 0 44px,color-mix(in srgb,var(--season-primary) 5%,transparent) 44px 45px),
+    linear-gradient(90deg,var(--season-bg),var(--season-surface));
+}
+
+/* 05. CICLOS — crônicas, heráldica e painel medieval ------------------- */
+.app-shell.hb-polish.visual-style-ciclos {
+  --hb-menu-radius: 8px;
+  --hb-menu-font: Georgia,'Times New Roman',serif;
+  --hb-menu-ambient: repeating-linear-gradient(0deg,transparent 0 8px,rgba(208,171,118,.014) 8px 9px),
+    radial-gradient(ellipse at 90% 9%,color-mix(in srgb,var(--season-primary) 12%,transparent),transparent 43%),
+    linear-gradient(180deg,var(--season-bg),var(--season-surface));
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-brand .brand-mark {
+  border-radius: 8px;
+  border: 2px double var(--hb-menu-bright);
+  font-family: var(--hb-menu-font);
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-style-identity {
+  border: 2px double var(--hb-menu-line);
+  border-radius: 8px;
+  background: linear-gradient(145deg,var(--hb-menu-wash),var(--season-surface) 73%);
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-group-title::before {
+  content: '⚜';
+  color: var(--hb-menu-bright);
+  font: 15px/1 Georgia,serif;
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-workspace {
+  border-top: 2px solid var(--hb-menu-bright);
+  border-bottom: 2px solid var(--hb-menu-line);
+  border-radius: 8px;
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-workspace::before {
+  border-radius: 0;
+  opacity: .25;
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-nav .nav-link.active {
+  border-left-color: var(--hb-menu-bright) !important;
+  border-block-color: var(--hb-menu-line) !important;
+  box-shadow: inset 0 1px 0 var(--hb-menu-wash),0 6px 18px rgba(0,0,0,.11) !important;
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-nav .nav-link.active .hb-sidebar-nav-icon {
+  border: 2px double var(--hb-menu-line);
+  border-radius: 7px;
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-sidebar-invite {
+  border: 2px double var(--hb-menu-line);
+  border-radius: 8px;
+}
+.app-shell.hb-polish.visual-style-ciclos .hb-topbar-style-badge { border: 2px double var(--hb-menu-line); border-radius: 7px; }
+
+/* 06. Acabamento em páginas sem competir com a decoração do v7 ---------- */
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.main-content:not(.hb-vtt-app-main) {
+  background-image: radial-gradient(ellipse at 90% 0%,var(--hb-menu-wash),transparent 42%);
+}
+.app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
+.page-content :is(.sheet-section-heading,.hb-ms-group-heading,.enemy-hub-section-heading,.shops-toolbar) {
+  border-bottom-color: var(--hb-menu-line);
+}
+.app-shell.hb-polish.visual-style-classic .page-content :is(.sheet-card-title h3,.hb-ms-group-heading h3) { letter-spacing: .015em; }
+.app-shell.hb-polish.visual-style-japanese .page-content :is(.sheet-card-title h3,.hb-ms-group-heading h3) { letter-spacing: .04em; }
+.app-shell.hb-polish.visual-style-cyberpunk .page-content :is(.sheet-card-title h3,.hb-ms-group-heading h3) { letter-spacing: .035em; }
+.app-shell.hb-polish.visual-style-ciclos .page-content :is(.sheet-card-title h3,.hb-ms-group-heading h3) { letter-spacing: .02em; }
+
+/* 07. Tela compacta e acessibilidade ------------------------------------ */
+@media (max-width: 1100px) {
+  .app-shell.hb-polish .hb-topbar-style-badge strong { display: none; }
+  .app-shell.hb-polish .hb-topbar-style-badge { padding: 6px 7px; }
+}
+@media (max-width: 800px) {
+  .app-shell.hb-polish .hb-sidebar-style-identity { max-width: 100%; }
+  .app-shell.hb-polish .hb-sidebar { box-shadow: none; }
+  .app-shell.hb-polish .hb-sidebar::before { opacity: .055; }
+}
+@media (max-width: 540px) {
+  .app-shell.hb-polish .hb-sidebar-style-identity { margin-bottom: 9px; }
+  .app-shell.hb-polish .hb-sidebar-nav .nav-link { min-height: 44px; }
+  .app-shell.hb-polish .hb-topbar-style-badge { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.hb-polish .hb-sidebar :is(.nav-link,.hb-sidebar-create,.hb-sidebar-invite-button) {
+    transition: none !important;
+  }
+  .app-shell.hb-polish .hb-sidebar :is(.nav-link,.hb-sidebar-create,.hb-sidebar-invite-button):hover:not(:disabled) {
+    transform: none !important;
+  }
+}
