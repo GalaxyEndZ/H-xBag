@@ -12,7 +12,7 @@ export const visualStyles = {
   },
   japanese: {
     label: 'Kisatsutai',
-    symbol: '花',
+    symbol: '幻',
     signature: 'TRADIÇÃO E LÂMINAS',
     description: 'Gravuras japonesas, flores de cerejeira, tinta sumi-e e ondas seigaiha.',
   },

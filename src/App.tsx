@@ -340,6 +340,9 @@ type CampaignShopItem = {
   purchase_blocked: boolean
 }
 
+// Avatares armazenados apenas nos metadados da conta do usuário.
+const profileAvatarOptions = ['🌸', '🌙', '🦊', '🐉', '🦋', '🗡️', '🛡️', '⚜️', '🌿', '🔮', '🪶', '✦'] as const
+
 function displayNameForMembers(session: Session | null) {
   return session?.user.user_metadata?.display_name ||
     session?.user.email?.split('@')[0] ||
@@ -773,6 +776,8 @@ const resetCreatureFilters = () => {
   const [creatingSeason, setCreatingSeason] = useState(false)
   const creatingSeasonRef = useRef(false)
   const [profileNameDraft, setProfileNameDraft] = useState('')
+  const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
+  const [profileBioDraft, setProfileBioDraft] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
@@ -5918,6 +5923,22 @@ async function duplicateItem(item: Item) {
     session?.user.user_metadata?.display_name ||
     session?.user.email?.split('@')[0] ||
     'Aventureiro'
+  const rawAccountAvatar = session?.user.user_metadata?.profile_avatar
+  const accountAvatar = typeof rawAccountAvatar === 'string' &&
+    profileAvatarOptions.some(emoji => emoji === rawAccountAvatar) ? rawAccountAvatar : ''
+  const accountBio = typeof session?.user.user_metadata?.profile_bio === 'string'
+    ? String(session.user.user_metadata.profile_bio) : ''
+  const accountCreatedAt = session?.user.created_at
+    ? new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    : 'Data indisponível'
+  const profileHasChanges = profileNameDraft.trim() !== String(displayName).trim() ||
+    profileAvatarDraft !== accountAvatar || profileBioDraft.trim() !== accountBio.trim()
+  const openProfilePage = () => {
+    setProfileNameDraft(String(displayName))
+    setProfileAvatarDraft(accountAvatar)
+    setProfileBioDraft(accountBio)
+    setActivePage('profile')
+  }
 
   const selectedCharacter = characters.find(
     (character) => character.id === selectedCharacterId,
@@ -8392,7 +8413,7 @@ counterAttackDT
           </div>
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">CONTA</span>
-            <button type="button" className={`nav-link ${activePage === 'profile' ? 'active' : ''}`} onClick={() => { setProfileNameDraft(String(displayName)); setActivePage('profile') }} aria-current={activePage === 'profile' ? 'page' : undefined}>
+            <button type="button" className={`nav-link ${activePage === 'profile' ? 'active' : ''}`} onClick={openProfilePage} aria-current={activePage === 'profile' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♙</span><span className="hb-sidebar-nav-name">Meu perfil</span>
             </button>
           </div>
@@ -8414,8 +8435,8 @@ counterAttackDT
               setNotice('Link copiado!')
             }}>⧉ Copiar link gerado</button>}
           </div>
-          <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={() => { setProfileNameDraft(String(displayName)); setActivePage('profile') }} title="Abrir meu perfil">
-            <div className="avatar">{displayName.charAt(0).toUpperCase()}</div>
+          <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={openProfilePage} title="Abrir meu perfil">
+            <div className="avatar">{accountAvatar || displayName.charAt(0).toUpperCase()}</div>
             <div className="profile-info"><strong>{displayName}</strong><small>{session.user.email}</small></div>
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
           </button>
@@ -9653,32 +9674,148 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
 `}</style>
           {activePage === 'profile' && (
-            <section className="hb-profile-page" aria-labelledby="hb-profile-title">
-              <header className="hb-profile-hero">
-                <span className="hb-profile-avatar" aria-hidden="true">{String(displayName).charAt(0).toUpperCase()}</span>
-                <div><span className="hb-kicker">SUA IDENTIDADE</span><h1 id="hb-profile-title">Meu perfil</h1><p>Gerencie como seu nome aparece para os outros jogadores das campanhas.</p></div>
+            <section className="hb-profile-page hb-profile-page-v12" aria-labelledby="hb-profile-title">
+              <header className="hb-profile-hero hb-profile-banner">
+                <span className="hb-profile-banner-art" aria-hidden="true" />
+                <div className="hb-profile-banner-body">
+                  <span className="hb-profile-overline">✦ IDENTIDADE DO AVENTUREIRO</span>
+                  <div className="hb-profile-title-row">
+                    <span className="hb-profile-avatar hb-profile-avatar-xl" aria-hidden="true">
+                      {profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}
+                    </span>
+                    <div className="hb-profile-heading">
+                      <h1 id="hb-profile-title">Meu perfil</h1>
+                      <strong>{profileNameDraft.trim() || displayName}</strong>
+                      <p>Sua identidade no universo HäxBag. Personalize seu avatar e sua apresentação.</p>
+                    </div>
+                  </div>
+                  <div className="hb-profile-hero-tags">
+                    <span>✧ {campaigns.length} {campaigns.length === 1 ? 'campanha' : 'campanhas'}</span>
+                    <span>✦ {activeVisualStyle.label}</span>
+                    <span className="hb-profile-presence"><i aria-hidden="true" /> Conectado</span>
+                  </div>
+                </div>
               </header>
-              <form className="hb-profile-card" onSubmit={async event => {
-                event.preventDefault()
-                if (profileSaving) return
-                const nextName = profileNameDraft.trim()
-                if (!nextName || nextName.length > 60) { setError('O nome deve ter entre 1 e 60 caracteres.'); return }
-                setProfileSaving(true); setError('')
-                try {
-                  const { error: authError } = await supabase.auth.updateUser({ data: { display_name: nextName } })
-                  if (authError) throw authError
-                  const { error: profileError } = await supabase.from('profiles').update({ display_name: nextName }).eq('id', session.user.id)
-                  if (profileError) setNotice('Nome atualizado na conta. O nome visível aos membros poderá demorar a sincronizar: ' + profileError.message)
-                  else setNotice('Seu perfil foi atualizado.')
-                } catch (err) { setError('Erro ao atualizar perfil: ' + (err instanceof Error ? err.message : String(err))) }
-                finally { setProfileSaving(false) }
-              }}>
-                <span className="hb-kicker">DADOS DA CONTA</span>
-                <label>Nome de exibição<input maxLength={60} required value={profileNameDraft} onChange={event => setProfileNameDraft(event.target.value)} placeholder="Como os outros jogadores verão seu nome" /></label>
-                <label>E-mail da conta<input type="email" value={session.user.email || ''} readOnly aria-readonly="true" /></label>
-                <div className="hb-profile-metadata"><span>Campanhas: <strong>{campaigns.length}</strong></span><span>Status: <strong>Conectado</strong></span></div>
-                <button type="submit" className="primary-button" disabled={profileSaving}>{profileSaving ? 'Salvando…' : 'Salvar perfil'}</button>
-              </form>
+
+              <div className="hb-profile-overview-grid">
+                <article className="hb-profile-info-tile">
+                  <span className="hb-profile-tile-icon" aria-hidden="true">⚑</span>
+                  <span>Campanhas vinculadas</span>
+                  <strong>{campaigns.length}</strong>
+                  <small>Seus mundos e aventuras</small>
+                </article>
+                <article className="hb-profile-info-tile">
+                  <span className="hb-profile-tile-icon" aria-hidden="true">♜</span>
+                  <span>Atuação na campanha</span>
+                  <strong>{selectedCampaign ? isMaster ? 'Mestre' : 'Jogador' : '—'}</strong>
+                  <small>{selectedCampaign?.name || 'Nenhuma campanha selecionada'}</small>
+                </article>
+                <article className="hb-profile-info-tile">
+                  <span className="hb-profile-tile-icon" aria-hidden="true">✧</span>
+                  <span>Conta criada em</span>
+                  <strong>{accountCreatedAt}</strong>
+                  <small>Seu registro no HäxBag</small>
+                </article>
+              </div>
+
+              <div className="hb-profile-layout">
+                <form className="hb-profile-card hb-profile-edit-card" onSubmit={async event => {
+                  event.preventDefault()
+                  if (profileSaving || !profileHasChanges) return
+                  const nextName = profileNameDraft.trim()
+                  const nextBio = profileBioDraft.trim()
+                  if (!nextName || nextName.length > 60) {
+                    setError('O nome de exibição deve ter entre 1 e 60 caracteres.')
+                    return
+                  }
+                  if (nextBio.length > 180) {
+                    setError('A apresentação pode ter até 180 caracteres.')
+                    return
+                  }
+                  setProfileSaving(true)
+                  setError('')
+                  try {
+                    const { error: authError } = await supabase.auth.updateUser({
+                      data: { display_name: nextName, profile_avatar: profileAvatarDraft, profile_bio: nextBio },
+                    })
+                    if (authError) throw authError
+                    if (nextName !== String(displayName).trim()) {
+                      const { error: profileError } = await supabase.from('profiles')
+                        .update({ display_name: nextName }).eq('id', session.user.id)
+                      if (profileError) {
+                        setNotice('Perfil salvo na conta. Não foi possível sincronizar o nome com os membros: ' + profileError.message)
+                      } else {
+                        setNotice('Perfil atualizado com sucesso.')
+                      }
+                    } else {
+                      setNotice('Perfil atualizado com sucesso.')
+                    }
+                  } catch (err) {
+                    setError('Erro ao salvar seu perfil: ' + (err instanceof Error ? err.message : String(err)))
+                  } finally {
+                    setProfileSaving(false)
+                  }
+                }}>
+                  <div className="hb-profile-card-heading">
+                    <span className="hb-profile-card-glyph" aria-hidden="true">✦</span>
+                    <div><span className="hb-kicker">PERSONALIZAÇÃO</span><h2>Sua identidade</h2><p>Escolha como seu perfil aparece para você.</p></div>
+                  </div>
+                  <fieldset className="hb-profile-avatar-fieldset">
+                    <legend>Avatar do perfil</legend>
+                    <p>Escolha um símbolo para representar sua conta no menu principal.</p>
+                    <div className="hb-profile-avatar-options" role="group" aria-label="Escolha seu avatar">
+                      <button type="button" className={`hb-profile-avatar-option ${profileAvatarDraft === '' ? 'active' : ''}`}
+                        aria-label="Usar iniciais do nome" aria-pressed={profileAvatarDraft === ''} onClick={() => setProfileAvatarDraft('')}>
+                        {(profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}
+                      </button>
+                      {profileAvatarOptions.map(emoji => (
+                        <button key={emoji} type="button" className={`hb-profile-avatar-option ${profileAvatarDraft === emoji ? 'active' : ''}`}
+                          aria-label={`Usar avatar ${emoji}`} aria-pressed={profileAvatarDraft === emoji} onClick={() => setProfileAvatarDraft(emoji)}>{emoji}</button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label className="hb-profile-field">Nome de exibição
+                    <input maxLength={60} required value={profileNameDraft} onChange={event => setProfileNameDraft(event.target.value)}
+                      autoComplete="nickname" placeholder="Como os outros jogadores verão seu nome" />
+                    <small>Este nome também identifica você nas campanhas.</small>
+                  </label>
+                  <label className="hb-profile-field">Sobre você <span className="hb-profile-optional">Opcional</span>
+                    <textarea rows={4} maxLength={180} value={profileBioDraft} onChange={event => setProfileBioDraft(event.target.value)}
+                      placeholder="Uma frase sobre suas aventuras, personagens ou histórias favoritas…" />
+                    <small>{profileBioDraft.length}/180 caracteres · Salvo na sua conta; por enquanto visível apenas neste perfil.</small>
+                  </label>
+                  <div className="hb-profile-form-footer">
+                    <span className="hb-profile-save-status" aria-live="polite">{profileHasChanges ? '● Alterações não salvas' : '✓ Tudo atualizado'}</span>
+                    <div className="hb-profile-form-actions">
+                      <button type="button" className="secondary-button" disabled={profileSaving || !profileHasChanges}
+                        onClick={() => { setProfileNameDraft(String(displayName)); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio) }}>Descartar</button>
+                      <button type="submit" className="primary-button" disabled={profileSaving || !profileHasChanges}>
+                        {profileSaving ? 'Salvando…' : 'Salvar alterações'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                <aside className="hb-profile-side-panel">
+                  <section className="hb-profile-side-card">
+                    <div className="hb-profile-side-heading"><span aria-hidden="true">⌘</span><div><span className="hb-kicker">DADOS DA CONTA</span><h2>Informações</h2></div></div>
+                    <div className="hb-profile-account-line"><span>E-mail</span><strong title={session.user.email || ''}>{session.user.email || 'Indisponível'}</strong><small>Privado · não exibido para outros jogadores</small></div>
+                    <div className="hb-profile-account-line"><span>Campanha atual</span><strong>{selectedCampaign?.name || 'Nenhuma selecionada'}</strong></div>
+                    <div className="hb-profile-account-line"><span>Estilo visual</span><strong>{activeVisualStyle.symbol} {activeVisualStyle.label}</strong><small>Definido pela temporada ativa</small></div>
+                  </section>
+                  <section className="hb-profile-side-card">
+                    <div className="hb-profile-side-heading"><span aria-hidden="true">↗</span><div><span className="hb-kicker">ACESSO RÁPIDO</span><h2>Continuar aventura</h2></div></div>
+                    <div className="hb-profile-shortcuts">
+                      <button type="button" onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }}>
+                        <span aria-hidden="true">⚑</span><span><strong>Minhas campanhas</strong><small>Gerenciar seus mundos</small></span><span aria-hidden="true">↗</span>
+                      </button>
+                      <button type="button" disabled={!selectedCampaignId} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }}>
+                        <span aria-hidden="true">▧</span><span><strong>Minhas fichas</strong><small>{selectedCampaignId ? 'Abrir personagens' : 'Selecione uma campanha'}</small></span><span aria-hidden="true">↗</span>
+                      </button>
+                    </div>
+                  </section>
+                </aside>
+              </div>
             </section>
           )}
           {activePage === 'overview' && (

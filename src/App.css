@@ -13125,3 +13125,70 @@ button:disabled { opacity: .58; }
 @media (min-width: 801px) and (max-width: 1100px) {
   .app-shell.hb-polish { --hb-sidebar-width: 220px; }
 }
+
+
+/* ================================================================
+   HÄXBAG v12 · Meu perfil — painel de aventureiro, responsivo
+   ================================================================ */
+.hb-profile-page-v12{max-width:1240px;gap:20px;padding-bottom:34px}
+.hb-profile-page-v12 .hb-profile-banner{position:relative;isolation:isolate;display:block;overflow:hidden;min-height:220px;padding:clamp(24px,4vw,45px);border:1px solid var(--season-line);border-radius:22px;background:linear-gradient(115deg,color-mix(in srgb,var(--season-primary) 11%,var(--season-surface)),var(--season-bg) 90%);box-shadow:0 20px 36px rgba(0,0,0,.15)}
+.hb-profile-page-v12 .hb-profile-banner::after{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(90deg,transparent 40%,color-mix(in srgb,var(--season-primary) 7%,transparent));opacity:.7}
+.hb-profile-page-v12 .hb-profile-banner-art{position:absolute;z-index:0;inset:0 0 0 auto;width:min(42%,440px);pointer-events:none;background-position:center right;background-repeat:no-repeat;background-size:contain;opacity:.45}
+.hb-profile-page-v12 .hb-profile-banner-body{position:relative;z-index:1;max-width:790px}
+.hb-profile-page-v12 .hb-profile-overline{display:inline-block;margin-bottom:17px;color:var(--season-primary);font-size:10px;font-weight:850;letter-spacing:.2em}
+.hb-profile-page-v12 .hb-profile-title-row{display:flex;align-items:center;gap:20px}
+.hb-profile-page-v12 .hb-profile-avatar-xl{flex:0 0 94px;width:94px;height:94px;border-radius:23px;font-size:42px;box-shadow:0 0 0 5px color-mix(in srgb,var(--season-primary) 12%,transparent),0 12px 26px rgba(0,0,0,.2)}
+.hb-profile-page-v12 .hb-profile-heading{min-width:0}
+.hb-profile-page-v12 .hb-profile-heading h1{margin:0 0 5px;font-family:Georgia,serif;font-size:clamp(26px,3.2vw,39px);letter-spacing:-.025em}
+.hb-profile-page-v12 .hb-profile-heading>strong{display:block;font-size:15px;overflow-wrap:anywhere;color:var(--season-primary)}
+.hb-profile-page-v12 .hb-profile-heading p{max-width:535px;margin:9px 0 0;font-size:12px;line-height:1.65;color:var(--season-muted)}
+.hb-profile-page-v12 .hb-profile-hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.hb-profile-page-v12 .hb-profile-hero-tags>span{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--season-primary) 22%,var(--season-line));border-radius:999px;background:color-mix(in srgb,var(--season-surface-alt) 75%,transparent);color:var(--season-text);font-size:11px;font-weight:700}
+.hb-profile-page-v12 .hb-profile-presence i{width:7px;height:7px;border-radius:50%;background:#60bd91;box-shadow:0 0 9px #60bd9170}
+.hb-profile-page-v12 .hb-profile-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.hb-profile-page-v12 .hb-profile-info-tile{position:relative;display:grid;gap:7px;min-width:0;padding:20px;border:1px solid var(--season-line);border-radius:16px;background:linear-gradient(145deg,var(--season-surface),var(--season-surface-alt));box-shadow:0 11px 22px rgba(0,0,0,.1)}
+.hb-profile-page-v12 .hb-profile-tile-icon{position:absolute;right:16px;top:16px;font-size:23px;color:var(--season-primary);opacity:.65}
+.hb-profile-page-v12 .hb-profile-info-tile>span:not(.hb-profile-tile-icon){padding-right:26px;color:var(--season-muted);font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.hb-profile-page-v12 .hb-profile-info-tile strong{font-size:clamp(17px,2vw,26px);line-height:1.25;color:var(--season-text);overflow-wrap:anywhere}
+.hb-profile-page-v12 .hb-profile-info-tile small{font-size:11px;color:var(--season-muted);overflow-wrap:anywhere}
+.hb-profile-page-v12 .hb-profile-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,.85fr);gap:16px;align-items:start}
+.hb-profile-page-v12 .hb-profile-edit-card{gap:21px;padding:clamp(21px,3vw,31px)}
+.hb-profile-page-v12 .hb-profile-card-heading,.hb-profile-page-v12 .hb-profile-side-heading{display:flex;align-items:center;gap:14px;padding-bottom:18px;border-bottom:1px solid var(--season-line)}
+.hb-profile-page-v12 .hb-profile-card-glyph,.hb-profile-page-v12 .hb-profile-side-heading>span{flex:0 0 43px;display:grid;place-items:center;width:43px;height:43px;border:1px solid var(--season-line);border-radius:13px;background:var(--season-surface-alt);color:var(--season-primary);font-size:23px}
+.hb-profile-page-v12 :is(.hb-profile-card-heading,.hb-profile-side-heading) h2{margin:4px 0;font-size:19px;color:var(--season-text)}
+.hb-profile-page-v12 :is(.hb-profile-card-heading,.hb-profile-side-heading) p{margin:0;color:var(--season-muted);font-size:12px}
+.hb-profile-page-v12 .hb-profile-avatar-fieldset{margin:0;padding:0;border:0;min-width:0}
+.hb-profile-page-v12 .hb-profile-avatar-fieldset legend{margin-bottom:7px;color:var(--season-text);font-size:13px;font-weight:750}
+.hb-profile-page-v12 .hb-profile-avatar-fieldset p{margin:0 0 14px;color:var(--season-muted);font-size:11px;line-height:1.5}
+.hb-profile-page-v12 .hb-profile-avatar-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(49px,1fr));gap:9px}
+.hb-profile-page-v12 .hb-profile-avatar-option{display:grid;place-items:center;min-width:0;min-height:52px;padding:5px;border:1px solid var(--season-line);border-radius:11px;background:var(--season-surface-alt);color:var(--season-text);font-size:24px;cursor:pointer;transition:transform .15s,border-color .15s,background .15s}
+.hb-profile-page-v12 .hb-profile-avatar-option.active{border:2px solid var(--season-primary);background:color-mix(in srgb,var(--season-primary) 16%,var(--season-surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--season-primary) 10%,transparent)}
+.hb-profile-page-v12 .hb-profile-avatar-option:hover{transform:translateY(-2px);border-color:var(--season-primary)}
+.hb-profile-page-v12 .hb-profile-field{font-size:13px}
+.hb-profile-page-v12 .hb-profile-field input,.hb-profile-page-v12 .hb-profile-field textarea{display:block;width:100%;min-width:0;min-height:45px;padding:12px 14px;resize:vertical;border:1px solid var(--season-line);border-radius:10px;background:var(--season-bg);color:var(--season-text);font:inherit;line-height:1.5}
+.hb-profile-page-v12 .hb-profile-field textarea{min-height:115px}
+.hb-profile-page-v12 .hb-profile-field :is(input,textarea):focus-visible,.hb-profile-page-v12 button:focus-visible{outline:2px solid var(--season-primary);outline-offset:3px}
+.hb-profile-page-v12 .hb-profile-field small{font-size:10px;color:var(--season-muted);font-weight:400;line-height:1.5}
+.hb-profile-page-v12 .hb-profile-optional{font-size:10px;font-weight:500;color:var(--season-muted)}
+.hb-profile-page-v12 .hb-profile-form-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding-top:17px;border-top:1px solid var(--season-line)}
+.hb-profile-page-v12 .hb-profile-save-status{font-size:11px;color:var(--season-muted)}
+.hb-profile-page-v12 .hb-profile-form-actions{display:flex;flex-wrap:wrap;gap:8px}
+.hb-profile-page-v12 .hb-profile-form-actions button{padding:11px 14px;font-size:11px}
+.hb-profile-page-v12 .hb-profile-side-panel{display:grid;gap:15px}
+.hb-profile-page-v12 .hb-profile-side-card{display:grid;gap:17px;padding:22px;border:1px solid var(--season-line);border-radius:17px;background:linear-gradient(145deg,var(--season-surface),var(--season-surface-alt));box-shadow:0 11px 25px rgba(0,0,0,.10)}
+.hb-profile-page-v12 .hb-profile-account-line{display:grid;gap:5px;padding-bottom:13px;border-bottom:1px solid var(--season-line)}
+.hb-profile-page-v12 .hb-profile-account-line:last-child{padding-bottom:0;border-bottom:0}
+.hb-profile-page-v12 .hb-profile-account-line span{color:var(--season-muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+.hb-profile-page-v12 .hb-profile-account-line strong{color:var(--season-text);font-size:13px;overflow-wrap:anywhere;font-weight:700}
+.hb-profile-page-v12 .hb-profile-account-line small{font-size:10px;color:var(--season-muted)}
+.hb-profile-page-v12 .hb-profile-shortcuts{display:grid;gap:8px}
+.hb-profile-page-v12 .hb-profile-shortcuts button{display:flex;align-items:center;gap:10px;width:100%;padding:12px;border:1px solid var(--season-line);border-radius:11px;background:var(--season-bg);text-align:left;color:var(--season-text);cursor:pointer}
+.hb-profile-page-v12 .hb-profile-shortcuts button>span:first-child{font-size:20px;color:var(--season-primary)}
+.hb-profile-page-v12 .hb-profile-shortcuts button>span:nth-child(2){display:grid;flex:1;gap:3px;min-width:0}
+.hb-profile-page-v12 .hb-profile-shortcuts button strong{font-size:12px}
+.hb-profile-page-v12 .hb-profile-shortcuts button small{color:var(--season-muted);font-size:10px}
+.hb-profile-page-v12 .hb-profile-shortcuts button:hover:not(:disabled){border-color:var(--season-primary);background:color-mix(in srgb,var(--season-primary) 9%,var(--season-bg))}
+.hb-profile-page-v12 .hb-profile-shortcuts button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:900px){.hb-profile-page-v12 .hb-profile-layout{grid-template-columns:1fr}.hb-profile-page-v12 .hb-profile-side-panel{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.hb-profile-page-v12 .hb-profile-banner{min-height:0}.hb-profile-page-v12 .hb-profile-banner-art{width:55%;opacity:.19}.hb-profile-page-v12 .hb-profile-title-row{align-items:flex-start;gap:13px}.hb-profile-page-v12 .hb-profile-avatar-xl{flex-basis:59px;width:59px;height:59px;border-radius:15px;font-size:29px}.hb-profile-page-v12 .hb-profile-overview-grid{grid-template-columns:1fr}.hb-profile-page-v12 .hb-profile-side-panel{grid-template-columns:1fr}.hb-profile-page-v12 .hb-profile-form-footer{align-items:stretch}.hb-profile-page-v12 .hb-profile-form-actions{width:100%}.hb-profile-page-v12 .hb-profile-form-actions button{flex:1}.hb-profile-page-v12 .hb-profile-hero-tags>span{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.hb-profile-page-v12 .hb-profile-avatar-option{transition:none;transform:none!important}}

@@ -254,7 +254,7 @@
 }
 .app-shell.visual-style-japanese .hb-sidebar-brand-spark { font-size: 0 !important; }
 .app-shell.visual-style-japanese .hb-sidebar-brand-spark::before {
-  content: '和';
+  content: '幻';
   display: grid;
   place-items: center;
   width: 23px;
@@ -2430,3 +2430,20 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell .season-visual-style-group .season-style-ciclos .season-style-preview {
  background:linear-gradient(90deg,#171511 0%,rgba(23,21,17,.55) 28%,transparent 70%),url('./style-art/ciclos-hero.svg') right center/cover no-repeat !important;
 }
+
+/* HäxBag v12 · Identidade de cada estilo na página Meu perfil */
+.app-shell.visual-style-classic .hb-profile-banner-art{background-image:url('./style-art/eclipse-hero.svg')}
+.app-shell.visual-style-japanese .hb-profile-banner-art{background-image:url('./style-art/kisatsutai-hero.svg')}
+.app-shell.visual-style-cyberpunk .hb-profile-banner-art{background-image:url('./style-art/cyberflower-hero.svg')}
+.app-shell.visual-style-ciclos .hb-profile-banner-art{background-image:url('./style-art/ciclos-hero.svg')}
+.app-shell.visual-style-classic .hb-profile-banner{border-top:2px solid var(--season-primary)}
+.app-shell.visual-style-japanese .hb-profile-banner{border-left:3px solid var(--season-primary);border-radius:11px}
+.app-shell.visual-style-japanese .hb-profile-avatar-xl,.app-shell.visual-style-japanese .hb-profile-info-tile,.app-shell.visual-style-japanese .hb-profile-side-card{border-radius:8px}
+.app-shell.visual-style-japanese .hb-profile-page-v12 :is(.hb-profile-avatar-option,.hb-profile-shortcuts button){border-radius:5px}
+.app-shell.visual-style-cyberpunk .hb-profile-banner{border-left:3px solid var(--season-primary);border-radius:6px}
+.app-shell.visual-style-cyberpunk .hb-profile-avatar-xl,.app-shell.visual-style-cyberpunk .hb-profile-info-tile,.app-shell.visual-style-cyberpunk .hb-profile-side-card{border-radius:5px}
+.app-shell.visual-style-cyberpunk .hb-profile-info-tile,.app-shell.visual-style-cyberpunk .hb-profile-side-card{border-left:2px solid color-mix(in srgb,var(--season-primary) 52%,transparent)}
+.app-shell.visual-style-cyberpunk .hb-profile-page-v12 :is(.hb-profile-avatar-option,.hb-profile-shortcuts button){border-radius:3px}
+.app-shell.visual-style-ciclos .hb-profile-banner{border:1px solid var(--cycles-rule);border-top:2px solid var(--cycles-ink)}
+.app-shell.visual-style-ciclos .hb-profile-avatar-xl,.app-shell.visual-style-ciclos .hb-profile-info-tile,.app-shell.visual-style-ciclos .hb-profile-side-card{border-color:var(--cycles-rule)}
+.app-shell.visual-style-ciclos .hb-profile-page-v12 :is(h1,h2,.hb-profile-info-tile strong){font-family:Georgia,'Times New Roman',serif}
