@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+<defs><linearGradient id="cPetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff9bd4"/><stop offset=".55" stop-color="#f05bae"/><stop offset="1" stop-color="#aa62fa"/></linearGradient></defs>
+<circle cx="64" cy="64" r="52" stroke="#5ad9f5" stroke-width="1.6" opacity=".48" stroke-dasharray="20 8 4 8"/>
+<circle cx="64" cy="64" r="41" stroke="#59cfe9" stroke-width=".9" opacity=".4"/>
+<g fill="url(#cPetal)" stroke="#ffb4df" stroke-width=".7"><path transform="translate(64 64) rotate(0)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(60)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(120)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(180)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(240)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(300)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/></g><circle cx="64" cy="64" r="13" fill="#14222e" stroke="#69d9ef" stroke-width="2"/><circle cx="64" cy="64" r="6" fill="#b0f5ff"/>
+<path d="M64 8V2h24M64 120v6H40M13 64H1v-20M115 64h12v22" stroke="#5bd1ef" stroke-width="2"/>
+<g fill="#ff91d0"><circle cx="88" cy="2" r="3"/><circle cx="40" cy="126" r="3"/><circle cx="1" cy="44" r="3"/><circle cx="127" cy="86" r="3"/></g>
+</svg>

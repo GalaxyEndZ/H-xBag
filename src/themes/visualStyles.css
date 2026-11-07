@@ -1862,3 +1862,259 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
     transform: none !important;
   }
 }
+
+
+/* ====================================================================
+   CYBERFLOWER — FLORA SINTÉTICA v9
+   Neon botanical details + clean tech HUD. Only affects cyberpunk key.
+   The campaign theme still controls surfaces, text and primary colours.
+   New original SVG artwork: cyberflower-hero.svg / cyberflower-crest.svg.
+   ==================================================================== */
+.app-shell.visual-style-cyberpunk {
+  --cf-bloom: color-mix(in srgb, var(--season-primary) 35%, #fc6ab9);
+  --cf-circuit: color-mix(in srgb, var(--season-primary) 27%, #6ce0ed);
+  --cf-bloom-wash: color-mix(in srgb, var(--cf-bloom) 12%, transparent);
+  --cf-circuit-wash: color-mix(in srgb, var(--cf-circuit) 10%, transparent);
+  --cf-edge: color-mix(in srgb, var(--cf-circuit) 36%, var(--season-line));
+  --cf-edge-strong: color-mix(in srgb, var(--cf-circuit) 65%, var(--season-line));
+  --hb-art-rule: var(--cf-edge);
+  --hb-art-ink: var(--cf-circuit);
+  --hb-art-ambient: var(--cf-bloom-wash);
+  --hb-art-background:
+    radial-gradient(ellipse at 93% 10%, var(--cf-bloom-wash), transparent 58%),
+    linear-gradient(125deg, var(--cf-circuit-wash), transparent 55%),
+    linear-gradient(140deg, var(--season-surface), var(--season-bg));
+}
+/* Páginas — composição floral à direita, conteúdo desobstruído à esquerda. */
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,
+  .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,
+  .overview-hero,.bestiary-hero
+) {
+  border-left: 3px solid var(--cf-bloom) !important;
+  border-top: 1px solid var(--cf-edge-strong) !important;
+  background: var(--hb-art-background) !important;
+  box-shadow: 0 13px 30px rgba(0,0,0,.16), inset 0 1px 0 var(--cf-circuit-wash) !important;
+}
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,
+  .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,
+  .overview-hero,.bestiary-hero
+)::before {
+  content: '' !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: min(64%, 690px) !important;
+  height: 100% !important;
+  opacity: .80 !important;
+  background: url('./style-art/cyberflower-hero.svg') right center / cover no-repeat !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+/* A galeria não usa o eclipse nem máscara monocromática: mostra o desenho. */
+.app-shell .season-style-cyberpunk {
+  --card-art: color-mix(in srgb, var(--season-primary) 36%, #ee69c5);
+  --card-art-wash: color-mix(in srgb, var(--card-art) 24%, transparent);
+}
+.app-shell .season-style-cyberpunk .season-style-preview {
+  border-color: color-mix(in srgb, var(--season-primary) 32%, #5cceea);
+  background:
+    linear-gradient(90deg, #0b101a 0%, rgba(11,16,26,.45) 35%, transparent 70%),
+    url('./style-art/cyberflower-hero.svg') right center / cover no-repeat,
+    linear-gradient(135deg, #10131e, #101d27) !important;
+  box-shadow: inset 0 0 0 1px rgba(95,222,240,.17), 0 0 15px rgba(250,106,195,.09);
+}
+.app-shell .season-style-cyberpunk .season-style-preview::before { content: none !important; }
+.app-shell .season-style-cyberpunk .season-style-preview-glyph {
+  color: #e889cb;
+  text-shadow: 0 0 13px rgba(248,106,193,.45);
+}
+.app-shell .season-style-cyberpunk .season-style-preview-lines i:nth-child(even) {
+  background: #64d5eb;
+}
+.app-shell .season-style-cyberpunk .season-style-card-info strong {
+  color: color-mix(in srgb,var(--season-text) 76%,#fba7de);
+}
+.app-shell .season-style-cyberpunk .season-style-card-info strong::after {
+  content: ' // FLORA SINTÉTICA';
+  display: block;
+  margin-top: 6px;
+  font: 650 9px/1.4 'Cascadia Code',Consolas,monospace;
+  letter-spacing: .14em;
+  color: color-mix(in srgb, var(--season-primary) 45%, #82e3f2);
+}
+.app-shell .season-visual-style-group .season-style-cyberpunk:is(:hover,.active) {
+  box-shadow: 0 0 0 1px color-mix(in srgb,var(--season-primary) 40%,#e976cb),0 15px 34px rgba(0,0,0,.22),0 0 19px rgba(103,220,230,.1) !important;
+}
+/* Main menu — two-colour circuitry + a soft blossom watermark. */
+.app-shell.hb-polish.visual-style-cyberpunk {
+  --hb-menu-bright: var(--cf-circuit);
+  --hb-menu-line: var(--cf-edge);
+  --hb-menu-wash: var(--cf-circuit-wash);
+  --hb-menu-ambient:
+    radial-gradient(ellipse at 94% 2%, var(--cf-bloom-wash), transparent 47%),
+    linear-gradient(90deg, color-mix(in srgb, var(--cf-circuit) 4%, transparent) 1px, transparent 1px) 0 0 / 35px 35px,
+    linear-gradient(0deg, color-mix(in srgb, var(--cf-circuit) 4%, transparent) 1px, transparent 1px) 0 0 / 35px 35px,
+    linear-gradient(180deg, var(--season-bg),var(--season-surface));
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar::before {
+  top: -7px;
+  right: -55px;
+  width: 244px;
+  height: 240px;
+  opacity: .20;
+  background: url('./style-art/cyberflower-crest.svg') center / contain no-repeat;
+  -webkit-mask: none;
+  mask: none;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-brand::after {
+  background: linear-gradient(90deg, transparent, var(--cf-bloom), var(--cf-circuit), transparent);
+  opacity: .85;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-brand .brand-mark {
+  border: 1px solid var(--cf-edge-strong);
+  border-bottom: 2px solid var(--cf-bloom);
+  background: radial-gradient(ellipse at 70% 20%, var(--cf-bloom-wash), transparent 75%),var(--season-surface-alt);
+  box-shadow: inset 0 1px 0 var(--cf-circuit-wash), 0 0 15px var(--cf-bloom-wash);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-left: 3px solid var(--cf-bloom);
+  border-right-color: var(--cf-edge);
+  background: linear-gradient(110deg,var(--cf-bloom-wash),var(--season-surface) 76%);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  right: 1px;
+  top: -10px;
+  width: 78px;
+  height: 78px;
+  opacity: .38;
+  background: url('./style-art/cyberflower-crest.svg') center / contain no-repeat;
+  pointer-events: none;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity > * {
+  position: relative;
+  z-index: 1;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-emblem {
+  border: 1px solid var(--cf-bloom);
+  background: linear-gradient(145deg,var(--cf-bloom-wash),var(--season-bg));
+  box-shadow: 0 0 10px var(--cf-bloom-wash);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-group-title::before {
+  content: '✿';
+  color: var(--cf-bloom);
+  font: 15px/1 Georgia,serif;
+  text-shadow: 0 0 11px var(--cf-bloom-wash);
+  letter-spacing: normal;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-nav .nav-link {
+  border-radius: 4px;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-nav .nav-link.active {
+  border-left: 3px solid var(--cf-bloom) !important;
+  border-top-color: var(--cf-edge) !important;
+  border-bottom-color: var(--cf-edge) !important;
+  background: linear-gradient(90deg,var(--cf-bloom-wash),var(--cf-circuit-wash) 80%,transparent) !important;
+  box-shadow: inset 0 1px 0 var(--cf-circuit-wash),0 0 13px var(--cf-bloom-wash) !important;
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-nav .nav-link.active .hb-sidebar-nav-icon {
+  border-color: var(--cf-circuit);
+  background: linear-gradient(135deg,var(--cf-bloom-wash),var(--season-bg));
+  box-shadow: 0 0 9px var(--cf-circuit-wash);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-workspace,
+.app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-invite {
+  border-color: var(--cf-edge);
+  border-left: 2px solid var(--cf-bloom);
+  background-image: linear-gradient(122deg,var(--cf-bloom-wash),transparent 56%);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .hb-topbar-style-badge {
+  border-left-color: var(--cf-bloom);
+  border-top: 1px solid var(--cf-edge-strong);
+  box-shadow: inset 0 1px 0 var(--cf-circuit-wash),0 0 9px var(--cf-bloom-wash);
+}
+.app-shell.hb-polish.visual-style-cyberpunk .topbar {
+  border-bottom-color: var(--cf-edge);
+  background:
+    linear-gradient(90deg,var(--cf-bloom-wash),transparent 30%,var(--cf-circuit-wash) 95%),
+    linear-gradient(90deg,var(--season-bg),var(--season-surface));
+}
+/* Content: accent edges and nested controls without covering artwork. */
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .sheet-card,.sheet-summary-card,.sheet-summary-status-card,.sheet-library-card,
+  .sheet-inventory-section,.enemy-hub-card,.enemy-hub-scene,.hb-beast-card,
+  .hb-ms-pane,.shop-card,.shop-item-card,.campaign-card,.season-card,
+  .season-theme-panel,.armor-equipped-card,.combat-action-card
+) {
+  border-color: var(--cf-edge);
+  background-image:
+    linear-gradient(125deg,var(--cf-bloom-wash),transparent 37%),
+    linear-gradient(270deg,var(--cf-circuit-wash),transparent 30%);
+  box-shadow: 0 10px 24px rgba(0,0,0,.11), inset 2px 0 0 var(--cf-bloom-wash);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .sheet-card,.sheet-summary-card,.enemy-hub-card,.hb-beast-card,.shop-item-card,.hb-ms-pane,.campaign-card
+) {
+  border-left: 2px solid var(--cf-bloom);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(
+  .sheet-page-hero-icon,.hb-hero-emblem,.enemy-hub-hero-symbol,.hb-beast-hero-symbol,.shops-hero-icon
+) {
+  border: 1px solid var(--cf-edge-strong);
+  border-radius: 6px !important;
+  box-shadow: 0 0 13px var(--cf-bloom-wash), inset 0 1px 0 var(--cf-circuit-wash);
+}
+.app-shell.visual-style-cyberpunk :is(.primary-button,.hb-sidebar-create,.hb-sidebar-invite-button) {
+  border-color: var(--cf-edge-strong);
+  background-image: linear-gradient(112deg,var(--cf-bloom-wash),var(--cf-circuit-wash));
+  box-shadow: inset 0 1px 0 var(--cf-circuit-wash);
+}
+.app-shell.visual-style-cyberpunk :is(.secondary-button,.sheet-page-back,.enemy-hub-back) {
+  border-color: var(--cf-edge);
+  border-left: 2px solid var(--cf-bloom);
+  background-image: linear-gradient(100deg,var(--cf-bloom-wash),transparent 55%,var(--cf-circuit-wash));
+}
+.app-shell.visual-style-cyberpunk :is(.primary-button,.secondary-button,.sheet-page-back,.enemy-hub-back,.hb-sidebar-create):hover:not(:disabled) {
+  border-color: var(--cf-circuit);
+  box-shadow: 0 0 13px var(--cf-circuit-wash);
+}
+.app-shell.visual-style-cyberpunk .page-content :is(input:not([type=checkbox]):not([type=radio]),textarea,select):focus-visible {
+  outline: 2px solid var(--cf-circuit);
+  outline-offset: 2px;
+}
+/* Portaled dialogs share the same identity and keep native form usability. */
+body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emoji-modal,.item-details-modal,.item-modal-content,.modal-content,.sheet-item-modal,.sheet-item-editor-modal) {
+  border-left: 2px solid color-mix(in srgb,var(--season-primary) 34%,#ef72c5);
+  border-top: 1px solid color-mix(in srgb,var(--season-primary) 32%,#6bd9ec);
+  background-image: linear-gradient(130deg,rgba(234,92,191,.035),transparent 44%,rgba(94,204,240,.035));
+}
+@media (max-width: 800px) {
+  .app-shell.visual-style-cyberpunk .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::before {
+    width: 56% !important;
+    opacity: .41 !important;
+  }
+}
+@media (max-width: 540px) {
+  .app-shell.visual-style-cyberpunk .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::before {
+    width: 37% !important;
+    opacity: .28 !important;
+  }
+  .app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity::after { opacity:.23; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell.visual-style-cyberpunk :is(.primary-button,.secondary-button,.nav-link,.season-style-card) {
+    transition: none !important;
+  }
+}
