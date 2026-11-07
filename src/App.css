@@ -13075,3 +13075,182 @@ button:disabled { opacity: .58; }
 .shops-sidebar-list .shop-card h3 {
   font-size: 14px;
 }
+/* ================================================================
+   HäxBag — personagens, recursos da Party e combate com armadura
+   Regras visuais compartilhadas por fichas normais e inimigos.
+   ================================================================ */
+
+/* A página de Personagens tem espaçamento próprio, sem herdar as
+   margens comprimidas dos catálogos de itens. */
+.page-content.page-characters > .characters-page-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 23px;
+  margin-top: 0;
+  padding: clamp(19px, 2.5vw, 28px);
+}
+.page-content.page-characters .characters-page-panel > .inventory-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin: 0;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--season-line, rgba(255, 255, 255, .12));
+}
+.page-content.page-characters .characters-page-panel > .inventory-heading > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.page-content.page-characters .characters-page-panel > .add-form {
+  margin: 0;
+  padding: clamp(16px, 2vw, 23px);
+  gap: 18px;
+}
+.page-content.page-characters .characters-page-panel > .item-grid {
+  display: grid;
+  width: 100%;
+  margin: 0;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  align-items: stretch;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  height: 100%;
+  padding: 20px;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card > .item-art {
+  flex: 0 0 auto;
+  margin: 0 0 2px;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card h3 {
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card p {
+  margin: 0;
+  min-height: 0;
+  line-height: 1.55;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card > button {
+  width: 100%;
+  margin-top: 0;
+  min-height: 40px;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card > button.secondary-button {
+  margin-top: auto;
+}
+.page-content.page-characters .characters-page-panel > .item-grid > .item-card > button + button {
+  margin-top: 0;
+}
+
+/* Visualização da armadura dentro de Combate. */
+.combat-armor-panel {
+  display: grid;
+  gap: 15px;
+  margin-top: 20px;
+  padding: clamp(16px, 2vw, 22px);
+  border: 1px solid var(--season-line, rgba(255, 255, 255, .13));
+  border-radius: 17px;
+  background: var(--season-surface-alt, rgba(255, 255, 255, .04));
+}
+.combat-armor-selector {
+  display: grid;
+  gap: 7px;
+  max-width: 480px;
+  color: var(--season-muted, #b9b4c2);
+  font-size: 12px;
+  font-weight: 700;
+}
+.combat-armor-selector select {
+  width: 100%;
+  min-width: 0;
+}
+.combat-armor-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 155px), 1fr));
+  gap: 10px;
+}
+.combat-armor-stats article {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--season-line, rgba(255, 255, 255, .1));
+  border-radius: 12px;
+  background: var(--season-surface, rgba(0, 0, 0, .16));
+}
+.combat-armor-stats article span {
+  color: var(--season-muted, #b9b4c2);
+  font-size: 11px;
+}
+.combat-armor-stats article strong {
+  font-size: clamp(16px, 1.6vw, 21px);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.combat-armor-stats article small {
+  color: var(--season-muted, #b9b4c2);
+  font-size: 10px;
+}
+
+/* Os pontos extras ficam visíveis mesmo com saldo inicial de zero. */
+.sheet-extra-attribute-points {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--season-line, rgba(255, 255, 255, .1));
+  border-radius: 13px;
+  background: var(--season-surface-alt, rgba(255, 255, 255, .05));
+}
+.sheet-extra-attribute-points > div {
+  display: grid;
+  flex: 1 1 230px;
+  gap: 5px;
+}
+.sheet-extra-attribute-points small {
+  color: var(--season-muted, #b9b4c2);
+  line-height: 1.5;
+}
+.sheet-extra-attribute-points input {
+  width: 110px;
+  max-width: 100%;
+  flex: 0 0 auto;
+}
+.party-season-controls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+.party-season-controls label {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+.party-season-controls button {
+  flex: 0 0 auto;
+  min-height: 40px;
+}
+@media (max-width: 630px) {
+  .page-content.page-characters > .characters-page-panel { gap: 17px; }
+  .page-content.page-characters .characters-page-panel > .inventory-heading { align-items: stretch; }
+  .page-content.page-characters .characters-page-panel > .inventory-heading > div:last-child { width: 100%; }
+  .page-content.page-characters .characters-page-panel > .inventory-heading > div:last-child > button { flex: 1 1 100%; }
+  .sheet-extra-attribute-points input { width: 100%; }
+  .party-season-controls button { flex: 1 1 100%; }
+}

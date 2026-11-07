@@ -11,6 +11,183 @@ import './App.css'
 import './themes/seasonThemes.css'
 import { seasonThemes } from './themes'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
+import HaxTable from './components/HaxTable'
+
+type SheetAttribute = 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
+
+// Regra compartilhada por fichas de personagens e inimigos.
+// Os pontos distribuídos e o bônus familiar são aplicados ao valor-base,
+// respeitando o limite de atributos do sistema.
+function calculateSheetAttribute(
+  read: (path: string, fallback?: any) => any,
+  attribute: SheetAttribute,
+  familyBonus: number,
+  maxAttribute = 5,
+) {
+  const nonnegativeInteger = (value: unknown) => {
+    const number = Number(value)
+    return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0
+  }
+  const base = nonnegativeInteger(read(`attributes.${attribute}`, 0))
+  const allocations = ['family', 'hierarchy', 'extra'].reduce(
+    (sum, source) => sum + nonnegativeInteger(read(`progression.allocations.${source}.${attribute}`, 0)),
+    0,
+  )
+  const legacyClass = nonnegativeInteger(read(`progression.allocations.class.${attribute}`, 0))
+  return Math.min(maxAttribute, Math.max(0, base + allocations + legacyClass + familyBonus))
+}
+
+type SheetSkill = 'vigor' | 'mental' | 'combat' | 'dexterity' | 'resistance' | 'ability'
+
+// A distribuição de perícias é calculada pela configuração do sistema,
+// tanto nas fichas de personagens quanto nas fichas de inimigos.
+function calculateSheetSkill(
+  read: (path: string, fallback?: any) => any,
+  skill: SheetSkill,
+  config: { maxPerSkill?: number; sources?: ReadonlyArray<{id: string}> } | null | undefined,
+  allowLegacyDirect = false,
+) {
+  const maxSkill = Math.max(1, Math.floor(config?.maxPerSkill ?? 12))
+  const sources = config?.sources ?? []
+  const allocated = sources.reduce((sum, source) => {
+    const value = Number(read(`skills.pointAllocations.${source.id}.${skill}`, 0))
+    return sum + (Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0)
+  }, 0)
+  const legacy = Number(read(`skills.${skill}`, 0))
+  const raw = Number.isFinite(legacy) ? Math.max(0, Math.floor(legacy)) : 0
+  const hasAllocationObject = read('skills.pointAllocations', null) !== null
+  return Math.min(maxSkill, sources.length && (hasAllocationObject || !allowLegacyDirect)
+    ? allocated : raw)
+}
+
+// Uma única fórmula de recursos para a ficha e o Escudo do Mestre (Party).
+// Recebe os dados da própria ficha, portanto a Party não precisa reconstruir
+// distribuições de perícias, atributos ou bônus de forma independente.
+function calculateSheetResourceMaximums(
+  sheetData: Record<string, any>,
+  options: {
+    skillPointConfig?: Parameters<typeof calculateSheetSkill>[2]
+    usesFamilyTiers: boolean
+    familyTier?: { pv?: number; ps?: number; pr?: number } | null
+    familyBreathingBonus: number
+    rankStatus?: { pv: number; ps: number; pr: number } | null
+  },
+) {
+  const read = (path: string, fallback: any = 0): any =>
+    path.split('.').reduce(
+      (current: any, key: string) =>
+        current && typeof current === 'object' ? current[key] : undefined,
+      sheetData as any,
+    ) ?? fallback
+  const number = (path: string) => {
+    const value = Number(read(path, 0))
+    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+  }
+  const vigor = calculateSheetSkill(read, 'vigor', options.skillPointConfig)
+  const mental = calculateSheetSkill(read, 'mental', options.skillPointConfig)
+  const ability = calculateSheetSkill(read, 'ability', options.skillPointConfig)
+  const breathing = calculateSheetAttribute(
+    read, 'breathing', options.usesFamilyTiers ? options.familyBreathingBonus : 0,
+  )
+  const family = options.usesFamilyTiers ? options.familyTier : null
+  const rank = options.rankStatus
+  return {
+    pv: Math.max(0, vigor * 10 + (family?.pv ?? 0) + (rank?.pv ?? 0) +
+      number('progression.classStatus.pv') + number('progression.statusBonuses.pv')),
+    ps: Math.max(0, mental * 10 + (family?.ps ?? 0) + (rank?.ps ?? 0) +
+      number('progression.classStatus.ps') + number('progression.statusBonuses.ps')),
+    pr: Math.max(0, (breathing + ability) * 10 + (family?.pr ?? 0) + (rank?.pr ?? 0) +
+      number('progression.classStatus.pr') + number('progression.statusBonuses.pr')),
+  }
+}
+
+// Regras reutilizadas pelo combate de personagens e inimigos.
+// O formato dos itens é normalizado antes do cálculo, evitando que as fichas
+// dependam das tabelas de inventário umas das outras.
+type SheetCombatEquipment = {
+  name?: string
+  weaponDamage?: string
+  equipmentType?: string
+  armorClass?: string
+  armorCoverage?: string
+  protectionTier?: string
+  protectionMode?: string
+}
+type SheetDamageType = 'cortante_perfurante' | 'especial_bruto'
+
+function calculateSheetDefenses(
+  equippedItems: SheetCombatEquipment[],
+  stats: { dexterity: number; resistance: number; combat: number; mental: number },
+) {
+  const armor = equippedItems.find(item => item.equipmentType === 'armor')
+  const protections = equippedItems.filter(item => item.equipmentType === 'protection')
+  const armorClass = armor?.armorClass || 'leve'
+  const armorDexterity = !armor ? stats.dexterity
+    : armorClass === 'pesada' ? 0
+    : armorClass === 'media' ? Math.floor(stats.dexterity / 2)
+    : stats.dexterity
+  const armorResistance = armorClass === 'pesada' ? stats.resistance * 2 + 8
+    : armorClass === 'media' ? stats.resistance + 6
+    : Math.floor(stats.resistance / 2) + 4
+  const armorCovers = (type: SheetDamageType) => Boolean(armor) && (
+    armorClass === 'pesada' || armor?.armorCoverage === 'todos' || armor?.armorCoverage === type
+  )
+  const fraction = (item: SheetCombatEquipment) => item.protectionTier === 'avancada'
+    ? 1 : item.protectionTier === 'moderada' ? 0.5 : 0.25
+  const physicalProtection = protections.filter(item => item.protectionMode !== 'sanidade')
+    .reduce((total, item) => total + Math.floor(stats.resistance * fraction(item)), 0)
+  const sanityProtection = protections.filter(item => item.protectionMode === 'sanidade')
+    .reduce((total, item) => total + Math.floor(stats.mental * fraction(item)), 0)
+  return {
+    armor,
+    armorClass,
+    armorDexterity,
+    counterAttackDT: stats.combat + armorDexterity,
+    armorResistance,
+    armorCovers,
+    physicalProtection,
+    sanityProtection,
+  }
+}
+
+function calculateSheetPhysicalDamage(input: {
+  incoming: number
+  reactionReduction: number
+  damageType: SheetDamageType
+  defenses: ReturnType<typeof calculateSheetDefenses>
+  specialBruteProtectionOnly?: boolean
+}) {
+  const incoming = Math.max(0, input.incoming)
+  const reactionPrevented = Math.floor(incoming * Math.max(0, Math.min(1, input.reactionReduction)))
+  const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
+  const armorReduction = input.defenses.armorCovers(input.damageType)
+    ? input.defenses.armorResistance : 0
+  const armorPrevented = Math.min(
+    damageAfterReaction,
+    armorReduction + (input.specialBruteProtectionOnly && input.damageType !== 'especial_bruto'
+      ? 0 : input.defenses.physicalProtection),
+  )
+  return {
+    reactionPrevented,
+    armorPrevented,
+    remaining: Math.max(0, damageAfterReaction - armorPrevented),
+    totalPrevented: reactionPrevented + armorPrevented,
+  }
+}
+
+function rollSheetAttributeDice(diceCount: number, agilityOverloaded = false) {
+  const effectiveDiceCount = Math.max(0, Math.floor(diceCount) - (agilityOverloaded ? 1 : 0))
+  const hasDisadvantage = effectiveDiceCount === 0
+  const rolls = Array.from({length: hasDisadvantage ? 2 : effectiveDiceCount},
+    () => Math.floor(Math.random() * 20) + 1)
+  const result = hasDisadvantage ? Math.min(...rolls) : Math.max(...rolls)
+  return {
+    rolls, result, effectiveDiceCount, hasDisadvantage,
+    description: hasDisadvantage
+      ? `${rolls.length}D20 = [${rolls.join(', ')}] (desvantagem: menor ${result})`
+      : `${effectiveDiceCount}D20 = [${rolls.join(', ')}] (maior: ${result})`,
+  }
+}
 
 type Campaign = {
   id: string
@@ -106,6 +283,34 @@ type CampaignCreature = {
   updated_at: string
 }
 
+type CampaignEnemy = {
+  id: string
+  campaign_id: string
+  name: string
+  emoji: string | null
+  archetype: string | null
+  description: string | null
+  sheet_data: Record<string, any>
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+// Participação, iniciativa e demais dados táticos da party inimiga são
+// independentes da Party de personagens e persistem na ficha de cada inimigo.
+function getEnemyPartySeason(enemy: CampaignEnemy, seasonId: string): {
+  participating: boolean
+  initiative: number | null
+} {
+  const entry = enemy.sheet_data?.enemyPartyBySeason?.[seasonId]
+  const initiative = entry?.initiative
+  return {
+    participating: entry?.participating === true,
+    initiative: initiative === null || initiative === undefined || initiative === '' ||
+      !Number.isFinite(Number(initiative)) ? null : Number(initiative),
+  }
+}
+
 type CampaignShop = {
   id: string
   campaign_id: string
@@ -156,6 +361,11 @@ const categories = [
   'Diversos',
 ]
 
+const enemyEmojiChoices = [
+  '👹', '👺', '💀', '☠️', '🩸', '👁️', '🧟', '🦇',
+  '🐺', '🐉', '🦂', '🕷️', '⚔️', '🛡️', '🔥', '🕯️',
+]
+
 const availableEmojis = [
   '📦', '⚔️', '🗡️', '🏹', '🛡️', '🪄',
   '🧪', '🧴', '🍖', '🍷', '🧀', '🧭',
@@ -198,6 +408,10 @@ function App() {
     : isCyberFlowerSystem
       ? 'Pontos de Eletrização (PE)'
       : 'Pontos de Mana (PM)'
+
+  // Inimigos de Kisatsutai usam Pontos de Sangue, sem conflitar com PS (Sanidade).
+  const enemyResourceAbbreviation = isKisatsutaiSystem ? 'SG' : resourceAbbreviation
+  const enemyResourcePointsLabel = isKisatsutaiSystem ? 'Pontos de Sangue' : resourcePointsLabel
 
   const systemRanks = activeSystem?.data?.ranks ?? []
   const systemArchetypes = activeSystem?.data?.archetypes ?? []
@@ -298,6 +512,25 @@ function App() {
   const [saleLoading, setSaleLoading] = useState(false)
   const [shops, setShops] = useState<CampaignShop[]>([])
   const [creatures, setCreatures] = useState<CampaignCreature[]>([])
+  const [enemies, setEnemies] = useState<CampaignEnemy[]>([])
+  const [enemiesLoading, setEnemiesLoading] = useState(false)
+  const [enemyPartySavingId, setEnemyPartySavingId] = useState<string | null>(null)
+  const [enemyPartyInitiativeDrafts, setEnemyPartyInitiativeDrafts] = useState<Record<string, string>>({})
+  const [enemyPartyRefreshKey, setEnemyPartyRefreshKey] = useState(0)
+  const [enemySearch, setEnemySearch] = useState('')
+  const [enemyArchetypeFilter, setEnemyArchetypeFilter] = useState('all')
+  const [enemySortOrder, setEnemySortOrder] = useState<'recent' | 'name' | 'oldest'>('recent')
+  const [enemyStatusFilter, setEnemyStatusFilter] = useState<'all' | 'configured' | 'unconfigured' | 'party' | 'critical'>('all')
+  const [enemyViewMode, setEnemyViewMode] = useState<'grid' | 'list'>('grid')
+  const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null)
+  const [enemySheetView, setEnemySheetView] = useState(false)
+  const [showEnemyForm, setShowEnemyForm] = useState(false)
+  const [editingEnemyId, setEditingEnemyId] = useState<string | null>(null)
+  const [enemySaving, setEnemySaving] = useState(false)
+  const [enemyName, setEnemyName] = useState('')
+  const [enemyEmoji, setEnemyEmoji] = useState('👹')
+  const [enemyArchetype, setEnemyArchetype] = useState('')
+  const [enemyDescription, setEnemyDescription] = useState('')
   const [creaturesLoading, setCreaturesLoading] = useState(false)
   const [creatureSearch, setCreatureSearch] = useState('')
   const [creatureCategoryFilter, setCreatureCategoryFilter] = useState('Todas')
@@ -389,6 +622,7 @@ const selectedCreature = creatures.find(
   const [cyberneticsArchetypeSheets, setCyberneticsArchetypeSheets] = useState<Record<string, Record<string, any>>>({})
   const [, setMasterShieldGrantRows] = useState<Array<{ character_id: string; user_id: string }>>([])
   const [masterShieldLoading, setMasterShieldLoading] = useState(false)
+  const [masterShieldRefreshKey, setMasterShieldRefreshKey] = useState(0)
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
@@ -466,6 +700,285 @@ const selectedCreature = creatures.find(
   const [sheetDraft, setSheetDraft] = useState('{}')
   const sheetDraftRef = useRef(sheetDraft)
     sheetDraftRef.current = sheetDraft
+  const [enemySheetDraft, setEnemySheetDraft] = useState('{}')
+  const enemySheetDraftRef = useRef(enemySheetDraft)
+    enemySheetDraftRef.current = enemySheetDraft
+  const [enemySheetLoading, setEnemySheetLoading] = useState(false)
+  const [enemySheetSaving, setEnemySheetSaving] = useState(false)
+  const [enemySheetDirty, setEnemySheetDirty] = useState(false)
+  const [enemyAutoSaveStatus, setEnemyAutoSaveStatus] = useState<
+    'idle' | 'pending' | 'saving' | 'saved' | 'error'
+  >('idle')
+  const enemyFailedAutoSaveDraftRef = useRef<string | null>(null)
+  const enemySheetSavingRef = useRef(false)
+  const [enemyEditingSheet, setEnemyEditingSheet] = useState(false)
+
+
+
+
+
+
+  // Valores de ajuste são controles temporários, não dados da ficha.
+
+  const [enemyItemSearch, setEnemyItemSearch] = useState('')
+  const [enemyFavoriteOnly, setEnemyFavoriteOnly] = useState(false)
+  const [enemySortBy, setEnemySortBy] = useState('created')
+  const [enemyWalletCurrency, setEnemyWalletCurrency] = useState('')
+  const [enemyWalletAmount, setEnemyWalletAmount] = useState('')
+  const [enemyWalletDescription, setEnemyWalletDescription] = useState('')
+  const [enemyWalletFrom, setEnemyWalletFrom] = useState('')
+  const [enemyWalletTo, setEnemyWalletTo] = useState('')
+  const [enemyWalletConversionAmount, setEnemyWalletConversionAmount] = useState('')
+  const [enemyWalletShowHistory, setEnemyWalletShowHistory] = useState(false)
+
+  const [enemyItemCategory, setEnemyItemCategory] = useState('Todos')
+  const [enemyItemEditorOpen, setEnemyItemEditorOpen] = useState(false)
+  const [enemyItemEditorIndex, setEnemyItemEditorIndex] = useState<number | null>(null)
+  const [enemyItemForm, setEnemyItemForm] = useState<Record<string, any>>({})
+  const enemySheetLoadedForRef = useRef<string | null>(null)
+  const selectedEnemy = enemies.find(
+    enemy => enemy.id === selectedEnemyId
+  ) ?? null
+  const [enemySheetNameDraft, setEnemySheetNameDraft] = useState('')
+  const [enemySheetNameSaving, setEnemySheetNameSaving] = useState(false)
+  useEffect(() => { setEnemySheetNameDraft(selectedEnemy?.name ?? '') }, [selectedEnemy?.id, selectedEnemy?.name])
+
+  const enemySystemName = selectedCampaign?.system_name || ''
+
+const enemySystemFeatures =
+  getSystemByName(enemySystemName)?.data?.features
+
+const enemyUsesFamilyTiers =
+  enemySystemFeatures?.usesFamilyTiers ?? false
+
+const enemyUsesRanks =
+  enemySystemFeatures?.usesRanks ?? false
+
+const enemyTierKey = String(
+  readEnemySheet('family.tier', '5')
+)
+
+const enemyAttributeBonuses = {
+  strength: enemyUsesFamilyTiers ? getSystemAttributeBonus(enemyTierKey, 'strength') : 0,
+  agility: enemyUsesFamilyTiers ? getSystemAttributeBonus(enemyTierKey, 'agility') : 0,
+  defense: enemyUsesFamilyTiers ? getSystemAttributeBonus(enemyTierKey, 'defense') : 0,
+  breathing: enemyUsesFamilyTiers ? getSystemAttributeBonus(enemyTierKey, 'breathing') : 0,
+  intellect: enemyUsesFamilyTiers ? getSystemAttributeBonus(enemyTierKey, 'intellect') : 0,
+}
+const enemyEffectiveAttribute = (attribute: SheetAttribute) =>
+  calculateSheetAttribute(readEnemySheet, attribute, enemyAttributeBonuses[attribute])
+
+const enemySkillPointConfig = activeSystem?.data?.skillPoints
+const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
+  function getEnemySheetOverview(enemy: CampaignEnemy) {
+    const data = enemy.sheet_data || {}
+    const readFromEnemy = (path: string, fallback: any = 0) =>
+      path.split('.').reduce((current: any, key: string) =>
+        current && typeof current === 'object' ? current[key] : undefined,
+        data as any,
+      ) ?? fallback
+    const tierKey = String(readFromEnemy('family.tier', '5'))
+    const tier = enemyUsesFamilyTiers ? getSystemFamilyTier(tierKey) : null
+    const rank = enemyUsesRanks
+      ? getSystemRankStatus(String(readFromEnemy('progression.rankId', 'zaidan')))
+      : { pv: 0, ps: 0, pr: 0 }
+    const breathingBonus = enemyUsesFamilyTiers
+      ? getSystemAttributeBonus(tierKey, 'breathing') : 0
+    const breathing = calculateSheetAttribute(readFromEnemy, 'breathing', breathingBonus)
+    const skill = (key: SheetSkill) => calculateSheetSkill(
+      readFromEnemy, key, enemyUsesSkillPoints ? enemySkillPointConfig : null, true,
+    )
+    const bonus = (path: string) => Number(readFromEnemy(path, 0)) || 0
+    const maxPV = Math.max(0, skill('vigor') * 10 + (tier?.pv ?? 0) +
+      rank.pv + bonus('progression.classStatus.pv') + bonus('progression.statusBonuses.pv'))
+    const maxPS = Math.max(0, skill('mental') * 10 + (tier?.ps ?? 0) +
+      rank.ps + bonus('progression.classStatus.ps') + bonus('progression.statusBonuses.ps'))
+    const maxPR = Math.max(0, (breathing + skill('ability')) * 10 + (tier?.pr ?? 0) +
+      rank.pr + bonus('progression.classStatus.pr') + bonus('progression.statusBonuses.pr'))
+    const currentStatus = readFromEnemy('status.current', {})
+    const hasStats = Boolean(
+      data.status?.current || data.skills?.vigor !== undefined ||
+      data.skills?.mental !== undefined || data.attributes?.strength !== undefined ||
+      data.progression?.statusBonuses,
+    )
+    const current = (key: 'pv' | 'ps' | 'pr', maximum: number) => {
+      const value = currentStatus && typeof currentStatus === 'object' ? currentStatus[key] : undefined
+      return value === undefined || value === null ? maximum : Math.max(0, Number(value) || 0)
+    }
+    return {
+      pv: current('pv', maxPV), ps: current('ps', maxPS), pr: current('pr', maxPR),
+      maxPV, maxPS, maxPR, hasStats,
+    }
+  }
+
+  const enemyArchetypes = Array.from(new Set(
+    enemies.map(enemy => enemy.archetype?.trim() || 'Sem arquétipo')
+  )).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const enemyWithStatsCount = enemies.filter(enemy => getEnemySheetOverview(enemy).hasStats).length
+  const enemyWithoutStatsCount = enemies.length - enemyWithStatsCount
+  const enemiesInSelectedSeason = selectedSeasonId
+    ? enemies.filter(enemy => getEnemyPartySeason(enemy, selectedSeasonId).participating)
+    : []
+  const enemyCriticalCount = enemies.filter(enemy => {
+    const status = getEnemySheetOverview(enemy)
+    return status.hasStats && status.maxPV > 0 && status.pv <= status.maxPV * 0.25
+  }).length
+  const normalizedEnemySearch = enemySearch.trim().toLocaleLowerCase('pt-BR')
+  const visibleEnemies = enemies.filter(enemy => {
+    const archetype = enemy.archetype?.trim() || 'Sem arquétipo'
+    if (enemyArchetypeFilter !== 'all' && archetype !== enemyArchetypeFilter) return false
+    if (enemyStatusFilter !== 'all') {
+      const hasStats = getEnemySheetOverview(enemy).hasStats
+      if (enemyStatusFilter === 'configured' && !hasStats) return false
+      if (enemyStatusFilter === 'unconfigured' && hasStats) return false
+      if (enemyStatusFilter === 'party' &&
+        (!selectedSeasonId || !getEnemyPartySeason(enemy, selectedSeasonId).participating)) return false
+      if (enemyStatusFilter === 'critical') {
+        const status = getEnemySheetOverview(enemy)
+        if (!status.hasStats || status.maxPV <= 0 || status.pv > status.maxPV * 0.25) return false
+      }
+    }
+    if (!normalizedEnemySearch) return true
+    return [enemy.name, archetype, enemy.description || ''].some(value =>
+      value.toLocaleLowerCase('pt-BR').includes(normalizedEnemySearch)
+    )
+  }).sort((a, b) => {
+    if (enemySortOrder === 'name') return a.name.localeCompare(b.name, 'pt-BR')
+    const dateA = Date.parse(a.updated_at || a.created_at) || 0
+    const dateB = Date.parse(b.updated_at || b.created_at) || 0
+    return enemySortOrder === 'recent' ? dateB - dateA : dateA - dateB
+  })
+
+  const openEnemyFromLibrary = (enemy: CampaignEnemy) => {
+    if (enemy.id !== selectedEnemyId && enemySheetDirty &&
+      !window.confirm('A ficha atual possui alterações não salvas. Deseja descartar as alterações e abrir outra ficha?')) return
+    setSelectedEnemyId(enemy.id)
+    setEnemySheetView(true)
+    setEnemyItemEditorOpen(false)
+  }
+
+  const enemyInventoryRaw = readEnemySheet('inventory.items', [])
+  const enemyInventory: Array<Record<string, any>> = Array.isArray(enemyInventoryRaw)
+    ? enemyInventoryRaw : []
+  const enemyTotalWeight = enemyInventory.reduce((total, item) => total +
+    Math.max(0, Number(item.weight) || 0) * Math.max(0, Number(item.quantity) || 0), 0)
+  const enemyMaxCapacity = 10 + 2 * enemyEffectiveAttribute('strength')
+  const enemyIsOverloaded = enemyTotalWeight > enemyMaxCapacity
+
+  function openEnemyItemEditor(index: number | null) {
+    setEnemyItemEditorIndex(index)
+    setEnemyItemForm(index === null ? {
+      name: '', emoji: '📦', description: '', rarity: 'comum', categories: ['Diversos'],
+      quantity: 1, weight: 0, unitPrice: 0, equipmentType: 'none', equipped: false,
+      weaponClass: 'improvised', armorClass: 'leve', armorCoverage: isKisatsutaiSystem ? 'especial_bruto' : 'cortante_perfurante',
+      protectionTier: 'basica', protectionMode: 'resistencia', scarcityLevel: 1,
+      scarcityExhausted: false,
+    } : structuredClone(enemyInventory[index]))
+    setEnemyItemEditorOpen(true)
+  }
+  function persistEnemyItemEditor() {
+    if (!isMaster || !selectedEnemyId) return
+    const name = String(enemyItemForm.name || '').trim()
+    if (!name) { setError('Informe o nome do item.');return }
+    const quantity = Math.max(1, Math.min(999, Math.floor(Number(enemyItemForm.quantity) || 1)))
+    const categories = Array.isArray(enemyItemForm.categories)
+      ? enemyItemForm.categories.filter((item: unknown) => typeof item === 'string' && item.trim()) : []
+    if (!categories.length) { setError('Selecione ao menos uma categoria.'); return }
+    const type = String(enemyItemForm.equipmentType || 'none')
+    const finalCategories = [...categories]
+    if (type === 'weapon' && !finalCategories.includes('Armas')) finalCategories.push('Armas')
+    if (['armor','protection'].includes(type) && !finalCategories.includes('Equipamento'))
+      finalCategories.push('Equipamento')
+    const isConsumable = finalCategories.includes('Consumíveis')
+    const level = Math.max(1,Math.min(4,Math.floor(Number(enemyItemForm.scarcityLevel) || 1)))
+    const scarcityDie = [0,12,8,6,4][level]
+    const scarcityCharge = enemyItemForm.scarcityExhausted ? 0 : [0,7,5,3,1][level]
+    const autoWeights: Record<string,number> = {improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}
+    const weaponDamages: Record<string,string> = {improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}
+    const weaponClass = String(enemyItemForm.weaponClass || 'improvised')
+    const automaticWeight = type === 'weapon' ? autoWeights[weaponClass] ?? 0.5
+      : type === 'armor' ? enemyItemForm.armorClass === 'pesada' ? 6
+        : enemyItemForm.armorClass === 'media' ? 4 : 2
+      : type === 'protection' ? 0 : null
+    const weight = isConsumable ? scarcityCharge
+      : automaticWeight ?? Math.max(0,Number(enemyItemForm.weight) || 0)
+    const inventoryItem = {
+      ...enemyItemForm,
+      id: enemyItemForm.id || crypto.randomUUID(), name,
+      emoji: String(enemyItemForm.emoji || '📦'), categories:finalCategories, quantity,
+      weight,
+      unitPrice: Math.max(0,Number(enemyItemForm.unitPrice) || 0),
+      currencyId: String(enemyItemForm.currencyId || ''),
+      equipmentType: type,
+      equipped: Boolean(enemyItemForm.equipped),
+      weaponDamage: type === 'weapon' ? weaponDamages[weaponClass] || '1d4' : null,
+      armorCoverage: type === 'armor' && enemyItemForm.armorClass === 'pesada'
+        ? 'todos' : isKisatsutaiSystem && type === 'armor' ? 'especial_bruto' : enemyItemForm.armorCoverage,
+      scarcityLevel: isConsumable ? level : null,
+      scarcityDie: isConsumable ? `d${scarcityDie}` : null,
+      scarcityCharge: isConsumable ? scarcityCharge : null,
+      scarcityExhausted: isConsumable ? Boolean(enemyItemForm.scarcityExhausted) : false,
+      rarity: String(enemyItemForm.rarity || 'comum'),
+    }
+    const next = [...enemyInventory]
+    if (enemyItemEditorIndex === null) next.push(inventoryItem)
+    else next[enemyItemEditorIndex] = inventoryItem
+    if (inventoryItem.equipped && ['armor','weapon'].includes(type)) {
+      next.forEach((other,index) => {
+        if (index !== (enemyItemEditorIndex ?? next.length - 1) && other.equipmentType === type)
+          next[index] = { ...other, equipped:false }
+      })
+    }
+    writeEnemySheet('inventory.items', next)
+    setEnemyItemEditorOpen(false)
+    setError('')
+  }
+  function useEnemyConsumable(index: number) {
+    const item = enemyInventory[index]
+    const categories = Array.isArray(item?.categories) ? item.categories : []
+    if (!categories.includes('Consumíveis') || item?.scarcityExhausted) return
+    const level = Math.max(1,Math.min(4,Math.floor(Number(item.scarcityLevel) || 1)))
+    const diceByLevel = [0,12,8,6,4]
+    const chargeByLevel = [0,7,5,3,1]
+    const die=diceByLevel[level]
+    const roll=Math.floor(Math.random()*die)+1
+    const exhausted=roll===1 && level===4
+    const nextLevel=roll===1 && level<4 ? level+1 : level
+    const next=[...enemyInventory]
+    next[index]={...item,scarcityLevel:nextLevel,scarcityDie:`d${diceByLevel[nextLevel]}`,
+      scarcityCharge:exhausted?0:chargeByLevel[nextLevel],scarcityUses:(Number(item.scarcityUses)||0)+1,
+      scarcityLastRoll:roll,scarcityLastDie:`d${die}`,scarcityExhausted:exhausted,
+      weight:exhausted?0:chargeByLevel[nextLevel],
+      ...(exhausted?{unitPrice:0}:{})}
+    writeEnemySheet('inventory.items',next)
+    setNotice(`${item.name}: d${die} → ${roll}. ${exhausted?'Consumível esgotado.'
+      :roll===1?`Escassez avançou para nível ${nextLevel}.`:'Escassez mantida.'}`)
+  }
+  function equipEnemyItem(index: number) {
+    const item = enemyInventory[index]
+    const next = enemyInventory.map((other,i) => {
+      if (i === index) return {...other,equipped:!item.equipped}
+      return !item.equipped && ['armor','weapon'].includes(String(item.equipmentType)) &&
+        item.equipmentType === other.equipmentType ? {...other,equipped:false} : other
+    })
+    writeEnemySheet('inventory.items',next)
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
   const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
   const [combatActionResult, setCombatActionResult] = useState<string>('')
@@ -492,7 +1005,7 @@ const selectedCreature = creatures.find(
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'sheets' | 'characters' | 'campaigns' | 'shops' | 'master-shield' | 'bestiary'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'shops' | 'master-shield' | 'bestiary' | 'enemies'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -781,7 +1294,7 @@ useEffect(() => {
       })
       .subscribe()
     return () => { cancelled = true; void supabase.removeChannel(channel) }
-  }, [selectedCampaignId, masterShieldSeasonId, characters])
+  }, [selectedCampaignId, masterShieldSeasonId, characters, masterShieldRefreshKey])
 
   useEffect(() => {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
@@ -864,6 +1377,181 @@ if (accessibleShops.length === 0) {
     cancelled = true
   }
 }, [selectedCampaignId, isMaster])
+
+useEffect(() => {
+  if (!selectedCampaignId || !isMaster) {
+    setEnemies([])
+    setSelectedEnemyId(null)
+    setEnemySheetView(false)
+    return
+  }
+
+  let cancelled = false
+
+  async function loadEnemies() {
+    setEnemiesLoading(true)
+
+    const { data, error: enemiesError } = await supabase
+      .from('campaign_enemies')
+      .select(`
+        id,
+        campaign_id,
+        name,
+        emoji,
+        archetype,
+        description,
+        sheet_data,
+        created_by,
+        created_at,
+        updated_at
+      `)
+      .eq('campaign_id', selectedCampaignId)
+      .order('created_at', { ascending: true })
+
+    if (cancelled) return
+
+    if (enemiesError) {
+      setError(`Erro ao carregar inimigos: ${enemiesError.message}`)
+      setEnemies([])
+      setSelectedEnemyId(null)
+    } else {
+      const rows = (data ?? []) as CampaignEnemy[]
+
+      setEnemies(rows)
+
+      setSelectedEnemyId(current =>
+        rows.some(enemy => enemy.id === current)
+          ? current
+          : rows[0]?.id ?? null
+      )
+    }
+
+    setEnemiesLoading(false)
+  }
+
+  void loadEnemies()
+
+  return () => {
+    cancelled = true
+  }
+}, [selectedCampaignId, isMaster])
+
+// Escudo do Mestre: mantém a party de inimigos sincronizada com as fichas.
+useEffect(() => {
+  if (!selectedCampaignId || !isMaster || (activePage !== 'master-shield' && activePage !== 'player-table')) return
+  let cancelled = false
+  const reload = async () => {
+    const { data, error: loadError } = await supabase
+      .from('campaign_enemies')
+      .select('id,campaign_id,name,emoji,archetype,description,sheet_data,created_by,created_at,updated_at')
+      .eq('campaign_id', selectedCampaignId)
+    if (cancelled) return
+    if (loadError) {
+      setError(`Não foi possível atualizar a Party de Inimigos: ${loadError.message}`)
+      return
+    }
+    // Uma ficha com edições locais pendentes não pode ser sobrescrita pelo painel.
+    setEnemies(current => (data ?? []).map(row => {
+      const existing = current.find(enemy => enemy.id === row.id)
+      if (row.id === selectedEnemyId && enemySheetDirty && existing) return existing
+      return row as CampaignEnemy
+    }))
+  }
+  void reload()
+  const channel = supabase.channel(`master-enemy-party-${selectedCampaignId}`)
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'campaign_enemies',
+      filter: `campaign_id=eq.${selectedCampaignId}`,
+    }, () => { void reload() })
+    .subscribe()
+  return () => { cancelled = true; void supabase.removeChannel(channel) }
+}, [selectedCampaignId, isMaster, activePage, enemyPartyRefreshKey])
+
+useEffect(() => { setEnemyPartyInitiativeDrafts({}) }, [masterShieldSeasonId])
+
+useEffect(() => {
+  if (!selectedCampaignId || !selectedEnemyId || !isMaster) {
+  setEnemySheetDraft('{}')
+  enemySheetDraftRef.current = '{}'
+  enemySheetLoadedForRef.current = null
+  enemyFailedAutoSaveDraftRef.current = null
+  setEnemySheetDirty(false)
+  setEnemyAutoSaveStatus('idle')
+  setEnemyEditingSheet(false)
+  return
+}
+
+setEnemySheetDraft('{}')
+enemySheetDraftRef.current = '{}'
+setEnemyEditingSheet(false)
+enemySheetLoadedForRef.current = null
+enemyFailedAutoSaveDraftRef.current = null
+setEnemySheetDirty(false)
+setEnemyAutoSaveStatus('idle')
+
+setEnemyItemEditorOpen(false)
+
+  let cancelled = false
+
+  async function loadEnemySheet() {
+    setEnemySheetLoading(true)
+
+    const { data, error: loadError } = await supabase
+      .from('campaign_enemies')
+      .select('sheet_data')
+      .eq('id', selectedEnemyId)
+      .eq('campaign_id', selectedCampaignId)
+      .single()
+
+    if (cancelled) return
+
+    if (loadError) {
+      setError(`Erro ao carregar ficha do inimigo: ${loadError.message}`)
+      setEnemySheetDraft('{}')
+    } else {
+      const draft = JSON.stringify(data?.sheet_data ?? {}, null, 2)
+      setEnemySheetDraft(draft)
+      enemySheetDraftRef.current = draft
+      enemySheetLoadedForRef.current = `${selectedCampaignId}:${selectedEnemyId}`
+      setEnemySheetDirty(false)
+    }
+
+    setEnemySheetLoading(false)
+  }
+
+  void loadEnemySheet()
+
+  return () => {
+    cancelled = true
+  }
+}, [selectedCampaignId, selectedEnemyId, isMaster])
+
+// Assim como na ficha dos personagens, persiste as alterações após uma pausa
+// na edição. Uma gravação em andamento nunca descarta edições posteriores.
+useEffect(() => {
+  if (
+    !isMaster || !selectedCampaignId || !selectedEnemyId ||
+    enemySheetLoading || enemySheetSaving || !enemySheetDirty ||
+    enemySheetLoadedForRef.current !== `${selectedCampaignId}:${selectedEnemyId}` ||
+    enemyFailedAutoSaveDraftRef.current === enemySheetDraft
+  ) return
+
+  const timeout = window.setTimeout(() => void saveEnemySheet(true), 850)
+  return () => window.clearTimeout(timeout)
+}, [
+  isMaster, selectedCampaignId, selectedEnemyId,
+  enemySheetLoading, enemySheetSaving, enemySheetDirty, enemySheetDraft,
+])
+
+// Proteção adicional contra fechamento da aba enquanto há dados pendentes.
+useEffect(() => {
+  if (!enemySheetDirty) return
+  const confirmLeave = (event: BeforeUnloadEvent) => {
+    event.preventDefault()
+  }
+  window.addEventListener('beforeunload', confirmLeave)
+  return () => window.removeEventListener('beforeunload', confirmLeave)
+}, [enemySheetDirty])
 
 useEffect(() => {
   if (!selectedCampaignId) {
@@ -1478,6 +2166,380 @@ setNotice(
   }
 }
 
+async function saveEnemy() {
+  if (
+    !isMaster ||
+    !selectedCampaignId ||
+    !enemyName.trim() ||
+    enemySaving
+  ) return
+
+  setEnemySaving(true)
+  setError('')
+  setNotice('')
+
+  // Ao editar informações básicas, nunca sobrescreva o JSON da ficha.
+  // O salvamento automático tem uma operação própria para sheet_data.
+  const payload = {
+    campaign_id: selectedCampaignId,
+    name: enemyName.trim(),
+    emoji: enemyEmoji.trim() || '👹',
+    archetype: enemyArchetype.trim() || null,
+    description: enemyDescription.trim() || null,
+    updated_at: new Date().toISOString(),
+  }
+
+  try {
+    let data: CampaignEnemy
+
+    if (editingEnemyId) {
+      const { data: updated, error: updateError } = await supabase
+        .from('campaign_enemies')
+        .update(payload)
+        .eq('id', editingEnemyId)
+        .eq('campaign_id', selectedCampaignId)
+        .select('*')
+        .single()
+
+      if (updateError) throw updateError
+
+      data = updated as CampaignEnemy
+    } else {
+      const { data: inserted, error: insertError } = await supabase
+        .from('campaign_enemies')
+        .insert({
+          ...payload,
+          sheet_data: { identity: { name: enemyName.trim() } },
+          updated_at: undefined,
+        })
+        .select('*')
+        .single()
+
+      if (insertError) throw insertError
+
+      data = inserted as CampaignEnemy
+    }
+
+    setEnemies(current => {
+      const exists = current.some(enemy => enemy.id === data.id)
+
+      return exists
+        ? current.map(enemy =>
+            enemy.id === data.id
+              ? { ...data, sheet_data: enemy.sheet_data }
+              : enemy
+          )
+        : [...current, data]
+    })
+
+    setSelectedEnemyId(data.id)
+
+    setEnemyName('')
+    setEnemyEmoji('👹')
+    setEnemyArchetype('')
+    setEnemyDescription('')
+    setEditingEnemyId(null)
+    setShowEnemyForm(false)
+    setEnemySearch('')
+    setEnemyArchetypeFilter('all')
+
+    setNotice(
+      editingEnemyId
+        ? 'Inimigo atualizado com sucesso!'
+        : 'Inimigo cadastrado com sucesso!'
+    )
+  } catch (err) {
+    setError(`Não foi possível salvar o inimigo: ${
+      err instanceof Error ? err.message : String(err)
+    }`)
+  } finally {
+    setEnemySaving(false)
+  }
+}
+
+async function duplicateEnemy(enemy: CampaignEnemy) {
+  if (!isMaster || !selectedCampaignId || !session?.user.id || enemySaving) return
+  if (enemySheetDirty &&
+      !window.confirm('Existem alterações não salvas na ficha atual. A cópia utilizará a última versão salva do inimigo escolhido. Deseja continuar?')) return
+
+  const suggestedName = `${enemy.name} (cópia)`
+  const requestedName = window.prompt('Nome da nova ficha independente:', suggestedName)
+  if (requestedName === null) return
+  const name = requestedName.trim()
+  if (!name) {
+    setError('Informe um nome para a cópia do inimigo.')
+    return
+  }
+
+  const maxima = getEnemySheetOverview(enemy)
+  const duplicateData = structuredClone(enemy.sheet_data ?? {})
+  delete duplicateData.enemyPartyBySeason
+  duplicateData.identity = { ...(duplicateData.identity || {}), name }
+  duplicateData.combat = { ...(duplicateData.combat || {}), history: [] }
+  delete duplicateData.combat.initiative
+  duplicateData.status = {
+    ...(duplicateData.status || {}),
+    current: {
+      ...(duplicateData.status?.current || {}),
+      pv: maxima.maxPV, ps: maxima.maxPS, pr: maxima.maxPR,
+    },
+  }
+
+  setEnemySaving(true)
+  setError('')
+  try {
+    const { data, error: duplicateError } = await supabase
+      .from('campaign_enemies')
+      .insert({
+        campaign_id: selectedCampaignId,
+        name,
+        emoji: enemy.emoji,
+        archetype: enemy.archetype,
+        description: enemy.description,
+        sheet_data: duplicateData,
+        created_by: session.user.id,
+      })
+      .select('id,campaign_id,name,emoji,archetype,description,sheet_data,created_by,created_at,updated_at')
+      .single()
+    if (duplicateError) throw duplicateError
+    setEnemies(current => [...current, data as CampaignEnemy])
+    setSelectedEnemyId(data.id)
+    setEnemySheetView(true)
+    setNotice(`Ficha independente de "${name}" criada com sucesso!`)
+  } catch (err) {
+    setError(`Não foi possível duplicar o inimigo: ${err instanceof Error ? err.message : String(err)}`)
+  } finally {
+    setEnemySaving(false)
+  }
+}
+
+async function deleteEnemy(enemy: CampaignEnemy) {
+  if (!isMaster || !selectedCampaignId) return
+
+  const confirmed = window.confirm(
+    `Tem certeza que deseja excluir "${enemy.name}"? Essa ação não poderá ser desfeita.`
+  )
+
+  if (!confirmed) return
+
+  setError('')
+  setNotice('')
+
+  const { error: deleteError } = await supabase
+    .from('campaign_enemies')
+    .delete()
+    .eq('id', enemy.id)
+    .eq('campaign_id', selectedCampaignId)
+
+  if (deleteError) {
+    setError(`Não foi possível excluir o inimigo: ${deleteError.message}`)
+    return
+  }
+
+  setEnemies(current => current.filter(item => item.id !== enemy.id))
+
+  setSelectedEnemyId(current =>
+    current === enemy.id
+      ? enemies.find(item => item.id !== enemy.id)?.id ?? null
+      : current
+  )
+
+  setNotice('Inimigo excluído com sucesso!')
+}
+
+
+
+function adjustEnemyWallet(currencyId: string, adjustment: number, description: string) {
+  if (!selectedEnemyId || !isMaster || !Number.isFinite(adjustment) || !currencyId) return
+  const wallet = readEnemySheet('wallet', {}) as Record<string, any>
+  const balances: Record<string, number> = { ...(wallet.balances || {}) }
+  const current = Math.max(0, Number(balances[currencyId]) || 0)
+  if (current + adjustment < 0) { setError('Saldo insuficiente para esta movimentação.'); return }
+  balances[currencyId] = Math.round((current + adjustment) * 1e8) / 1e8
+  const history = Array.isArray(wallet.history) ? wallet.history : []
+  writeEnemySheet('wallet', { ...wallet, balances, history: [{
+    id: crypto.randomUUID(), at: new Date().toISOString(),
+    currencyId, amount: adjustment, description: description || 'Ajuste de saldo',
+  }, ...history].slice(0, 200) })
+  setNotice('Carteira do inimigo atualizada.')
+}
+function convertEnemyWallet(fromId: string, toId: string, amount: number) {
+  const currencies = selectedCampaign?.currency_config?.currencies ?? []
+  const from = currencies.find(entry => entry.id === fromId)
+  const to = currencies.find(entry => entry.id === toId)
+  if (!from || !to || fromId === toId || !Number.isFinite(amount) || amount <= 0) {
+    setError('Selecione duas moedas diferentes e uma quantia válida.'); return
+  }
+  const wallet = readEnemySheet('wallet', {}) as Record<string, any>
+  const balances: Record<string, number> = { ...(wallet.balances || {}) }
+  const available = Number(balances[fromId]) || 0
+  if (amount > available) { setError('Saldo insuficiente para a conversão.'); return }
+  const received = amount * from.conversionRate / to.conversionRate
+  if (!Number.isFinite(received)) { setError('Taxa de conversão inválida.'); return }
+  balances[fromId] = Math.round((available - amount) * 1e8) / 1e8
+  balances[toId] = Math.round(((Number(balances[toId]) || 0) + received) * 1e8) / 1e8
+  const history = Array.isArray(wallet.history) ? wallet.history : []
+  writeEnemySheet('wallet', { ...wallet, balances, history: [{
+    id: crypto.randomUUID(), at: new Date().toISOString(), currencyId: fromId,
+    amount: -amount, description: `Conversão de ${from.symbol} ${amount} para ${to.symbol} ${received.toFixed(2)}`,
+  }, ...history].slice(0, 200) })
+  setNotice('Conversão registrada na carteira do inimigo.')
+}
+
+async function saveEnemyNameFromSheet() {
+  if (!isMaster || !selectedCampaignId || !selectedEnemyId || enemySheetNameSaving) return
+  const name = enemySheetNameDraft.trim()
+  if (!name) { setError('O nome do inimigo não pode ficar vazio.'); return }
+  if (name === selectedEnemy?.name) return
+  setEnemySheetNameSaving(true)
+  try {
+    const { data, error: renameError } = await supabase.from('campaign_enemies')
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq('id', selectedEnemyId).eq('campaign_id', selectedCampaignId)
+      .select('id, name, updated_at').single()
+    if (renameError || !data) throw renameError ?? new Error('Inimigo não encontrado.')
+    setEnemies(current => current.map(enemy => enemy.id === data.id
+      ? { ...enemy, name: data.name, updated_at: data.updated_at }
+      : enemy))
+    writeEnemySheet('identity.name', name)
+    setNotice('Nome do inimigo atualizado.')
+  } catch (err) {
+    setError('Não foi possível atualizar o nome do inimigo: ' + (err instanceof Error ? err.message : String(err)))
+  } finally { setEnemySheetNameSaving(false) }
+}
+
+function writeEnemySheet(path: string, value: any) {
+  let current: Record<string, any> = {}
+
+  try {
+    current = JSON.parse(enemySheetDraftRef.current)
+  } catch {
+    current = {}
+  }
+
+  const next = structuredClone(current)
+  const keys = path.split('.')
+
+  let target = next
+
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i]
+
+    if (
+      !target[key] ||
+      typeof target[key] !== 'object' ||
+      Array.isArray(target[key])
+    ) {
+      target[key] = {}
+    }
+
+    target = target[key]
+  }
+
+  target[keys[keys.length - 1]] = value
+
+  const draft = JSON.stringify(next, null, 2)
+
+  enemySheetDraftRef.current = draft
+  setEnemySheetDraft(draft)
+  setEnemySheetDirty(true)
+  setEnemyAutoSaveStatus('pending')
+  enemyFailedAutoSaveDraftRef.current = null
+}
+
+function readEnemySheet(path: string, fallback: any = 0) {
+  let data: Record<string, any> = {}
+
+  try {
+    data = JSON.parse(enemySheetDraftRef.current)
+  } catch {
+    data = {}
+  }
+
+  return path
+    .split('.')
+    .reduce(
+      (obj: any, key: string) =>
+        obj && typeof obj === 'object' ? obj[key] : undefined,
+      data
+    ) ?? fallback
+}
+
+async function saveEnemySheet(automatic = false) {
+  const campaignId = selectedCampaignId
+  const enemyId = selectedEnemyId
+  const ownerKey = `${campaignId}:${enemyId}`
+  if (
+    !isMaster || !campaignId || !enemyId || enemySheetSavingRef.current ||
+    enemySheetLoadedForRef.current !== ownerKey
+  ) return
+
+  const originalDraft = enemySheetDraftRef.current
+  let sheetData: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(originalDraft)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('A ficha precisa conter um objeto válido.')
+    }
+    sheetData = parsed as Record<string, unknown>
+  } catch (err) {
+    setError(`Não foi possível ler a ficha: ${err instanceof Error ? err.message : String(err)}`)
+    setEnemyAutoSaveStatus('error')
+    return
+  }
+
+  enemySheetSavingRef.current = true
+  setEnemySheetSaving(true)
+  setEnemyAutoSaveStatus('saving')
+  if (!automatic) setError('')
+
+  try {
+    const { data, error: saveError } = await supabase
+      .from('campaign_enemies')
+      .update({ sheet_data: sheetData, updated_at: new Date().toISOString() })
+      .eq('id', enemyId)
+      .eq('campaign_id', campaignId)
+      .select('id, sheet_data, updated_at')
+      .single()
+
+    if (saveError) throw saveError
+
+    setEnemies(current => current.map(enemy => enemy.id === data.id
+      ? { ...enemy, sheet_data: data.sheet_data, updated_at: data.updated_at }
+      : enemy))
+
+    // Uma resposta atrasada não pode limpar o rascunho de outro inimigo.
+    if (enemySheetLoadedForRef.current === ownerKey) {
+      if (enemySheetDraftRef.current === originalDraft) {
+        setEnemySheetDirty(false)
+        setEnemyAutoSaveStatus('saved')
+      } else {
+        setEnemySheetDirty(true)
+        setEnemyAutoSaveStatus('pending')
+      }
+      enemyFailedAutoSaveDraftRef.current = null
+      if (!automatic) setNotice('Ficha do inimigo salva com sucesso!')
+    }
+  } catch (err) {
+    if (enemySheetLoadedForRef.current === ownerKey) {
+      const message = err instanceof Error ? err.message : String(err)
+      setError(`Não foi possível salvar a ficha do inimigo: ${message}`)
+      setEnemyAutoSaveStatus('error')
+      // Evita uma sequência de tentativas sem limite enquanto o servidor falha.
+      enemyFailedAutoSaveDraftRef.current = originalDraft
+    }
+  } finally {
+    enemySheetSavingRef.current = false
+    setEnemySheetSaving(false)
+  }
+}
+
+// Cada lançamento fica registrado exclusivamente dentro da ficha deste inimigo.
+
+// Os testes seguem a mesma fórmula de rolagem das fichas de personagens.
+
+
+
 async function saveShop() {
   if (!selectedCampaignId || !shopName.trim() || shopLoading) return
 
@@ -1699,7 +2761,7 @@ async function saveShopItem() {
   shopItemEquipmentType === 'cybernetic' ? 'none' : shopItemEquipmentType
 ),
       armorClass: shopItemEquipmentType === 'armor' ? shopItemArmorClass : null,
-      armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : shopItemArmorCoverage) : null,
+      armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : isKisatsutaiSystem ? 'especial_bruto' : shopItemArmorCoverage) : null,
       protectionTier: shopItemEquipmentType === 'protection' ? shopItemProtectionTier : null,
       protectionMode: shopItemEquipmentType === 'protection' ? shopItemProtectionMode : null,
       scarcityLevel: shopItemCategories.includes('Consumíveis') ? Number(shopItemScarcityLevel) : null,
@@ -2992,6 +4054,7 @@ const draftCombat =
 parsed = {
   ...parsed,
   seasonParticipation: participates,
+  ...(participates ? {} : { partyParticipation: false }),
   combat: {
     ...draftCombat,
     ...(persistedCombat.initiative !== undefined
@@ -3198,26 +4261,26 @@ async function clearCharacterInitiative(characterId: string, seasonId: string) {
   }
 }
 
-async function clearAllCharacterInitiatives(seasonId: string) {
+async function clearAllCharacterInitiatives(seasonId: string, skipConfirmation = false): Promise<boolean> {
   if (!isMaster || !seasonId) {
     setError('Não foi possível limpar as iniciativas.')
-    return
+    return false
   }
 
   const participatingIds = characters
     .filter(character =>
-      masterShieldSheets[character.id]?.seasonParticipation === true
+      masterShieldSheets[character.id]?.seasonParticipation === true &&
+      masterShieldSheets[character.id]?.partyParticipation === true
     )
     .map(character => character.id)
 
   if (participatingIds.length === 0) {
-    setNotice('Nenhum personagem participa desta temporada.')
-    return
+    return true
   }
 
-  if (!window.confirm(
+  if (!skipConfirmation && !window.confirm(
     'Tem certeza de que deseja limpar todas as iniciativas desta temporada?'
-  )) return
+  )) return false
 
   setSheetSaving(true)
   setError('')
@@ -3262,8 +4325,7 @@ async function clearAllCharacterInitiatives(seasonId: string) {
     }
 
     if (Object.keys(updatedSheets).length === 0) {
-      setNotice('Não há iniciativas registradas para limpar.')
-      return
+      return true
     }
 
     setMasterShieldSheets(current => ({
@@ -3271,13 +4333,15 @@ async function clearAllCharacterInitiatives(seasonId: string) {
       ...updatedSheets,
     }))
 
-    setNotice('Todas as iniciativas foram removidas com sucesso.')
+    if (!skipConfirmation) setNotice('Todas as iniciativas foram removidas com sucesso.')
+    return true
   } catch (e) {
     setError(
       e instanceof Error
         ? e.message
         : 'Erro ao limpar todas as iniciativas.'
     )
+    return false
   } finally {
     setSheetSaving(false)
   }
@@ -3380,6 +4444,12 @@ setError('')
 }
       setSheet(data as CharacterSheet)
     }
+    if (selectedSeasonId === masterShieldSeasonId) {
+  setMasterShieldSheets(current => ({
+    ...current,
+    [selectedCharacterId]: parsed,
+  }))
+}
     let strengthSyncFailed = false
     const sheetStrength = (parsed.attributes as Record<string, unknown> | undefined)?.strength
     if (typeof sheetStrength === 'number' && Number.isInteger(sheetStrength) && sheetStrength >= 0 && sheetStrength <= 100) {
@@ -3387,13 +4457,16 @@ setError('')
         .from('characters')
         .update({ strength: sheetStrength })
         .eq('id', selectedCharacterId)
-        .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, current_player_id, created_at')
+        .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at')
         .maybeSingle()
       if (strengthError) {
         strengthSyncFailed = true
         setError(`Ficha salva, mas não foi possível sincronizar a Força com a capacidade de carga: ${strengthError.message}`)
       } else if (updatedCharacter) {
-        setCharacters(current => current.map(character => character.id === selectedCharacterId ? updatedCharacter as Character : character))
+        // A atualização da ficha nunca deve redefinir o emoji escolhido no cartão.
+        setCharacters(current => current.map(character =>
+          character.id === selectedCharacterId ? { ...character, strength: updatedCharacter.strength } : character
+        ))
       }
     }
 
@@ -3927,7 +5000,7 @@ async function deleteCharacter(character: Character) {
       .from('characters')
       .update({ visibility })
       .eq('id', selectedCharacter.id)
-      .select('id, campaign_id, user_id, name, archetype, level, strength, visibility, current_player_id, created_at')
+      .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at')
       .maybeSingle()
 
     setVisibilitySaving(false)
@@ -3937,7 +5010,7 @@ async function deleteCharacter(character: Character) {
     }
 
     setCharacters((current) => current.map((character) =>
-      character.id === selectedCharacter.id ? data as Character : character
+      character.id === selectedCharacter.id ? { ...character, visibility: data.visibility as Character['visibility'] } : character
     ))
     setNotice('Visibilidade do personagem atualizada.')
   }
@@ -4192,7 +5265,7 @@ cyberneticData: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
     }
   : null,
   armorClass: newEquipmentType === 'armor' ? newArmorClass : null,
-  armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : newArmorCoverage) : null,
+  armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : isKisatsutaiSystem ? 'especial_bruto' : newArmorCoverage) : null,
   protectionTier: newEquipmentType === 'protection' ? newProtectionTier : null,
   protectionMode: newEquipmentType === 'protection' ? newProtectionMode : null,
   scarcityLevel: newItemCategories.includes('Consumíveis') ? Number(newScarcityLevel) : null,
@@ -4487,6 +5560,169 @@ async function duplicateItem(item: Item) {
     setNotice(`${item.name} foi removido do inventário.${removalDamageMessage}`)
   }
 
+  async function updateEnemyPartySeason(
+    enemyId: string,
+    seasonId: string,
+    changes: { participating?: boolean; initiative?: number | null },
+    successMessage = 'Party de Inimigos atualizada.',
+  ): Promise<boolean> {
+    if (!isMaster || !selectedCampaignId || !seasonId || enemyPartySavingId) return false
+    if (selectedEnemyId === enemyId && (enemySheetDirty || enemySheetSavingRef.current)) {
+      setError('Salve primeiro as alterações pendentes da ficha deste inimigo antes de editar a Party.')
+      return false
+    }
+    setEnemyPartySavingId(enemyId)
+    setError('')
+    try {
+      const { data: latest, error: loadError } = await supabase.from('campaign_enemies')
+        .select('id,sheet_data,updated_at')
+        .eq('campaign_id', selectedCampaignId).eq('id', enemyId).single()
+      if (loadError || !latest) throw loadError ?? new Error('Inimigo não encontrado.')
+      const original = latest.sheet_data && typeof latest.sheet_data === 'object' && !Array.isArray(latest.sheet_data)
+        ? latest.sheet_data as Record<string, any> : {}
+      const bySeason = original.enemyPartyBySeason && typeof original.enemyPartyBySeason === 'object'
+        ? original.enemyPartyBySeason as Record<string, any> : {}
+      const oldEntry = bySeason[seasonId] && typeof bySeason[seasonId] === 'object'
+        ? bySeason[seasonId] as Record<string, any> : {}
+      const entry = { ...oldEntry, ...changes }
+      if (changes.participating === false) entry.initiative = null
+      const nextSheet = { ...original, enemyPartyBySeason: {
+        ...bySeason, [seasonId]: entry,
+      } }
+      const { data: updated, error: saveError } = await supabase.from('campaign_enemies')
+        .update({ sheet_data: nextSheet, updated_at: new Date().toISOString() })
+        .eq('id', enemyId).eq('campaign_id', selectedCampaignId)
+        .select('id,sheet_data,updated_at').single()
+      if (saveError || !updated) throw saveError ?? new Error('Não foi possível salvar a Party.')
+      setEnemies(current => current.map(enemy => enemy.id === enemyId
+        ? { ...enemy, sheet_data: updated.sheet_data, updated_at: updated.updated_at }
+        : enemy))
+      if (selectedEnemyId === enemyId && enemySheetLoadedForRef.current === `${selectedCampaignId}:${enemyId}`) {
+        const nextDraft = JSON.stringify(updated.sheet_data ?? {}, null, 2)
+        enemySheetDraftRef.current = nextDraft
+        setEnemySheetDraft(nextDraft)
+        setEnemySheetDirty(false)
+      }
+      setEnemyPartyInitiativeDrafts(current => {
+        const next = { ...current }
+        delete next[enemyId]
+        return next
+      })
+      setNotice(successMessage)
+      return true
+    } catch (err) {
+      setError('Não foi possível atualizar a Party de Inimigos: ' +
+        (err instanceof Error ? err.message : String(err)))
+      return false
+    } finally { setEnemyPartySavingId(null) }
+  }
+
+  const enemyPartyMembers = masterShieldSeasonId
+    ? enemies.filter(enemy => getEnemyPartySeason(enemy, masterShieldSeasonId).participating)
+    : []
+
+  // A iniciativa é apenas uma visão conjunta: cada resultado continua salvo
+  // na ficha de origem (combat.initiative para personagens;
+  // enemyPartyBySeason para inimigos).
+  type MasterShieldInitiativeEntry = {
+    id: string
+    kind: 'character' | 'enemy'
+    name: string
+    emoji: string | null
+    initiative: number | null
+    sheetData: Record<string, any>
+  }
+  const masterShieldInitiativeEntries: MasterShieldInitiativeEntry[] = [
+    ...characters.filter(character =>
+      masterShieldSheets[character.id]?.seasonParticipation === true &&
+      masterShieldSheets[character.id]?.partyParticipation === true,
+    ).map(character => {
+      const data = masterShieldSheets[character.id] ?? {}
+      const raw = data.combat?.initiative
+      return {
+        id: character.id,
+        kind: 'character' as const,
+        name: character.name,
+        emoji: character.emoji ?? null,
+        initiative: raw === null || raw === undefined || raw === '' ||
+          !Number.isFinite(Number(raw)) ? null : Number(raw),
+        sheetData: data,
+      }
+    }),
+    ...enemyPartyMembers.map(enemy => ({
+      id: enemy.id,
+      kind: 'enemy' as const,
+      name: enemy.name,
+      emoji: enemy.emoji,
+      initiative: getEnemyPartySeason(enemy, masterShieldSeasonId).initiative,
+      sheetData: enemy.sheet_data ?? {},
+    })),
+  ].sort((a, b) => {
+    if (a.initiative === null && b.initiative !== null) return 1
+    if (b.initiative === null && a.initiative !== null) return -1
+    if (a.initiative !== null && b.initiative !== null && a.initiative !== b.initiative)
+      return b.initiative - a.initiative
+
+    // Empate: a mesma regra de Agilidade e Sempre Pronto da antiga lista.
+    const agility = (entry: MasterShieldInitiativeEntry) => {
+      const data = entry.sheetData
+      const read = (path: string, fallback: any = 0) => path.split('.')
+        .reduce((current: any, key: string) => current && typeof current === 'object'
+          ? current[key] : undefined, data as any) ?? fallback
+      const tier = String(data.family?.tier ?? '5')
+      return calculateSheetAttribute(read, 'agility',
+        systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'agility') : 0)
+    }
+    const agilityDifference = agility(b) - agility(a)
+    if (agilityDifference !== 0) return agilityDifference
+    const alwaysReady = (entry: MasterShieldInitiativeEntry) => {
+      const flows = String(entry.sheetData.flows?.details ?? '').toLocaleLowerCase('pt-BR')
+      return flows.includes('raposa') && flows.includes('sempre pronto')
+    }
+    if (alwaysReady(a) !== alwaysReady(b)) return alwaysReady(a) ? -1 : 1
+    return a.name.localeCompare(b.name, 'pt-BR') || a.kind.localeCompare(b.kind)
+  })
+
+  async function clearAllMasterShieldInitiatives(seasonId: string) {
+    if (!isMaster || !seasonId || sheetSaving || enemyPartySavingId) return
+    if (!masterShieldInitiativeEntries.some(entry => entry.initiative !== null)) {
+      setNotice('Nenhuma iniciativa registrada nesta party.')
+      return
+    }
+    if (!window.confirm('Limpar as iniciativas de personagens e inimigos desta temporada?')) return
+
+    const characterOk = await clearAllCharacterInitiatives(seasonId, true)
+    if (!characterOk) return
+    const enemiesToClear = enemyPartyMembers.filter(enemy =>
+      getEnemyPartySeason(enemy, seasonId).initiative !== null)
+    for (const enemy of enemiesToClear) {
+      const ok = await updateEnemyPartySeason(enemy.id, seasonId, { initiative: null },
+        `Iniciativa de ${enemy.name} removida.`)
+      if (!ok) return // Preserva a mensagem de erro e permite tentar de novo.
+    }
+    setNotice('Iniciativas de personagens e inimigos removidas da ordem de combate.')
+  }
+
+  function rollEnemyPartyInitiative(enemy: CampaignEnemy) {
+    if (!masterShieldSeasonId) return
+    const data = enemy.sheet_data ?? {}
+    const read = (path: string, fallback: any = 0) => path.split('.')
+      .reduce((current: any, key: string) => current && typeof current === 'object'
+        ? current[key] : undefined, data as any) ?? fallback
+    const dexterity = calculateSheetSkill(read, 'dexterity',
+      systemFeatures.usesSkillPoints ? activeSystem?.data?.skillPoints : null, true)
+    const equipped = Array.isArray(data.inventory?.items)
+      ? data.inventory.items.filter((item: any) => item?.equipped === true) : []
+    const armorDexterity = calculateSheetDefenses(equipped, {
+      dexterity, combat: 0, resistance: 0, mental: 0,
+    }).armorDexterity
+    const die = Math.floor(Math.random() * 20) + 1
+    const total = die + armorDexterity
+    void updateEnemyPartySeason(enemy.id, masterShieldSeasonId, { initiative: total },
+      `Iniciativa de ${enemy.name}: d20 (${die}) + Destreza de Armadura (${armorDexterity}) = ${total}.`)
+  }
+
+
   const seasonPartyCharacters = characters.filter(character => masterShieldSheets[character.id]?.seasonParticipation === true)
   // A party inclui sempre o mestre da campanha e os jogadores atribuídos
   // aos personagens participantes da temporada.
@@ -4609,7 +5845,6 @@ useEffect(() => {
     sheetSaving ||
     !canEditSelectedSheet ||
     sheetDraftLoadedForRef.current !== ownerKey ||
-    (!editingSheet && !isCyberFlowerSystem) ||
     sheetDraft === lastSavedSheetDraftRef.current
   ) {
     return
@@ -4627,8 +5862,6 @@ useEffect(() => {
   sheetLoading,
   sheetSaving,
   canEditSelectedSheet,
-  editingSheet,
-  isCyberFlowerSystem,
 ])
 
   const canRenameSelectedCharacter = Boolean(
@@ -4911,703 +6144,110 @@ useEffect(() => {
     (totalWeight / maxCapacity) * 100,
   )
 
-  if (authLoading) {
-    return <main style={centerStyle}>Verificando sua sessão...</main>
-  }
 
-  if (!session) return <Auth />
-
-  return (
-    <div className={`app-shell theme-${activeThemeKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
-      <aside className="sidebar">
-        <a className="brand" href="#inicio" aria-label="HäxBag, início">
-          <span className="brand-mark">H</span>
-          <span>
-            Häx<span className="brand-light">Bag</span>
-          </span>
-        </a>
-
-        <div className="workspace-label">ESPAÇO DE JOGO</div>
-
-        <div style={{ padding: '0 12px' }}>
-          <label style={labelStyle}>Campanha selecionada</label>
-          <select
-            value={selectedCampaignId}
-            onChange={async (event) => {
-              const campaignId = event.target.value
-              setSelectedCampaignId(campaignId)
-              const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
-              if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-              else setNotice('Campanha principal atualizada para este perfil.')
-            }}
-            style={inputStyle}
-          >
-            <option value="">Selecione uma campanha</option>
-            {campaigns.map((campaign) => (
-              <option key={campaign.id} value={campaign.id}>
-                {campaign.name}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => setShowCampaignForm((value) => !value)}
-            style={secondaryButtonStyle}
-          >
-            + Nova campanha
-          </button>
-        </div>
-
-        <div className="nav-label">MENU PRINCIPAL</div>
-
-        <nav className="navigation">
-          <button
-  className={`nav-link ${activePage === 'overview' ? 'active' : ''}`}
-  onClick={() => setActivePage('overview')}
-  disabled={!selectedCampaignId}
->
-  <span>◫</span> Visão geral
-</button>
-          {isMaster && <button className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId}>
-            <span>♜</span> Escudo do mestre
-          </button>}
-          <button className={`nav-link ${activePage === 'sheets' ? 'active' : ''}`} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }} disabled={!selectedCampaignId}>
-            <span>▧</span> Fichas <span className="nav-count">{characters.length}</span>
-          </button>
-          <button className={`nav-link ${activePage === 'characters' ? 'active' : ''}`} onClick={() => setActivePage('characters')} disabled={!selectedCampaignId}>
-            <span>♙</span> Personagens <span className="nav-count">{characters.length}</span>
-          </button>
-          <button className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId}>
-            <span>♜</span> Lojas <span className="nav-count">{shops.length}</span>
-          </button>
-          <button
-  className={`nav-link ${activePage === 'bestiary' ? 'active' : ''}`}
-  onClick={() => setActivePage('bestiary')}
-  disabled={!selectedCampaignId}
->
-  <span>♞</span> Bestiário
-</button>
-          <button className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }}>
-            <span>⚑</span> Campanhas
-          </button>
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="invite-card">
-            <div className="invite-icon">✧</div>
-            <strong>Convide seu grupo.</strong>
-            <p>{!selectedCampaignId
-              ? 'Escolha uma campanha para gerar um convite e reunir seus jogadores.'
-              : isMaster
-                ? 'Compartilhe um link e traga novos jogadores para esta campanha.'
-                : 'Tem um convite? Acesse campanhas para entrar em uma nova aventura.'}</p>
-            <button
-              type="button"
-              className="secondary-button"
-              style={{ marginTop: 10, width: '100%' }}
-onClick={() => {
-  resetItemForm()
-  setShowItemForm(true)
-}}
-              disabled={inviteLoading}
-            >
-              {inviteLoading ? 'Gerando convite…' : selectedCampaignId && isMaster ? 'Gerar convite' : 'Ver campanhas'}
-            </button>
-            {campaignInviteLink && selectedCampaignId && isMaster && (
-              <button
-                type="button"
-                className="nav-link"
-                style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
-                onClick={() => {
-                  void navigator.clipboard.writeText(campaignInviteLink)
-                  setNotice('Link copiado!')
-                }}
-              >
-                Copiar link do convite
-              </button>
-            )}
-          </div>
-
-          <div className="profile">
-            <div className="avatar">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-            <div className="profile-info">
-              <strong>{displayName}</strong>
-              <small>{session.user.email}</small>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <main className="main-content" id="inicio">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span>Campanhas</span>
-            <span className="crumb-slash">/</span>
-            <strong>{selectedCampaign?.name ?? 'Suas campanhas'}</strong>
-          </div>
-
-          <div className="topbar-right">
-            <span className="online-dot" />
-            Conectado
-            <button
-              type="button"
-              onClick={handleSignOut}
-              style={secondaryButtonStyle}
-            >
-              Sair
-            </button>
-          </div>
-        </header>
-
-        <div className={`page-content page-${activePage}`}>
-          <style>{`
-          .page-content.page-overview > * {
-  display: none !important;
-}
-
-.page-content.page-overview > .overview-page-panel {
-  display: block !important;
-}
-          .page-content.page-shops > * {
-  display: none !important;
-}
-
-.page-content.page-shops > .shops-page-panel {
-  display: block !important;
-}
- 
-            .page-content.page-bestiary > * { display: none !important; }
-            .page-content.page-bestiary > .bestiary-page-panel { display: block !important; }
-            .page-content.page-master-shield > * { display: none !important; }
-            .page-content.page-master-shield > .master-shield-page-panel { display: block !important; }
-            .page-content.page-sheets > * { display: none !important; }
-            .page-content.page-sheets > .sheet-page-panel { display: block !important; }
-            .page-content.page-characters > * { display: none !important; }
-            .page-content.page-characters > .characters-page-panel { display: block !important; }
-            .page-content.page-campaigns > * { display: none !important; }
-            .page-content.page-campaigns > .campaigns-page-panel { display: block !important; }
-            .page-content.page-campaigns > #inventario {
-              display: block !important;
-            }
-            .page-content.page-inventory > .season-sheet-section { display: none !important; }
-          `}</style>
-
-{activePage === 'overview' && (
-            <section className="inventory-section overview-page-panel">
-              <div className="master-shield-heading">
-                <div>
-                  <span className="master-shield-eyebrow">HÄXBAG</span>
-                  <h2>Visão geral</h2>
-                  <p>Um resumo da sua jornada e da campanha atual.</p>
-                </div>
-                <span className="master-shield-icon" aria-hidden="true">◫</span>
-              </div>
-
-              {selectedCampaign ? (
-                <>
-                  <div className="master-shield-grid">
-                    <article className="master-shield-stat">
-                      <span>Campanha</span>
-                      <strong>{selectedCampaign.name}</strong>
-                    </article>
-                    <article className="master-shield-stat">
-                      <span>Sistema</span>
-                      <strong>{selectedCampaign.system_name || 'Não definido'}</strong>
-                    </article>
-                    <article className="master-shield-stat">
-                      <span>Personagens</span>
-                      <strong>{characters.length}</strong>
-                    </article>
-                    <article className="master-shield-stat">
-                      <span>Temporadas</span>
-                      <strong>{seasons.length}</strong>
-                    </article>
-                    <article className="master-shield-stat">
-                      <span>Lojas</span>
-                      <strong>{shops.length}</strong>
-                    </article>
-                  </div>
-
-                  {selectedCampaign.description && (
-                    <div className="master-shield-description">
-                      <strong>Sobre a campanha</strong>
-                      <p>{selectedCampaign.description}</p>
-                    </div>
-                  )}
-
-                  <div className="master-shield-columns">
-                    <div>
-                      <h3>Temporadas</h3>
-                      {seasons.length > 0 ? (
-                        <ul>
-                          {seasons.map(season => (
-                            <li key={season.id}>
-                              <span>T{season.season_number} · {season.name}</span>
-                              <small>{season.status}</small>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="master-shield-empty">Nenhuma temporada cadastrada.</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <h3>Personagens</h3>
-                      {characters.length > 0 ? (
-                        <ul>
-                          {characters.map(character => (
-                            <li key={character.id}>
-                              <span>
-                                {character.emoji ? `${character.emoji} ` : ''}
-                                {character.name}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="master-shield-empty">Nenhum personagem cadastrado.</p>
-                      )}
-                    </div>
-                  </div>
-
-                </>
-              ) : (
-                <div className="master-shield-description">
-                  <strong>Nenhuma campanha selecionada</strong>
-                  <p>Escolha uma campanha para visualizar suas informações.</p>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => setActivePage('campaigns')}
-                  >
-                    Ver campanhas
-                  </button>
-                </div>
-              )}
-            </section>
-          )}
-
-          <section className="welcome-row">
-
-
-
-            <div>
-              <div className="eyebrow">
-                <span /> SUA JORNADA COMEÇA AQUI
-              </div>
-
-<h1>
-{activePage === 'bestiary'
-  ? 'Bestiário'
-  : activePage === 'shops'
-      ? 'Lojas da campanha'
-      : activePage === 'sheets'
-        ? 'Fichas de personagens'
-        : activePage === 'characters'
-          ? 'Personagens'
-          : 'Campanhas'}
-  <span className="title-period">.</span>
-</h1>
-
-<p className="page-description">
-{activePage === 'bestiary'
-? 'Descubra criaturas, monstros e ameaças para suas aventuras.'
-  : activePage === 'shops'
-      ? 'Explore os estabelecimentos e encontre novos itens para sua aventura.'
-      : activePage === 'sheets'
-        ? 'Consulte e atualize as fichas por temporada.'
-        : activePage === 'characters'
-          ? 'Crie personagens e gerencie quem pode acessá-los.'
-          : 'Organize suas campanhas e escolha qual deseja administrar.'}
-</p>
-
-            </div>
-
-            {activePage === 'campaigns' && (
-              <button
-                className="primary-button"
-                onClick={() => setShowCampaignForm((value) => !value)}
-              >
-                + Criar campanha
-              </button>
-            )}
-          </section>
-
-          {activePage === 'master-shield' && selectedCampaign && isMaster && (
-            <section className="inventory-section master-shield-page-panel">
-              <section className="master-shield" aria-labelledby="master-shield-title">
-                <div className="master-shield-heading"><div><span className="master-shield-eyebrow">PAINEL DO MESTRE</span><h2 id="master-shield-title">Escudo do mestre</h2><p>Resumo rápido das informações básicas da party.</p></div><span className="master-shield-icon" aria-hidden="true">♜</span></div>
-                <div className="master-shield-grid">
-                  <article className="master-shield-stat"><span>Campanha</span><strong>{selectedCampaign.name}</strong></article>
-                  <article className="master-shield-stat"><span>Sistema</span><strong>{selectedCampaign.system_name || 'Não definido'}</strong></article>
-                  <article className="master-shield-stat"><span>Integrantes da party</span><strong>{masterShieldPartyMembers.length}</strong></article>
-                  <article className="master-shield-stat"><span>Personagens</span><strong>{characters.length}</strong></article>
-                </div>
-                {selectedCampaign.description && <div className="master-shield-description"><strong>Descrição da campanha</strong><p>{selectedCampaign.description}</p></div>}
-            
-                <div className="master-shield-columns">
-                  <div><h3>Integrantes da party</h3>{masterShieldPartyMembers.length ? <ul>{masterShieldPartyMembers.map(member => <li key={member.user_id}><span>{member.display_name}</span><small>{member.role === 'master' ? 'Mestre' : 'Jogador'}</small></li>)}</ul> : <p className="master-shield-empty">Nenhum integrante encontrado.</p>}</div>
-                  <div>
-                    <h3>Personagens da temporada</h3>
-                    <label style={labelStyle}>Temporada<select value={masterShieldSeasonId} onChange={e => setMasterShieldSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name}</option>)}</select></label>
-                    {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{characters.map(character => {
-                      const data = masterShieldSheets[character.id]
-                      if (!data || data.seasonParticipation !== true) return null
-                      const family = getSystemFamilyTier(String(data.family?.tier ?? '5')) ?? {
-                        pv: 0,
-                        ps: 0,
-                        pr: 0,
-                        breathing: 0,
-                      }
-                      const rankId = String(data.progression?.rankId ?? 'zaidan')
-                      const rank = getSystemRankStatus(rankId)
-                      const n = (value: unknown) => Number.isFinite(Number(value)) ? Number(value) : 0
-                      const allocations = data.progression?.allocations ?? {}
-                                            const allocated = (key: string) =>
-                        ['family', 'class', 'progression'].reduce((sum, source) => {
-                          if (source === 'family' && !systemFeatures.usesFamilyTiers) {
-                            return sum
-                          }
-
-                          return sum + Math.max(0, n(allocations[source]?.[key]))
-                        }, 0)
-                      const attr = (key: string, bonus: number) =>
-                        Math.min(
-                          5,
-                          Math.max(
-                            0,
-                            n(data.attributes?.[key]) +
-                              allocated(key) +
-                              (systemFeatures.usesFamilyTiers ? bonus : 0)
-                          )
-                        )
-
-                      const skill = (key: string) =>
-                        Math.min(
-                          12,
-                          Math.max(
-                            0,
-                            n(data.skills?.[key]) + allocated(key)
-                          )
-                        )
-                                            const maxes = {
-                        pv:
-                          skill('vigor') * 10 +
-                          (systemFeatures.usesFamilyTiers ? family.pv : 0) +
-                          rank.pv +
-                          n(data.progression?.classStatus?.pv) +
-                          n(data.progression?.statusBonuses?.pv),
-
-                        ps:
-                          skill('mental') * 10 +
-                          (systemFeatures.usesFamilyTiers ? family.ps : 0) +
-                          rank.ps +
-                          n(data.progression?.classStatus?.ps) +
-                          n(data.progression?.statusBonuses?.ps),
-
-                        pr:
-                          (attr('breathing', family.breathing) + skill('ability')) * 10 +
-                          (systemFeatures.usesFamilyTiers ? family.pr : 0) +
-                          rank.pr +
-                          n(data.progression?.classStatus?.pr) +
-                          n(data.progression?.statusBonuses?.pr),
-                      }
-                      const current = data.status?.current ?? {}
-                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],[resourceAbbreviation,maxes.pr]] as const).map(([key,max]) => {
-                        const id = key === 'PV' ? 'pv' : key === 'PS' ? 'ps' : 'pr'
-                        const rawValue=n(current[id] ?? max)
-                        // PV pode ultrapassar o máximo normal; PS e PR continuam limitados.
-                        const value=Math.max(0,key==='PV'?rawValue:Math.min(max,rawValue))
-                        const extra=key==='PV'?Math.max(0,value-max):0
-                        return {key,max,value,extra,pct:max>0?Math.min(100,value/max*100):0,extraPct:max>0?Math.min(100,extra/max*100):0}
-                      })
-                      return <button type="button" className="master-shield-character" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title"><strong>{character.emoji ? `${character.emoji} ` : ''}{character.name}</strong><small>{String(data.progression?.rankName || getSystemRankName(rankId) || character.archetype || 'Sem graduação')}</small></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Clique para abrir a ficha</small></button>
-                    })}{!characters.some(character => masterShieldSheets[character.id]?.seasonParticipation === true) && <p className="master-shield-empty">Nenhum personagem possui ficha nesta temporada.</p>}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
-                  </div>
-
-{masterShieldSeasonId && !masterShieldLoading && (
-                    <div style={{
-                      marginTop: 22,
-                      padding: 16,
-                      border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))',
-                      borderRadius: 14,
-                      background: 'var(--season-surface-alt, #211c31)',
-                  }}>
-                    <div style={{
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 12,
-  flexWrap: 'wrap',
-  marginBottom: 14,
-}}>
-  <h3 style={{ margin: 0 }}>⚡ Iniciativa da party</h3>
-
-  <button
-    type="button"
-    className="secondary-button"
-    style={{ padding: '8px 12px', fontSize: 12 }}
-    disabled={sheetSaving}
-    onClick={() => void clearAllCharacterInitiatives(masterShieldSeasonId)}
-  >
-    Limpar todas
-  </button>
-</div>
-
-                    {characters.filter(character =>
-                      masterShieldSheets[character.id]?.seasonParticipation === true
-                    ).length === 0 ? (
-                      <p className="master-shield-empty">
-                        Nenhum personagem participa desta temporada.
-                      </p>
-                    ) : (
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {characters
-                          .filter(character =>
-                            masterShieldSheets[character.id]?.seasonParticipation === true
-                          )
-.sort((a, b) => {
-  const aData = masterShieldSheets[a.id]
-  const bData = masterShieldSheets[b.id]
-
-  const aRaw = aData?.combat?.initiative
-  const bRaw = bData?.combat?.initiative
-
-  const aHas = aRaw !== null && aRaw !== undefined && aRaw !== '' && Number.isFinite(Number(aRaw))
-  const bHas = bRaw !== null && bRaw !== undefined && bRaw !== '' && Number.isFinite(Number(bRaw))
-
-  // Quem já rolou fica primeiro.
-  if (aHas && !bHas) return -1
-  if (!aHas && bHas) return 1
-
-  // Maior iniciativa primeiro.
-  if (aHas && bHas && Number(aRaw) !== Number(bRaw)) {
-    return Number(bRaw) - Number(aRaw)
-  }
-
-  // Calcula a Agilidade efetiva.
-  const getAgility = (data: any) => {
-    const familyTierKey = String(data?.family?.tier ?? '5')
-
-    const familyBonus = systemFeatures.usesFamilyTiers
-      ? getSystemAttributeBonus(familyTierKey, 'agility')
-      : 0
-
-    const allocations = data?.progression?.allocations ?? {}
-
-    const allocation = (source: string) => {
-      const own = Math.max(0, Math.floor(Number(allocations[source]?.agility) || 0))
-
-      const legacyClass = source === 'extra'
-        ? Math.max(0, Math.floor(Number(allocations.class?.agility) || 0))
-        : 0
-
-      return own + legacyClass
+  // A MESMA ficha visual, progressão e ações de combate para jogadores e inimigos.
+  // A origem e o destino da persistência são selecionados aqui, nunca na interface.
+  const renderSharedSheetCore = (forEnemy: boolean, section: 'main' | 'armor' = 'main') => {
+    const renderDraft = forEnemy ? enemySheetDraft : sheetDraft
+    const sheetResourceAbbreviation = forEnemy ? enemyResourceAbbreviation : resourceAbbreviation
+    const sheetResourcePointsLabel = forEnemy ? enemyResourcePointsLabel : resourcePointsLabel
+    const sheetResourceUnit = forEnemy && isKisatsutaiSystem ? 'pontos de sangue' : sheetResourceAbbreviation
+    const sheetResourceName = forEnemy && isKisatsutaiSystem ? 'Sangue' : resourceName
+    const sheetRecoveryTestName = forEnemy && isKisatsutaiSystem ? 'Teste de Sangue' : 'Teste de Respiração'
+    const updateRenderDraft = (draft: string) => {
+      if (!forEnemy) { setSheetDraft(draft); return }
+      enemySheetDraftRef.current = draft
+      setEnemySheetDraft(draft)
+      setEnemySheetDirty(true)
+      setEnemyAutoSaveStatus('pending')
+      enemyFailedAutoSaveDraftRef.current = null
     }
-
-    const base = Math.max(0, Math.floor(Number(data?.attributes?.agility) || 0))
-
-    return Math.min(
-      5,
-      Math.max(
-        0,
-        base +
-          allocation('family') +
-          allocation('hierarchy') +
-          allocation('extra') +
-          familyBonus
+    const renderSubject = forEnemy
+      ? (selectedEnemy ? { name: selectedEnemy.name, archetype: selectedEnemy.archetype } : null)
+      : selectedCharacter
+    const renderSubjectId = forEnemy ? selectedEnemyId : selectedCharacterId
+    const renderCanEdit = forEnemy ? Boolean(isMaster && selectedEnemy) : canEditSelectedSheet
+    const renderCanRename = forEnemy ? Boolean(isMaster && selectedEnemy) : canRenameSelectedCharacter
+    const renderEditing = forEnemy ? enemyEditingSheet : editingSheet
+    const renderNameDraft = forEnemy ? enemySheetNameDraft : characterNameDraft
+    const renderNameSaving = forEnemy ? enemySheetNameSaving : characterNameSaving
+    const setRenderNameDraft = (value: string) => forEnemy
+      ? setEnemySheetNameDraft(value) : setCharacterNameDraft(value)
+    const saveRenderName = () => forEnemy ? saveEnemyNameFromSheet() : saveSelectedCharacterName()
+    const renderOverloaded = forEnemy ? enemyIsOverloaded : isOverloaded
+    const renderInventoryItems: Item[] = forEnemy
+      ? enemyInventory.map(entry => ({
+          id: String(entry.id || ''),
+          character_id: selectedEnemyId || '',
+          name: String(entry.name || ''),
+          description: entry.description == null ? null : String(entry.description),
+          category: String(entry.categories?.[0] || 'Diversos'),
+          quantity: Math.max(1, Number(entry.quantity) || 1),
+          weight: Number(entry.weight) || 0,
+          unit_price: Number(entry.unitPrice) || 0,
+          currency_id: entry.currencyId ? String(entry.currencyId) : null,
+          sale_blocked: false,
+          metadata: {
+            ...entry,
+            categories: Array.isArray(entry.categories) ? entry.categories : [],
+            equipped: Boolean(entry.equipped),
+            equipmentType: entry.equipmentType === 'weapon' ? 'weapon' : (entry.equipmentType || 'none'),
+            weaponDamage: entry.weaponDamage || ({ improvised:'1d4', advanced:'1d6', special:'1d8', black_red:'1d10', mutable:'1d12' } as Record<string,string>)[String(entry.weaponClass)] || '—',
+          },
+        })) : items
+    const updateCombatArmor = async (armorId: string) => {
+      if (!renderCanEdit || !renderSubjectId) return
+      if (forEnemy) {
+        const nextInventory = enemyInventory.map(entry =>
+          entry.equipmentType === 'armor'
+            ? { ...entry, equipped: String(entry.id) === armorId }
+            : entry,
+        )
+        writeEnemySheet('inventory.items', nextInventory)
+        setNotice(armorId ? 'Armadura do inimigo equipada.' : 'Armadura do inimigo removida.')
+        return
+      }
+      // Armaduras dos personagens continuam na tabela de inventário.
+      // Nenhum item de outro personagem é modificado.
+      const armorItems = renderInventoryItems.filter(item =>
+        item.character_id === renderSubjectId && item.metadata?.equipmentType === 'armor'
       )
-    )
-  }
-
-  // Maior Agilidade primeiro em caso de empate.
-  const agilityDifference = getAgility(bData) - getAgility(aData)
-
-  if (agilityDifference !== 0) {
-    return agilityDifference
-  }
-
-  // Raposa — Sempre Pronto tem preferência.
-  const hasAlwaysReady = (data: any) => {
-    const flows = String(data?.flows?.details ?? '').toLowerCase()
-
-    return flows.includes('raposa') && flows.includes('sempre pronto')
-  }
-
-  const aPriority = hasAlwaysReady(aData)
-  const bPriority = hasAlwaysReady(bData)
-
-  if (aPriority && !bPriority) return -1
-  if (!aPriority && bPriority) return 1
-
-  // Empate total: ordem alfabética.
-  return a.name.localeCompare(b.name)
-})
-                          .map((character, index) => {
-                            const raw = masterShieldSheets[character.id]?.combat?.initiative
-                            const hasInitiative = raw !== null &&
-                              raw !== undefined &&
-                              raw !== '' &&
-                              Number.isFinite(Number(raw))
-
-                            return (
-                              <div
-                                key={character.id}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: 12,
-                                  padding: '12px 14px',
-                                  borderRadius: 10,
-                                  border: '1px solid var(--season-line, #393044)',
-                                  background: 'var(--season-surface, #100e19)',
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                  <strong style={{
-                                    color: 'var(--season-primary, #b49aff)',
-                                    minWidth: 24,
-                                  }}>
-                                    {index + 1}º
-                                  </strong>
-                                  <span>{character.emoji ? `${character.emoji} ` : ''}{character.name}</span>
-                                </div>
-
-<div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-  <strong style={{
-    fontSize: 20,
-    color: hasInitiative
-      ? 'var(--season-primary, #b49aff)'
-      : 'var(--season-muted, #b9b4c2)',
-  }}>
-    {hasInitiative ? Number(raw) : 'Não rolou'}
-  </strong>
-
-  {hasInitiative && (
-    <button
-      type="button"
-      className="secondary-button"
-      style={{ padding: '6px 10px', fontSize: 12 }}
-      disabled={sheetSaving}
-      onClick={event => {
-        event.stopPropagation()
-        void clearCharacterInitiative(character.id, masterShieldSeasonId)
-      }}
-    >
-      Limpar
-    </button>
-  )}
-</div>
-                              </div>
-                            )
-                          })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-<div className="campaign-activity-panel">
-  <div className="campaign-activity-heading">
-    <div>
-      <h3>Atividades recentes</h3>
-      <p>Acompanhe as novidades desta campanha.</p>
-    </div>
-    <span>{campaignActivities.length} registros</span>
-  </div>
-
-  {activityLoading ? (
-    <p className="master-shield-empty">Carregando atividades...</p>
-  ) : activityTableMissing ? (
-    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
-  ) : campaignActivities.length > 0 ? (
-  <>
-    <ul className="campaign-activity-list">
-      {campaignActivities
-        .slice(0, showAllCampaignActivities ? campaignActivities.length : 5)
-        .map(activity => (
-          <li key={activity.id}>
-            <span className="campaign-activity-marker" aria-hidden="true">•</span>
-            <div className="campaign-activity-content">
-              <strong>{activity.title}</strong>
-              {activity.description && <p>{activity.description}</p>}
-              <small>
-                {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-              </small>
-            </div>
-          </li>
-        ))}
-    </ul>
-
-    {campaignActivities.length > 5 && (
-      <button
-        type="button"
-        className="secondary-button"
-        onClick={() => setShowAllCampaignActivities(value => !value)}
-      >
-        {showAllCampaignActivities ? 'Mostrar menos' : 'Atividades completas'}
-      </button>
-    )}
-  </>
-  ) : (
-    <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
-  )}
-</div>
-
-
-                </div>
-
-              </section>
-            </section>
-          )}
-
-          {activePage === 'sheets' && selectedCampaignId && (
-            <section className="inventory-section sheet-page-panel">
-            
-              {!sheetCharacterView ? <>
-                <div className="inventory-heading"><div><h2>Fichas de personagens</h2><p>Escolha um personagem para abrir sua ficha.</p></div></div>
-                {characters.length === 0 ? <div className="empty-state"><h3>Nenhum personagem nesta campanha</h3><p>Crie um personagem antes de montar sua ficha.</p><button className="primary-button" onClick={() => { setActivePage('characters'); setShowCharacterForm(true) }}>Criar personagem</button></div> : <div className="item-grid">{characters.map(character => <article className="item-card" key={character.id}><div className="item-art">{character.emoji || '⚔️'}</div><div className="item-category">{systemFeatures.usesRanks ? activeSystem?.name?.toUpperCase() : `NÍVEL ${character.level}`}</div><h3>{character.name}</h3><p className="item-description">{character.archetype || 'Arquétipo não definido'}</p>{systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}<button className="primary-button" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha</button></article>)}</div>}
-              </> : <>
-                <div className="inventory-heading"><div><h2>Ficha de {selectedCharacter?.name ?? 'personagem'}</h2><p>{selectedCampaign?.name} · {activeSystem?.name ?? 'Sistema de RPG'}</p></div><button className="secondary-button" onClick={() => setSheetCharacterView(false)}>← Lista de personagens</button></div>
-                <label style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
-                {selectedSeasonId && !sheetLoading && <label className={`season-participation-toggle ${(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'is-participating' : ''}`}><input type="checkbox" checked={(() => { try { return (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() } catch { return false } })()} disabled={!canEditSelectedSheet || sheetSaving} onChange={e => { void toggleSeasonParticipation(e.target.checked) }} /><span><strong>{(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'Participando desta temporada' : 'Não participa desta temporada'}</strong><small>{sheetSaving ? 'Salvando participação…' : 'Altere esta opção para incluir ou retirar o personagem. A ficha e o histórico permanecem preservados.'}</small></span><b className="season-participation-status">{sheetSaving ? '…' : (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'ATIVO' : 'INATIVO'}</b></label>}
-                {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
-                {selectedSeasonId && <div className="season-theme-panel">
-                  <div className="season-theme-heading"><div><strong>Identidade visual</strong><small>Tema desta temporada: <b>{activeTheme.label}</b></small></div><span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} /></div>
-                  {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
-                </div>}
-
-                {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap',margin:'14px 0'}}>
-                    <p style={{color:'var(--season-muted, #b9b4c2)',margin:0}}>Consulte os dados calculados da ficha. As alterações ficam concentradas no modo de edição.</p>
-                    {canEditSelectedSheet && (
-  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-
-    <button
-      className="primary-button"
-      type="button"
-      onClick={()=>setEditingSheet(value=>!value)}
-    >
-      {editingSheet?'Fechar edição':'Editar ficha'}
-    </button>
-    {isCyberFlowerSystem && (
-  <span className="sheet-autosave-status">
-    {sheetAutoSaveStatus === 'saving' && 'Salvando...'}
-    {sheetAutoSaveStatus === 'saved' && 'Salvo automaticamente'}
-    {sheetAutoSaveStatus === 'error' && 'Erro ao salvar'}
-    {sheetAutoSaveStatus === 'pending' && 'Alterações pendentes'}
-  </span>
-)}
-  </div>
-)}
-                  </div>
-                  {(() => {
+      for (const item of armorItems) {
+        const shouldEquip = item.id === armorId
+        if (Boolean(item.metadata?.equipped) === shouldEquip) continue
+        const { data, error: equipError } = await supabase.from('inventory_items')
+          .update({ metadata: { ...(item.metadata || {}), equipped: shouldEquip } })
+          .eq('id', item.id)
+          .eq('character_id', renderSubjectId)
+          .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id')
+          .single()
+        if (equipError) {
+          setError(`Não foi possível alterar a armadura: ${equipError.message}`)
+          return
+        }
+        setItems(current => current.map(entry => entry.id === item.id ? data as Item : entry))
+      }
+      setNotice(armorId ? 'Armadura equipada.' : 'Armadura removida.')
+    }
+    const persistRenderConditions = async (next: Record<string, any>) => {
+      if (forEnemy) {
+        updateRenderDraft(JSON.stringify(next, null, 2))
+        await saveEnemySheet()
+      } else {
+        await saveCharacterConditions(next)
+      }
+    }
+    const persistRenderInitiative = async (total: number) => {
+      if (forEnemy) {
+        writeEnemySheet('combat.initiative', total)
+        await saveEnemySheet()
+      } else {
+        await saveCharacterInitiative(total)
+      }
+    }
+    return <>{(() => {
                     let data: Record<string, any> = {}
-                    try { data = JSON.parse(sheetDraft) } catch { data = {} }
+                    try { data = JSON.parse(renderDraft) } catch { data = {} }
                     const read = (path: string, fallback: any = 0) => path.split('.').reduce((obj: any, key) => obj && typeof obj === 'object' ? obj[key] : undefined, data) ?? fallback
                     const write = (path: string, value: any) => {
                       const next = { ...data }
@@ -5619,10 +6259,10 @@ onClick={() => {
                         node = node[part]
                       }
                       node[parts[parts.length - 1]] = value
-                      setSheetDraft(JSON.stringify(next, null, 2))
+                      updateRenderDraft(JSON.stringify(next, null, 2))
                     }
 
-                    const currentSystem = String(
+                    const currentSystem = forEnemy ? (selectedCampaign?.system_name || '') : String(
                       read('progression.system', selectedCampaign?.system_name || '')
                     )
                     const systemFeatures = getSystemByName(currentSystem)?.data?.features
@@ -5673,24 +6313,22 @@ onClick={() => {
                       const base = match?.[1] === 'skills' ? 0 : numRaw(path)
                       if (!match) return base
                       const key = match[2]
-                      const configuredSkillSources = activeSystem?.data?.skillPoints?.sources ?? []
-                      const sourceBonus = match[1] === 'attributes'
-                        ? allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
-                        : skillKeys.includes(key as typeof skillKeys[number])
-                          ? configuredSkillSources.reduce((sum, source) => sum + Math.max(0, Math.floor(Number(read(`skills.pointAllocations.${source.id}.${key}`, 0)) || 0)), 0)
+                      if (match[1] === 'skills') {
+                        return skillKeys.includes(key as typeof skillKeys[number])
+                          ? calculateSheetSkill(read, key as SheetSkill, skillPointConfig)
                           : 0
-                      return Math.min(match[1] === 'attributes' ? 5 : maxSkillLevel, base + sourceBonus)
+                      }
+                      const sourceBonus = allocationSources.reduce((sum, source) => sum + allocation(source, key), 0)
+                      return Math.min(5, base + sourceBonus)
                     }
                       const effectiveAttribute = (
-                        path: string,
-                        attribute: 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
-                    ) => {
-                      const bonus = usesFamilyTiers
-                        ? getSystemAttributeBonus(familyTierKey, attribute)
-                        : 0
-
-                      return Math.min(5, Math.max(0, num(path) + bonus))
-                    }
+                        _path: string,
+                        attribute: SheetAttribute
+                      ) => calculateSheetAttribute(
+                        read,
+                        attribute,
+                        usesFamilyTiers ? getSystemAttributeBonus(familyTierKey, attribute) : 0,
+                      )
                     const agility = Math.floor(effectiveAttribute('attributes.agility', 'agility'))
                     const movementActions = 1 + Math.floor(agility / 2)
                     const extraActions = agility % 2
@@ -5802,7 +6440,7 @@ onClick={() => {
                         left -= assigned
                       }
 
-                      setSheetDraft(JSON.stringify(next, null, 2))
+                      updateRenderDraft(JSON.stringify(next, null, 2))
                     }
                     const vigor = Math.min(maxSkillLevel, num('skills.vigor'))
                     const mental = Math.min(maxSkillLevel, num('skills.mental'))
@@ -5820,50 +6458,38 @@ onClick={() => {
                       )
                     )
 const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
-                    const equippedWeapon = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))
+                    const equippedWeapon = renderInventoryItems.find(item => item.character_id === renderSubjectId && item.metadata?.equipped === true && Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))
                     const equippedWeaponDamage = equippedWeapon ? String(equippedWeapon.metadata?.weaponDamage || '—') : '—'
-                    const equippedArmor = items.find(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'armor')
-                    const equippedProtection = items.filter(item => item.character_id === selectedCharacterId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'protection')
-                    const armorClass = String(equippedArmor?.metadata?.armorClass || 'leve')
-                    const armorDexterity = !equippedArmor ? dexterity : armorClass === 'pesada' ? 0 : armorClass === 'media' ? Math.floor(dexterity / 2) : dexterity
-                    const counterAttackDT = combat + armorDexterity
-
-                    const armorResistance = armorClass === 'pesada' ? resistance * 2 + 8 : armorClass === 'media' ? resistance + 6 : Math.floor(resistance / 2) + 4
-                    const armorCovers = (type: 'cortante_perfurante' | 'especial_bruto') => !!equippedArmor && (armorClass === 'pesada' || equippedArmor.metadata?.armorCoverage === type)
-                    const protectionFraction = (item: Item) => item.metadata?.protectionTier === 'avancada' ? 1 : item.metadata?.protectionTier === 'moderada' ? 0.5 : 0.25
-                    const physicalProtection = equippedProtection.filter(item => item.metadata?.protectionMode !== 'sanidade').reduce((sum, item) => sum + Math.floor(resistance * protectionFraction(item)), 0)
-                    const sanityProtection = equippedProtection.filter(item => item.metadata?.protectionMode === 'sanidade').reduce((sum, item) => sum + Math.floor(mental * protectionFraction(item)), 0)
+                    const equippedArmor = renderInventoryItems.find(item => item.character_id === renderSubjectId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'armor')
+                    const equippedCharacterItems: SheetCombatEquipment[] = renderInventoryItems
+                      .filter(item => item.character_id === renderSubjectId && item.metadata?.equipped === true)
+                      .map(item => ({
+                        equipmentType: String(item.metadata?.equipmentType || 'none'),
+                        armorClass: String(item.metadata?.armorClass || 'leve'),
+                        armorCoverage: isKisatsutaiSystem && item.metadata?.armorClass !== 'pesada'
+                          ? 'especial_bruto' : String(item.metadata?.armorCoverage || ''),
+                        protectionTier: String(item.metadata?.protectionTier || 'basica'),
+                        protectionMode: String(item.metadata?.protectionMode || 'resistencia'),
+                      }))
+                    const characterDefenses = calculateSheetDefenses(equippedCharacterItems, {
+                      dexterity, resistance, combat, mental,
+                    })
+                    const {
+                      armorClass, armorDexterity, counterAttackDT, armorResistance, armorCovers,
+                      physicalProtection, sanityProtection,
+                    } = characterDefenses
                     const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
                     const criticalValue = Math.max(1, Math.min(20, Math.floor(num('combat.critical') || 20)))
                     const rollD20 = () => Math.floor(Math.random() * 20) + 1
 
-const rollAttributeDice = (
-  diceCount: number,
-  usesAgility = false
-) => {
-  const effectiveDiceCount = Math.max(
-    0,
-    Math.floor(diceCount) - (isOverloaded && usesAgility ? 1 : 0)
-  )
-
-  const hasDisadvantage = effectiveDiceCount === 0
-  const rolledDiceCount = hasDisadvantage ? 2 : effectiveDiceCount
-
-  const rolls = Array.from(
-    { length: rolledDiceCount },
-    () => rollD20()
-  )
-
-  const selectedDice = hasDisadvantage
-    ? [Math.min(...rolls)]
-    : rolls
-
+const rollAttributeDice = (diceCount: number, usesAgility = false) => {
+  const roll = rollSheetAttributeDice(diceCount, renderOverloaded && usesAgility)
   return {
-    rolls,
-    selectedDice,
-    result: Math.max(...selectedDice),
-    effectiveDiceCount,
-    hasDisadvantage,
+    rolls: roll.rolls,
+    selectedDice: roll.hasDisadvantage ? [roll.result] : roll.rolls,
+    result: roll.result,
+    effectiveDiceCount: roll.effectiveDiceCount,
+    hasDisadvantage: roll.hasDisadvantage,
   }
 }
 
@@ -5871,7 +6497,7 @@ const performCombatRoll = (
   kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Bloqueio' | 'Esquiva',
   dodgeDt?: string
 ) => {
-  const dt = combat + dexterity
+  const dt = counterAttackDT
 
   const constitution =
     Number(read('attributes.constitution', 0)) || resistance + vigor
@@ -5886,7 +6512,7 @@ const attribute =
     kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
     kind === 'Ataque especial' ? ability :
     kind === 'Bloqueio' ? constitution :
-    dexterity
+    armorDexterity
 
   const diceCount = 1 + Math.max(0, Math.floor(attribute))
   const usesAgility = kind === 'Ataque ágil' || kind === 'Esquiva'
@@ -5939,7 +6565,7 @@ setBlockDamageReduction(
 )
 
     setCombatActionResult(
-      `Esquiva: ${diceDescription} + Destreza (${bonus}) = ${total}. ${outcome}`
+      `Esquiva: ${diceDescription} + Destreza de armadura (${bonus}) = ${total}. ${outcome}`
     )
   } else {
     setBlockDamageReduction(null)
@@ -5962,18 +6588,15 @@ setBlockDamageReduction(
                         return
                       }
 
-                      // Redução proporcionada pela reação.
-                      const reactionPrevented = Math.floor(incoming * blockDamageReduction)
-                      const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
-
-                      // Redução proporcionada pela armadura e pelas proteções.
-                      const armorReduction = armorCovers(blockPhysicalDamageType)
-                        ? armorResistance
-                        : 0
-
-                      const totalArmorProtection = armorReduction + physicalProtection
-                      const armorPrevented = Math.min(damageAfterReaction, totalArmorProtection)
-                      const remaining = Math.max(0, damageAfterReaction - armorPrevented)
+                      // O mesmo cálculo é usado pelos inimigos e personagens.
+                      const { reactionPrevented, armorPrevented, remaining, totalPrevented } =
+                        calculateSheetPhysicalDamage({
+                          incoming,
+                          reactionReduction: blockDamageReduction,
+                          damageType: blockPhysicalDamageType,
+                          defenses: characterDefenses,
+      specialBruteProtectionOnly: isKisatsutaiSystem,
+                        })
 
                       const currentStatus = data.status && typeof data.status === 'object' && !Array.isArray(data.status)
                         ? data.status as Record<string, any>
@@ -6001,10 +6624,8 @@ setBlockDamageReduction(
                         },
                       }
 
-                      setSheetDraft(JSON.stringify(next, null, 2))
-                      void saveCharacterConditions(next)
-
-                      const totalPrevented = reactionPrevented + armorPrevented
+                      updateRenderDraft(JSON.stringify(next, null, 2))
+                      void persistRenderConditions(next)
 
                       setCombatActionResult(
                         previous => `${previous} Dano recebido: ${incoming}. Dano negado pela reação: ${reactionPrevented}. Dano reduzido pela armadura e proteções: ${armorPrevented}. Redução total: ${totalPrevented}. Dano aplicado aos PV: ${remaining}. PV restantes: ${nextPV}.`
@@ -6030,10 +6651,18 @@ setBlockDamageReduction(
                     const familyPV = usesFamilyTiers ? familyTierData.pv : 0
                     const familyPS = usesFamilyTiers ? familyTierData.ps : 0
                     const familyPR = usesFamilyTiers ? familyTierData.pr : 0
+                    const sharedResourceMaximums = calculateSheetResourceMaximums(data, {
+                      skillPointConfig,
+                      usesFamilyTiers,
+                      familyTier: familyTierData,
+                      familyBreathingBonus: usesFamilyTiers
+                        ? getSystemAttributeBonus(familyTierKey, 'breathing') : 0,
+                      rankStatus,
+                    })
                     const derived = [
-                      ['Pontos de Vida (PV)', vigor * 10 + familyPV + classPV + progressionPV, `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
-                      ['Pontos de Sanidade (PS)', mental * 10 + familyPS + classPS + progressionPS, `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
-                      [resourcePointsLabel, (breathing + ability) * 10 + familyPR + classPR + progressionPR, `(${resourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
+                      ['Pontos de Vida (PV)', sharedResourceMaximums.pv, `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
+                      ['Pontos de Sanidade (PS)', sharedResourceMaximums.ps, `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
+                      [sheetResourcePointsLabel, sharedResourceMaximums.pr, `(${sheetResourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
                     ] as const
 const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => {
   const limit = path.startsWith('attributes.')
@@ -6064,9 +6693,392 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
   )
 }
                     const area = (path: string, label: string) => <label key={path} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{label}<textarea rows={3} value={String(read(path, ''))} onChange={e=>write(path,e.target.value)} style={{...inputStyle,fontFamily:'inherit',resize:'vertical'}}/></label>
-                    const panel = (title: string, children: any) => <details className="sheet-editor-accordion" style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-bg, var(--season-bg, #100e19))'}}><summary>{title}</summary><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:14}}>{children}</div></details>
+                    const panel = (title: string, children: any) => {
+                      const panelIcon = title.includes('Identidade') ? '✦'
+                        : title.includes('Status') ? '♥'
+                        : title.includes('Combate') ? '⚔'
+                        : title.includes('Fluxos') ? '〰'
+                        : title.includes('Habilidades') ? '✧' : '✎'
+                      return <details className="sheet-editor-accordion sheet-editor-premium">
+                        <summary><span className="sheet-editor-icon" aria-hidden="true">{panelIcon}</span><span className="sheet-editor-title">{title}</span><span className="sheet-editor-expand">Expandir detalhes</span></summary>
+                        <div className="sheet-editor-fields">{children}</div>
+                      </details>
+                    }
 
 
+
+                    // Mesmo painel visual para personagens e inimigos, acima do inventário.
+                    // O seletor preserva a função de equipar usada no combate.
+                    if (section === 'armor') {
+                      const availableArmors = renderInventoryItems.filter(item =>
+                        item.character_id === renderSubjectId && item.metadata?.equipmentType === 'armor'
+                      )
+                      const protectionItems = renderInventoryItems.filter(item =>
+                        item.character_id === renderSubjectId &&
+                        item.metadata?.equipmentType === 'protection' && item.metadata?.equipped === true
+                      )
+                      const armorClassLabel = armorClass === 'pesada' ? 'Pesada' : armorClass === 'media' ? 'Média' : 'Leve'
+                      const armorCoverageLabel = !equippedArmor ? 'Nenhuma'
+                        : armorCovers('cortante_perfurante') && armorCovers('especial_bruto') ? 'Completa'
+                        : armorCovers('especial_bruto') ? 'Especial / bruto'
+                        : armorCovers('cortante_perfurante') ? 'Cortante / perfurante'
+                        : 'Não definida'
+                      const dexterityLoss = Math.max(0, dexterity - armorDexterity)
+                      return (
+                        <section
+                          className="combat-armor-panel sheet-armor-standalone sheet-armor-premium"
+                          id={forEnemy ? 'inimigo-armadura-protecao' : 'ficha-armadura-protecao'}
+                          aria-label="Armadura e proteção"
+                        >
+                          <style>{`
+                            .sheet-armor-premium {
+                              --armor-muted: var(--season-muted, #aab0bb);
+                              --armor-text: var(--season-text, #eff2f5);
+                              --armor-border: var(--season-line, rgba(255,255,255,.13));
+                              display: block;
+                              position: relative;
+                              overflow: hidden;
+                              isolation: isolate;
+                              margin: 20px 0 22px;
+                              padding: clamp(18px, 2.4vw, 28px);
+                              border-radius: 20px;
+                              border: 1px solid var(--armor-border);
+                              color: var(--armor-text);
+                              background: linear-gradient(135deg, var(--season-surface-alt, #1d2027), var(--season-surface, #171a20) 68%);
+                              box-shadow: 0 12px 32px rgba(0,0,0,.13);
+                            }
+                            .sheet-armor-premium::before {
+                              content: '';
+                              position: absolute;
+                              top: 0;
+                              left: 22px;
+                              right: 22px;
+                              height: 2px;
+                              background: linear-gradient(90deg, var(--season-primary, #98bd9a), transparent 70%);
+                              opacity: .8;
+                              pointer-events: none;
+                            }
+                            .sheet-armor-premium .armor-panel-header {
+                              display: flex;
+                              align-items: flex-start;
+                              justify-content: space-between;
+                              flex-wrap: wrap;
+                              gap: 14px;
+                              margin-bottom: 20px;
+                            }
+                            .sheet-armor-premium .armor-title-wrap {display: flex; gap: 13px; min-width: 0; align-items: center;}
+                            .sheet-armor-premium .armor-title-icon {
+                              width: 48px;
+                              height: 48px;
+                              flex: 0 0 48px;
+                              display: grid;
+                              place-items: center;
+                              border-radius: 15px;
+                              color: var(--season-primary, #98bd9a);
+                              background: color-mix(in srgb, var(--season-primary, #98bd9a) 12%, transparent);
+                              border: 1px solid color-mix(in srgb, var(--season-primary, #98bd9a) 30%, transparent);
+                            }
+                            .sheet-armor-premium .armor-eyebrow {
+                              display: block;
+                              margin-bottom: 5px;
+                              font-size: 10px;
+                              font-weight: 800;
+                              letter-spacing: .14em;
+                              text-transform: uppercase;
+                              color: var(--season-primary, #98bd9a);
+                            }
+                            .sheet-armor-premium h3 {font-size: clamp(20px, 2.4vw, 25px); margin: 0; line-height: 1.18;}
+                            .sheet-armor-premium .armor-panel-description {
+                              font-size: 12px;
+                              margin: 7px 0 0;
+                              line-height: 1.55;
+                              color: var(--armor-muted);
+                            }
+                            .sheet-armor-premium .armor-status-pill {
+                              display: inline-flex;
+                              align-items: center;
+                              gap: 8px;
+                              padding: 9px 12px;
+                              border-radius: 999px;
+                              border: 1px solid var(--armor-border);
+                              background: color-mix(in srgb, var(--season-bg, #11151a) 65%, transparent);
+                              font-size: 11px;
+                              font-weight: 750;
+                              white-space: nowrap;
+                            }
+                            .sheet-armor-premium .armor-status-dot {
+                              width: 7px;
+                              height: 7px;
+                              border-radius: 50%;
+                              background: var(--season-primary, #98bd9a);
+                              box-shadow: 0 0 0 3px color-mix(in srgb, var(--season-primary, #98bd9a) 15%, transparent);
+                            }
+                            .sheet-armor-premium .armor-status-pill.is-empty .armor-status-dot {
+                              background: var(--armor-muted);
+                              box-shadow: none;
+                            }
+                            .sheet-armor-premium .armor-equipment-grid {
+                              display: grid;
+                              grid-template-columns: minmax(0, 1.3fr) minmax(255px, .9fr);
+                              gap: 12px;
+                              margin-bottom: 13px;
+                            }
+                            .sheet-armor-premium .armor-equipped-card,
+                            .sheet-armor-premium .armor-select-card {
+                              min-width: 0;
+                              border-radius: 15px;
+                              border: 1px solid var(--armor-border);
+                              padding: 18px;
+                            }
+                            .sheet-armor-premium .armor-equipped-card {
+                              background: linear-gradient(115deg, color-mix(in srgb, var(--season-primary, #98bd9a) 10%, var(--season-surface, #171a20)), var(--season-surface, #171a20));
+                              display: flex;
+                              gap: 15px;
+                              align-items: center;
+                            }
+                            .sheet-armor-premium .armor-equipped-emblem {
+                              width: 62px;
+                              height: 62px;
+                              flex: 0 0 62px;
+                              display: grid;
+                              place-items: center;
+                              border-radius: 18px;
+                              color: var(--season-primary, #98bd9a);
+                              background: color-mix(in srgb, var(--season-primary, #98bd9a) 12%, transparent);
+                              border: 1px solid color-mix(in srgb, var(--season-primary, #98bd9a) 28%, transparent);
+                            }
+                            .sheet-armor-premium .armor-small-label {
+                              color: var(--armor-muted);
+                              display: block;
+                              font-size: 10px;
+                              font-weight: 800;
+                              text-transform: uppercase;
+                              letter-spacing: .1em;
+                            }
+                            .sheet-armor-premium .armor-equipped-name {
+                              display: block;
+                              margin: 7px 0 10px;
+                              overflow-wrap: anywhere;
+                              font-size: clamp(17px, 2vw, 22px);
+                              line-height: 1.2;
+                              font-weight: 800;
+                            }
+                            .sheet-armor-premium .armor-equipment-tags {display: flex; flex-wrap: wrap; gap: 7px;}
+                            .sheet-armor-premium .armor-equipment-tags span {
+                              padding: 5px 9px;
+                              border-radius: 7px;
+                              font-size: 11px;
+                              font-weight: 700;
+                              color: var(--armor-text);
+                              background: color-mix(in srgb, var(--season-primary, #98bd9a) 13%, transparent);
+                              border: 1px solid color-mix(in srgb, var(--season-primary, #98bd9a) 22%, transparent);
+                            }
+                            .sheet-armor-premium .armor-select-card {
+                              display: flex;
+                              flex-direction: column;
+                              gap: 8px;
+                              justify-content: center;
+                              background: color-mix(in srgb, var(--season-bg, #11151a) 45%, transparent);
+                            }
+                            .sheet-armor-premium .armor-select-card label {font-size: 12px; font-weight: 750;}
+                            .sheet-armor-premium .armor-select-card select {
+                              width: 100%;
+                              min-width: 0;
+                              height: 43px;
+                              border-radius: 10px;
+                              padding: 0 12px;
+                              background: var(--season-surface, #171a20);
+                              color: var(--armor-text);
+                              border: 1px solid var(--armor-border);
+                              font: inherit;
+                              font-size: 13px;
+                              font-weight: 650;
+                            }
+                            .sheet-armor-premium .armor-select-card select:focus-visible {
+                              outline: 2px solid var(--season-primary, #98bd9a);
+                              outline-offset: 2px;
+                            }
+                            .sheet-armor-premium .armor-select-card select:disabled {cursor: not-allowed; opacity: .65;}
+                            .sheet-armor-premium .armor-select-card small {font-size: 11px; line-height: 1.5; color: var(--armor-muted);}
+                            .sheet-armor-premium .armor-stats-grid {
+                              display: grid;
+                              grid-template-columns: repeat(4, minmax(0, 1fr));
+                              gap: 11px;
+                            }
+                            .sheet-armor-premium .armor-stat {
+                              position: relative;
+                              min-width: 0;
+                              display: flex;
+                              flex-direction: column;
+                              align-items: flex-start;
+                              padding: 17px 16px 15px;
+                              border-radius: 14px;
+                              border: 1px solid var(--armor-border);
+                              background: color-mix(in srgb, var(--season-bg, #11151a) 38%, var(--season-surface, #171a20));
+                              transition: border-color .18s ease, transform .18s ease;
+                            }
+                            .sheet-armor-premium .armor-stat:hover {
+                              border-color: color-mix(in srgb, var(--season-primary, #98bd9a) 45%, var(--armor-border));
+                              transform: translateY(-2px);
+                            }
+                            .sheet-armor-premium .armor-stat-icon {
+                              display: grid;
+                              place-items: center;
+                              width: 33px;
+                              height: 33px;
+                              border-radius: 10px;
+                              margin-bottom: 11px;
+                              color: var(--season-primary, #98bd9a);
+                              font-size: 19px;
+                              background: color-mix(in srgb, var(--season-primary, #98bd9a) 11%, transparent);
+                            }
+                            .sheet-armor-premium .armor-stat-label {
+                              font-size: 11px;
+                              line-height: 1.3;
+                              font-weight: 650;
+                              color: var(--armor-muted);
+                              min-height: 28px;
+                            }
+                            .sheet-armor-premium .armor-stat-number {
+                              display: block;
+                              margin: 4px 0 7px;
+                              font-size: clamp(26px, 3vw, 34px);
+                              line-height: 1;
+                              letter-spacing: -.04em;
+                              font-weight: 850;
+                              color: var(--armor-text);
+                              font-variant-numeric: tabular-nums;
+                            }
+                            .sheet-armor-premium .armor-stat-note {
+                              font-size: 10px;
+                              color: var(--armor-muted);
+                              line-height: 1.5;
+                            }
+                            .sheet-armor-premium .armor-footnote {
+                              display: flex;
+                              align-items: center;
+                              gap: 8px;
+                              margin-top: 15px;
+                              padding: 11px 13px;
+                              border-radius: 10px;
+                              border: 1px dashed var(--armor-border);
+                              font-size: 11px;
+                              line-height: 1.5;
+                              color: var(--armor-muted);
+                            }
+                            .sheet-armor-premium .armor-footnote strong {color: var(--armor-text); font-weight: 750;}
+                            @media (max-width: 900px) {
+                              .sheet-armor-premium .armor-equipment-grid {grid-template-columns: minmax(0, 1fr);}
+                              .sheet-armor-premium .armor-stats-grid {grid-template-columns: repeat(2, minmax(0, 1fr));}
+                            }
+                            @media (max-width: 480px) {
+                              .sheet-armor-premium {padding: 16px; border-radius: 16px;}
+                              .sheet-armor-premium .armor-title-icon {width: 42px; height: 42px; flex-basis: 42px;}
+                              .sheet-armor-premium .armor-equipped-emblem {width: 49px; height: 49px; flex-basis: 49px;}
+                              .sheet-armor-premium .armor-equipped-card {padding: 14px; gap: 12px;}
+                              .sheet-armor-premium .armor-stat {padding: 13px 12px;}
+                              .sheet-armor-premium .armor-stat-number {font-size: 27px;}
+                            }
+                            @media (prefers-reduced-motion: reduce) {
+                              .sheet-armor-premium .armor-stat {transition: none;}
+                              .sheet-armor-premium .armor-stat:hover {transform: none;}
+                            }
+                          `}</style>
+                          <header className="armor-panel-header">
+                            <div className="armor-title-wrap">
+                              <span className="armor-title-icon" aria-hidden="true">
+                                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+                                  <path d="m9 12 2 2 4-4"/>
+                                </svg>
+                              </span>
+                              <div>
+                                <span className="armor-eyebrow">Defesa e equipamentos</span>
+                                <h3>Armadura e proteção</h3>
+                                <p className="armor-panel-description">Resistências e proteções calculadas pelos itens equipados.</p>
+                              </div>
+                            </div>
+                            <div className={`armor-status-pill${equippedArmor ? '' : ' is-empty'}`}>
+                              <span className="armor-status-dot" aria-hidden="true" />
+                              {equippedArmor ? 'Armadura equipada' : 'Sem armadura equipada'}
+                            </div>
+                          </header>
+
+                          <div className="armor-equipment-grid">
+                            <div className="armor-equipped-card">
+                              <div className="armor-equipped-emblem" aria-hidden="true">
+                                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+                                  <path d="M12 6v12M7 12h10"/>
+                                </svg>
+                              </div>
+                              <div style={{minWidth:0}}>
+                                <span className="armor-small-label">Equipamento defensivo atual</span>
+                                <strong className="armor-equipped-name">{equippedArmor?.name || 'Nenhuma armadura'}</strong>
+                                <div className="armor-equipment-tags">
+                                  {equippedArmor ? (
+                                    <>
+                                      <span>Classe {armorClassLabel}</span>
+                                      <span>Cobertura: {armorCoverageLabel}</span>
+                                    </>
+                                  ) : <span>Equipe uma armadura para obter resistência</span>}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="armor-select-card">
+                              <span className="armor-small-label">Gerenciar equipamento</span>
+                              <label htmlFor={forEnemy ? 'enemy-combat-armor-select' : 'character-combat-armor-select'}>Armadura em combate</label>
+                              <select
+                                id={forEnemy ? 'enemy-combat-armor-select' : 'character-combat-armor-select'}
+                                value={equippedArmor?.id || ''}
+                                disabled={!renderCanEdit}
+                                onChange={event => void updateCombatArmor(event.target.value)}
+                              >
+                                <option value="">Sem armadura</option>
+                                {availableArmors.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+                              </select>
+                              <small>{availableArmors.length === 0
+                                ? 'Adicione uma armadura ao inventário para equipá-la aqui.'
+                                : renderCanEdit ? 'Selecione um item do inventário para atualizar a defesa.'
+                                : 'Visualização do equipamento defensivo atual.'}</small>
+                            </div>
+                          </div>
+
+                          <div className="armor-stats-grid" aria-label="Indicadores de defesa">
+                            <article className="armor-stat">
+                              <span className="armor-stat-icon" aria-hidden="true">↗</span>
+                              <span className="armor-stat-label">Destreza de armadura</span>
+                              <strong className="armor-stat-number">{armorDexterity}</strong>
+                              <small className="armor-stat-note">{dexterityLoss > 0 ? `Base ${dexterity} · penalidade −${dexterityLoss}` : `Base ${dexterity} · sem penalidade`}</small>
+                            </article>
+                            <article className="armor-stat">
+                              <span className="armor-stat-icon" aria-hidden="true">⛨</span>
+                              <span className="armor-stat-label">Resistência da armadura</span>
+                              <strong className="armor-stat-number">{equippedArmor ? armorResistance : 0}</strong>
+                              <small className="armor-stat-note">{equippedArmor ? `Cobertura ${armorCoverageLabel.toLocaleLowerCase('pt-BR')}` : 'Sem armadura equipada'}</small>
+                            </article>
+                            <article className="armor-stat">
+                              <span className="armor-stat-icon" aria-hidden="true">✣</span>
+                              <span className="armor-stat-label">{isKisatsutaiSystem ? 'Proteção especial / bruto' : 'Proteção física'}</span>
+                              <strong className="armor-stat-number">{physicalProtection}</strong>
+                              <small className="armor-stat-note">{protectionItems.filter(item => item.metadata?.protectionMode !== 'sanidade').length} proteção(ões) equipada(s)</small>
+                            </article>
+                            <article className="armor-stat">
+                              <span className="armor-stat-icon" aria-hidden="true">✧</span>
+                              <span className="armor-stat-label">Proteção de sanidade</span>
+                              <strong className="armor-stat-number">{sanityProtection}</strong>
+                              <small className="armor-stat-note">{protectionItems.filter(item => item.metadata?.protectionMode === 'sanidade').length} proteção(ões) equipada(s)</small>
+                            </article>
+                          </div>
+                          <div className="armor-footnote">
+                            <span aria-hidden="true">ⓘ</span>
+                            <span><strong>Como funciona:</strong> a resistência da armadura depende da cobertura do item. {isKisatsutaiSystem
+                              ? 'As proteções físicas do Kisatsutai reduzem dano especial / bruto.'
+                              : 'As proteções físicas complementam a redução de dano.'} A proteção de sanidade é calculada separadamente.</span>
+                          </div>
+                        </section>
+                      )
+                    }
 
                     return (
                       <>
@@ -6106,20 +7118,21 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
           </div>
           <h2 style={{ margin: 0, color: 'var(--season-text, inherit)', fontSize: 'clamp(20px, 3vw, 26px)', lineHeight: 1.15, fontWeight: 850, overflowWrap: 'anywhere' }}>{rankName}</h2>
           <div style={{ marginTop: 5, color: 'var(--season-muted, #b9b4c2)', fontSize: 12 }}>
-  Progressão do personagem
+  Progressão {forEnemy ? 'do inimigo' : 'do personagem'}
 </div>
         </div>
       </div>
       <div style={{ flex: '0 0 auto', alignSelf: 'stretch', display: 'flex', alignItems: 'center', paddingLeft: 12, borderLeft: '1px solid var(--season-line, rgba(255,255,255,.12))', color: 'var(--season-accent, #e58a36)', fontSize: 11, fontWeight: 800, letterSpacing: '.8px', textAlign: 'right' }}>PROGRESSÃO<br/>ATUAL</div>
     </section>
   )}
-                      {editingSheet && canEditSelectedSheet ? (<fieldset
-                        disabled={!editingSheet || !canEditSelectedSheet}
-                        className="character-sheet-editor"
+                      {renderEditing && renderCanEdit ? (<fieldset
+                        disabled={!renderEditing || !renderCanEdit}
+                        className="character-sheet-editor sheet-editor-layout"
+                        id={forEnemy ? 'inimigo-edicao' : 'ficha-edicao'}
                         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
                       >
                       {(() => {
-                        const system = String(read('progression.system', selectedCampaign?.system_name || ''))
+                        const system = forEnemy ? (selectedCampaign?.system_name || '') : String(read('progression.system', selectedCampaign?.system_name || ''))
                         const systemFeatures = getSystemByName(system)?.data?.features
 
                         const usesRanks = systemFeatures?.usesRanks ?? false
@@ -6251,14 +7264,15 @@ const allocationPool = (source: typeof allocationSources[number]) => {
     },
   }
 
-  setSheetDraft(JSON.stringify(next, null, 2))
+  updateRenderDraft(JSON.stringify(next, null, 2))
 }
-                        return <section style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
-                          <h3 style={{marginTop:0}}>Gerenciador de Família, Classe, Progressão e Atributos</h3>
+                        return <section className="sheet-editor-manager" style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
+                          <div className="sheet-editor-manager-title"><span aria-hidden="true">✦</span><div><small>DESENVOLVIMENTO DO PERSONAGEM</small><h3>Família, classe e progressão</h3><p>Configure hierarquia, atributos e distribuições de pontos.</p></div></div>
                                                     <label style={labelStyle}>
                             Sistema de progressão
                             <select
                               value={system}
+                              disabled={forEnemy}
                               onChange={e => write('progression.system', e.target.value)}
                               style={inputStyle}
                             >
@@ -6294,7 +7308,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                                 {[
                                   ['PV', tier.pv],
                                   ['PS', tier.ps],
-                                  ['PR', tier.pr],
+                                  [sheetResourceAbbreviation, tier.pr],
                                   ['Força', tier.strength],
                                   ['Agilidade', tier.agility],
                                   ['Defesa', tier.defense],
@@ -6317,7 +7331,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                               <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
                             </div>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
-                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr',`${resourceAbbreviation} adicional`)}</div></div>
+                            <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr',`${sheetResourceAbbreviation} adicional`)}</div></div>
 
                             <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button
   type="button"
@@ -6334,7 +7348,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
         },
       }
 
-      setSheetDraft(JSON.stringify(next, null, 2))
+      updateRenderDraft(JSON.stringify(next, null, 2))
     }
   }}
 >
@@ -6364,7 +7378,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
         },
       }
 
-      setSheetDraft(JSON.stringify(next, null, 2))
+      updateRenderDraft(JSON.stringify(next, null, 2))
     }}
   >
     Marcar promoções registradas como conferidas
@@ -6373,21 +7387,21 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                           </> : <>
                             <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
                             {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
-                            <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr',`Bônus de ${resourceAbbreviation}`)}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
+                            <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr',`Bônus de ${sheetResourceAbbreviation}`)}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
                           </>}
 
-                          {allocationSources.some(source => allocationPool(source) > 0) && <>
-                            <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
+                          {(allocationSources.some(source => allocationPool(source) > 0) || renderCanEdit) && <>
+                            <div className="sheet-distribution-panel sheet-attribute-distribution" style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
                               <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}>
                                 <div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div>
                                 <div>
                                   <div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div>
                                   <strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Atributos</strong>
-                                  <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos disponíveis entre os atributos.</p>
+                                  <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>Distribua os pontos de atributos recebidos pela família, hierarquia e fontes extras.</p>
                                 </div>
                               </div>
 
-                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto aumenta um nível do atributo. Limite: 5 por atributo.</p>
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto distribuído aumenta o atributo em 1 nível. Limite: 5 por atributo.</p>
 
                               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>
                                 {allocationSources.map(source=>{
@@ -6442,7 +7456,7 @@ const current = Math.min(
 )
                                   return (
                                     <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}>
-                                      <span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{({strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:resourceName,intellect:'Intelecto'})[key]}</span>
+                                      <span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{({strength:'Força',agility:'Agilidade',defense:'Defesa',breathing:sheetResourceName,intellect:'Intelecto'})[key]}</span>
                                       <input type="number" min={minimum} max={5} defaultValue={current} key={`${key}-${minimum}`} onChange={e => {
 
 if (e.target.value === '') return
@@ -6531,7 +7545,7 @@ let remaining = Math.max(
   // evitando que os pontos sejam contabilizados duas vezes.
   next.progression.allocations.class[key] = 0
 
-setSheetDraft(JSON.stringify(next, null, 2))
+updateRenderDraft(JSON.stringify(next, null, 2))
 }}
 onBlur={e => {
   e.currentTarget.value = String(current)
@@ -6542,12 +7556,29 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   )
                                 })}
                               </div>
+                              <div style={{marginTop:28,padding:13,borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 9%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 16%, transparent))'}}>
+                                <label style={{...labelStyle,display:'block',margin:0}}>
+                                  Pontos extras de atributos
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    disabled={!renderCanEdit}
+                                    value={numRaw('progression.extraAttributePoints')}
+                                    onChange={e => write('progression.extraAttributePoints',Math.max(0,Math.floor(Number(e.target.value)||0)))}
+                                    style={{...inputStyle,marginTop:7}}
+                                  />
+                                </label>
+                                <small style={{display:'block',marginTop:6,color:'var(--season-muted, #b9b4c2)'}}>
+                                  Pontos concedidos pelo mestre. Entram na reserva Extras acima e podem ser distribuídos entre os atributos, respeitando o limite de 5.
+                                </small>
+                              </div>
                             </div>
                           </>}
                           {systemFeatures?.usesSkillPoints && <>
-                            <div style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
-                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>{skillPointConfig?.description || 'Distribua os pontos disponíveis entre as perícias.'}</p></div></div>
-                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>{skillPointConfig?.allocationDescription || 'Cada ponto aumenta um nível da perícia.'} Limite: {maxSkillLevel} por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{skillPointSources.map(source=>{const pool=skillPool(source.id);const used=skillTotalUsed(source.id);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source.id} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${source.color}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:source.color,flex:'0 0 9px'}}/>{source.label}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:source.color}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input
+                            <div className="sheet-distribution-panel sheet-skill-distribution" style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
+                              <div style={{display:'flex',alignItems:'flex-start',gap:12,marginBottom:16}}><div style={{width:38,height:38,flex:'0 0 38px',display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-glow, color-mix(in srgb, var(--season-primary, #b49aff) 18%, transparent))',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 25%, transparent))',fontSize:18}}>✦</div><div><div style={{fontSize:10,letterSpacing:1.5,fontWeight:800,color:'var(--season-primary, #b49aff)',textTransform:'uppercase'}}>Desenvolvimento</div><strong style={{display:'block',fontSize:17,marginTop:2}}>Distribuição de Pontos de Perícias</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'4px 0 0',lineHeight:1.5}}>{skillPointConfig?.description || 'Distribua os pontos de perícias recebidos pelas fontes disponíveis e pontos extras.'}</p></div></div>
+                              <p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)',margin:'0 0 12px'}}>Cada ponto distribuído aumenta a perícia em 1 nível. Limite: 12 por perícia.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:9}}>{skillPointSources.map(source=>{const pool=skillPool(source.id);const used=skillTotalUsed(source.id);const ratio=pool>0?Math.min(100,used/pool*100):0;return <div key={source.id} style={{minWidth:0,padding:'13px 14px',borderRadius:15,background:'rgba(255,255,255,.045)',border:`1px solid ${source.color}44`}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:12}}><strong style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><span style={{width:9,height:9,borderRadius:'50%',background:source.color,flex:'0 0 9px'}}/>{source.label}</strong><small style={{color:'var(--season-muted, #b9b4c2)',fontWeight:700,whiteSpace:'nowrap'}}>{Math.max(0,pool-used)} livres</small></div><div style={{display:'flex',alignItems:'baseline',gap:5}}><strong style={{fontSize:29,lineHeight:1,fontWeight:800}}>{used}</strong><span style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>/ {pool} pontos usados</span></div><div style={{height:7,background:'rgba(255,255,255,.10)',borderRadius:99,overflow:'hidden',marginTop:13}}><div style={{height:'100%',width:ratio+'%',background:source.color}}/></div></div>})}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginTop:16}}>{skillKeys.map(key=>{const current=num(`skills.${key}`);const extra=skillAllocatedTotal(key);return <label key={key} style={{...labelStyle,fontSize:11,display:'flex',flexDirection:'column',gap:6,margin:0,padding:'10px 11px',borderRadius:10,background:'color-mix(in srgb, var(--season-surface-alt, #211c31) 28%, transparent)',border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 12%, transparent))'}}><span style={{color:'var(--season-muted, #b9b4c2)',fontWeight:650}}>{skillLabels[key]}</span><input
   type="number"
   min="0"
   max={maxSkillLevel}
@@ -6566,7 +7597,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 
                         </section>
                       })()}
-                      {panel('1. Identidade', <>{canRenameSelectedCharacter && <div className="character-name-editor identity-character-name-editor"><label htmlFor="sheet-character-name">Nome do personagem</label><div><input id="sheet-character-name" value={characterNameDraft} onChange={event => setCharacterNameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void saveSelectedCharacterName() } }} maxLength={80} placeholder="Nome do personagem" disabled={characterNameSaving} /><button className="secondary-button" type="button" onClick={() => void saveSelectedCharacterName()} disabled={characterNameSaving || !characterNameDraft.trim()}>{characterNameSaving ? 'Salvando…' : 'Salvar nome'}</button></div></div>}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
+                      {panel('1. Identidade', <>{renderCanRename && <div className="character-name-editor identity-character-name-editor"><label htmlFor="sheet-character-name">{forEnemy ? 'Nome do inimigo' : 'Nome do personagem'}</label><div><input id="sheet-character-name" value={renderNameDraft} onChange={event => setRenderNameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void saveRenderName() } }} maxLength={80} placeholder={forEnemy ? 'Nome do inimigo' : 'Nome do personagem'} disabled={renderNameSaving} /><button className="secondary-button" type="button" onClick={() => void saveRenderName()} disabled={renderNameSaving || !renderNameDraft.trim()}>{renderNameSaving ? 'Salvando…' : 'Salvar nome'}</button></div></div>}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
   const otherKey = key === 'primaryArchetype'
     ? 'secondaryArchetype'
     : 'primaryArchetype'
@@ -6609,7 +7640,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     </label>
   )
 })}
-{field('identity.path','Caminho','text')}{field('identity.breathing',resourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
+{field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
                       {panel('3. Combate', <><div style={{marginTop:14}}><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
@@ -6658,15 +7689,15 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
   </>
 )}
                       {panel('Anotações', area('notes','Anotações gerais'))}
-                      </fieldset>) : (<section className="character-sheet-summary">
+                      </fieldset>) : (<section className="character-sheet-summary sheet-overview-premium">
                         <header className="sheet-summary-header">
-                          <div className="sheet-summary-identity"><span className="sheet-eyebrow">FICHA DE PERSONAGEM</span><h2>{String(read('identity.name', selectedCharacter?.name || 'Personagem'))}</h2><p>
+                          <div className="sheet-summary-identity"><div className="sheet-summary-identity-main"><span className="sheet-summary-avatar" aria-hidden="true">{forEnemy ? (selectedEnemy?.emoji || '👹') : (selectedCharacter?.emoji || '⚔️')}</span><div className="sheet-summary-identity-copy"><span className="sheet-eyebrow">{forEnemy ? 'FICHA DE INIMIGO' : 'FICHA DE PERSONAGEM'}</span><h2>{String(read('identity.name', renderSubject?.name || (forEnemy ? 'Inimigo' : 'Personagem')))}</h2><p>
   {String(read('identity.family', 'Família não definida'))}
   {' · '}
-  {String(read('identity.primaryArchetype', selectedCharacter?.archetype || 'Arquétipo não definido'))}
+  {String(read('identity.primaryArchetype', renderSubject?.archetype || 'Arquétipo não definido'))}
   {' + '}
   {String(read('identity.secondaryArchetype', 'Arquétipo secundário não definido'))}
-</p></div>
+</p></div></div></div>
                           <div className="sheet-summary-progression">
                             {[
                               ...(systemFeatures?.usesRanks
@@ -6686,8 +7717,9 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               </div>
                             ))}
                           </div>
-                          <div className="sheet-summary-season">{seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada'}</div>
+                          <div className="sheet-summary-season">{forEnemy ? 'Campanha' : (seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada')}</div>
                         </header>
+                        <div className="sheet-section-heading" id={forEnemy ? 'inimigo-status' : 'ficha-status'}><span className="sheet-section-symbol" aria-hidden="true">♥</span><div><span className="sheet-section-kicker">RECURSOS VITAIS</span><h3>Status</h3><p>Acompanhe seus recursos, aplique ajustes e registre danos.</p></div></div>
                         <div className="sheet-summary-status">{derived.map(([label,value], index) => {
                           const keys = ['pv', 'ps', 'pr'] as const
                           const key = keys[index]
@@ -6695,7 +7727,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           const rawCurrent = Number(read(currentPath, value))
                           const current = Math.max(0, key === 'pv' ? (Number.isFinite(rawCurrent) ? rawCurrent : value) : Math.min(value, Number.isFinite(rawCurrent) ? rawCurrent : value))
                           const adjust = (delta: number) => {
-                            if (!canEditSelectedSheet) return
+                            if (!renderCanEdit) return
                             // Fichas antigas podem ainda não ter status.current.
                             // Inicializa os três valores com os máximos calculados,
                             // preservando qualquer valor atual já registrado.
@@ -6717,8 +7749,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 },
                               },
                             }
-                            setSheetDraft(JSON.stringify(next, null, 2))
-                            void saveCharacterConditions(next)
+                            updateRenderDraft(JSON.stringify(next, null, 2))
+                            void persistRenderConditions(next)
                           }
                           const applyTypedAdjustment = () => {
                             const raw = (statusAdjustments[key] ?? '').trim()
@@ -6728,30 +7760,31 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             }
                             adjust(Number(raw))
                             setError('')
-                            setNotice(`${key === 'pr' ? resourceAbbreviation : key.toUpperCase()} ajustado em ${raw} e salvo automaticamente.`)
+                            setNotice(`${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()} ajustado em ${raw} e salvo automaticamente.`)
                           }
-                          const colors = [{accent:'#f28b9b',glow:'rgba(242,139,155,.18)'},{accent:'var(--season-primary)',glow:'var(--season-glow)'},{accent:'#75c9ee',glow:'rgba(117,201,238,.18)'}][index]
+                          const colors = [{accent:'#f28b9b',glow:'rgba(242,139,155,.18)'},{accent:'var(--season-primary)',glow:'var(--season-glow)'},{accent:forEnemy && isKisatsutaiSystem ? '#e47683' : '#75c9ee',glow:forEnemy && isKisatsutaiSystem ? 'rgba(228,118,131,.18)' : 'rgba(117,201,238,.18)'}][index]
                           const percent = value > 0 ? Math.min(current / value * 100, 100) : 0
                           const extraPV = key === 'pv' ? Math.max(0, current - value) : 0
                           const extraPercent = value > 0 ? Math.min(extraPV / value * 100, 100) : 0
-                          return <article key={label} className="sheet-summary-status-card" style={{position:'relative',overflow:'hidden'}}>
-                            <span>{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
+                          return <article key={label} className={`sheet-summary-status-card sheet-status-${key}`} style={{position:'relative',overflow:'hidden'}}>
+                            <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span></div>
+                            <span className="sheet-status-full-label">{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
                             <strong style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
                             <div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
                             {extraPV > 0 && <><div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'0 0 6px'}}><div style={{height:'100%',width:`${extraPercent}%`,borderRadius:99,background:'linear-gradient(90deg,#f6b84a,#ff7b45)',boxShadow:'0 0 12px rgba(246,184,74,.3)',transition:'width .2s ease'}}/></div><small style={{display:'block',color:'#ffc875',marginBottom:6}}>＋{extraPV} PV excedentes · barra extra</small></>}
                             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                               <small style={{opacity:.7}}>{Math.round(percent)}% disponível</small>
-                              {canEditSelectedSheet && <div style={{display:'flex',gap:6}}>
-                                <button type="button" aria-label={`Diminuir ${key === 'pr' ? resourceAbbreviation : key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
-                                <button type="button" aria-label={`Aumentar ${key === 'pr' ? resourceAbbreviation : key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
+                              {renderCanEdit && <div style={{display:'flex',gap:6}}>
+                                <button type="button" aria-label={`Diminuir ${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
+                                <button type="button" aria-label={`Aumentar ${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
                               </div>}
                             </div>
-                            {canEditSelectedSheet && <div style={{display:'flex',gap:7,marginTop:10}}>
-                              <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key === 'pr' ? resourceAbbreviation : key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
+                            {renderCanEdit && <div style={{display:'flex',gap:7,marginTop:10}}>
+                              <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
                               <button type="button" onClick={applyTypedAdjustment} style={{whiteSpace:'nowrap',padding:'7px 11px',borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontWeight:700,cursor:'pointer'}}>Aplicar</button>
                             </div>}
-                            {key === 'pv' && <div className="status-card-damage-control"><strong>Aplicar dano físico</strong><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${physicalProtection}` : `Proteção: ${physicalProtection}`}</small><button type="button" disabled={!canEditSelectedSheet || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const armorBlock=armorCovers(physicalDamageType)?armorResistance:0;const reduced=Math.max(0,incoming-armorBlock-physicalProtection);const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div>}
-                            {key === 'ps' && <div className="status-card-damage-control sanity"><strong>Aplicar dano de sanidade</strong><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!canEditSelectedSheet || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};setSheetDraft(JSON.stringify(next,null,2));void saveCharacterConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div>}
+                            {key === 'pv' && <div className="status-card-damage-control"><strong>Aplicar dano físico</strong><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${isKisatsutaiSystem && physicalDamageType !== 'especial_bruto' ? 0 : physicalProtection}` : `Proteção: ${isKisatsutaiSystem && physicalDamageType !== 'especial_bruto' ? 0 : physicalProtection}`}</small><button type="button" disabled={!renderCanEdit || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const reduced=calculateSheetPhysicalDamage({incoming,reactionReduction:0,damageType:physicalDamageType,defenses:characterDefenses,specialBruteProtectionOnly:isKisatsutaiSystem}).remaining;const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div>}
+                            {key === 'ps' && <div className="status-card-damage-control sanity"><strong>Aplicar dano de sanidade</strong><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!renderCanEdit || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div>}
                             {key === 'pr' && usesFamilyTiers && (() => {
                               const rank = getSystemRank(rankIdForStatus)
                               const group = rank.group
@@ -6767,34 +7800,35 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 const recovery = Math.floor(value / (success ? 4 : 8))
                                 const applied = Math.min(recovery, Math.max(0, value - current))
                                 setBreathingTestResult({ rolls, best, total, dt, success, recovery, applied, group })
-                                if (canEditSelectedSheet && applied > 0) {
+                                if (renderCanEdit && applied > 0) {
                                   const next = { ...data, status: { ...(data.status || {}), current: { ...((data.status || {}).current || {}), pr: current + applied } } }
-                                  setSheetDraft(JSON.stringify(next, null, 2))
-                                  void saveCharacterConditions(next)
-                                  setNotice(`Teste de Respiração: ${success ? 'sucesso' : 'falha'}. ${applied} PR recuperados e salvos automaticamente.`)
+                                  updateRenderDraft(JSON.stringify(next, null, 2))
+                                  void persistRenderConditions(next)
+                                  setNotice(`${sheetRecoveryTestName}: ${success ? 'sucesso' : 'falha'}. ${applied} ${sheetResourceUnit} recuperados e salvos automaticamente.`)
                                 }
                               }
                               return <div style={{marginTop:12,padding:12,borderRadius:10,background:'rgba(117,201,238,.08)',border:'1px solid rgba(117,201,238,.22)'}}>
-                                <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap'}}><strong style={{fontSize:13}}>Teste de Respiração · {group}</strong><small style={{opacity:.75}}>{group === 'Carpa' ? 'Sem teste' : `DT ${dt}`}</small></div>
-                                {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o teste de Respiração.</small> : <>
+                                <div style={{display:'flex',justifyContent:'space-between',gap:8,alignItems:'center',flexWrap:'wrap'}}><strong style={{fontSize:13}}>{sheetRecoveryTestName} · {group}</strong><small style={{opacity:.75}}>{group === 'Carpa' ? 'Sem teste' : `DT ${dt}`}</small></div>
+                                {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o {forEnemy && isKisatsutaiSystem ? 'teste de Sangue' : 'teste de Respiração'}.</small> : <>
                                   <small style={{display:'block',marginTop:5,opacity:.8}}>{1 + breathing}d20 · maior resultado + Vigor ({vigor})</small>
                                   <button type="button" onClick={runBreathingTest} style={{marginTop:9,padding:'8px 12px',borderRadius:9,border:'1px solid rgba(117,201,238,.55)',background:'rgba(117,201,238,.16)',color:'inherit',fontWeight:700,cursor:'pointer'}}>Rolar teste</button>
-                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} PR ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} PR</strong></div></div>}
+                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} {sheetResourceUnit} ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} {sheetResourceUnit}</strong></div></div>}
                                 </>}
                               </div>
                             })()}
                           </article>
                         })}</div>
-                        <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],[resourceName,breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
+                        <div className="sheet-section-heading" id={forEnemy ? 'inimigo-atributos' : 'ficha-atributos'}><span className="sheet-section-symbol" aria-hidden="true">✦</span><div><span className="sheet-section-kicker">CAPACIDADES</span><h3>Atributos</h3><p>Valores efetivos considerando progressão e bônus.</p></div></div>
+                        <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],[sheetResourceName,breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
                         <div className="sheet-summary-grid">
-                          <article className="sheet-summary-card"><h3>Perícias</h3><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)} className={String(label)==='Destreza'?'sheet-dexterity-with-armor':''}><span>{label}</span><strong>{String(label)==='Destreza' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value}</> : value}</strong></div>)}</div></article>
-<article className="sheet-summary-card">
-  <h3>Combate</h3>
+                          <article className="sheet-summary-card sheet-skills-card" id={forEnemy ? 'inimigo-pericias' : 'ficha-pericias'}><div className="sheet-card-title"><span className="sheet-card-title-icon">✧</span><div><span>ESPECIALIZAÇÃO</span><h3>Perícias</h3></div></div><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)} className={String(label)==='Destreza'?'sheet-dexterity-with-armor':''}><span>{label}</span><strong>{String(label)==='Destreza' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value}</> : value}</strong></div>)}</div></article>
+<article className="sheet-summary-card sheet-combat-card" id={forEnemy ? 'inimigo-combate' : 'ficha-combate'}>
+  <div className="sheet-card-title"><span className="sheet-card-title-icon">⚔</span><div><span>PREPARAÇÃO</span><h3>Combate</h3></div></div>
   <div className="sheet-summary-values">
     {[
       ['Dano base', baseDamage],
       ['Dano extra', equippedWeaponDamage],
-      ['Deslocamento', Math.max(1, Math.floor((movementActions * dexterity) / (isOverloaded ? 2 : 1)))],
+      ['Deslocamento', Math.max(1, Math.floor((movementActions * dexterity) / (renderOverloaded ? 2 : 1)))],
       ['Ações', movementActions + extraActions],
       ['Reações', reactions],
 ['Contra-ataque', counterAttackDT],
@@ -6826,11 +7860,11 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 </article>
                         </div>
 
-                        <div className="sheet-summary-notes"><h3>Resumo do personagem</h3><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
-                        <p className="sheet-summary-hint">Esta é uma visão resumida. {canEditSelectedSheet ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Você não tem permissão para editar esta ficha.'}</p>
+                        <div className="sheet-summary-notes"><div className="sheet-card-title"><span className="sheet-card-title-icon">✎</span><div><span>HISTÓRIA E TRAÇOS</span><h3>Resumo {forEnemy ? 'do inimigo' : 'do personagem'}</h3></div></div><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
+                        <p className="sheet-summary-hint">Esta é uma visão resumida. {renderCanEdit ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Você não tem permissão para editar esta ficha.'}</p>
                       </section>)}
-                        <section className="combat-actions-panel">
-                          <div className="combat-actions-heading"><div><span className="combat-eyebrow">TURNO DO PERSONAGEM</span><h3>Ações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div><div className="combat-d20-mark">D20</div></div>
+                        <section className="combat-actions-panel sheet-actions-premium" id={forEnemy ? 'inimigo-acoes' : 'ficha-acoes'}>
+                          <div className="combat-actions-heading"><div><span className="combat-eyebrow">{forEnemy ? 'TURNO DO INIMIGO' : 'TURNO DO PERSONAGEM'}</span><h3>Ações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div><div className="combat-d20-mark">D20</div></div>
                           <div className="combat-action-grid">
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque bruto')}>
                               <span className="combat-action-icon">⚔</span>
@@ -6851,7 +7885,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             </button>
                           </div>
                           <div className="combat-complementary-section">
-                            <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares do personagem.</p></div>
+                            <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares {forEnemy ? 'do inimigo' : 'do personagem'}.</p></div>
                             <div className="combat-action-grid combat-complementary-grid">
                               <button
                                 type="button"
@@ -6860,18 +7894,18 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const diceCount = 1
                                   const rolls = Array.from({ length: diceCount }, () => rollD20())
                                   const highest = Math.max(...rolls)
-                                  const total = highest + dexterity
+                                  const total = highest + armorDexterity
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Iniciativa: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Destreza (${dexterity}) = ${total}.`
+                                    `Iniciativa: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Destreza de armadura (${armorDexterity}) = ${total}.`
                                   )
-                                  void saveCharacterInitiative(total)
+                                  void persistRenderInitiative(total)
                                 }}
                               >
                                 <span className="combat-action-icon">⚡</span>
                                 <strong>Iniciativa</strong>
-                                <small>1D20 + Destreza ({dexterity})</small>
+                                <small>1D20 + Destreza de armadura ({armorDexterity})</small>
                               </button>
 
                               <button
@@ -6935,14 +7969,15 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               </button>
                             </div>
                           </div>
-                          <div className="combat-reactions-section">
+
+                          <div className="combat-reactions-section" id={forEnemy ? 'inimigo-reacoes' : 'ficha-reacoes'}>
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.max(0, Math.floor(defense))}D20 + Constituição</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
-  {isOverloaded && Math.max(0, Math.floor(agility)) === 0
-    ? '2D20 (desvantagem: menor) + Destreza'
-    : `${Math.max(0, 1 + Math.floor(agility) - (isOverloaded ? 1 : 0))}D20 + Destreza`}
+  {renderOverloaded && Math.max(0, Math.floor(agility)) === 0
+    ? `2D20 (desvantagem: menor) + Destreza de armadura (${armorDexterity})`
+    : `${Math.max(0, 1 + Math.floor(agility) - (renderOverloaded ? 1 : 0))}D20 + Destreza de armadura (${armorDexterity})`}
 </small></button>
                               <button
                                 type="button"
@@ -6986,6 +8021,7 @@ const dt = counterAttackDT
                               <label className="combat-dodge-target-inline combat-reactions-dt-card" htmlFor="combat-dodge-target">DT do inimigo<input id="combat-dodge-target" type="number" min="0" step="1" value={dodgeTarget} onChange={event=>setDodgeTarget(event.target.value)} placeholder="DT" /></label>
                             </div>
                           </div>
+
                           <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && blockDamageReduction !== 1 && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div>{blockDamageReduction !== 1 && (
 <label htmlFor="combat-incoming-damage-type">
 
@@ -7025,16 +8061,13 @@ const dt = counterAttackDT
       return <>Informe o dano recebido para visualizar os cálculos.</>
     }
 
-    const reactionPrevented = Math.floor(incoming * blockDamageReduction)
-    const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
-
-    const armorReduction = armorCovers(blockPhysicalDamageType)
-      ? armorResistance
-      : 0
-
-    const totalArmorProtection = armorReduction + physicalProtection
-    const armorPrevented = Math.min(damageAfterReaction, totalArmorProtection)
-    const remaining = Math.max(0, damageAfterReaction - armorPrevented)
+    const { reactionPrevented, armorPrevented, remaining } = calculateSheetPhysicalDamage({
+      incoming,
+      reactionReduction: blockDamageReduction,
+      damageType: blockPhysicalDamageType,
+      defenses: characterDefenses,
+      specialBruteProtectionOnly: isKisatsutaiSystem,
+    })
 
     return (
       <>
@@ -7046,10 +8079,10 @@ const dt = counterAttackDT
     )
   })()}
 </div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
-                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza. Habilidades podem conceder D20 adicionais.</span></p>
+                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza de armadura. Habilidades podem conceder D20 adicionais.</span></p>
 <p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
 <p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
-<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza. Se alcançar a DT, nega 100% do dano.</span></p><p>
+<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza de armadura. Se alcançar a DT, nega 100% do dano.</span></p><p>
   <strong>Contra-ataque</strong>
   <span>
     O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
@@ -7064,548 +8097,343 @@ counterAttackDT
                     </>
                     )
 
-                  })()}
-                  {editingSheet && canEditSelectedSheet && (
-  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
-    <button
-      className="secondary-button"
-      type="button"
-      disabled={!sheet}
-      onClick={()=>void createSheetMilestone()}
-    >
-      Registrar marco no histórico
-    </button>
-  </div>
-)}
-                
-
-{canAccessSelectedCharacter && selectedCharacter && (
-  <section className="inventory-section sheet-inventory-section" id="ficha-inventario">
-    <div className="inventory-heading">
-      <div>
-        <h3>Inventário</h3>
-      </div>
-      <button
-        type="button"
-        className="primary-button"
-        onClick={() => {
-  if (showItemForm) {
-    resetItemForm()
-    setShowItemForm(false)
-  } else {
-    resetItemForm()
-    setShowItemForm(true)
+                  })()}</>
   }
-}}
-        disabled={loading}
-      >
-        + Adicionar item
-      </button>
-    </div>
 
-{showItemForm &&
-  (selectedCharacterId || editingItem) &&
-  createPortal(
-    <div className="item-modal-overlay">
-      <div
-        className="item-modal-content"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="item-modal-title"
-      >
-        <form className="add-form item-editor-form" onSubmit={createItem}>
-                    <div className="form-heading">
-                      <div>
-                        <h3>{editingItem ? 'Editar item' : 'Novo item'}</h3>
-                        <p>
-                          {editingItem
-                            ? 'Altere os dados do item e salve as mudanças.'
-                            : 'O item será associado ao personagem selecionado.'}
-                        </p>
-                      </div>
-                      <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <span>{editingItem ? '✎' : '✧'}</span>
-                        <button type="button" className="secondary-button" onClick={() => { resetItemForm(); setShowItemForm(false) }}>Fechar</button>
-                      </div>
-                    </div>
+  if (authLoading) {
+    return <main style={centerStyle}>Verificando sua sessão...</main>
+  }
 
-                    <label>
-                      Nome do item
-                      <input
-                        value={newItemName}
-                        onChange={(event) => setNewItemName(event.target.value)}
-                        placeholder="Ex.: Espada de prata"
-                        maxLength={100}
-                        required
-                      />
-                    </label>
+  if (!session) return <Auth />
 
-                    <label>
-                      Descrição
-                      <input
-                        value={newItemDescription}
-                        onChange={(event) =>
-                          setNewItemDescription(event.target.value)
-                        }
-                        placeholder="Detalhes do item (opcional)"
-                        maxLength={1000}
-                      />
-                    </label>
+  return (
+    <div className={`app-shell hb-polish theme-${activeThemeKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
+      <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
+        <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
+          <span className="brand-mark">H</span>
+          <span className="hb-sidebar-brand-copy">
+            <strong>Häx<span className="brand-light">Bag</span></strong>
+            <small>SEU UNIVERSO DE RPG</small>
+          </span>
+          <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
+        </a>
 
-                    <div className="form-row">
-                      <div className="emoji-field">
-                        <label>Emoji do item</label>
+        <section className="hb-sidebar-workspace" aria-label="Campanha atual">
+          <div className="hb-sidebar-workspace-top">
+            <span className="hb-sidebar-eyebrow">✦ ESPAÇO DE JOGO</span>
+            <span className="hb-sidebar-role">{isMaster ? 'Mestre' : 'Jogador'}</span>
+          </div>
+          <label htmlFor="hb-campaign-switch">Campanha selecionada</label>
+          <div className="hb-sidebar-campaign-field">
+            <span className="hb-sidebar-campaign-symbol" aria-hidden="true">⚑</span>
+            <select
+              id="hb-campaign-switch"
+              value={selectedCampaignId}
+              onChange={async event => {
+                const campaignId = event.target.value
+                setSelectedCampaignId(campaignId)
+                const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
+                if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
+                else setNotice('Campanha principal atualizada para este perfil.')
+              }}
+              aria-label="Selecionar campanha ativa"
+            >
+              <option value="">Selecione uma campanha</option>
+              {campaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
+            </select>
+          </div>
+          <button type="button" className="hb-sidebar-create" onClick={() => {
+            setActivePage('campaigns'); setEditingCampaignId(null); setShowCampaignForm(true)
+            setCampaignName(''); setCampaignDescription(''); setSystemName(''); setCampaignSystemChoice('')
+          }}><span aria-hidden="true">＋</span> Criar campanha</button>
+        </section>
 
-                        <div className="emoji-grid">
-                          {availableEmojis.map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              className={
-                                newItemEmoji === emoji
-                                  ? 'emoji-option selected'
-                                  : 'emoji-option'
-                              }
-                              onClick={() => setNewItemEmoji(emoji)}
-                              aria-label={`Selecionar emoji ${emoji}`}
-                              aria-pressed={newItemEmoji === emoji}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
+        <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal">
+          <div className="hb-sidebar-nav-group">
+            <span className="hb-sidebar-group-title">EXPLORAR</span>
+            <button type="button" className={`nav-link ${activePage === 'overview' ? 'active' : ''}`} onClick={() => setActivePage('overview')} disabled={!selectedCampaignId} aria-current={activePage === 'overview' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">◫</span><span className="hb-sidebar-nav-name">Visão geral</span>
+            </button>
+            <button type="button" className={`nav-link ${activePage === 'player-table' ? 'active' : ''}`}
+              onClick={() => { setActivePage('player-table') }}
+              disabled={!selectedCampaignId} aria-current={activePage === 'player-table' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">▦</span>
+              <span className="hb-sidebar-nav-name">Mesa dos jogadores</span>
+              <span className="hb-sidebar-nav-flair">MESA</span>
+            </button>
+            {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
+            </button>}
+          </div>
+          <div className="hb-sidebar-nav-group">
+            <span className="hb-sidebar-group-title">PERSONAGENS E FICHAS</span>
+            <button type="button" className={`nav-link ${activePage === 'sheets' ? 'active' : ''}`} onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }} disabled={!selectedCampaignId} aria-current={activePage === 'sheets' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">▧</span><span className="hb-sidebar-nav-name">Fichas</span><span className="nav-count">{characters.length}</span>
+            </button>
+            {isMaster && <button type="button" className={`nav-link ${activePage === 'enemies' ? 'active' : ''}`} onClick={() => setActivePage('enemies')} disabled={!selectedCampaignId} aria-current={activePage === 'enemies' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">⚔</span><span className="hb-sidebar-nav-name">Inimigos</span><span className="nav-count">{enemies.length}</span>
+            </button>}
+          </div>
+          <div className="hb-sidebar-nav-group">
+            <span className="hb-sidebar-group-title">MUNDO DA CAMPANHA</span>
+            <button type="button" className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId} aria-current={activePage === 'shops' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">▤</span><span className="hb-sidebar-nav-name">Lojas</span><span className="nav-count">{shops.length}</span>
+            </button>
+            <button type="button" className={`nav-link ${activePage === 'bestiary' ? 'active' : ''}`} onClick={() => setActivePage('bestiary')} disabled={!selectedCampaignId} aria-current={activePage === 'bestiary' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">♞</span><span className="hb-sidebar-nav-name">Bestiário</span><span className="nav-count">{creatures.length}</span>
+            </button>
+            <button type="button" className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }} aria-current={activePage === 'campaigns' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">⚑</span><span className="hb-sidebar-nav-name">Campanhas</span><span className="nav-count">{campaigns.length}</span>
+            </button>
+          </div>
+        </nav>
 
-<p className="emoji-preview">
-  <span className="emoji-preview-label">Emoji selecionado:</span>
-  <span className="emoji-preview-icon">{newItemEmoji}</span>
-</p>
-                      </div>
+        <div className="sidebar-bottom hb-sidebar-footer">
+          <div className="invite-card hb-sidebar-invite">
+            <div className="hb-sidebar-invite-top"><span className="invite-icon" aria-hidden="true">✉</span><span className="hb-sidebar-invite-tag">SUA EQUIPE</span></div>
+            <strong>{isMaster && selectedCampaignId ? 'Reúna seus jogadores' : 'Continue sua aventura'}</strong>
+            <p>{isMaster && selectedCampaignId
+              ? 'Envie um convite para a campanha e reúna seu grupo.'
+              : 'Encontre uma campanha ou participe usando um convite.'}</p>
+            <button type="button" className="hb-sidebar-invite-button" disabled={inviteLoading} onClick={() => {
+              if (isMaster && selectedCampaignId) void createCampaignInvite()
+              else { setActivePage('campaigns'); setShowCampaignForm(false) }
+            }}>{inviteLoading ? 'Gerando convite…' : isMaster && selectedCampaignId ? 'Gerar convite' : 'Ver campanhas'} <span aria-hidden="true">↗</span></button>
+            {campaignInviteLink && selectedCampaignId && isMaster && <button type="button" className="hb-sidebar-copy" onClick={() => {
+              void navigator.clipboard.writeText(campaignInviteLink)
+              setNotice('Link copiado!')
+            }}>⧉ Copiar link gerado</button>}
+          </div>
+          <div className="profile hb-sidebar-profile">
+            <div className="avatar">{displayName.charAt(0).toUpperCase()}</div>
+            <div className="profile-info"><strong>{displayName}</strong><small>{session.user.email}</small></div>
+            <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
+          </div>
+        </div>
+      </aside>
 
-                      <section className="item-classifications-panel">
-                        <div className="item-classifications-heading">
-                          <div><strong>Classificações do item</strong><p>Marque todas as opções que se aplicam. Um item pode ter várias classificações.</p></div>
-                          <span>{newItemCategories.length} selecionada{newItemCategories.length === 1 ? '' : 's'}</span>
-                        </div>
-                        <div className="item-classifications-grid">
-                          {categories.filter(category => category !== 'Todos').map(category => (
-                            <label key={category} className={newItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
-                              <input type="checkbox" checked={newItemCategories.includes(category)} onChange={event => {
-                                const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
-                                setNewItemCategories(next)
-                                if (next.length) setNewItemCategory(next[0])
-                                const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
-                                if (automaticWeight !== null) setNewItemWeight(String(automaticWeight))
-                              }} />
-                              <span className="item-classification-check">{newItemCategories.includes(category) ? '✓' : '+'}</span>
-                              <span>{category}</span>
-                            </label>
-                          ))}
-                        </div>
-                        {!newItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
-                      </section>
+      <main className={`main-content ${activePage === 'player-table' ? 'hb-vtt-app-main' : ''}`} id="inicio">
+        <header className="topbar">
+          <div className="breadcrumb hb-topbar-trail">
+            <span>HäxBag</span><span className="crumb-slash">/</span>
+            <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
+            <span className="crumb-slash">/</span>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', 'player-table': 'Mesa dos jogadores' } as Record<string, string>)[activePage]}</strong>
+          </div>
 
-                      {newItemCategories.includes('Consumíveis') && (
-                        <section className="scarcity-editor-card">
-                          <div className="scarcity-editor-heading">
-                            <span className="scarcity-editor-icon">⌛</span>
-                            <div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div>
-                          </div>
-                          <label>Nível inicial de escassez
-                            <select value={newScarcityLevel} disabled={newScarcityExhausted} onChange={event => setNewScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}>
-                              <option value="1">Nível 1 — d12</option>
-                              <option value="2">Nível 2 — d8</option>
-                              <option value="3">Nível 3 — d6</option>
-                              <option value="4">Nível 4 — d4</option>
-                            </select>
-                          </label>
-                          <div className="scarcity-level-preview">
-                            <div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[newScarcityLevel]}</strong></div>
-                            <div><span>Carga</span><strong>{newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]}</strong></div>
-                          </div>
-                          <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
-                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => {
-  const exhausted = event.target.checked
-  setNewScarcityExhausted(exhausted)
-  setNewItemWeight(
-    String(exhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
-  )
-}} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
-                        </section>
-                      )}
+          <div className="topbar-right">
+            <span className="online-dot" />
+            Conectado
+            <button
+              type="button"
+              onClick={handleSignOut}
+              style={secondaryButtonStyle}
+            >
+              Sair
+            </button>
+          </div>
+        </header>
 
-<label style={labelStyle}>
-  Raridade
-</label>
+        <div className={`page-content page-${activePage}`}>
+          <style>{`
+/* HäxBag · Fichas — renovação visual completa, compartilhada por jogadores e inimigos */
+.page-content.page-sheets .sheet-page-panel,
+.page-content.page-enemies .enemy-sheet-panel {
+  --sheet-ink: var(--season-text, #f0eae4);
+  --sheet-dim: var(--season-muted, #aea7a6);
+  --sheet-line: var(--season-line, rgba(255,255,255,.14));
+  --sheet-accent: var(--season-accent, var(--season-primary, #e1a978));
+  --sheet-aura: var(--season-accent-soft, color-mix(in srgb, var(--season-primary, #e1a978) 12%, transparent));
+  min-width: 0;
+}
+.page-content.page-sheets .sheet-page-panel { border-radius: 22px; }
+.sheet-page-hero { position: relative; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:22px; margin:0 0 23px !important; padding:24px 27px !important; overflow:hidden; isolation:isolate; border:1px solid var(--sheet-line) !important; border-radius:22px; background:radial-gradient(ellipse at 0% 0%,var(--sheet-aura),transparent 53%),linear-gradient(135deg,var(--season-surface,#28232a),var(--season-bg,#161318)) !important; box-shadow:0 15px 35px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.06); }
+.sheet-page-hero:after { content:''; position:absolute; right:-32px; top:-80px; width:190px; height:190px; border:1px solid color-mix(in srgb,var(--sheet-accent) 20%,transparent); border-radius:50%; box-shadow:0 0 0 25px color-mix(in srgb,var(--sheet-accent) 4%,transparent),0 0 0 55px color-mix(in srgb,var(--sheet-accent) 2%,transparent); z-index:-1; pointer-events:none; }
+/* Ações da ficha de inimigo: estado de salvamento em faixa separada dos atalhos. */
+.sheet-enemy-hero { display:flex !important; flex-direction:column; align-items:stretch !important; gap:20px !important; }
+.sheet-enemy-hero::after { opacity:.38; right:-95px; top:-110px; }
+.enemy-sheet-hero-top { display:flex; align-items:center; justify-content:space-between; gap:18px 24px; flex-wrap:wrap; width:100%; position:relative; z-index:1; }
+.enemy-sheet-hero-utilities { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:9px; }
+.enemy-sheet-hero-utilities .secondary-button { min-height:39px; padding:9px 14px; font-size:12px; border-radius:11px; white-space:nowrap; }
+.enemy-sheet-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px 22px; flex-wrap:wrap; width:100%; min-width:0; padding:14px 16px; position:relative; z-index:1; border:1px solid var(--sheet-line); border-radius:16px; background:linear-gradient(135deg,var(--season-surface-alt,rgba(255,255,255,.06)),var(--season-bg,rgba(0,0,0,.22))); box-shadow:inset 0 1px 0 rgba(255,255,255,.045); }
+.enemy-sheet-save-indicator { display:flex; align-items:center; gap:11px; flex:1 1 205px; min-width:0; }
+.enemy-sheet-save-icon { display:grid; place-items:center; width:38px; height:38px; flex:0 0 38px; border:1px solid color-mix(in srgb,var(--sheet-accent) 30%,transparent); border-radius:12px; background:var(--sheet-aura); color:var(--sheet-accent); font-weight:900; font-size:19px; line-height:1; }
+.enemy-sheet-save-copy { min-width:0; }
+.enemy-sheet-save-copy strong { display:block; color:var(--sheet-ink); font-size:13px; line-height:1.4; font-weight:800; }
+.enemy-sheet-save-copy small { display:block; margin-top:3px; font-size:11px; line-height:1.45; color:var(--sheet-dim); }
+.enemy-sheet-save-indicator.is-saved .enemy-sheet-save-icon { border-color:rgba(100,202,156,.25); color:#8bd8a9; background:rgba(100,202,156,.09); }
+.enemy-sheet-save-indicator.is-error .enemy-sheet-save-icon { border-color:rgba(249,135,135,.3); color:#f59d9d; background:rgba(249,135,135,.1); }
+.enemy-sheet-save-indicator.is-pending .enemy-sheet-save-icon { border-color:rgba(238,180,96,.32); color:#edc18d; background:rgba(238,180,96,.10); }
+.enemy-sheet-save-indicator.is-saving .enemy-sheet-save-icon { animation:enemy-save-pulse 1.8s ease-in-out infinite; }
+@keyframes enemy-save-pulse { 50% { opacity:.55; } }
+.enemy-sheet-toolbar-actions { display:flex; align-items:center; justify-content:flex-end; gap:9px; flex-wrap:wrap; flex:0 1 auto; }
+.enemy-sheet-toolbar-actions button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:41px; padding:10px 16px; border-radius:11px; white-space:nowrap; font-size:12px; font-weight:800; }
+.enemy-sheet-toolbar-actions button span { font-size:16px; line-height:1; }
+.enemy-sheet-save-button:disabled { cursor:wait; }
+@media (max-width:680px) { .enemy-sheet-hero-top { align-items:flex-start; } .enemy-sheet-hero-utilities { justify-content:flex-start; } .enemy-sheet-toolbar { align-items:stretch; } }
+@media (max-width:460px) { .enemy-sheet-toolbar-actions { width:100%; justify-content:stretch; } .enemy-sheet-toolbar-actions button { flex:1 1 auto; } .enemy-sheet-hero-utilities { width:100%; } .enemy-sheet-hero-utilities button { flex:1 1 auto; } }
+@media (prefers-reduced-motion:reduce) { .enemy-sheet-save-indicator.is-saving .enemy-sheet-save-icon { animation:none; } }
 
-<select
-  value={newItemRarity}
-  onChange={event => setNewItemRarity(event.target.value)}
-  style={inputStyle}
->
-  <option value="comum">Comum</option>
-  <option value="incomum">Incomum</option>
-  <option value="raro">Raro</option>
-  <option value="épico">Épico</option>
-  <option value="mítico">Mítico</option>
-  <option value="relíquia">Relíquia</option>
-</select>
+.sheet-page-hero-leading { display:flex; align-items:center; min-width:0; gap:18px; }
+.sheet-page-hero-icon { display:grid; place-items:center; width:66px; height:66px; flex:0 0 66px; border:1px solid color-mix(in srgb,var(--sheet-accent) 32%,transparent); border-radius:19px; background:linear-gradient(150deg,color-mix(in srgb,var(--sheet-accent) 20%,transparent),var(--season-surface-alt,rgba(255,255,255,.05))); color:var(--sheet-accent); font-size:31px; box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+.sheet-page-eyebrow { display:block; margin-bottom:7px; color:var(--sheet-accent); font-size:10px; font-weight:850; letter-spacing:.15em; text-transform:uppercase; }
+.sheet-page-hero h2 { color:var(--sheet-ink); font-size:clamp(24px,3vw,34px) !important; font-weight:850 !important; letter-spacing:-.045em !important; line-height:1.15; margin:0 !important; }
+.sheet-page-hero p { color:var(--sheet-dim) !important; font-size:13px !important; line-height:1.55 !important; max-width:650px; margin:7px 0 0 !important; }
+.sheet-library-total { padding:9px 13px; border:1px solid var(--sheet-line); border-radius:999px; background:var(--season-surface-alt,rgba(255,255,255,.06)); color:var(--sheet-ink); font-size:12px; font-weight:750; white-space:nowrap; }
+.sheet-page-back { position:relative; z-index:2; flex:0 0 auto; min-height:43px; border-radius:11px; }
+.sheet-library-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr)); gap:16px; margin:0 0 22px; }
+.sheet-library-card { display:flex; flex-direction:column; min-width:0; min-height:254px; padding:20px; border:1px solid var(--sheet-line); border-radius:20px; background:linear-gradient(155deg,var(--season-surface-alt,rgba(255,255,255,.05)),var(--season-surface,rgba(0,0,0,.18))); box-shadow:0 12px 30px rgba(0,0,0,.10); transition:transform .18s,border-color .18s,box-shadow .18s; }
+.sheet-library-card:hover { transform:translateY(-3px); border-color:color-mix(in srgb,var(--sheet-accent) 46%,transparent); box-shadow:0 18px 35px rgba(0,0,0,.19); }
+.sheet-library-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.sheet-library-avatar { display:grid; place-items:center; width:57px; height:57px; border:1px solid color-mix(in srgb,var(--sheet-accent) 28%,transparent); border-radius:17px; background:var(--sheet-aura); font-size:27px; }
+/* Administração e criação diretamente na biblioteca de Fichas */
+.sheet-library-toolbar { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; }
+.sheet-library-toolbar .sheet-library-total { white-space:nowrap; }
+.sheet-library-manage-button,.sheet-library-create-button { min-height:40px; white-space:nowrap; border-radius:12px; }
+.sheet-library-admin-notice { display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:15px 18px; margin-bottom:20px; border:1px solid color-mix(in srgb,var(--sheet-accent) 30%,var(--sheet-line)); border-radius:15px; background:var(--sheet-aura); }
+.sheet-library-admin-notice > span { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border-radius:12px; background:color-mix(in srgb,var(--sheet-accent) 15%,transparent); color:var(--sheet-accent); font-size:22px; }
+.sheet-library-admin-notice > div { flex:1 1 210px; }
+.sheet-library-admin-notice strong { color:var(--sheet-ink); font-size:14px; }
+.sheet-library-admin-notice p { margin:4px 0 0; font-size:12px; line-height:1.55; color:var(--sheet-dim); }
+.sheet-page-panel .hb-character-form { display:grid; gap:13px; padding:22px; margin:0 0 22px; border:1px solid var(--sheet-line); border-radius:18px; background:var(--season-surface,rgba(28,26,30,.93)); }
+.sheet-page-panel .hb-character-form .hb-form-heading { display:flex; align-items:center; gap:12px; }
+.sheet-page-panel .hb-character-form .hb-form-heading h3 { margin:0; }
+.sheet-page-panel .hb-character-form .hb-form-heading p { margin:4px 0 0; color:var(--sheet-dim); font-size:13px; }
+.sheet-page-panel .hb-character-form > label { display:grid; gap:7px; }
+.sheet-library-card:has(.sheet-library-delete-button) { border-color:color-mix(in srgb,#d16e73 32%,var(--sheet-line)); }
+.sheet-library-delete-button { margin:0 17px 17px; min-height:37px; border:1px solid color-mix(in srgb,#d16e73 45%,transparent); border-radius:11px; color:#e99ca3; }
+.sheet-library-delete-button:hover:not(:disabled) { background:color-mix(in srgb,#d16e73 13%,transparent); }
+@media(max-width:640px) { .sheet-library-toolbar { width:100%; justify-content:flex-start; } .sheet-library-toolbar .sheet-library-total { width:100%; } .sheet-library-manage-button,.sheet-library-create-button { flex:1; } .sheet-library-admin-notice .secondary-button { width:100%; } }
 
-                      <label>
-                        Tipo de equipamento
-                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
-                          <option value="none">Item comum</option>
-                          <option value="armor">Armadura</option>
-<option value="protection">Proteção</option>
-{isCyberFlowerSystem && (
-  <option value="cybernetic">Cibernética</option>
-)}
-                        </select>
-                      </label>
+/* O emoji do cartão em Fichas abre o seletor já existente. */
+button.sheet-library-avatar-edit { position:relative; flex:0 0 57px; padding:0; color:inherit; font-family:inherit; line-height:1; cursor:pointer; transition:transform .18s, background .18s, border-color .18s, box-shadow .18s; }
+button.sheet-library-avatar-edit::after { content:'✎'; position:absolute; right:-6px; bottom:-5px; display:grid; place-items:center; width:21px; height:21px; border:1px solid var(--sheet-line); border-radius:8px; background:var(--season-surface,#28232a); color:var(--sheet-accent); font-size:12px; font-weight:800; pointer-events:none; box-shadow:0 2px 9px rgba(0,0,0,.22); }
+button.sheet-library-avatar-edit:hover { transform:translateY(-2px) scale(1.04); border-color:var(--sheet-accent); background:color-mix(in srgb,var(--sheet-accent) 20%,transparent); box-shadow:0 6px 18px var(--sheet-aura); }
+button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-accent); outline-offset:4px; }
 
-                      {newEquipmentType === 'armor' && <>
-                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
-                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
-                        <div className="equipment-rules-preview">
-  <strong>Regras da armadura</strong>
-  <p>
-    Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}
-  </p>
-  <p>
-    Proteção: {newArmorClass === 'leve'
-      ? '(Resistência ÷ 2) + 4'
-      : newArmorClass === 'media'
-        ? 'Resistência + 6'
-        : '(Resistência × 2) + 8'}
-  </p>
-  <p>
-    Destreza de armadura: {newArmorClass === 'leve'
-      ? 'Destreza integral'
-      : newArmorClass === 'media'
-        ? '½ dos pontos de destreza'
-        : '0'}
-  </p>
-  <p>
-    Penalidades: {newArmorClass === 'media'
-      ? '−5 em Reflexo; metade do deslocamento'
-      : newArmorClass === 'pesada'
-        ? '−10 em Reflexo e Corrida; ¼ do deslocamento'
-        : 'Sem penalidade; deslocamento normal'}
-  </p>
-</div>
-                      </>}
+.sheet-library-system { padding:6px 10px; max-width:130px; border:1px solid var(--sheet-line); border-radius:999px; color:var(--sheet-dim); font-size:10px; font-weight:750; text-align:right; overflow-wrap:anywhere; }
+.sheet-library-info { flex:1; padding:20px 0; }
+.sheet-library-info h3 { margin:0 0 5px; font-size:21px; line-height:1.25; font-weight:850; letter-spacing:-.03em; overflow-wrap:anywhere; }
+.sheet-library-info p { margin:0; color:var(--sheet-dim); font-size:13px; line-height:1.5; }
+.sheet-library-rank { display:inline-block; margin-top:11px; color:var(--sheet-accent); font-size:12px; font-weight:700; }
+.sheet-library-open { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-height:44px; padding:11px 14px; border:1px solid color-mix(in srgb,var(--sheet-accent) 30%,transparent); border-radius:12px; background:var(--sheet-aura); color:var(--sheet-ink); font:inherit; font-size:13px; font-weight:800; cursor:pointer; transition:background .2s,border-color .2s; }
+.sheet-library-open:hover { background:color-mix(in srgb,var(--sheet-accent) 20%,transparent); border-color:var(--sheet-accent); }
+.sheet-library-open span { color:var(--sheet-accent); font-size:19px; }
+.sheet-library-empty { text-align:center; padding:48px 20px; border:1px dashed var(--sheet-line); border-radius:20px; }
+.sheet-library-empty > span { display:block; margin:0 auto 14px; color:var(--sheet-accent); font-size:42px; }
+.sheet-season-selector { display:flex !important; flex-direction:column; gap:7px; max-width:450px; padding:0 0 4px; margin:4px 0 16px !important; color:var(--sheet-dim); font-size:12px; font-weight:750; }
+.sheet-season-selector select { min-height:47px; padding:10px 12px; border-radius:12px !important; border:1px solid var(--sheet-line) !important; background:var(--season-surface-alt,var(--season-surface,#29252d)) !important; color:var(--sheet-ink); }
+.sheet-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:13px; margin:22px 0 13px; padding:17px 20px; border:1px solid var(--sheet-line); border-radius:17px; background:var(--season-surface-alt,rgba(255,255,255,.035)); }
+.sheet-toolbar-title { display:flex; align-items:center; gap:12px; }
+.sheet-toolbar-title > span { display:grid; place-items:center; width:39px; height:39px; flex:0 0 39px; border-radius:11px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:22px; }
+.sheet-toolbar-title strong { display:block; font-size:15px; font-weight:850; }
+.sheet-toolbar-title p { margin:3px 0 0; max-width:460px; color:var(--sheet-dim); font-size:12px; line-height:1.5; }
+.sheet-toolbar .primary-button { min-height:42px; border-radius:12px; }
+.sheet-quick-nav { display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin:0 0 22px; padding:10px; border:1px solid var(--sheet-line); border-radius:15px; background:var(--season-bg,rgba(0,0,0,.12)); }
+.sheet-quick-nav button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:37px; padding:8px 12px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--sheet-dim); font:inherit; font-size:12px; font-weight:750; cursor:pointer; white-space:nowrap; transition:background .17s,color .17s,border-color .17s; }
+.sheet-quick-nav button span { color:var(--sheet-accent); font-size:15px; }
+.sheet-quick-nav button:hover { border-color:var(--sheet-line); background:var(--sheet-aura); color:var(--sheet-ink); }
+.sheet-quick-nav button:focus-visible,.sheet-library-open:focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
+.sheet-summary-header { grid-template-columns:minmax(0,1fr) minmax(210px,.85fr) auto; align-items:center; gap:18px; padding:25px 27px; border-radius:22px; border:1px solid var(--sheet-line); background:radial-gradient(ellipse at 5% 0%,var(--sheet-aura),transparent 55%),linear-gradient(145deg,var(--season-surface-alt,#29232d),var(--season-surface,#1e1a22)); }
+.sheet-summary-identity-main { display:flex; align-items:center; gap:16px; min-width:0; }
+.sheet-summary-avatar { display:grid; place-items:center; width:65px; height:65px; flex:0 0 65px; border:1px solid color-mix(in srgb,var(--sheet-accent) 34%,transparent); border-radius:19px; background:var(--sheet-aura); font-size:31px; }
+.sheet-summary-identity-copy { min-width:0; }
+.sheet-summary-identity-copy h2 { overflow-wrap:anywhere; }
+.sheet-summary-progression { gap:9px; }
+.sheet-summary-progression > div { border-radius:12px; background:var(--season-bg,rgba(0,0,0,.16)); padding:12px; }
+.sheet-summary-progression strong { font-size:13px; }
+.sheet-summary-season { white-space:normal; text-align:center; }
+.sheet-section-heading { scroll-margin-top:26px; display:flex; align-items:center; gap:13px; margin:19px 0 0; }
+.sheet-section-symbol { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; border:1px solid color-mix(in srgb,var(--sheet-accent) 30%,transparent); border-radius:13px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:22px; }
+.sheet-section-kicker { display:block; color:var(--sheet-accent); font-size:9px; font-weight:850; letter-spacing:.15em; }
+.sheet-section-heading h3 { margin:2px 0 2px; font-size:20px; font-weight:850; line-height:1.2; letter-spacing:-.025em; }
+.sheet-section-heading p { margin:0; color:var(--sheet-dim); font-size:12px; }
+.character-sheet-summary { gap:14px; margin-top:0; }
+.sheet-summary-status { gap:13px; }
+.sheet-summary-status-card { padding:19px !important; border-radius:19px !important; border-color:var(--sheet-line) !important; background:linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.045)),var(--season-surface,rgba(0,0,0,.14))) !important; box-shadow:0 12px 27px rgba(0,0,0,.12) !important; }
+.sheet-summary-status-card::before { content:''; position:absolute; inset:0 0 auto; height:3px; background:var(--sheet-accent); opacity:.65; }
+.sheet-summary-status-card.sheet-status-pv::before { background:#ed8692; }
+.sheet-summary-status-card.sheet-status-ps::before { background:var(--season-primary,var(--sheet-accent)); }
+.sheet-summary-status-card.sheet-status-pr::before { background:#73bce2; }
+.sheet-status-card-top { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.sheet-status-icon { display:grid; place-items:center; width:30px; height:30px; flex:0 0 30px; border-radius:9px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:17px; }
+.sheet-status-pv .sheet-status-icon { background:rgba(237,134,146,.12); color:#f49fa8; }
+.sheet-status-pr .sheet-status-icon { background:rgba(115,188,226,.12); color:#88ccef; }
+.sheet-status-card-name { color:var(--sheet-ink); font-size:10px; letter-spacing:.10em; font-weight:850; }
+.sheet-status-full-label { display:block; color:var(--sheet-dim); font-size:11px; }
+.sheet-summary-status-card > strong { font-size:clamp(27px,3vw,35px) !important; letter-spacing:-.035em; }
+.status-card-damage-control { border-radius:12px; margin-top:15px; padding:14px !important; }
+.status-card-damage-control strong { display:block; margin-bottom:9px; }
+.status-card-damage-control label { line-height:1.45; }
+.status-card-damage-control input,.status-card-damage-control select { width:100%; max-width:100%; min-height:38px; border-radius:9px; }
+.status-card-damage-control button { min-height:39px; border-radius:9px; font-weight:800; }
+.sheet-summary-attributes { gap:11px; }
+.sheet-summary-attributes article { min-height:102px; border-color:var(--sheet-line); border-radius:17px; background:linear-gradient(150deg,var(--season-surface-alt,rgba(255,255,255,.04)),var(--season-surface,rgba(0,0,0,.12))); }
+.sheet-summary-attributes article::before { background:var(--sheet-accent); }
+.sheet-summary-attributes strong { align-self:flex-end; min-width:41px; min-height:41px; font-size:20px; border-radius:12px; color:var(--sheet-accent); background:var(--sheet-aura); }
+.sheet-summary-grid { gap:14px; }
+.sheet-summary-card,.sheet-summary-notes { padding:21px; border-color:var(--sheet-line); border-radius:19px; background:linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.045)),var(--season-surface,rgba(0,0,0,.13))); }
+.sheet-card-title { display:flex; align-items:center; gap:11px; margin-bottom:18px; }
+.sheet-card-title-icon { display:grid; place-items:center; width:40px; height:40px; flex:0 0 40px; border:1px solid color-mix(in srgb,var(--sheet-accent) 25%,transparent); border-radius:12px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:21px; }
+.sheet-card-title > div > span { display:block; margin-bottom:2px; color:var(--sheet-accent); font-size:9px; font-weight:800; letter-spacing:.13em; }
+.sheet-card-title h3 { margin:0; color:var(--sheet-ink); font-size:19px; letter-spacing:-.025em; }
+.sheet-summary-values { gap:9px; }
+.sheet-summary-values > div { min-height:44px; border:1px solid var(--sheet-line); border-radius:11px; background:var(--season-bg,rgba(0,0,0,.15)); padding:10px 12px; }
+.sheet-summary-values span { color:var(--sheet-dim); font-size:12px; }
+.sheet-summary-values strong { font-size:15px; color:var(--sheet-ink); }
+.sheet-summary-notes { padding:21px; }
+.sheet-summary-notes p { margin:10px 0; line-height:1.7; font-size:13px; }
+.sheet-summary-hint { padding:10px 0 2px; }
+.sheet-actions-premium { scroll-margin-top:26px; padding:24px; margin:16px 0 20px; border-radius:22px; border-color:var(--sheet-line); background:radial-gradient(ellipse at 0 0,var(--sheet-aura),transparent 46%),linear-gradient(145deg,var(--season-surface-alt,#252027),var(--season-surface,#151219)); }
+.sheet-actions-premium .combat-actions-heading h3 { color:var(--sheet-ink); font-size:25px; }
+.sheet-actions-premium .combat-d20-mark { border-radius:14px; background:var(--sheet-aura); color:var(--sheet-accent); }
+.sheet-actions-premium .combat-action-card { min-height:117px; border-radius:15px; border-color:var(--sheet-line); background:linear-gradient(150deg,var(--season-surface-alt,rgba(255,255,255,.035)),var(--season-bg,rgba(0,0,0,.14))); }
+.sheet-actions-premium .combat-action-card:hover { border-color:color-mix(in srgb,var(--sheet-accent) 50%,transparent); transform:translateY(-2px); }
+.sheet-actions-premium .combat-complementary-section,.sheet-actions-premium .combat-reactions-section { padding-top:22px; margin-top:22px; border-top:1px solid var(--sheet-line); }
+.sheet-actions-premium .combat-reactions-heading h3 { color:var(--sheet-ink); font-size:19px; }
+.sheet-actions-premium .combat-action-result { border-radius:13px; }
+.sheet-inventory-section { margin-top:20px !important; border-color:var(--sheet-line) !important; border-radius:22px !important; background:radial-gradient(ellipse at 5% 0,var(--sheet-aura),transparent 40%),linear-gradient(140deg,var(--season-surface,#221e22),var(--season-bg,#111015)) !important; }
+.sheet-inventory-section > .inventory-heading h3 { font-size:23px; }
+.sheet-inventory-section > .inventory-heading p { color:var(--sheet-dim); margin:5px 0 0; font-size:12px; }
+.sheet-inventory-section > .inventory-heading h3::before { content:'▤'; color:var(--sheet-accent); }
+.sheet-inventory-section .item-card { border-radius:16px; }
+.sheet-armor-standalone,.sheet-inventory-section,.sheet-actions-premium,.sheet-summary-card,.sheet-quick-nav,.sheet-page-hero,.sheet-summary-status-card { scroll-margin-top:26px; }
+.sheet-editor-layout { width:100%; }
+.sheet-editor-premium { padding:0 !important; margin:13px 0 !important; border:1px solid var(--sheet-line) !important; border-radius:17px !important; background:linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.04)),var(--season-surface,rgba(0,0,0,.15))) !important; overflow:hidden; }
+.sheet-editor-premium > summary { display:flex; align-items:center; gap:12px; min-height:62px; padding:13px 18px !important; color:var(--sheet-ink); font-size:14px; font-weight:800; }
+.sheet-editor-premium > summary:hover { background:var(--sheet-aura); }
+.sheet-editor-premium > summary::after { margin-left:0; }
+.sheet-editor-icon { display:grid; place-items:center; width:37px; height:37px; flex:0 0 37px; border:1px solid color-mix(in srgb,var(--sheet-accent) 24%,transparent); border-radius:11px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:19px; }
+.sheet-editor-title { flex:1; min-width:0; }
+.sheet-editor-expand { color:var(--sheet-dim); font-size:10px; font-weight:650; white-space:nowrap; }
+.sheet-editor-premium[open] > summary { border-bottom:1px solid var(--sheet-line); }
+.sheet-editor-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); align-items:start; gap:13px; margin-top:0; padding:19px; }
+.sheet-editor-fields > label { min-width:0; }
+.sheet-editor-fields input,.sheet-editor-fields select,.sheet-editor-fields textarea { max-width:100%; box-sizing:border-box; border-radius:10px !important; }
+.sheet-editor-fields :focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
+.sheet-quick-nav button:active,.sheet-library-open:active { transform:scale(.98); }
 
-                      {newEquipmentType === 'protection' && <>
-                        <label>Nível de proteção<select value={newProtectionTier} onChange={event => setNewProtectionTier(event.target.value as 'basica' | 'moderada' | 'avancada')}><option value="basica">Básica</option><option value="moderada">Moderada</option><option value="avancada">Avançada</option></select></label>
-                        <label>Tipo de resistência<select value={newProtectionMode} onChange={event => setNewProtectionMode(event.target.value as 'resistencia' | 'sanidade')}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
-                        <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0</p><p>Proteção: {newProtectionTier === 'basica' ? '¼' : newProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {newProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {newProtectionTier === 'basica' ? '1d8' : newProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
-                      </>}
+.sheet-editor-manager { padding:22px !important; border:1px solid var(--sheet-line) !important; border-radius:19px !important; background:linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.035)),var(--season-surface,rgba(0,0,0,.15))) !important; }
+.sheet-editor-manager-title { display:flex; align-items:center; gap:13px; padding-bottom:18px; margin-bottom:18px; border-bottom:1px solid var(--sheet-line); }
+.sheet-editor-manager-title > span { display:grid; place-items:center; width:43px; height:43px; flex:0 0 43px; border-radius:13px; border:1px solid color-mix(in srgb,var(--sheet-accent) 25%,transparent); background:var(--sheet-aura); color:var(--sheet-accent); font-size:23px; }
+.sheet-editor-manager-title small { color:var(--sheet-accent); font-size:9px; letter-spacing:.15em; font-weight:850; }
+.sheet-editor-manager-title h3 { margin:3px 0; font-size:20px; font-weight:850; letter-spacing:-.035em; }
+.sheet-editor-manager-title p { margin:0; color:var(--sheet-dim); font-size:12px; line-height:1.45; }
+.sheet-editor-manager label { min-width:0; }
+.sheet-editor-manager input,.sheet-editor-manager select,.sheet-editor-manager textarea { box-sizing:border-box; min-height:41px; max-width:100%; border-radius:11px !important; }
+.sheet-editor-manager input:focus-visible,.sheet-editor-manager select:focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
+.sheet-distribution-panel { border-color:var(--sheet-line) !important; border-radius:17px !important; background:linear-gradient(150deg,var(--season-surface,#211d21),var(--season-bg,#141116)) !important; box-shadow:0 9px 26px rgba(0,0,0,.11) !important; }
+.sheet-distribution-panel > div:first-child { padding-bottom:4px; }
+.sheet-distribution-panel > div:first-child strong { color:var(--sheet-ink); font-size:18px !important; }
+.sheet-distribution-panel input[type=number] { min-height:39px; }
+.sheet-page-panel > .season-participation-toggle { border-radius:16px; }
+.sheet-page-panel .season-theme-panel { border-radius:17px; }
 
-{isCyberFlowerSystem && newEquipmentType === 'cybernetic' && <>
-  <label>
-    Categoria da cibernética
-    <select
-      value={newCyberneticCategory}
-      onChange={event => setNewCyberneticCategory(event.target.value)}
-    >
-      <option value="Neurológico">Neurológico</option>
-      <option value="Sensorial">Sensorial</option>
-      <option value="Órgãos">Órgãos</option>
-      <option value="Membros">Membros</option>
-      <option value="Estrutural">Estrutural</option>
-      <option value="Armamento">Armamento</option>
-      <option value="Suporte">Suporte</option>
-      <option value="Outro">Outro</option>
-    </select>
-  </label>
-
-  <label>
-    Localização no corpo
-    <input
-      value={newCyberneticLocation}
-      onChange={event => setNewCyberneticLocation(event.target.value)}
-      placeholder="Ex.: Crânio, braço esquerdo..."
-    />
-  </label>
-
-  <label>
-    Carga biológica
-    <input
-      type="number"
-      min="0"
-      step="1"
-      value={newCyberneticLoad}
-      onChange={event => setNewCyberneticLoad(event.target.value)}
-    />
-  </label>
-
-  <label>
-    Efeitos
-    <textarea
-      value={newCyberneticEffects}
-      onChange={event => setNewCyberneticEffects(event.target.value)}
-      placeholder="Descreva os efeitos da cibernética..."
-    />
-  </label>
-</>}
-
-                      {newItemCategories.includes('Armas') && <>
-                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
-                        <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[newWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[newWeaponClass]} kg</p></div>
-                      </>}
-
-                      <label>
-                        Quantidade
-                        <input
-                          type="number"
-                          min="1"
-                          max="999"
-                          step="1"
-                          value={newItemQuantity}
-                          onChange={(event) =>
-                            setNewItemQuantity(event.target.value)
-                          }
-                          required
-                        />
-                      </label>
-
-<label>
-  Peso por unidade (kg)
-  <input
-    type="number"
-    min="0"
-    max="100000"
-    step="0.1"
-    value={
-      newItemCategories.includes('Consumíveis')
-        ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
-        : newItemWeight
-    }
-    onChange={(event) => setNewItemWeight(event.target.value)}
-    disabled={
-      newItemCategories.includes('Consumíveis') ||
-      getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
-    }
-    required
-  />
-  <small>
-    {newItemCategories.includes('Consumíveis')
-      ? 'Peso definido automaticamente pela carga restante do consumível.'
-      : getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
-        ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
-        : 'Informe o peso por unidade deste item.'}
-  </small>
-</label>
-                    </div>
-
-<label>
-  Valor unitário
-  <input
-    type="number"
-    min="0"
-    step="0.01"
-    value={newScarcityExhausted && newItemCategories.includes('Consumíveis') ? '0' : newItemUnitPrice}
-    onChange={event => setNewItemUnitPrice(event.target.value)}
-    disabled={newScarcityExhausted && newItemCategories.includes('Consumíveis')}
-    placeholder="Ex.: 500"
-  />
-</label>
-
-<label>
-  Moeda
-  <select
-    value={newItemCurrencyId}
-    onChange={event => setNewItemCurrencyId(event.target.value)}
-  >
-    <option value="">Sem moeda definida</option>
-    {selectedCampaign?.currency_config?.currencies?.map((currency, index) => (
-      <option key={currency.id} value={currency.id}>
-        {index === 0 ? '★ Moeda do sistema — ' : ''}{currency.name} ({currency.symbol})
-      </option>
-    ))}
-  </select>
-</label>
-
-                    <button
-                      className="primary-button"
-                      type="submit"
-                      disabled={loading}
-                    >
-                      {loading
-                        ? 'Salvando...'
-                        : editingItem
-                          ? 'Salvar alterações'
-                          : 'Salvar item'}
-                    </button>
-        </form>
-      </div>
-    </div>,
-    document.body
-  )}
-
-    <div className="sheet-capacity-overview" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:12,margin:'4px 0 18px'}}>
-      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
-        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>▤</span> Objetos</div>
-        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{totalObjects}</div>
-        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>{totalObjects === 1 ? 'item na mochila' : 'itens na mochila'}</div>
-      </div>
-      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
-        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>⚖</span> Peso carregado</div>
-        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{totalWeight.toFixed(1)}<span style={{fontSize:14,fontWeight:650,marginLeft:4}}>kg</span></div>
-        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>peso total dos itens</div>
-      </div>
-      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
-        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>🎒</span> Capacidade livre</div>
-        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:remainingCapacity < 0 ? '#ff8b8b' : 'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{remainingCapacity.toFixed(1)}<span style={{fontSize:14,fontWeight:650,marginLeft:4}}>kg</span></div>
-        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>{remainingCapacity < 0 ? 'acima do limite de carga' : 'disponíveis para carregar'}</div>
-      </div>
-      <div style={{gridColumn:'1 / -1',padding:'12px 15px',borderRadius:12,border:'1px solid var(--season-line,rgba(160,140,190,.16))',background:'var(--season-bg,rgba(10,9,15,.28))'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:8,fontSize:12}}><span style={{color:'var(--season-muted,#aaa2b5)',fontWeight:650}}>Uso da capacidade</span><strong style={{color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{capacityPercent.toFixed(0)}%</strong></div>
-        <div role="progressbar" aria-label="Capacidade utilizada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,Math.max(0,capacityPercent))} style={{height:8,overflow:'hidden',borderRadius:99,background:'var(--season-line,rgba(160,140,190,.22))'}}><div style={{height:'100%',width:`${Math.min(100,Math.max(0,capacityPercent))}%`,borderRadius:99,background:remainingCapacity < 0 ? 'linear-gradient(90deg,#e78b62,#e45f70)' : 'linear-gradient(90deg,var(--season-secondary,#8d70cf),var(--season-primary,#c8b5ff))',transition:'width .25s ease'}} /></div>
-      </div>
-    </div>
-
-    <div className="inventory-toolbar">
-      <div className="category-tabs">
-        {categories.map(category => (
-          <button key={category} className={activeCategory === category ? 'category-tab selected' : 'category-tab'} onClick={() => setActiveCategory(category)}>
-            {category}
-          </button>
-        ))}
-      </div>
-      <div className="inventory-extra-controls">
-        <label className="search-box">
-          <span>⌕</span>
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar item..." aria-label="Buscar item" />
-          <kbd>/</kbd>
-        </label>
-        <button type="button" className={favoriteOnly ? 'category-tab selected' : 'category-tab'} onClick={() => setFavoriteOnly(current => !current)} aria-pressed={favoriteOnly}>
-          {favoriteOnly ? '★ Favoritos' : '☆ Favoritos'}
-        </button>
-        <label className="inventory-sort-label">
-          <span>Ordenar:</span>
-          <select value={sortBy} onChange={event => setSortBy(event.target.value)} aria-label="Ordenar itens">
-            <option value="created">Adicionados</option>
-            <option value="name">Nome</option>
-            <option value="category">Categoria</option>
-            <option value="weight">Maior peso</option>
-            <option value="quantity">Maior quantidade</option>
-          </select>
-        </label>
-      </div>
-    </div>
-
-    {itemsLoading ? (
-      <div className="empty-state"><p>Carregando inventário...</p></div>
-    ) : filteredItems.length === 0 ? (
-      <div className="empty-state">
-        <span>▤</span>
-        <h3>{items.length === 0 ? 'Mochila vazia' : 'Nenhum item encontrado'}</h3>
-        <p>{items.length === 0 ? 'Adicione o primeiro item deste personagem.' : 'Tente outra busca ou selecione outra categoria.'}</p>
-        {items.length === 0 ? (
-          <button type="button" onClick={() => {
-  resetItemForm()
-  setShowItemForm(true)
-}}>Adicionar primeiro item</button>
-        ) : (
-          <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setFavoriteOnly(false) }}>Limpar filtros</button>
-        )}
-      </div>
-    ) : (
-      <div className="item-grid">
-        {filteredItems.map(item => (
-          <article className="item-card inventory-item-card" key={item.id} onClickCapture={event => {
-  const target = event.target as HTMLElement
-  if (target.closest('button, input, select, textarea, a, [role=\"button\"]')) return
-  setSelectedItemDetails(item)
-}}
-style={{cursor:'pointer'}}>
-            <div className="item-card-top">
-              <button type="button" className="item-art" onClick={event => { event.stopPropagation(); setEmojiPickerItem(item) }} title="Clique para alterar o emoji" aria-label={`Alterar emoji de ${item.name}`} style={{cursor:'pointer',font:'inherit',fontSize:28}}>
-                {typeof item.metadata?.icon === 'string' ? item.metadata.icon : '📦'}
-              </button>
-              <div className="item-actions">
-                <button type="button" className="item-menu" title={item.metadata?.favorite === true ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} aria-label={item.metadata?.favorite === true ? `Remover ${item.name} dos favoritos` : `Adicionar ${item.name} aos favoritos`} aria-pressed={item.metadata?.favorite === true} onClick={event => { event.stopPropagation(); void toggleFavorite(item) }}>{item.metadata?.favorite === true ? '★' : '☆'}</button>
-                <button type="button" className="item-menu" title="Duplicar item" aria-label={`Duplicar ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void duplicateItem(item) }}>⧉</button>
-                {item.metadata?.equipmentType === 'armor' && <button type="button" className={`item-menu equipment-card-icon armor-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar armadura' : 'Equipar armadura'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; if(nextEquipped){ const others=items.filter(entry=>entry.character_id===item.character_id && entry.id!==item.id && entry.metadata?.equipmentType==='armor' && entry.metadata?.equipped===true); for(const other of others) await supabase.from('inventory_items').update({metadata:{...(other.metadata||{}),equipped:false}}).eq('id',other.id) } const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a armadura: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.character_id===item.character_id&&entry.metadata?.equipmentType==='armor'&&entry.id!==item.id?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'🛡'}</button>}
-                {item.metadata?.equipmentType === 'protection' && <button type="button" className={`item-menu equipment-card-icon protection-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar proteção' : 'Equipar proteção'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a proteção: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'✧'}</button>}
-                {Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas') && <button type="button" className={`item-menu equipment-card-icon weapon-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar arma' : 'Equipar arma'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped = item.metadata?.equipped !== true; if (nextEquipped) { const otherEquipped = items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas')); for (const other of otherEquipped) { await supabase.from('inventory_items').update({metadata:{...(other.metadata || {}),equipped:false}}).eq('id',other.id) } } const {data,error: equipError}=await supabase.from('inventory_items').update({metadata:{...(item.metadata || {}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if (equipError || !data) { setError(`Não foi possível alterar a arma equipada: ${equipError?.message || 'sem retorno'}`); return } setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.id!==item.id&&entry.character_id===item.character_id&&entry.metadata?.equipped===true&&Array.isArray(entry.metadata?.categories)&&entry.metadata.categories.includes('Armas')?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped === true ? '✓' : '⚔'}</button>}
-                <button type="button" className="item-menu" title="Editar item" aria-label={`Editar ${item.name}`} disabled={loading} onClick={event => {
-  event.stopPropagation()
-  startEditingItem(item)
-}}>✎</button>
-                <button type="button" className="item-menu" title="Remover item" aria-label={`Remover ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void removeItem(item) }}>×</button>
-              </div>
-            </div>
-            
-            <div className="item-category">{item.category}</div>
-            <h3>{item.name}</h3>
-            <p className="item-description">{item.description || 'Sem descrição.'}</p>
-            {(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
-              <span className="inventory-equipment-label">EQUIPAMENTO</span>
-              <button type="button" className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => {
-                event.stopPropagation();
-                const isWeapon = Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas');
-                const type = isWeapon ? 'weapon' : item.metadata?.equipmentType;
-                const nextEquipped = item.metadata?.equipped !== true;
-                const others = nextEquipped && (type === 'weapon' || type === 'armor') ? items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && (type === 'weapon' ? Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas') : entry.metadata?.equipmentType === 'armor')) : [];
-                for (const other of others) {
-                  const { error: otherError } = await supabase.from('inventory_items').update({ metadata: { ...(other.metadata || {}), equipped: false } }).eq('id', other.id);
-                  if (otherError) { setError(`Não foi possível atualizar outro equipamento: ${otherError.message}`); return; }
-                }
-                const { data, error: equipError } = await supabase.from('inventory_items').update({ metadata: { ...(item.metadata || {}), equipped: nextEquipped } }).eq('id', item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle();
-                if (equipError || !data) { setError(`Não foi possível alterar o equipamento: ${equipError?.message || 'sem retorno'}`); return; }
-                setItems(current => current.map(entry => entry.id === item.id ? data as Item : others.some(other => other.id === entry.id) ? { ...entry, metadata: { ...(entry.metadata || {}), equipped: false } } : entry));
-                setNotice(nextEquipped ? `${item.name} equipado(a).` : `${item.name} desequipado(a).`);
-              }}>
-                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
-                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
-              </button>
-            </div>}
-            <div className="item-footer">
-              <span>⚖ {`${(Number(item.weight) || 0).toFixed(1)} kg / un.`}</span>
-              <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
-                <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)-1) }} disabled={Number(item.quantity)<=1 || updatingQuantityItemId===item.id} aria-label={`Diminuir quantidade de ${item.name}`}>−</button>
-                <span className="quantity" aria-live="polite">{item.quantity}</span>
-                <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)+1) }} disabled={Number(item.quantity)>=999 || updatingQuantityItemId===item.id} aria-label={`Aumentar quantidade de ${item.name}`}>+</button>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-    )}
-    <small style={{display:'block',marginTop:12,color:'var(--season-muted, #b9b4c2)'}}>
-      Os itens pertencem ao personagem selecionado na campanha. Alterações, equipamentos e quantidades são sincronizados com a ficha.
-    </small>
-  </section>
-)}
-
-{isCyberFlowerSystem &&
-  canAccessSelectedCharacter &&
-  selectedCharacter &&
-  selectedSeasonId &&
-  !sheetLoading && (
-    <CyberneticsInventory
-      sheetDraft={sheetDraft}
-      setSheetDraft={setSheetDraft}
-      characterId={selectedCharacter.id}
-      seasonId={selectedSeasonId}
-      canManageCybernetics={canManageCybernetics}
-      sheetSaving={sheetSaving}
-      inventoryItems={items}
-      onInventoryItemsChange={setItems}
-      onSaveCybernetics={(cybernetics) =>
-        saveCharacterCybernetics(
-          selectedCharacter.id,
-          selectedSeasonId,
-          cybernetics,
-        )
-      }
-    />
-  )}
-
-{canAccessSelectedCharacter &&
-  (selectedCampaign?.currency_config?.currencies?.length ?? 0) > 0 && (
-  <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
+@media (max-width:1050px){ .sheet-summary-header { grid-template-columns: minmax(0,1fr) auto; } .sheet-summary-progression { grid-column:1 / -1; grid-row:2; } .sheet-summary-season { grid-column:2; grid-row:1; } .sheet-summary-attributes { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width:750px){ .sheet-page-hero { padding:18px !important; align-items:flex-start; } .sheet-page-hero-icon { width:52px; height:52px; flex-basis:52px; font-size:25px; } .sheet-quick-nav { flex-wrap:nowrap; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:thin; } .sheet-quick-nav button { scroll-snap-align:start; } .sheet-summary-status { grid-template-columns:1fr; } .sheet-summary-grid { grid-template-columns:1fr; } .sheet-actions-premium { padding:17px; } .sheet-editor-expand { display:none; } }
+@media (max-width:560px){ .sheet-page-hero-leading { gap:12px; } .sheet-page-hero h2 { font-size:24px !important; } .sheet-page-hero-detail .sheet-page-back { width:100%; } .sheet-summary-header { grid-template-columns:1fr; gap:13px; padding:18px; } .sheet-summary-avatar { width:52px; height:52px; flex-basis:52px; font-size:24px; } .sheet-summary-progression { grid-column:auto; grid-row:auto; grid-template-columns:repeat(2,minmax(0,1fr)); } .sheet-summary-season { grid-column:auto; grid-row:auto; justify-self:start; } .sheet-summary-attributes { grid-template-columns:repeat(2,minmax(0,1fr)); } .sheet-section-heading p { line-height:1.45; } .sheet-summary-status-card { padding:15px !important; } .sheet-summary-card,.sheet-summary-notes { padding:15px; } .sheet-editor-fields { padding:13px; } .sheet-library-grid { grid-template-columns:1fr; } }
+@media (prefers-reduced-motion:reduce){.sheet-library-card,.sheet-quick-nav button,.sheet-actions-premium .combat-action-card {transition:none !important;} .sheet-library-card:hover,.sheet-actions-premium .combat-action-card:hover {transform:none !important;} }
+          `}</style>
     <style>{`
       .currency-wallet > .inventory-heading,
       .currency-wallet > .currency-tabs,
@@ -7998,6 +8826,2524 @@ style={{cursor:'pointer'}}>
   }
 }
     `}</style>
+          <style>{`
+          .page-content.page-overview > * {
+  display: none !important;
+}
+
+.page-content.page-overview > .overview-page-panel {
+  display: block !important;
+}
+          .page-content.page-shops > * {
+  display: none !important;
+}
+
+.page-content.page-shops > .shops-page-panel {
+  display: block !important;
+}
+ 
+            .page-content.page-bestiary > * { display: none !important; }
+            .page-content.page-bestiary > .bestiary-page-panel { display: block !important; }
+            .page-content.page-enemies > * {
+              display: none !important;
+            }
+
+            .page-content.page-enemies > .enemies-page-panel {
+              display: block !important;
+            }
+            .page-content.page-master-shield > * { display: none !important; }
+            .page-content.page-master-shield > .master-shield-page-panel { display: block !important; }
+            .page-content.page-sheets > * { display: none !important; }
+            .page-content.page-sheets > .sheet-page-panel { display: block !important; }
+            .page-content.page-characters > * { display: none !important; }
+            .page-content.page-characters > .characters-page-panel { display: block !important; }
+            .page-content.page-campaigns > * { display: none !important; }
+            .page-content.page-campaigns > .campaigns-page-panel { display: block !important; }
+            .page-content.page-campaigns > #inventario {
+              display: block !important;
+            }
+            .page-content.page-inventory > .season-sheet-section { display: none !important; }
+          `}</style>
+
+          <style>{`
+/* HäxBag | Redesign transversal: areas administrativas e exploracao */
+.hb-polish { --hb-accent: var(--season-primary,#d7a77e); --hb-line:var(--season-line,rgba(255,255,255,.13)); --hb-fg:var(--season-text,#f3eee8); --hb-muted:var(--season-muted,#b9b4c2); --hb-surface:var(--season-surface,#1d1b20); --hb-surface-alt:var(--season-surface-alt,#29242b); --hb-soft:color-mix(in srgb,var(--hb-accent) 11%,transparent); }
+.hb-polish .sidebar { border-right:1px solid var(--hb-line); background:linear-gradient(180deg,var(--season-bg,#121014),color-mix(in srgb,var(--season-bg,#121014) 88%,var(--hb-accent) 12%)); }
+.hb-polish .brand-mark { box-shadow:0 4px 22px color-mix(in srgb,var(--hb-accent) 18%,transparent); }
+.hb-polish .navigation { gap:4px; }
+.hb-polish .nav-link { border-radius:11px; border:1px solid transparent; transition:background .16s,border-color .16s,transform .16s; }
+.hb-polish .nav-link:not(:disabled):hover { background:color-mix(in srgb,var(--hb-accent) 8%,transparent); border-color:color-mix(in srgb,var(--hb-accent) 16%,transparent); transform:translateX(2px); }
+.hb-polish .nav-link.active { background:linear-gradient(95deg,color-mix(in srgb,var(--hb-accent) 16%,transparent),color-mix(in srgb,var(--hb-accent) 5%,transparent)); border-color:color-mix(in srgb,var(--hb-accent) 26%,transparent); box-shadow:inset 3px 0 var(--hb-accent); }
+.hb-polish .topbar { border-bottom:1px solid var(--hb-line); backdrop-filter:blur(12px); }
+.hb-polish .page-content { min-width:0; }
+.hb-polish .page-content:is(.page-overview,.page-master-shield,.page-characters,.page-campaigns,.page-shops,.page-bestiary) { padding-top:clamp(18px,3vw,38px); }
+.hb-polish .page-content :is(.overview-page-panel,.master-shield-page-panel,.characters-page-panel,.campaigns-page-panel,.shops-page-panel,.bestiary-page-panel) { min-width:0; }
+.hb-polish .hb-kicker { display:inline-flex; align-items:center; gap:8px; color:var(--hb-accent); font-size:10px; font-weight:850; letter-spacing:.15em; line-height:1.3; text-transform:uppercase; }
+.hb-polish .hb-kicker-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--hb-accent); box-shadow:0 0 0 4px var(--hb-soft); }
+.hb-polish .hb-title-dot { color:var(--hb-accent); }
+.hb-polish .hb-hero { position:relative; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:21px; padding:clamp(22px,3vw,35px); border:1px solid color-mix(in srgb,var(--hb-accent) 22%,var(--hb-line)); border-radius:23px; background:radial-gradient(ellipse at 3% 0%,color-mix(in srgb,var(--hb-accent) 15%,transparent),transparent 53%),linear-gradient(115deg,var(--hb-surface),var(--season-bg,#141218)); overflow:hidden; isolation:isolate; box-shadow:0 16px 36px rgba(0,0,0,.12),inset 0 1px rgba(255,255,255,.04); }
+.hb-polish .hb-hero:after { content:''; position:absolute; width:220px; height:220px; right:-50px; top:-100px; border:1px solid color-mix(in srgb,var(--hb-accent) 18%,transparent); border-radius:50%; box-shadow:0 0 0 38px color-mix(in srgb,var(--hb-accent) 3%,transparent),0 0 0 77px color-mix(in srgb,var(--hb-accent) 2%,transparent); pointer-events:none; z-index:-1; }
+.hb-polish .hb-hero h2 { margin:7px 0 9px; font-family:'Space Grotesk',Manrope,sans-serif; font-size:clamp(27px,3vw,37px); font-weight:850; letter-spacing:-.045em; line-height:1.1; color:var(--hb-fg); }
+.hb-polish .hb-hero p { max-width:680px; margin:0; line-height:1.65; font-size:13px; color:var(--hb-muted); }
+.hb-polish .hb-hero-main { min-width:0; flex:1 1 420px; }
+.hb-polish .hb-hero-emblem { display:grid; place-items:center; flex:0 0 90px; width:90px; height:90px; border:1px solid color-mix(in srgb,var(--hb-accent) 28%,transparent); border-radius:27px; background:linear-gradient(140deg,color-mix(in srgb,var(--hb-accent) 19%,transparent),color-mix(in srgb,var(--hb-accent) 4%,transparent)); color:var(--hb-accent); font-size:49px; line-height:1; box-shadow:inset 0 1px rgba(255,255,255,.09); }
+.hb-polish .hb-hero-tags { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:18px; }
+.hb-polish .hb-hero-tags > span { display:inline-flex; align-items:center; min-height:27px; gap:6px; padding:5px 10px; border:1px solid var(--hb-line); border-radius:999px; background:color-mix(in srgb,var(--hb-surface-alt) 65%,transparent); color:var(--hb-fg); font-size:10px; font-weight:750; }
+.hb-polish .hb-hero-actions { display:flex; flex-wrap:wrap; gap:9px; width:100%; position:relative; z-index:1; }
+.hb-polish .hb-hero :is(.primary-button,.secondary-button) { min-height:39px; border-radius:11px; }
+.hb-polish .hb-metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:19px 0; }
+.hb-polish .hb-metric { display:flex; position:relative; min-width:0; align-items:flex-start; gap:13px; padding:17px 16px; border:1px solid var(--hb-line); border-radius:17px; background:linear-gradient(140deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 58%,transparent)); text-align:left; color:var(--hb-fg); box-shadow:inset 0 1px rgba(255,255,255,.025); }
+.hb-polish button.hb-metric { width:100%; cursor:pointer; transition:transform .17s,border-color .17s,box-shadow .17s; }
+.hb-polish button.hb-metric:hover { transform:translateY(-3px); border-color:color-mix(in srgb,var(--hb-accent) 40%,var(--hb-line)); box-shadow:0 14px 26px rgba(0,0,0,.11); }
+.hb-polish .hb-metric-icon { display:grid; place-items:center; flex:0 0 43px; width:43px; height:43px; border:1px solid color-mix(in srgb,var(--hb-accent) 24%,transparent); border-radius:12px; background:var(--hb-soft); color:var(--hb-accent); font-size:22px; }
+.hb-polish .hb-metric-content { display:grid; min-width:0; gap:5px; flex:1; }
+.hb-polish .hb-metric-label { color:var(--hb-muted); font-size:10px; font-weight:850; letter-spacing:.07em; text-transform:uppercase; }
+.hb-polish .hb-metric-content strong { font-family:'Space Grotesk',Manrope,sans-serif; font-size:clamp(21px,2.2vw,29px); line-height:1.12; font-weight:850; letter-spacing:-.04em; overflow-wrap:anywhere; }
+.hb-polish .hb-metric-content strong.hb-metric-name { font-size:15px; letter-spacing:-.025em; line-height:1.35; }
+.hb-polish .hb-metric-content small { font-size:10px; color:var(--hb-muted); line-height:1.45; }
+.hb-polish .hb-metric-arrow { align-self:center; color:var(--hb-accent); opacity:.75; font-size:17px; }
+.hb-polish .hb-panel { min-width:0; padding:22px; border:1px solid var(--hb-line); border-radius:20px; background:linear-gradient(145deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 55%,transparent)); }
+.hb-polish .hb-panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+.hb-polish .hb-panel-heading h3 { margin:5px 0; font-family:'Space Grotesk',Manrope,sans-serif; color:var(--hb-fg); font-size:19px; line-height:1.25; letter-spacing:-.025em; }
+.hb-polish .hb-panel-heading p { margin:0; color:var(--hb-muted); font-size:12px; line-height:1.6; }
+.hb-polish .hb-heading-icon { display:grid; place-items:center; flex-shrink:0; width:42px; height:42px; border:1px solid color-mix(in srgb,var(--hb-accent) 24%,transparent); border-radius:12px; background:var(--hb-soft); color:var(--hb-accent); font-size:23px; }
+.hb-polish .hb-dashboard-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); align-items:start; gap:16px; }
+.hb-polish .hb-overview-activity { margin-top:16px; }
+.hb-polish .hb-journey-list,.hb-polish .hb-roster-list { display:grid; gap:8px; }
+.hb-polish .hb-journey-entry { display:flex; align-items:center; gap:12px; min-width:0; padding:11px 12px; background:color-mix(in srgb,var(--hb-surface-alt) 42%,transparent); border:1px solid var(--hb-line); border-radius:13px; }
+.hb-polish .hb-journey-entry.is-current { background:color-mix(in srgb,var(--hb-accent) 8%,var(--hb-surface)); border-color:color-mix(in srgb,var(--hb-accent) 35%,var(--hb-line)); }
+.hb-polish .hb-journey-index { display:grid; place-items:center; flex:0 0 40px; height:40px; border-radius:11px; background:var(--hb-soft); color:var(--hb-accent); font-weight:850; font-size:14px; }
+.hb-polish .hb-journey-copy { flex:1; display:grid; min-width:0; gap:3px; }
+.hb-polish .hb-journey-copy strong,.hb-polish .hb-roster-entry strong { overflow:hidden; text-overflow:ellipsis; font-size:12px; color:var(--hb-fg); }
+.hb-polish .hb-journey-copy small,.hb-polish .hb-roster-entry small { color:var(--hb-muted); font-size:10px; line-height:1.45; }
+.hb-polish .hb-season-status { flex-shrink:0; padding:5px 9px; border-radius:100px; border:1px solid var(--hb-line); color:var(--hb-muted); font-size:10px; font-weight:750; }
+.hb-polish .hb-season-status-active { background:var(--hb-soft); color:var(--hb-accent); border-color:color-mix(in srgb,var(--hb-accent) 27%,transparent); }
+.hb-polish .hb-roster-entry { display:flex; align-items:center; gap:10px; min-width:0; padding:10px 12px; text-align:left; border:1px solid var(--hb-line); border-radius:13px; background:color-mix(in srgb,var(--hb-surface-alt) 42%,transparent); color:var(--hb-fg); cursor:pointer; }
+.hb-polish .hb-roster-entry:hover { border-color:var(--hb-accent); background:var(--hb-soft); }
+.hb-polish .hb-roster-avatar { display:grid; place-items:center; flex:0 0 41px; width:41px; height:41px; font-size:23px; background:var(--hb-soft); border-radius:12px; }
+.hb-polish .hb-roster-entry > span:nth-child(2) { display:grid; flex:1; min-width:0; gap:3px; }
+.hb-polish .hb-roster-entry > span:last-child { color:var(--hb-accent); }
+.hb-polish .hb-timeline { display:grid; gap:0; }
+.hb-polish .hb-timeline-event { display:grid; grid-template-columns:20px 1fr; gap:14px; position:relative; padding:0 0 17px; }
+.hb-polish .hb-timeline-event:not(:last-child):before { content:''; position:absolute; top:10px; bottom:0; left:8px; width:1px; background:var(--hb-line); }
+.hb-polish .hb-timeline-dot { position:relative; z-index:1; width:16px; height:16px; margin-top:2px; border:3px solid color-mix(in srgb,var(--hb-accent) 30%,var(--hb-surface)); border-radius:50%; background:var(--hb-accent); }
+.hb-polish .hb-timeline-event strong { color:var(--hb-fg); font-size:13px; }
+.hb-polish .hb-timeline-event p { margin:5px 0; font-size:12px; line-height:1.5; color:var(--hb-muted); }
+.hb-polish .hb-timeline-event small { color:var(--hb-accent); font-size:10px; }
+.hb-polish .hb-minimal-empty { padding:27px 18px; border:1px dashed var(--hb-line); border-radius:13px; background:color-mix(in srgb,var(--hb-surface-alt) 30%,transparent); color:var(--hb-muted); text-align:center; font-size:12px; line-height:1.6; }
+.hb-polish .hb-overview-empty { text-align:center; padding:50px 25px; }
+.hb-polish .hb-overview-empty > span { display:block; margin-bottom:15px; font-size:42px; color:var(--hb-accent); }
+.hb-polish .hb-overview-empty h3 { margin:0 0 7px; font-size:20px; }
+.hb-polish .hb-overview-empty p { margin:0 0 20px; color:var(--hb-muted); }
+/* Personagens: listagem e editor */
+.hb-polish .hb-characters-page > .hb-characters-hero { margin-bottom:22px; }
+.hb-polish .hb-characters-hero > div:first-child { flex:1 1 370px; }
+.hb-polish .hb-characters-hero .primary-button,.hb-polish .hb-characters-hero .secondary-button { white-space:normal; }
+.hb-polish .hb-character-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr)); gap:15px; }
+.hb-polish .hb-character-grid .hb-character-card { display:flex; align-items:stretch; gap:0; min-height:235px; padding:19px; border-radius:19px; border:1px solid var(--hb-line); background:radial-gradient(ellipse at 10% 0%,var(--hb-soft),transparent 58%),linear-gradient(130deg,var(--hb-surface),var(--hb-surface-alt)); box-shadow:0 8px 22px rgba(0,0,0,.06); }
+.hb-polish .hb-character-card:hover { border-color:color-mix(in srgb,var(--hb-accent) 40%,var(--hb-line)); box-shadow:0 15px 26px rgba(0,0,0,.12); }
+.hb-polish .hb-character-card:before { display:none; }
+.hb-polish .hb-character-card-top { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; margin:0 0 15px; }
+.hb-polish .hb-character-card .item-art { display:grid; place-items:center; margin:0; width:67px; height:67px; border:1px solid color-mix(in srgb,var(--hb-accent) 28%,transparent); border-radius:19px; background:linear-gradient(140deg,var(--hb-soft),color-mix(in srgb,var(--hb-surface-alt) 75%,transparent)); font-size:35px; }
+.hb-polish .hb-card-tag { display:inline-block; max-width:130px; padding:6px 9px; border:1px solid var(--hb-line); border-radius:999px; background:var(--hb-soft); color:var(--hb-accent); font-size:9px; font-weight:850; letter-spacing:.085em; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; }
+.hb-polish .hb-character-card h3 { margin:0 0 5px; font-size:18px; line-height:1.3; font-weight:850; color:var(--hb-fg); }
+.hb-polish .hb-character-card p { margin:0 0 10px; min-height:0; font-size:12px; line-height:1.55; color:var(--hb-muted); }
+.hb-polish .hb-character-card .item-description { padding:6px 9px; border-radius:9px; background:var(--hb-soft); color:var(--hb-accent); font-size:11px; }
+.hb-polish .hb-character-card > button { align-self:stretch; width:100%; min-height:36px; margin-top:8px; border-radius:10px; text-align:center; }
+.hb-polish .hb-character-card > button.primary-button { margin-top:auto; }
+.hb-polish .hb-character-card-admin { border-color:color-mix(in srgb,var(--hb-accent) 22%,var(--hb-line)); }
+.hb-polish .hb-character-card-admin > button:last-child { background:rgba(183,58,64,.055); }
+.hb-polish .hb-character-empty { grid-column:1/-1; }
+/* Formulario visual consistente */
+.hb-polish .hb-form { padding:22px; border:1px solid var(--hb-line); border-radius:19px; background:linear-gradient(140deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 55%,transparent)); box-shadow:inset 0 1px rgba(255,255,255,.035); }
+.hb-polish .hb-form-heading { display:flex; align-items:center; gap:13px; padding-bottom:16px; border-bottom:1px solid var(--hb-line); margin:0 0 7px; }
+.hb-polish .hb-form-heading h3 { margin:4px 0; font-family:'Space Grotesk',Manrope,sans-serif; font-size:19px; letter-spacing:-.03em; }
+.hb-polish .hb-form-heading p { margin:0; color:var(--hb-muted); line-height:1.5; font-size:12px; }
+.hb-polish .hb-form label { color:var(--hb-muted); font-size:12px; font-weight:750; }
+.hb-polish .hb-form :is(input,select,textarea) { min-height:44px; border:1px solid var(--hb-line); border-radius:10px; background:var(--season-bg,#121014); color:var(--hb-fg); }
+.hb-polish .hb-form :is(input,select,textarea):focus { border-color:var(--hb-accent); box-shadow:0 0 0 3px var(--hb-soft); outline:0; }
+.hb-polish .hb-form .emoji-grid { gap:8px; }
+.hb-polish .hb-form .emoji-option { border-radius:9px; }
+.hb-polish .hb-form button.primary-button { border-radius:10px; }
+/* Bestiario */
+.hb-polish .hb-bestiary .hb-bestiary-hero { margin-bottom:19px; }
+.hb-polish .hb-bestiary .hb-bestiary-hero > div:first-child { flex:1 1 330px; }
+.hb-polish .hb-bestiary .hb-bestiary-hero .bestiary-add-button { min-height:42px; padding:11px 16px; border-radius:11px; }
+.hb-polish .hb-bestiary-metrics { margin:0 0 24px; }
+.hb-polish .hb-toolbar-label { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:9px; }
+.hb-polish .hb-toolbar-label strong { color:var(--hb-muted); font-size:11px; }
+.hb-polish .hb-bestiary-toolbar { display:flex; position:relative; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:22px; padding:12px; border:1px solid var(--hb-line); border-radius:15px; background:color-mix(in srgb,var(--hb-surface) 85%,transparent); }
+.hb-polish .hb-bestiary-toolbar .hb-search-symbol { position:absolute; left:23px; color:var(--hb-accent); font-size:24px; pointer-events:none; }
+.hb-polish .hb-bestiary-toolbar input { flex:1 1 240px; min-width:0; padding-left:41px; }
+.hb-polish .hb-bestiary-toolbar select { flex:0 1 220px; min-width:150px; }
+.hb-polish .hb-bestiary-toolbar :is(input,select) { min-height:43px; border:1px solid var(--hb-line); border-radius:11px; background:var(--season-bg,#121014); color:var(--hb-fg); }
+.hb-polish .hb-bestiary-toolbar :is(input,select):focus { border-color:var(--hb-accent); outline:2px solid var(--hb-soft); }
+.hb-polish .hb-reset-filters { min-height:42px; border-radius:10px; }
+.hb-polish .hb-bestiary .bestiary-creature-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr)); gap:17px; }
+.hb-polish .hb-bestiary .hb-bestiary-card { min-width:0; border:1px solid var(--hb-line); border-radius:19px; background:var(--hb-surface); overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.08); transition:transform .18s,border-color .18s,box-shadow .18s; }
+.hb-polish .hb-bestiary .hb-bestiary-card:hover { transform:translateY(-4px); border-color:color-mix(in srgb,var(--hb-accent) 48%,var(--hb-line)); box-shadow:0 15px 32px rgba(0,0,0,.15); }
+.hb-polish .hb-bestiary .hb-bestiary-card:focus-visible { outline:2px solid var(--hb-accent); outline-offset:3px; }
+.hb-polish .hb-bestiary-card .bestiary-creature-image,.hb-polish .hb-bestiary-card .bestiary-creature-placeholder { width:100%; height:185px; object-fit:cover; border-radius:0; }
+.hb-polish .hb-bestiary-card .bestiary-creature-placeholder { display:grid; place-items:center; background:radial-gradient(circle at 45% 30%,var(--hb-soft),var(--hb-surface-alt)); color:var(--hb-accent); font-size:58px; }
+.hb-polish .hb-bestiary-card .bestiary-creature-info { display:grid; align-content:start; gap:6px; min-height:130px; padding:16px; }
+.hb-polish .hb-bestiary-card .bestiary-creature-info > .hb-bestiary-category { justify-self:start; padding:5px 9px; border:1px solid color-mix(in srgb,var(--hb-accent) 25%,transparent); border-radius:100px; background:var(--hb-soft); color:var(--hb-accent); font-size:10px; font-weight:850; }
+.hb-polish .hb-bestiary-card .bestiary-creature-info h3 { margin:4px 0 0; overflow-wrap:anywhere; font-size:17px; line-height:1.35; color:var(--hb-fg); }
+.hb-polish .hb-bestiary-card .bestiary-creature-info p { display:flex; flex-wrap:wrap; gap:5px; align-items:center; color:var(--hb-muted); font-size:11px; margin:3px 0 6px; }
+.hb-polish .hb-bestiary-card .bestiary-creature-info p strong { color:var(--hb-fg); }
+.hb-polish .hb-danger-indicator { width:7px; height:7px; background:#e28a64; border-radius:100%; }
+.hb-polish .hb-bestiary-card .bestiary-creature-status { font-size:10px; line-height:1.5; }
+/* Loja: unificar as areas existentes com a nova linguagem visual */
+.hb-polish .hb-shops-hero { margin-bottom:18px; }
+.hb-polish .hb-market-metrics { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.hb-polish .hb-market-form { margin-bottom:20px; }
+.hb-polish .page-shops .shops-workspace { gap:16px; align-items:start; }
+.hb-polish .page-shops .shops-sidebar,.hb-polish .page-shops .shops-main { border:1px solid var(--hb-line); border-radius:19px; background:linear-gradient(155deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 57%,transparent)); box-shadow:0 7px 21px rgba(0,0,0,.065); }
+.hb-polish .page-shops .shops-sidebar-heading { border-bottom:1px solid var(--hb-line); }
+.hb-polish .page-shops .shop-card { border-radius:13px; transition:border-color .17s,background .17s,transform .17s; }
+.hb-polish .page-shops .shop-card:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--hb-accent) 35%,var(--hb-line)); }
+.hb-polish .page-shops .shop-card.is-selected { border-color:var(--hb-accent) !important; background:var(--hb-soft); }
+.hb-polish .page-shops .shops-hero { border:1px solid var(--hb-line); border-radius:16px; background:radial-gradient(ellipse at 0 0,var(--hb-soft),transparent 62%),var(--hb-surface-alt); }
+.hb-polish .page-shops .shop-product-card { border-radius:15px; }
+/* Campanhas: portfolio, controles administrativos, temporadas, economia e permissões */
+.hb-polish .hb-campaigns-page { display:grid; gap:17px; }
+.hb-polish .hb-campaigns-page > .hb-campaigns-hero { margin-bottom:0; }
+.hb-polish .hb-campaigns-hero > div:first-child { flex:1 1 330px; }
+.hb-polish .hb-campaign-chooser { margin:0; }
+.hb-polish .hb-campaign-chooser-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,265px),1fr)); gap:11px; }
+.hb-polish .hb-campaign-option { display:flex; align-items:center; gap:11px; min-width:0; padding:15px; border:1px solid var(--hb-line); border-radius:13px; background:color-mix(in srgb,var(--hb-surface-alt) 45%,transparent); color:var(--hb-fg); cursor:pointer; text-align:left; transition:transform .15s,border-color .15s; }
+.hb-polish .hb-campaign-option:hover { transform:translateY(-2px); border-color:var(--hb-accent); }
+.hb-polish .hb-campaign-option.is-selected { background:var(--hb-soft); border-color:color-mix(in srgb,var(--hb-accent) 50%,var(--hb-line)); }
+.hb-polish .hb-campaign-option-art { display:grid; place-items:center; width:44px; height:44px; flex:0 0 44px; border-radius:12px; background:var(--hb-soft); color:var(--hb-accent); font-size:24px; }
+.hb-polish .hb-campaign-option-copy { display:grid; flex:1; min-width:0; gap:4px; }
+.hb-polish .hb-campaign-option-copy strong { font-size:13px; overflow-wrap:anywhere; }
+.hb-polish .hb-campaign-option-copy small { color:var(--hb-muted); font-size:10px; }
+.hb-polish .hb-campaign-selection { align-self:flex-end; color:var(--hb-accent); font-size:10px; font-weight:850; white-space:nowrap; }
+.hb-polish .hb-campaigns-page > .add-form { margin:0; }
+.hb-polish .hb-campaigns-page .season-editor-toggle { justify-self:start; min-height:41px; border-radius:10px; }
+.hb-polish .hb-campaigns-page .campaign-editor-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr)); gap:12px; }
+.hb-polish .hb-campaigns-page .campaign-editor-grid .item-card { gap:9px; padding:18px; border:1px solid var(--hb-line); border-radius:15px; background:var(--hb-surface); }
+.hb-polish .hb-campaigns-page .campaign-editor-grid .item-card h3 { margin:0; font-size:15px; }
+.hb-polish .hb-campaigns-page .campaign-editor-grid .item-card button { align-self:stretch; border-radius:9px; }
+.hb-polish .hb-campaigns-page .hb-admin-panel { min-width:0; padding:22px; border:1px solid var(--hb-line); border-radius:19px; background:linear-gradient(145deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 50%,transparent)); }
+.hb-polish .hb-season-editor { gap:19px; }
+.hb-polish .hb-season-create-form { display:grid; gap:14px; }
+.hb-polish .hb-season-create-form label { display:grid; gap:7px; font-size:12px; }
+.hb-polish .hb-season-create-form :is(input,select,textarea) { padding:11px 12px; min-height:43px; border:1px solid var(--hb-line); border-radius:10px; background:var(--season-bg,#121014); color:var(--hb-fg); }
+.hb-polish .hb-season-create-form > .primary-button { justify-self:start; }
+.hb-polish .hb-season-order { margin:0; background:color-mix(in srgb,var(--hb-surface-alt) 40%,transparent); }
+.hb-polish .hb-season-order > div:not(.hb-form-heading) > div { border-radius:13px !important; border-color:var(--hb-line) !important; background:color-mix(in srgb,var(--hb-surface-alt) 42%,transparent); }
+.hb-polish .hb-season-order button { min-width:37px; border-radius:9px; }
+.hb-polish .hb-currency-panel .currency-balance { padding:13px 15px; border:1px solid var(--hb-line); border-radius:12px; background:color-mix(in srgb,var(--hb-surface-alt) 48%,transparent); }
+.hb-polish .hb-currency-panel .currency-balance > span { font-size:13px; font-weight:800; }
+.hb-polish .hb-currency-panel .form-row { gap:11px; }
+.hb-polish .hb-currency-panel :is(input,select) { min-height:42px; border:1px solid var(--hb-line); border-radius:10px; background:var(--season-bg,#121014); color:var(--hb-fg); }
+.hb-polish .hb-campaigns-page .hb-members-panel .item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr)); gap:14px; }
+.hb-polish .hb-member-card { gap:10px; padding:18px; border-radius:16px; }
+.hb-polish .hb-member-card .item-art { display:grid; place-items:center; width:56px; height:56px; border-radius:15px; background:var(--hb-soft); font-size:29px; }
+.hb-polish .hb-member-card .item-category { color:var(--hb-accent); font-size:10px; font-weight:850; letter-spacing:.09em; }
+.hb-polish .hb-member-card h3 { margin:0; font-size:16px; }
+.hb-polish .hb-member-card p { margin:0; min-height:32px; }
+.hb-polish .hb-member-card > div:last-child { width:100%; }
+.hb-polish .hb-member-card button { min-height:36px; border-radius:9px; }
+.hb-polish .hb-access-panel > div:not(.inventory-heading) { max-width:100%; }
+.hb-polish .hb-access-panel > div:not(.inventory-heading) :is(select,input) { border-radius:10px; min-height:42px; }
+.hb-polish .hb-access-panel label { color:var(--hb-muted); }
+/* Geral: estados de foco, responsividade e movimento reduzido */
+.hb-polish .page-content :is(.hb-metric-button,.hb-roster-entry,.hb-campaign-option,.hb-character-card button,.hb-hero button,.hb-bestiary-card):focus-visible { outline:2px solid var(--hb-accent); outline-offset:3px; }
+@media(max-width:1120px) { .hb-polish .hb-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .hb-polish .hb-dashboard-grid { grid-template-columns:1fr; } }
+@media(max-width:760px) { .hb-polish .hb-hero { padding:22px; } .hb-polish .hb-hero-emblem { width:65px; height:65px; flex-basis:65px; font-size:33px; border-radius:18px; } .hb-polish .hb-market-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .hb-polish .hb-characters-hero > div:last-child { width:100%; } .hb-polish .hb-characters-hero > div:last-child :is(button) { flex:1; } }
+@media(max-width:520px) { .hb-polish .hb-metric-grid { grid-template-columns:1fr; } .hb-polish .hb-hero { gap:14px; padding:20px; border-radius:17px; } .hb-polish .hb-hero h2 { font-size:27px; } .hb-polish .hb-hero-emblem { display:none; } .hb-polish .hb-panel,.hb-polish .hb-form,.hb-polish .hb-campaigns-page .hb-admin-panel { padding:16px; border-radius:15px; } .hb-polish .hb-campaign-option { flex-wrap:wrap; } .hb-polish .hb-campaign-selection { margin-left:auto; } .hb-polish .hb-bestiary-toolbar select { flex:1 1 100%; } .hb-polish .hb-bestiary-toolbar .hb-reset-filters { flex:1 1 100%; } .hb-polish .hb-journey-entry { flex-wrap:wrap; } .hb-polish .hb-season-status { margin-left:52px; } .hb-polish .hb-hero-actions > button { flex:1 1 100%; } .hb-polish .hb-characters-hero button { flex:1; } }
+
+.hb-polish .page-content.page-campaigns > .campaigns-page-panel.hb-campaigns-page { display:grid !important; gap:17px; }
+.hb-polish .hb-master-page .master-shield { margin:0; padding:0; border:0; background:none; }
+.hb-polish .hb-master-page .master-shield-heading { margin-bottom:20px; }
+.hb-polish .hb-master-page .master-shield-heading h2 { margin:6px 0 8px; }
+.hb-polish .hb-master-page .master-shield-grid { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 17px; }
+.hb-polish .hb-master-page .master-shield-stat { min-height:92px; padding:17px; border:1px solid var(--hb-line); border-radius:15px; background:linear-gradient(145deg,var(--hb-surface),var(--hb-surface-alt)); }
+.hb-polish .hb-master-page .master-shield-stat span { text-transform:uppercase; font-size:10px; letter-spacing:.08em; font-weight:800; }
+.hb-polish .hb-master-page .master-shield-stat strong { margin-top:10px; font-family:'Space Grotesk',Manrope,sans-serif; font-size:20px; line-height:1.3; }
+.hb-polish .hb-master-page .master-shield-columns { margin-top:16px; }
+.hb-polish .hb-master-page .master-shield-columns > div { border-radius:17px; background:linear-gradient(155deg,var(--hb-surface),color-mix(in srgb,var(--hb-surface-alt) 62%,transparent)); }
+.hb-polish .hb-master-page .master-shield-character { border-radius:14px; }
+.hb-polish .hb-master-page .campaign-activity-panel { margin-top:20px; border-radius:17px; }
+@media(max-width:1000px) { .hb-polish .hb-master-page .master-shield-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:500px) { .hb-polish .hb-master-page .master-shield-stat { min-height:84px; padding:13px; } .hb-polish .hb-master-page .master-shield-stat strong { font-size:16px; } }
+@media (prefers-reduced-motion: reduce) { .hb-polish .hb-metric,.hb-polish .hb-character-card,.hb-polish .hb-bestiary-card,.hb-polish .hb-campaign-option,.hb-polish .nav-link { transition:none !important; transform:none !important; } }
+`}</style>
+
+<style>{`
+
+/* HäxBag · Nova navegação principal + Escudo do Mestre em seções independentes */
+.hb-polish .hb-sidebar{gap:0;padding:22px 15px 17px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--season-primary) 32%,transparent) transparent;background:radial-gradient(ellipse at 12% 0%,color-mix(in srgb,var(--season-primary) 11%,transparent),transparent 45%),linear-gradient(180deg,var(--season-bg,#141217),color-mix(in srgb,var(--season-surface,#201b21) 80%,var(--season-bg,#141217)))}
+.hb-polish .hb-sidebar-brand{display:flex;gap:11px;align-items:center;padding:7px 8px 20px;text-decoration:none;color:var(--season-text,#f4f0ea);border-bottom:1px solid var(--season-line,rgba(255,255,255,.12));margin-bottom:18px;min-height:65px}
+.hb-polish .hb-sidebar-brand .brand-mark{flex:0 0 44px;width:44px;height:44px;font-size:22px;border-radius:14px}
+.hb-polish .hb-sidebar-brand-copy{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hb-polish .hb-sidebar-brand-copy strong{font-family:'Space Grotesk',Manrope,sans-serif;font-size:23px;letter-spacing:-1px;line-height:1}
+.hb-polish .hb-sidebar-brand-copy small{font-size:8px;letter-spacing:.16em;font-weight:800;color:var(--season-muted,#a9a1ac)}
+.hb-polish .hb-sidebar-brand-spark{margin-left:auto;color:var(--season-primary,#d9af84);font-size:13px;opacity:.8}
+.hb-polish .hb-sidebar-workspace{padding:15px 13px 12px;border:1px solid color-mix(in srgb,var(--season-primary,#d6a37d) 19%,var(--season-line,rgba(255,255,255,.1)));border-radius:16px;background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary,#d6a37d) 9%,var(--season-surface,#211d23)),var(--season-surface,#211d23));box-shadow:inset 0 1px rgba(255,255,255,.04)}
+.hb-polish .hb-sidebar-workspace-top{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:14px}
+.hb-polish .hb-sidebar-eyebrow{font-size:9px;font-weight:850;letter-spacing:.10em;color:var(--season-primary,#d6a37d)}
+.hb-polish .hb-sidebar-role{padding:4px 7px;border-radius:99px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 13%,transparent);font-weight:750;font-size:9px;color:var(--season-primary,#d6a37d)}
+.hb-polish .hb-sidebar-workspace label{display:block;margin-bottom:7px;color:var(--season-muted,#b3aab5);font-weight:700;font-size:10px}
+.hb-polish .hb-sidebar-campaign-field{display:flex;align-items:center;gap:8px;padding:5px 9px;min-width:0;border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:11px;background:var(--season-bg,#171319)}
+.hb-polish .hb-sidebar-campaign-symbol{color:var(--season-primary,#d6a37d);font-size:18px}
+.hb-polish .hb-sidebar-campaign-field select{appearance:auto;min-width:0;width:100%;height:35px;border:0!important;outline:none;background:transparent!important;color:var(--season-text,#eee);font:700 11px Manrope,sans-serif;cursor:pointer}
+.hb-polish .hb-sidebar-create{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;margin-top:10px;min-height:35px;border:1px dashed color-mix(in srgb,var(--season-primary,#d6a37d) 36%,var(--season-line,rgba(255,255,255,.14)));border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 5%,transparent);color:var(--season-primary,#d6a37d);font-size:11px;font-weight:800;cursor:pointer;transition:background .15s,border-color .15s}
+.hb-polish .hb-sidebar-create:hover{background:color-mix(in srgb,var(--season-primary,#d6a37d) 14%,transparent);border-color:var(--season-primary,#d6a37d)}
+.hb-polish .hb-sidebar-create span{font-size:19px;line-height:1}
+.hb-polish .hb-sidebar-nav{display:flex;flex-direction:column;gap:15px;margin:23px 0 20px}
+.hb-polish .hb-sidebar-nav-group{display:flex;flex-direction:column;gap:5px;min-width:0}
+.hb-polish .hb-sidebar-group-title{padding:0 10px 7px;font-size:9px;font-weight:850;letter-spacing:.15em;color:var(--season-muted,#aea4ad);opacity:.85}
+.hb-polish .hb-sidebar-nav .nav-link{display:flex;align-items:center;gap:10px;min-width:0;min-height:43px;padding:6px 10px;border-radius:12px;color:var(--season-muted,#b3aab6);font-weight:650;letter-spacing:.005em}
+.hb-polish .hb-sidebar-nav .nav-link.active{color:var(--season-text,#f4efea);font-weight:850;box-shadow:inset 3px 0 var(--season-primary,#d6a37d),0 4px 15px rgba(0,0,0,.1)}
+.hb-polish .hb-sidebar-nav .nav-link:focus-visible,.hb-polish .hb-sidebar-create:focus-visible,.hb-polish .hb-sidebar-invite-button:focus-visible{outline:2px solid var(--season-primary,#d6a37d);outline-offset:2px}
+.hb-polish .hb-sidebar-nav-icon{display:grid;place-items:center;flex:0 0 31px;width:31px!important;height:31px;border-radius:9px;border:1px solid var(--season-line,rgba(255,255,255,.11));background:var(--season-surface-alt,rgba(255,255,255,.05));color:var(--season-primary,#d6a37d)!important;font-size:18px!important;line-height:1}
+.hb-polish .hb-sidebar-nav .nav-link.active .hb-sidebar-nav-icon{background:color-mix(in srgb,var(--season-primary,#d6a37d) 20%,transparent);border-color:color-mix(in srgb,var(--season-primary,#d6a37d) 32%,transparent)}
+.hb-polish .hb-sidebar-nav-name{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.hb-polish .hb-sidebar-nav .nav-count{margin-left:auto;padding:4px 7px;border-radius:7px;font-size:10px;font-weight:800;background:color-mix(in srgb,var(--season-primary,#d6a37d) 10%,var(--season-surface-alt,#211d23))}
+.hb-polish .hb-sidebar-nav-flair{margin-left:auto;color:var(--season-primary,#d6a37d);font-size:8px;letter-spacing:.04em;font-weight:850}
+.hb-polish .hb-sidebar-nav .nav-link:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.hb-polish .hb-sidebar-footer{display:grid;gap:12px;margin-top:auto}
+.hb-polish .hb-sidebar-invite{padding:14px;border-radius:15px;background:linear-gradient(135deg,color-mix(in srgb,var(--season-primary,#d6a37d) 10%,var(--season-surface,#1d1820)),var(--season-surface,#1d1820))}
+.hb-polish .hb-sidebar-invite-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.hb-polish .hb-sidebar-invite .invite-icon{display:grid;place-items:center;width:33px;height:33px;margin:0;border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 15%,transparent)}
+.hb-polish .hb-sidebar-invite-tag{font-size:8px;font-weight:850;letter-spacing:.13em;color:var(--season-primary,#d6a37d)}
+.hb-polish .hb-sidebar-invite strong{font-size:12px}
+.hb-polish .hb-sidebar-invite p{margin:7px 0 12px;line-height:1.5}
+.hb-polish .hb-sidebar-invite .hb-sidebar-invite-button{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:10px 11px;border:1px solid color-mix(in srgb,var(--season-primary,#d6a37d) 38%,transparent);border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 15%,transparent);color:var(--season-primary,#d6a37d);font-size:11px;font-weight:850;cursor:pointer}
+.hb-polish .hb-sidebar-invite .hb-sidebar-copy{display:block;width:100%;padding:9px 4px 1px;text-align:center;font-size:10px;color:var(--season-muted,#b2a9b5);cursor:pointer}
+.hb-polish .hb-sidebar-profile{gap:10px;margin-top:0;padding:14px 3px 2px}
+.hb-polish .hb-sidebar-profile .profile-info{min-width:0}
+.hb-polish .hb-sidebar-profile .profile-info :is(strong,small){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-polish .hb-sidebar-online{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#77c49a;box-shadow:0 0 0 4px rgba(119,196,154,.10)}
+.hb-polish .hb-topbar-trail{min-width:0;gap:10px}
+.hb-polish .hb-topbar-trail span,.hb-polish .hb-topbar-trail strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-polish .hb-topbar-trail strong{color:var(--season-primary,#d6a37d);font-weight:800}
+/* Escudo do Mestre: topo de controle, party principal, iniciativas, inimigos e atividades */
+.hb-polish .hb-ms-dashboard{padding:0;border:0;background:none;box-shadow:none;overflow:visible;isolation:auto}
+.hb-polish .hb-ms-dashboard:before{display:none}
+.hb-polish .hb-ms-dashboard .master-shield-heading{margin:0 0 13px;padding:clamp(22px,3vw,34px);border-radius:23px}
+.hb-polish .hb-ms-quicknav{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:6px 0 11px;margin-bottom:6px}
+.hb-polish .hb-ms-quicknav a{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:11px;border:1px solid var(--season-line,rgba(255,255,255,.13));background:var(--season-surface,#1c1920);color:var(--season-muted,#bcb3bf);font-size:11px;font-weight:800;text-decoration:none;transition:background .15s,border-color .15s}
+.hb-polish .hb-ms-quicknav a:hover,.hb-polish .hb-ms-quicknav a:focus-visible{background:color-mix(in srgb,var(--season-primary,#d6a37d) 12%,var(--season-surface,#1c1920));border-color:var(--season-primary,#d6a37d);color:var(--season-text,#fff)}
+.hb-polish .hb-ms-quicknav a span{font-size:16px;color:var(--season-primary,#d6a37d)}
+.hb-polish .hb-ms-stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:6px 0 14px;gap:11px}
+.hb-polish .hb-ms-stats .master-shield-stat{min-height:105px;background:linear-gradient(140deg,var(--season-surface,#201c23),color-mix(in srgb,var(--season-surface-alt,#2a252b) 56%,transparent))}
+.hb-polish .hb-ms-stats .master-shield-stat strong{font-size:clamp(22px,2.7vw,29px)}
+.hb-polish .hb-ms-stats .master-shield-stat .hb-ms-season-name{font-size:clamp(14px,1.5vw,18px);line-height:1.4}
+.hb-polish .hb-ms-stats .master-shield-stat small{display:block;position:relative;z-index:1;margin-top:7px;font-size:10px;color:var(--season-muted,#bcb3bf)}
+.hb-polish .hb-ms-session-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:18px 20px;margin:0 0 14px;border-radius:18px;border:1px solid color-mix(in srgb,var(--season-primary,#d6a37d) 24%,var(--season-line,rgba(255,255,255,.12)));background:radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--season-primary,#d6a37d) 11%,transparent),transparent 60%),var(--season-surface,#1d1921)}
+.hb-polish .hb-ms-session-intro{min-width:210px;flex:1 1 230px}
+.hb-polish .hb-ms-session-intro h3{margin:5px 0 4px;font-size:19px;letter-spacing:-.03em}
+.hb-polish .hb-ms-session-intro p{margin:0;font-size:11px;line-height:1.5;color:var(--season-muted,#afa5b2)}
+.hb-polish .hb-ms-session-actions{display:flex;align-items:end;gap:9px;flex:2 1 300px;justify-content:flex-end}
+.hb-polish .hb-ms-session-actions label{flex:1;max-width:370px;display:grid;gap:6px;font-size:10px;font-weight:750;color:var(--season-muted,#afa5b2)}
+.hb-polish .hb-ms-session-actions select{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--season-line,rgba(255,255,255,.15));border-radius:11px;background:var(--season-bg,#151219);color:var(--season-text,#eee);font:650 12px Manrope,sans-serif}
+.hb-polish .hb-ms-session-actions button{min-height:42px;border-radius:11px;font-size:11px;white-space:nowrap}
+.hb-polish .hb-ms-campaign-description{margin:0 0 16px;padding:12px 16px;border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:13px;background:var(--season-surface,#1d1921);color:var(--season-muted,#afa5b2)}
+.hb-polish .hb-ms-campaign-description summary{cursor:pointer;color:var(--season-text,#eee);font-size:12px;font-weight:800}
+.hb-polish .hb-ms-campaign-description p{margin:11px 0 2px;line-height:1.6;font-size:12px;white-space:pre-wrap}
+.hb-polish .hb-ms-party-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch;margin-bottom:14px}
+.hb-polish .hb-ms-pane{min-width:0;padding:clamp(17px,2.2vw,24px);border:1px solid var(--season-line,rgba(255,255,255,.13));border-radius:20px;background:linear-gradient(155deg,var(--season-surface,#1d1a21),color-mix(in srgb,var(--season-surface-alt,#252129) 60%,transparent));box-shadow:inset 0 1px rgba(255,255,255,.025)}
+.hb-polish .hb-ms-pane-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px}
+.hb-polish .hb-ms-pane-heading h3{margin:6px 0 5px;font-size:clamp(18px,2vw,23px);line-height:1.2;letter-spacing:-.035em}
+.hb-polish .hb-ms-pane-heading p{margin:0;font-size:11px;color:var(--season-muted,#afa5b2);line-height:1.5}
+.hb-polish .hb-ms-section-count{padding:7px 10px;border-radius:50px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 12%,transparent);color:var(--season-primary,#d6a37d);font-size:10px;font-weight:850;white-space:nowrap}
+.hb-polish .hb-ms-party-main .master-shield-character-list{grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));margin-top:0}
+.hb-polish .hb-ms-party-main .master-shield-character{min-height:195px;border-radius:15px}
+.hb-polish .hb-ms-party-members .hb-ms-member-list{display:grid;gap:9px;list-style:none;margin:0;padding:0}
+.hb-polish .hb-ms-party-members .hb-ms-member-list li{display:flex;align-items:center;gap:9px;min-width:0;padding:10px;border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:12px;background:var(--season-bg,#16121b)}
+.hb-polish .hb-ms-member-avatar{display:grid;place-items:center;flex:0 0 33px;width:33px;height:33px;border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 17%,transparent);color:var(--season-primary,#d6a37d);font-weight:850;font-size:13px}
+.hb-polish .hb-ms-member-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:11px;font-weight:750}
+.hb-polish .hb-ms-member-list li small{padding:4px 7px;border-radius:50px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 10%,transparent);font-size:9px;color:var(--season-primary,#d6a37d);font-weight:750}
+.hb-polish .hb-ms-initiative-section{margin:0 0 14px;scroll-margin-top:85px}
+.hb-polish .hb-ms-initiative-content{padding:0;margin:0}
+.hb-polish .hb-ms-initiative-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.hb-polish .hb-ms-initiative-toolbar p{margin:0;font-size:11px;color:var(--season-muted,#b8acb9)}
+.hb-polish .hb-ms-initiative-toolbar button{min-height:34px;font-size:11px}
+.hb-polish .hb-ms-initiative-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:11px;padding:12px 14px;border-radius:12px;border:1px solid var(--season-line,rgba(255,255,255,.12));background:var(--season-bg,#151119)}
+.hb-polish .hb-ms-initiative-row:not(:last-child){margin-bottom:7px}
+.hb-polish .hb-ms-enemy-section{scroll-margin-top:85px;margin:0;padding:clamp(17px,2.2vw,24px);border-radius:20px;box-shadow:inset 0 1px rgba(255,255,255,.03)}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr))}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-card{min-height:195px}
+.hb-polish .hb-ms-combined-initiative-list{display:grid;gap:8px}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-row{margin:0;min-height:70px}
+.hb-polish .hb-ms-initiative-identity{display:flex;align-items:center;gap:10px;min-width:0}
+.hb-polish .hb-ms-initiative-rank{flex:0 0 30px;font-size:14px;color:var(--season-primary,#d6a37d);font-variant-numeric:tabular-nums}
+.hb-polish .hb-ms-initiative-avatar{display:grid;place-items:center;flex:0 0 37px;width:37px;height:37px;border-radius:11px;background:color-mix(in srgb,var(--season-primary,#d6a37d) 12%,transparent);font-size:20px}
+.hb-polish .hb-ms-initiative-person{display:grid;gap:3px;min-width:0}
+.hb-polish .hb-ms-initiative-person strong{font-size:12px;overflow-wrap:anywhere}
+.hb-polish .hb-ms-initiative-person small{font-size:10px;font-weight:750;color:var(--season-muted,#bcb3bf)}
+.hb-polish .hb-ms-initiative-enemy .hb-ms-initiative-avatar{background:rgba(197,80,86,.15)}
+.hb-polish .hb-ms-initiative-enemy .hb-ms-initiative-person small{color:#d88b90}
+.hb-polish .hb-ms-initiative-score{display:flex;align-items:center;gap:12px}
+.hb-polish .hb-ms-initiative-score > strong{min-width:45px;text-align:right;font-size:20px;color:var(--season-primary,#d6a37d);font-variant-numeric:tabular-nums}
+.hb-polish .hb-ms-initiative-score > strong.pending{font-size:11px;font-weight:650;color:var(--season-muted,#bcb3bf)}
+.hb-polish .hb-ms-initiative-score button{min-height:32px;padding:6px 10px;font-size:11px}
+.hb-polish .hb-ms-activity-section{margin:0;border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:20px;background:var(--season-surface,#201a22);padding:clamp(17px,2.2vw,24px);scroll-margin-top:85px}
+.hb-polish .hb-ms-activity-section .campaign-activity-heading{margin-bottom:16px}
+.hb-polish #hb-ms-players{scroll-margin-top:85px}
+@media(max-width:1130px){.hb-polish .hb-ms-party-layout{grid-template-columns:1fr}.hb-polish .hb-ms-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.hb-polish .hb-ms-session-actions{justify-content:stretch}.hb-polish .hb-ms-session-actions label{max-width:none}.hb-polish .hb-ms-quicknav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.hb-polish .hb-ms-quicknav a{justify-content:center;text-align:center}.hb-polish .hb-ms-party-main .master-shield-character-list{grid-template-columns:1fr}}
+@media(max-width:560px){.hb-polish .hb-ms-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-polish .hb-ms-session-actions{flex-direction:column;align-items:stretch}.hb-polish .hb-ms-session-actions label{width:100%}.hb-polish .hb-ms-stats .master-shield-stat{min-height:94px}.hb-polish .hb-ms-quicknav a{font-size:10px;padding:9px 6px}.hb-polish .hb-ms-party-layout{gap:11px}}
+@media(max-width:800px){.hb-polish .hb-sidebar{max-height:none;overflow:visible;padding:15px 18px}.hb-polish .hb-sidebar-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.hb-polish .hb-sidebar-nav-group:last-child{grid-column:1/-1}.hb-polish .hb-sidebar-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:end}.hb-polish .hb-sidebar-profile{align-self:end}}
+@media(max-width:540px){.hb-polish .hb-sidebar-nav{grid-template-columns:1fr}.hb-polish .hb-sidebar-nav-group:last-child{grid-column:auto}.hb-polish .hb-sidebar-footer{grid-template-columns:1fr}.hb-polish .hb-ms-quicknav{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.hb-polish .hb-sidebar-nav .nav-link,.hb-polish .hb-ms-quicknav a{transition:none;transform:none}}
+
+/* HäxBag · Escudo do Mestre: composição visual refinada */
+.hb-polish .hb-ms-dashboard{--hb-ms-red: #cf686b;--hb-ms-gold:var(--season-primary,#cfa777)}
+.hb-polish .hb-ms-dashboard .master-shield-heading{margin-bottom:15px;min-height:200px;align-items:center;background:radial-gradient(ellipse at 82% 28%,color-mix(in srgb,var(--season-primary,#cfa777) 10%,transparent),transparent 49%),radial-gradient(ellipse at 0% 0%,color-mix(in srgb,var(--season-primary,#cfa777) 14%,transparent),transparent 55%),linear-gradient(125deg,var(--season-surface,#1d1b20),var(--season-bg,#141218));border-color:color-mix(in srgb,var(--season-primary,#cfa777) 24%,var(--season-line,rgba(255,255,255,.12)))}
+.hb-polish .hb-ms-dashboard .master-shield-heading h2{font-size:clamp(30px,3.6vw,44px);max-width:650px;line-height:1.08}
+.hb-polish .hb-ms-dashboard .master-shield-heading p{max-width:620px;font-size:12px;line-height:1.75}
+.hb-polish .hb-ms-hero-stamp{display:grid;justify-items:center;gap:10px;position:relative;z-index:1;flex-shrink:0}
+.hb-polish .hb-ms-hero-stamp .hb-hero-emblem{width:98px;height:98px;flex:0 0 98px;border-radius:27px;box-shadow:0 12px 34px color-mix(in srgb,var(--season-primary,#cfa777) 10%,transparent),inset 0 1px rgba(255,255,255,.08)}
+.hb-polish .hb-ms-hero-stamp small{color:var(--season-muted,#afa7b0);font-size:9px;letter-spacing:.15em;font-weight:850}
+.hb-polish .hb-ms-quicknav{padding:3px 0 11px;gap:8px}
+.hb-polish .hb-ms-quicknav a{min-height:40px;padding:10px 14px;border-radius:12px;transition:background .17s,border-color .17s,transform .17s;box-shadow:inset 0 1px rgba(255,255,255,.018)}
+.hb-polish .hb-ms-quicknav a:hover{transform:translateY(-2px)}
+.hb-polish .hb-ms-stats{gap:12px;margin:3px 0 14px}
+.hb-polish .hb-ms-stats .master-shield-stat{position:relative;overflow:hidden;min-height:115px;display:flex;flex-direction:column;justify-content:space-between;gap:0;padding:17px 18px;border-radius:17px;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.hb-polish .hb-ms-stats .master-shield-stat:before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--season-primary,#cfa777),transparent 82%);opacity:.72}
+.hb-polish .hb-ms-stats .master-shield-stat:nth-child(2):before{background:linear-gradient(90deg,var(--hb-ms-red),transparent 85%)}
+.hb-polish .hb-ms-stats .master-shield-stat strong{margin:8px 0 0;font-size:clamp(25px,2.7vw,30px);line-height:1.15;word-break:break-word}
+.hb-polish .hb-ms-stats .master-shield-stat strong em{font-size:14px;font-style:normal;font-weight:650;color:var(--season-muted,#afa7b0)}
+.hb-polish .hb-ms-stats .master-shield-stat span{font-size:10px;letter-spacing:.065em;text-transform:uppercase}
+.hb-polish .hb-ms-stats .master-shield-stat small{margin-top:7px;font-size:10px}
+.hb-polish .hb-ms-session-toolbar{gap:18px;padding:21px 23px;margin-bottom:18px;border-radius:19px}
+.hb-polish .hb-ms-session-intro h3{font-size:20px}
+.hb-polish .hb-ms-session-intro p{font-size:11px;max-width:430px}
+.hb-polish .hb-ms-group-heading,.hb-polish .hb-ms-support-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:28px 0 13px}
+.hb-polish .hb-ms-group-heading-left{display:flex;align-items:center;gap:13px;min-width:0}
+.hb-polish .hb-ms-group-index{width:39px;height:39px;flex:0 0 39px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--season-primary,#cfa777) 28%,var(--season-line,rgba(255,255,255,.12)));border-radius:12px;background:color-mix(in srgb,var(--season-primary,#cfa777) 10%,var(--season-surface,#211d25));font-size:13px;font-weight:900;color:var(--season-primary,#cfa777);font-variant-numeric:tabular-nums}
+.hb-polish .hb-ms-group-heading h3,.hb-polish .hb-ms-support-heading h3{font-size:clamp(19px,2.2vw,23px);letter-spacing:-.035em;line-height:1.2;margin:4px 0 3px}
+.hb-polish .hb-ms-group-heading p{font-size:11px;line-height:1.6;color:var(--season-muted,#afa7b0);margin:0}
+.hb-polish .hb-ms-legend{display:flex;gap:7px;flex-wrap:wrap}
+.hb-polish .hb-ms-legend span{display:flex;gap:7px;align-items:center;white-space:nowrap;padding:7px 10px;border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:100px;background:var(--season-surface,#211d23);font-size:10px;color:var(--season-muted,#aaa)}
+.hb-polish .hb-ms-legend-dot{width:7px;height:7px;display:block;border-radius:100px;background:var(--season-primary,#cfa777);box-shadow:0 0 0 3px color-mix(in srgb,var(--season-primary,#cfa777) 11%,transparent)}
+.hb-polish .hb-ms-legend-dot.enemies{background:var(--hb-ms-red);box-shadow:0 0 0 3px rgba(207,104,107,.10)}
+.hb-polish .hb-ms-party-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:13px;align-items:stretch;margin:0 0 16px;min-width:0}
+.hb-polish .hb-ms-party-layout>.hb-ms-party-main,.hb-polish .hb-ms-party-layout>.hb-ms-enemy-section{width:100%;min-width:0;margin:0;box-sizing:border-box;padding:clamp(19px,2.5vw,27px);border-radius:20px}
+.hb-polish .hb-ms-party-layout>.hb-ms-party-main{border-color:color-mix(in srgb,var(--season-primary,#cfa777) 18%,var(--season-line,rgba(255,255,255,.12)))}
+.hb-polish .hb-ms-party-layout>.hb-ms-enemy-section{border-color:color-mix(in srgb,var(--hb-ms-red) 18%,var(--season-line,rgba(255,255,255,.12)));background:linear-gradient(145deg,color-mix(in srgb,var(--hb-ms-red) 3%,var(--season-surface,#211d25)),var(--season-surface-alt,#2a252b))}
+.hb-polish .hb-ms-party-main .hb-ms-pane-heading,.hb-polish .hb-ms-enemy-section .hb-enemy-party-header{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.10))}
+.hb-polish .hb-ms-pane-heading h3,.hb-polish .hb-ms-enemy-section h3{font-size:clamp(20px,2.2vw,24px);letter-spacing:-.04em}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-header p{font-size:11px;line-height:1.6}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-kicker{color:var(--hb-ms-red)}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-counter{background:rgba(207,104,107,.10);border-color:rgba(207,104,107,.19);color:var(--hb-ms-red)}
+.hb-polish .hb-ms-party-main .master-shield-character-list,.hb-polish .hb-ms-enemy-section .hb-enemy-party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));align-items:stretch;gap:13px}
+.hb-polish .hb-ms-party-main .hb-ms-player-card,.hb-polish .hb-ms-enemy-section .hb-enemy-party-card{min-height:270px;max-width:none;padding:17px;border:1px solid var(--season-line,rgba(255,255,255,.13));border-radius:16px;background:linear-gradient(160deg,color-mix(in srgb,var(--season-surface-alt,#2b262e) 65%,var(--season-bg,#141218)),var(--season-surface,#211d24));box-shadow:0 4px 12px rgba(0,0,0,.035),inset 0 1px rgba(255,255,255,.025);transition:border-color .17s,box-shadow .17s,transform .17s}
+.hb-polish .hb-ms-party-main .hb-ms-player-card{display:flex;flex-direction:column;gap:14px;text-align:left;color:var(--season-text,#f4f1ef);cursor:pointer}
+.hb-polish .hb-ms-party-main .hb-ms-player-card:hover,.hb-polish .hb-ms-party-main .hb-ms-player-card:focus-visible{border-color:color-mix(in srgb,var(--season-primary,#cfa777) 50%,var(--season-line,rgba(255,255,255,.12)));transform:translateY(-2px);box-shadow:0 12px 26px rgba(0,0,0,.1)}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-card:hover{border-color:color-mix(in srgb,var(--hb-ms-red) 45%,var(--season-line,rgba(255,255,255,.12)));box-shadow:0 12px 26px rgba(0,0,0,.09)}
+.hb-polish .hb-ms-player-identity{display:flex;align-items:center;gap:11px;width:100%;min-height:51px;margin:0;text-align:left}
+.hb-polish .hb-ms-player-avatar,.hb-polish .hb-ms-enemy-section .hb-enemy-party-avatar{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border:1px solid color-mix(in srgb,var(--season-primary,#cfa777) 20%,transparent);border-radius:14px;background:color-mix(in srgb,var(--season-primary,#cfa777) 13%,transparent);font-size:25px;line-height:1}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-avatar{background:rgba(207,104,107,.13);border-color:rgba(207,104,107,.2)}
+.hb-polish .hb-ms-player-copy,.hb-polish .hb-ms-enemy-section .hb-enemy-party-card-head>div{display:block;min-width:0;flex:1}
+.hb-polish .hb-ms-player-copy strong,.hb-polish .hb-ms-enemy-section .hb-enemy-party-card-head strong{display:block;font-size:15px;font-weight:850;line-height:1.3;overflow-wrap:anywhere;color:var(--season-text,#f4f1ef)}
+.hb-polish .hb-ms-player-copy small,.hb-polish .hb-ms-enemy-section .hb-enemy-party-card-head small{display:block;margin-top:5px;font-size:10px;line-height:1.35;color:var(--season-muted,#afa7b0);font-weight:600}
+.hb-polish .hb-ms-card-arrow{font-size:19px;color:var(--season-primary,#cfa777);opacity:.7;margin-left:auto}
+.hb-polish .hb-ms-resource-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:9px;font-weight:850;letter-spacing:.095em;color:var(--season-muted,#afa7b0)}
+.hb-polish .hb-ms-party-main .master-shield-bars,.hb-polish .hb-ms-enemy-section .hb-enemy-party-resources{display:grid;gap:10px;min-width:0;margin:0}
+.hb-polish .hb-ms-party-main .master-shield-bar-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:5px 8px;align-items:center;text-align:left;font-size:11px}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>span:first-child{grid-column:1;grid-row:1;font-weight:850;line-height:1.3}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>strong:first-of-type{grid-column:3;grid-row:1;font-size:11px;line-height:1.3;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>.master-shield-bar{grid-column:1/-1;grid-row:2;width:100%;height:7px;margin:0;border-radius:20px;overflow:hidden;background:color-mix(in srgb,var(--season-muted,#aaa) 17%,transparent)}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>.master-shield-bar>i{display:block;height:100%;border-radius:20px;background:var(--season-primary,#cfa777)}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>.master-shield-extra-name{grid-column:1/3;grid-row:3}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>.master-shield-extra-value{grid-column:3;grid-row:3;font-size:10px}
+.hb-polish .hb-ms-party-main .master-shield-bar-row>.master-shield-bar-extra{grid-column:1/-1;grid-row:4}
+.hb-polish .hb-ms-party-main .master-shield-open-hint{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:11px;border-top:1px solid var(--season-line,rgba(255,255,255,.1));width:100%;text-align:left;font-size:10px;font-weight:800;color:var(--season-primary,#cfa777)}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-resource{grid-template-columns:30px minmax(0,1fr) auto;gap:5px 8px;font-size:11px}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-track{height:7px}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-initiative{margin-top:auto;padding-top:12px;border-top:1px solid var(--season-line,rgba(255,255,255,.1));gap:7px}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-initiative label{font-size:10px;font-weight:750}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-initiative input{min-height:38px}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-initiative button,.hb-polish .hb-ms-enemy-section .hb-enemy-party-actions button{min-height:38px;border-radius:10px}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-pickers{padding:12px 14px;margin-bottom:15px;border:1px solid var(--season-line,rgba(255,255,255,.1));border-radius:13px;background:color-mix(in srgb,var(--season-bg,#141218) 55%,transparent)}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-pickers label{font-weight:750}
+.hb-polish .hb-ms-enemy-section .hb-enemy-party-pickers button{min-height:41px;border-radius:10px}
+.hb-polish .hb-ms-initiative-section{margin:20px 0 0;padding:clamp(19px,2.5vw,27px);background:radial-gradient(ellipse at 95% 0%,color-mix(in srgb,var(--season-primary,#cfa777) 8%,transparent),transparent 50%),var(--season-surface,#201b22)}
+.hb-polish .hb-ms-initiative-section .hb-ms-pane-heading{padding-bottom:17px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.10));margin-bottom:19px}
+.hb-polish .hb-ms-initiative-section .hb-ms-initiative-toolbar{padding:12px 15px;border:1px solid var(--season-line,rgba(255,255,255,.1));border-radius:12px;background:color-mix(in srgb,var(--season-bg,#141218) 60%,transparent);margin-bottom:15px}
+.hb-polish .hb-ms-combined-initiative-list{gap:8px}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-row{min-height:78px;gap:12px;padding:12px 15px;border-radius:14px;transition:border-color .15s,background .15s;position:relative;overflow:hidden}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-row:hover{border-color:color-mix(in srgb,var(--season-primary,#cfa777) 35%,var(--season-line,rgba(255,255,255,.12)));background:color-mix(in srgb,var(--season-primary,#cfa777) 5%,var(--season-bg,#141218))}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-enemy{border-left:3px solid var(--hb-ms-red)}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-character{border-left:3px solid var(--season-primary,#cfa777)}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-leader{border-color:color-mix(in srgb,var(--season-primary,#cfa777) 40%,var(--season-line,rgba(255,255,255,.12)));background:linear-gradient(100deg,color-mix(in srgb,var(--season-primary,#cfa777) 10%,var(--season-bg,#141218)),var(--season-bg,#141218))}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-leader:after{content:'PRIMEIRO TURNO';position:absolute;top:0;right:0;padding:3px 8px;border-bottom-left-radius:8px;font-size:8px;font-weight:850;letter-spacing:.1em;color:var(--season-primary,#cfa777);background:color-mix(in srgb,var(--season-primary,#cfa777) 10%,transparent)}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-rank{display:flex;align-items:baseline;gap:1px;justify-content:center;flex:0 0 40px;font-size:24px;line-height:1;color:var(--season-primary,#cfa777)}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-rank small{font-size:10px;line-height:1}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-avatar{width:43px;height:43px;flex-basis:43px;border-radius:12px;font-size:22px}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-person strong{font-size:13px}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-person small{font-size:10px}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-score>strong{display:inline-flex;min-width:58px;min-height:38px;align-items:center;justify-content:center;padding:4px 10px;border-radius:10px;background:color-mix(in srgb,var(--season-primary,#cfa777) 12%,transparent);color:var(--season-primary,#cfa777);font-size:22px}
+.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-score>strong.pending{font-size:10px;line-height:1.3;color:var(--season-muted,#afa7b0);background:var(--season-surface-alt,#29252d)}
+.hb-polish .hb-ms-support-heading{margin:24px 0 13px;justify-content:flex-start}
+.hb-polish .hb-ms-support-heading>div{min-width:0}
+.hb-polish .hb-ms-support-grid{display:grid;grid-template-columns:minmax(245px,0.75fr) minmax(0,1.25fr);gap:13px;align-items:start;margin-bottom:5px}
+.hb-polish .hb-ms-support-grid>.hb-ms-party-members,.hb-polish .hb-ms-support-grid>.hb-ms-activity-section{height:100%;min-width:0;margin:0;padding:clamp(18px,2.2vw,24px);border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:19px;background:linear-gradient(155deg,var(--season-surface,#211c24),var(--season-surface-alt,#28232c))}
+.hb-polish .hb-ms-support-grid .hb-ms-pane-heading{margin-bottom:16px}
+.hb-polish .hb-ms-party-members .hb-ms-member-list{grid-template-columns:1fr}
+.hb-polish .hb-ms-party-members .hb-ms-member-list li{padding:11px 13px}
+.hb-polish .hb-ms-support-grid .campaign-activity-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:11px;flex-wrap:wrap;padding-bottom:15px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.1))}
+.hb-polish .hb-ms-support-grid .campaign-activity-heading h3{font-size:20px;letter-spacing:-.035em}
+.hb-polish .hb-ms-support-grid .campaign-activity-list{margin-top:14px}
+.hb-polish .hb-ms-dashboard :is(.master-shield-empty,.hb-enemy-party-empty){min-height:80px;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;border:1px dashed var(--season-line,rgba(255,255,255,.15));border-radius:13px;background:color-mix(in srgb,var(--season-bg,#141218) 45%,transparent);font-size:12px;line-height:1.6}
+@media(max-width:1020px){.hb-polish .hb-ms-support-grid{grid-template-columns:1fr 1fr}.hb-polish .hb-ms-party-main .master-shield-character-list,.hb-polish .hb-ms-enemy-section .hb-enemy-party-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}}
+@media(max-width:780px){.hb-polish .hb-ms-support-grid{grid-template-columns:1fr}.hb-polish .hb-ms-group-heading{align-items:flex-start}.hb-polish .hb-ms-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-polish .hb-ms-party-main .master-shield-character-list,.hb-polish .hb-ms-enemy-section .hb-enemy-party-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}}
+@media(max-width:560px){.hb-polish .hb-ms-hero-stamp{display:none}.hb-polish .hb-ms-dashboard .master-shield-heading{min-height:0}.hb-polish .hb-ms-stats .master-shield-stat{min-height:103px;padding:14px}.hb-polish .hb-ms-stats .master-shield-stat strong{font-size:24px}.hb-polish .hb-ms-stats .hb-ms-stat-season strong{font-size:13px}.hb-polish .hb-ms-group-heading-left{align-items:flex-start}.hb-polish .hb-ms-group-index{flex-basis:34px;width:34px;height:34px}.hb-polish .hb-ms-party-layout>.hb-ms-party-main,.hb-polish .hb-ms-party-layout>.hb-ms-enemy-section{padding:15px}.hb-polish .hb-ms-party-main .master-shield-character-list,.hb-polish .hb-ms-enemy-section .hb-enemy-party-grid{grid-template-columns:1fr}.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-row{align-items:center;padding:12px;gap:8px}.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-rank{flex-basis:25px;font-size:19px}.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-avatar{width:36px;height:36px;flex-basis:36px;font-size:18px}.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-score{gap:6px}.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-score>strong{min-width:40px;font-size:17px}.hb-polish .hb-ms-combined-initiative-list .hb-ms-initiative-score button{padding:5px 7px;font-size:10px}}
+@media(prefers-reduced-motion:reduce){.hb-polish .hb-ms-dashboard :is(.hb-ms-player-card,.hb-enemy-party-card,.hb-ms-initiative-row,.hb-ms-quicknav a){transition:none;transform:none}}
+
+`}</style>
+          {activePage === 'overview' && (
+  <section className="inventory-section overview-page-panel hb-overview">
+    <header className="hb-hero hb-overview-hero">
+      <div className="hb-hero-main">
+        <span className="hb-kicker"><span className="hb-kicker-dot" /> CENTRAL DA AVENTURA</span>
+        <h2>Visão geral<span className="hb-title-dot">.</span></h2>
+        <p>Acompanhe a campanha, explore seus personagens e continue de onde parou.</p>
+        {selectedCampaign && (
+          <div className="hb-hero-tags">
+            <span>⚑ {selectedCampaign.name}</span>
+            <span>✧ {selectedCampaign.system_name || 'Sistema personalizado'}</span>
+            <span>{isMaster ? '♜ Mestre' : '♙ Jogador'}</span>
+          </div>
+        )}
+      </div>
+      <div className="hb-hero-emblem" aria-hidden="true">◈</div>
+      <div className="hb-hero-actions">
+        <button type="button" className="primary-button" onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }}>Abrir fichas ↗</button>
+        <button type="button" className="secondary-button" onClick={() => setActivePage('campaigns')}>Gerenciar campanhas</button>
+      </div>
+    </header>
+    {selectedCampaign ? (
+      <>
+        <div className="hb-metric-grid hb-overview-metrics">
+          {([
+            ['♙', 'Personagens', characters.length, 'Fichas na campanha', 'sheets'],
+            ['◷', 'Temporadas', seasons.length, activeSeason ? `Atual: ${activeSeason.name}` : 'Jornada da campanha', 'campaigns'],
+            ['♜', 'Lojas', shops.length, 'Estabelecimentos', 'shops'],
+            ['♞', 'Criaturas', creatures.length, 'Registros no bestiário', 'bestiary'],
+          ] as const).map(([icon, title, count, hint, page]) => (
+            <button type="button" className="hb-metric hb-metric-button" key={title} onClick={() => setActivePage(page)}>
+              <span className="hb-metric-icon" aria-hidden="true">{icon}</span>
+              <span className="hb-metric-content"><span className="hb-metric-label">{title}</span><strong>{count}</strong><small>{hint}</small></span>
+              <span className="hb-metric-arrow" aria-hidden="true">↗</span>
+            </button>
+          ))}
+        </div>
+        <div className="hb-dashboard-grid">
+          <section className="hb-panel hb-journey-panel">
+            <div className="hb-panel-heading"><div><span className="hb-kicker">CAMPANHA EM ANDAMENTO</span><h3>Temporadas</h3><p>Capítulos da jornada do seu grupo.</p></div><span className="hb-heading-icon">◷</span></div>
+            {seasons.length ? (
+              <div className="hb-journey-list">
+                {[...seasons].sort((a,b) => a.season_number-b.season_number).slice(0,5).map(season => <div className={`hb-journey-entry ${season.status === 'active' ? 'is-current' : ''}`} key={season.id}>
+                  <span className="hb-journey-index">{String(season.season_number).padStart(2,'0')}</span>
+                  <span className="hb-journey-copy"><strong>{season.name}</strong><small>{season.description || 'Capítulo da campanha'}</small></span>
+                  <span className={`hb-season-status hb-season-status-${season.status}`}>{season.status === 'active' ? 'Ativa' : season.status === 'completed' ? 'Concluída' : season.status === 'archived' ? 'Arquivada' : 'Rascunho'}</span>
+                </div>)}
+              </div>
+            ) : <div className="hb-minimal-empty">Nenhuma temporada cadastrada por enquanto.</div>}
+          </section>
+          <section className="hb-panel hb-roster-panel">
+            <div className="hb-panel-heading"><div><span className="hb-kicker">SEU GRUPO</span><h3>Personagens</h3><p>Os protagonistas desta campanha.</p></div><span className="hb-heading-icon">♙</span></div>
+            {characters.length ? (
+              <div className="hb-roster-list">{characters.slice(0,6).map(character => (
+                <button type="button" className="hb-roster-entry" key={character.id} onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}>
+                  <span className="hb-roster-avatar">{character.emoji || '⚔️'}</span>
+                  <span><strong>{character.name}</strong><small>{character.archetype || 'Sem arquétipo'}</small></span>
+                  <span aria-hidden="true">↗</span>
+                </button>))}</div>
+            ) : <div className="hb-minimal-empty">Nenhum personagem criado ainda.</div>}
+          </section>
+        </div>
+        <section className="hb-panel hb-overview-activity">
+          <div className="hb-panel-heading"><div><span className="hb-kicker">LINHA DO TEMPO</span><h3>Últimas atividades</h3><p>Movimentações recentes da campanha.</p></div><span className="hb-heading-icon">✧</span></div>
+          {activityLoading ? <div className="hb-minimal-empty">Carregando atividades...</div> : activityTableMissing ? <div className="hb-minimal-empty">Histórico indisponível nesta campanha.</div> : campaignActivities.length ?
+            <div className="hb-timeline">{campaignActivities.slice(0,4).map(activity => <div className="hb-timeline-event" key={activity.id}>
+              <span className="hb-timeline-dot"/><div><strong>{activity.title}</strong>{activity.description && <p>{activity.description}</p>}<small>{activity.actor_name} · {new Date(activity.created_at).toLocaleDateString('pt-BR')}</small></div>
+            </div>)}</div> : <div className="hb-minimal-empty">As novidades da campanha aparecerão aqui.</div>}
+        </section>
+      </>
+    ) : (
+      <section className="hb-panel hb-overview-empty"><span aria-hidden="true">⚑</span><h3>Escolha sua campanha</h3><p>Selecione uma campanha para visualizar os detalhes da jornada.</p><button type="button" className="primary-button" onClick={() => setActivePage('campaigns')}>Ver campanhas</button></section>
+    )}
+  </section>
+)}
+
+          {activePage !== 'player-table' && (
+          <section className="welcome-row">
+
+
+
+            <div>
+              <div className="eyebrow">
+                <span /> SUA JORNADA COMEÇA AQUI
+              </div>
+
+<h1>
+{activePage === 'bestiary'
+? 'Bestiário'
+: activePage === 'enemies'
+    ? 'Fichas de inimigos'
+  : activePage === 'shops'
+      ? 'Lojas da campanha'
+      : activePage === 'sheets'
+        ? 'Fichas de personagens'
+        : 'Campanhas'}
+  <span className="title-period">.</span>
+</h1>
+
+<p className="page-description">
+{activePage === 'bestiary'
+  ? 'Descubra criaturas, monstros e ameaças para suas aventuras.'
+  : activePage === 'enemies'
+    ? 'Crie, consulte e atualize as fichas de inimigos da campanha.'
+    : activePage === 'shops'
+      ? 'Explore os estabelecimentos e encontre novos itens para sua aventura.'
+      : activePage === 'sheets'
+        ? 'Crie, organize e atualize os personagens e suas fichas por temporada.'
+        : 'Organize suas campanhas e escolha qual deseja administrar.'}
+</p>
+
+            </div>
+
+            {activePage === 'campaigns' && (
+              <button
+                className="primary-button"
+                onClick={() => setShowCampaignForm((value) => !value)}
+              >
+                + Criar campanha
+              </button>
+            )}
+          </section>
+          )}
+
+{activePage === 'enemies' && selectedCampaign && isMaster && (
+  <section className="inventory-section enemies-page-panel">
+    <style>{`
+      .enemies-page-panel { min-width:0; }
+      .enemy-hub { --eh-border:var(--season-line,rgba(255,255,255,.13)); --eh-ink:var(--season-text,inherit); --eh-muted:var(--season-muted,#b4adb5); --eh-accent:var(--season-accent,#dca279); --eh-wash:var(--season-accent-soft,rgba(220,162,121,.1)); display:grid; gap:20px; color:var(--eh-ink); }
+      .enemy-hub * { box-sizing:border-box; }
+      .enemy-hub-hero { display:flex; justify-content:space-between; align-items:center; gap:24px; min-width:0; padding:33px clamp(22px,3.1vw,38px); border:1px solid var(--eh-border); border-radius:25px; background:radial-gradient(ellipse at 5% 0%,var(--eh-wash),transparent 56%),linear-gradient(125deg,var(--season-surface,rgba(24,22,27,.96)),var(--season-surface-alt,rgba(255,255,255,.035))); overflow:hidden; position:relative; box-shadow:0 18px 40px rgba(0,0,0,.07); }
+      .enemy-hub-hero:before { content:''; position:absolute; right:-70px; top:-190px; width:360px; height:360px; border-radius:100%; border:1px solid var(--eh-border); box-shadow:0 0 0 45px rgba(255,255,255,.014),0 0 0 90px rgba(255,255,255,.01); pointer-events:none; }
+      .enemy-hub-hero > * { position:relative; z-index:1; }
+      .enemy-hub-eyebrow { display:inline-flex; align-items:center; gap:8px; margin-bottom:12px; font-size:10px; font-weight:850; letter-spacing:.155em; text-transform:uppercase; color:var(--eh-accent); }
+      .enemy-hub-eyebrow:before { content:''; width:7px; height:7px; border-radius:100%; background:currentColor; box-shadow:0 0 0 4px var(--eh-wash); }
+      .enemy-hub-hero h2 { font-size:clamp(27px,3.1vw,40px); letter-spacing:-.048em; line-height:1.1; margin:0 0 12px; }
+      .enemy-hub-hero p { margin:0; max-width:550px; color:var(--eh-muted); line-height:1.62; font-size:13px; }
+      .enemy-hub-hero-meta { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:19px; }
+      .enemy-hub-hero-meta span { display:inline-flex; align-items:center; gap:7px; max-width:100%; border:1px solid var(--eh-border); border-radius:99px; padding:7px 11px; background:var(--season-surface-alt,rgba(255,255,255,.04)); color:var(--eh-muted); font-size:11px; font-weight:650; }
+      .enemy-hub-hero-meta span strong { color:var(--eh-ink); font-weight:750; overflow-wrap:anywhere; }
+      .enemy-hub-hero-actions { display:grid; justify-items:center; flex:0 0 auto; gap:17px; }
+      .enemy-hub-hero-symbol { display:grid; place-items:center; width:86px; height:86px; font-size:39px; border:1px solid var(--eh-border); border-radius:25px; background:var(--eh-wash); transform:rotate(-7deg); box-shadow:0 14px 30px rgba(0,0,0,.09); }
+      .enemy-hub-hero-symbol > span { transform:rotate(7deg); }
+      .enemy-hub-hero .primary-button { white-space:nowrap; min-height:46px; padding-inline:20px; border-radius:12px; font-weight:800; }
+      .enemy-hub-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:11px; }
+      .enemy-hub-metric { display:flex; align-items:center; gap:14px; min-width:0; padding:17px; border:1px solid var(--eh-border); border-radius:18px; background:linear-gradient(155deg,var(--season-surface,rgba(255,255,255,.025)),var(--season-surface-alt,rgba(255,255,255,.035))); }
+      .enemy-hub-metric-icon { display:grid; place-items:center; height:43px; width:43px; flex:0 0 43px; border-radius:13px; background:var(--eh-wash); font-size:20px; }
+      .enemy-hub-metric-copy { display:grid; gap:5px; min-width:0; }
+      .enemy-hub-metric-copy > span { color:var(--eh-muted); font-size:11px; font-weight:700; line-height:1.35; }
+      .enemy-hub-metric strong { font-size:clamp(21px,2.4vw,28px); letter-spacing:-.048em; line-height:1.06; font-variant-numeric:tabular-nums; }
+      .enemy-hub-library { min-width:0; padding:23px; border:1px solid var(--eh-border); border-radius:24px; background:var(--season-surface,rgba(0,0,0,.08)); }
+      .enemy-hub-section-title { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; }
+      .enemy-hub-section-heading { display:flex; align-items:center; gap:13px; }
+      .enemy-hub-section-icon { display:grid; place-items:center; width:45px; height:45px; flex:0 0 45px; border:1px solid var(--eh-border); border-radius:14px; background:var(--eh-wash); font-size:21px; }
+      .enemy-hub-section-title h3 { margin:0 0 4px; font-size:21px; letter-spacing:-.035em; }
+      .enemy-hub-section-title p { margin:0; color:var(--eh-muted); font-size:12px; line-height:1.4; }
+      .enemy-hub-result-count { align-self:center; display:inline-flex; align-items:center; gap:6px; padding:8px 11px; font-size:11px; color:var(--eh-muted); font-weight:750; border:1px solid var(--eh-border); border-radius:999px; background:var(--season-surface-alt,rgba(255,255,255,.03)); }
+      .enemy-hub-toolbar { display:grid; grid-template-columns:minmax(175px,1.8fr) minmax(145px,1fr) minmax(165px,1fr); gap:10px; margin-bottom:13px; }
+      .enemy-hub-search { display:flex; align-items:center; gap:10px; min-width:0; border:1px solid var(--eh-border); background:var(--season-surface-alt,rgba(255,255,255,.04)); border-radius:13px; padding:0 13px; transition:border-color .16s,box-shadow .16s; }
+      .enemy-hub-search > span { font-size:22px; line-height:1; opacity:.68; }
+      .enemy-hub-search input { min-width:0; width:100%; min-height:46px; background:transparent; border:0; padding:9px 0; color:inherit; font:inherit; font-size:12px; outline:0; }
+      .enemy-hub-search:focus-within { border-color:var(--eh-accent); box-shadow:0 0 0 3px var(--eh-wash); }
+      .enemy-hub-clear { border:0; padding:6px; color:inherit; background:transparent; cursor:pointer; opacity:.75; font-size:13px; }
+      .enemy-hub-toolbar select { min-width:0; width:100%; min-height:46px; border-radius:13px; padding:9px 12px; border:1px solid var(--eh-border); background:var(--season-surface-alt,var(--season-surface,#29252a)); color:inherit; font:inherit; font-size:12px; }
+      .enemy-hub-toolbar select:focus-visible { outline:2px solid var(--eh-accent); outline-offset:2px; }
+      .enemy-hub-toolbar select option { background:var(--season-surface,#252025); color:var(--season-text,#eee); }
+      .enemy-hub-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:0 0 18px; margin-bottom:18px; border-bottom:1px solid var(--eh-border); }
+      .enemy-hub-filter-group { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
+      .enemy-hub-filter-group button { display:inline-flex; align-items:center; gap:7px; min-height:34px; padding:7px 12px; border:1px solid var(--eh-border); border-radius:999px; background:transparent; color:var(--eh-muted); cursor:pointer; font:inherit; font-size:11px; font-weight:750; transition:background .15s,border-color .15s,color .15s; }
+      .enemy-hub-filter-group button:hover { color:var(--eh-ink); border-color:var(--eh-accent); }
+      .enemy-hub-filter-group button[aria-pressed=true] { color:var(--eh-accent); border-color:var(--eh-accent); background:var(--eh-wash); }
+      .enemy-hub-filter-group button:disabled { opacity:.42; cursor:not-allowed; }
+      .enemy-hub-filter-group button small { font-size:10px; color:inherit; opacity:.8; }
+      .enemy-hub-view-switch { display:inline-flex; align-items:center; gap:4px; padding:4px; border:1px solid var(--eh-border); border-radius:11px; background:var(--season-surface-alt,rgba(255,255,255,.025)); }
+      .enemy-hub-view-switch button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:32px; min-width:75px; padding:6px 9px; border:0; border-radius:8px; cursor:pointer; background:transparent; color:var(--eh-muted); font:inherit; font-size:11px; font-weight:750; }
+      .enemy-hub-view-switch button[aria-pressed=true] { background:var(--eh-wash); color:var(--eh-accent); }
+      .enemy-hub-view-switch button:focus-visible, .enemy-hub-filter-group button:focus-visible { outline:2px solid var(--eh-accent); outline-offset:2px; }
+      .enemy-hub-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,286px),1fr)); gap:15px; }
+      .enemy-hub-card { display:flex; flex-direction:column; min-width:0; position:relative; overflow:hidden; border:1px solid var(--eh-border); border-radius:19px; background:linear-gradient(155deg,var(--season-surface-alt,rgba(255,255,255,.04)),var(--season-surface,rgba(0,0,0,.08))); transition:border-color .17s ease,transform .17s ease,box-shadow .17s ease; }
+      .enemy-hub-card:before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--eh-accent); opacity:.45; }
+      .enemy-hub-card:hover, .enemy-hub-card:focus-within { border-color:var(--eh-accent); transform:translateY(-3px); box-shadow:0 17px 35px rgba(0,0,0,.12); }
+      .enemy-hub-card-main { display:flex; flex-direction:column; align-items:stretch; gap:13px; width:100%; flex:1; padding:19px 18px 17px; text-align:left; color:inherit; background:transparent; border:0; cursor:pointer; font:inherit; }
+      .enemy-hub-card-main:focus-visible, .enemy-hub-card-actions button:focus-visible { outline:2px solid var(--eh-accent); outline-offset:-3px; }
+      .enemy-hub-card-head { display:flex; gap:10px; align-items:center; justify-content:space-between; }
+      .enemy-hub-avatar { display:grid; place-items:center; width:57px; height:57px; flex:0 0 57px; font-size:29px; background:var(--eh-wash); border-radius:16px; border:1px solid var(--eh-border); }
+      .enemy-hub-status-pill { display:inline-flex; align-items:center; gap:6px; min-width:0; border-radius:99px; padding:7px 10px; border:1px solid var(--eh-border); color:var(--eh-muted); background:var(--season-surface-alt,rgba(255,255,255,.03)); font-size:10px; font-weight:750; }
+      .enemy-hub-status-pill:before { content:''; width:6px; height:6px; border-radius:100%; background:currentColor; flex:0 0 6px; }
+      .enemy-hub-status-pill.is-ready { color:var(--eh-accent); background:var(--eh-wash); }
+      .enemy-hub-card-identity { display:grid; gap:6px; }
+      .enemy-hub-type { color:var(--eh-accent); font-size:10px; font-weight:850; letter-spacing:.105em; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-transform:uppercase; }
+      .enemy-hub-card h4 { font-size:19px; line-height:1.3; margin:0; letter-spacing:-.032em; overflow-wrap:anywhere; }
+      .enemy-hub-card-description { margin:0; font-size:12px; line-height:1.6; color:var(--eh-muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:39px; }
+      .enemy-hub-resource-panel { display:grid; gap:9px; margin-top:auto; padding:13px; border:1px solid var(--eh-border); border-radius:13px; background:var(--season-surface-alt,rgba(255,255,255,.025)); }
+      .enemy-hub-resource-row { display:grid; grid-template-columns:25px minmax(0,1fr) auto; align-items:center; gap:9px; min-width:0; }
+      .enemy-hub-resource-row > span:first-child { font-size:10px; font-weight:850; color:var(--eh-muted); }
+      .enemy-hub-resource-row strong { font-size:11px; font-weight:850; white-space:nowrap; font-variant-numeric:tabular-nums; }
+      .enemy-hub-resource-track { display:block; height:6px; border-radius:20px; overflow:hidden; background:var(--season-line,rgba(255,255,255,.11)); }
+      .enemy-hub-resource-track > span { display:block; height:100%; max-width:100%; border-radius:inherit; background:var(--eh-resource,#c97676); transition:width .18s; }
+      .enemy-hub-resource-pv { --eh-resource:#df7777; }
+      .enemy-hub-resource-ps { --eh-resource:#76a3da; }
+      .enemy-hub-resource-pr { --eh-resource:#62bba1; }
+      .enemy-hub-resource-blood { --eh-resource:#e47683; }
+      .enemy-hub-card-bottom { display:grid; gap:11px; padding:12px 14px 14px; border-top:1px solid var(--eh-border); background:var(--season-surface-alt,rgba(255,255,255,.015)); }
+      .enemy-hub-card-bottom > small { color:var(--eh-muted); font-size:10px; padding:0 4px; }
+      .enemy-hub-card-actions { display:flex; align-items:center; gap:6px; }
+      .enemy-hub-card-actions button { display:inline-flex; justify-content:center; align-items:center; gap:6px; min-height:36px; padding:8px 11px; border:1px solid var(--eh-border); background:var(--season-surface-alt,rgba(255,255,255,.03)); color:inherit; border-radius:10px; cursor:pointer; font:inherit; font-weight:750; font-size:11px; transition:border-color .15s,background .15s; }
+      .enemy-hub-card-actions button:hover:not(:disabled) { border-color:var(--eh-accent); background:var(--eh-wash); }
+      .enemy-hub-card-actions button:disabled { opacity:.45; cursor:not-allowed; }
+      .enemy-hub-card-actions .enemy-hub-open { background:var(--eh-wash); color:var(--eh-ink); flex:1; }
+      .enemy-hub-card-actions .enemy-hub-delete:hover:not(:disabled) { border-color:#d86666; background:rgba(216,102,102,.12); color:#e9a4a4; }
+      .enemy-hub-grid.is-list { grid-template-columns:minmax(0,1fr); gap:10px; }
+      .enemy-hub-grid.is-list .enemy-hub-card { display:grid; grid-template-columns:minmax(0,1fr) minmax(200px,.45fr); align-items:stretch; }
+      .enemy-hub-grid.is-list .enemy-hub-card:before { left:0; top:0; bottom:0; right:auto; width:3px; height:auto; }
+      .enemy-hub-grid.is-list .enemy-hub-card-main { display:grid; grid-template-columns:60px minmax(0,1fr) minmax(155px,.65fr); column-gap:14px; row-gap:7px; padding:15px 18px; align-items:center; }
+      .enemy-hub-grid.is-list .enemy-hub-card-head { grid-column:1; grid-row:1/4; justify-content:center; }
+      .enemy-hub-grid.is-list .enemy-hub-card-head .enemy-hub-status-pill { display:none; }
+      .enemy-hub-grid.is-list .enemy-hub-card-identity { grid-column:2; grid-row:1; }
+      .enemy-hub-grid.is-list .enemy-hub-card-description { grid-column:2; grid-row:2; min-height:unset; -webkit-line-clamp:1; }
+      .enemy-hub-grid.is-list .enemy-hub-resource-panel { grid-column:3; grid-row:1/4; margin:0; }
+      .enemy-hub-grid.is-list .enemy-hub-card-bottom { justify-content:center; min-width:0; }
+      .enemy-hub-grid.is-list .enemy-hub-card-actions { flex-wrap:wrap; }
+      .enemy-hub-empty { display:grid; justify-items:center; gap:12px; padding:49px 18px; border:1px dashed var(--eh-border); border-radius:20px; text-align:center; background:radial-gradient(ellipse at 50% 0%,var(--eh-wash),transparent 75%),var(--season-surface-alt,rgba(255,255,255,.015)); }
+      .enemy-hub-empty > span { display:grid; place-items:center; width:75px; height:75px; border-radius:24px; border:1px solid var(--eh-border); background:var(--eh-wash); font-size:34px; }
+      .enemy-hub-empty h4 { margin:0; font-size:20px; letter-spacing:-.025em; }
+      .enemy-hub-empty p { color:var(--eh-muted); margin:0 0 6px; max-width:430px; font-size:13px; line-height:1.6; }
+      .enemy-hub-modal { width:min(620px,calc(100vw - 28px)); }
+      .enemy-hub-form-preview { display:flex; gap:14px; align-items:center; margin-bottom:17px; padding:16px; border:1px solid var(--eh-border); background:linear-gradient(125deg,var(--eh-wash),var(--season-surface-alt,rgba(255,255,255,.025))); border-radius:17px; }
+      .enemy-hub-form-preview strong,.enemy-hub-form-preview > div span { display:block; overflow-wrap:anywhere; }
+      .enemy-hub-form-preview strong { font-size:17px; }
+      .enemy-hub-form-preview > div span { margin-top:4px; font-size:12px; color:var(--eh-muted); }
+      .enemy-hub-modal .bestiary-form input,.enemy-hub-modal .bestiary-form textarea { border-radius:11px; }
+      /* Arquivo tático: leitura dos inimigos, encontros e recursos */
+      .enemy-hub { gap:17px; }
+      .enemy-hub-hero { border-radius:26px; padding:clamp(25px,3vw,39px); background:radial-gradient(circle at 90% 5%,var(--eh-wash),transparent 44%),linear-gradient(130deg,var(--season-surface,rgba(25,25,29,.96)),var(--season-surface-alt,rgba(255,255,255,.035))); }
+      .enemy-hub-hero h2 { font-size:clamp(30px,3.4vw,43px); }
+      .enemy-hub-hero-symbol { width:94px; height:94px; border-radius:28px; box-shadow:0 14px 32px rgba(0,0,0,.15); }
+      .enemy-hub-hero-subline { display:inline-flex; gap:7px; align-items:center; margin-top:15px; font-size:11px; color:var(--eh-muted); font-weight:650; }
+      .enemy-hub-hero-subline i { display:block; width:6px; height:6px; border-radius:50%; background:var(--eh-accent); }
+      .enemy-hub-metric { transition:border-color .17s,transform .17s; }
+      .enemy-hub-metric.is-scene { border-color:color-mix(in srgb,var(--eh-accent) 35%,var(--eh-border)); background:linear-gradient(150deg,var(--eh-wash),var(--season-surface,rgba(255,255,255,.025))); }
+      .enemy-hub-metric.is-warning .enemy-hub-metric-icon { background:rgba(224,93,101,.12); color:#ee999e; }
+      .enemy-hub-scene { padding:22px; border:1px solid var(--eh-border); border-radius:22px; background:linear-gradient(135deg,var(--season-surface-alt,rgba(255,255,255,.04)),var(--season-surface,rgba(20,20,25,.7))); }
+      .enemy-hub-scene-top { display:flex; align-items:start; justify-content:space-between; gap:15px; margin-bottom:16px; }
+      .enemy-hub-scene-title { display:flex; align-items:center; gap:12px; min-width:0; }
+      .enemy-hub-scene-icon { display:grid; place-items:center; height:46px; width:46px; flex:0 0 46px; font-size:22px; background:var(--eh-wash); border:1px solid var(--eh-border); border-radius:14px; }
+      .enemy-hub-scene-kicker { font-size:10px; font-weight:850; letter-spacing:.13em; color:var(--eh-accent); }
+      .enemy-hub-scene-title h3 { margin:3px 0 4px; font-size:19px; letter-spacing:-.025em; }
+      .enemy-hub-scene-title p { margin:0; font-size:12px; color:var(--eh-muted); line-height:1.5; }
+      .enemy-hub-scene-tag { flex:0 0 auto; padding:8px 12px; background:var(--eh-wash); border:1px solid var(--eh-border); border-radius:999px; color:var(--eh-accent); font-size:11px; font-weight:800; }
+      .enemy-hub-scene-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:9px; }
+      .enemy-hub-scene-enemy { display:flex; align-items:center; gap:11px; min-width:0; padding:11px; border:1px solid var(--eh-border); border-radius:14px; background:var(--season-surface-alt,rgba(255,255,255,.04)); color:inherit; text-align:left; cursor:pointer; font:inherit; transition:border-color .16s,background .16s,transform .16s; }
+      .enemy-hub-scene-enemy:hover { border-color:var(--eh-accent); background:var(--eh-wash); transform:translateY(-2px); }
+      .enemy-hub-scene-enemy:focus-visible { outline:2px solid var(--eh-accent); outline-offset:2px; }
+      .enemy-hub-scene-face { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; border-radius:12px; background:var(--eh-wash); font-size:24px; }
+      .enemy-hub-scene-info { display:grid; gap:3px; flex:1; min-width:0; }
+      .enemy-hub-scene-info strong { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; }
+      .enemy-hub-scene-info small { font-size:10px; color:var(--eh-muted); }
+      .enemy-hub-scene-end { color:var(--eh-accent); font-size:18px; }
+      .enemy-hub-scene-empty { display:flex; align-items:center; gap:10px; padding:14px; border:1px dashed var(--eh-border); border-radius:13px; color:var(--eh-muted); font-size:12px; line-height:1.5; }
+      .enemy-hub-scene-empty > span { font-size:19px; }
+      .enemy-hub-scene-more { display:grid; place-items:center; padding:12px; border:1px dashed var(--eh-border); border-radius:13px; font-size:11px; font-weight:750; color:var(--eh-muted); }
+      .enemy-hub-library { padding:25px; }
+      .enemy-hub-card { border-radius:20px; }
+      .enemy-hub-card:before { height:4px; opacity:.6; }
+      .enemy-hub-card.is-in-party:before { opacity:1; }
+      .enemy-hub-card.is-critical { border-color:rgba(226,103,112,.45); }
+      .enemy-hub-card.is-critical:before { background:#e36d7b; }
+      .enemy-hub-card-head { align-items:flex-start; }
+      .enemy-hub-avatar { width:62px; height:62px; flex-basis:62px; font-size:32px; border-radius:18px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.025); }
+      .enemy-hub-card-flags { display:grid; justify-items:end; align-content:start; gap:6px; }
+      .enemy-hub-status-pill.is-in-party { color:var(--eh-accent); border-color:color-mix(in srgb,var(--eh-accent) 40%,var(--eh-border)); background:var(--eh-wash); }
+      .enemy-hub-status-pill.is-critical { color:#f1a2ad; border-color:rgba(226,103,112,.4); background:rgba(226,103,112,.12); }
+      .enemy-hub-card-main { padding:20px 20px 17px; }
+      .enemy-hub-card h4 { font-size:20px; }
+      .enemy-hub-resource-panel { gap:11px; padding:14px; }
+      .enemy-hub-resource-track { height:7px; }
+      .enemy-hub-card-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:2px; }
+      .enemy-hub-card-meta-label { font-size:10px; color:var(--eh-muted); }
+      .enemy-hub-card-meta strong { color:var(--eh-accent); font-size:10px; }
+      .enemy-hub-card-bottom { gap:9px; }
+      .enemy-hub-card-actions { flex-wrap:wrap; }
+      .enemy-hub-card-actions .enemy-hub-party-toggle { width:100%; justify-content:center; border-color:color-mix(in srgb,var(--eh-accent) 30%,var(--eh-border)); }
+      .enemy-hub-card-actions .enemy-hub-party-toggle.is-active { background:var(--eh-wash); color:var(--eh-accent); }
+      .enemy-hub-card-actions .enemy-hub-party-toggle:disabled { opacity:.5; }
+      .enemy-hub-emoji-picker { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+      .enemy-hub-emoji-picker button { display:grid; place-items:center; width:40px; height:40px; border-radius:11px; border:1px solid var(--eh-border); background:var(--season-surface-alt,rgba(255,255,255,.025)); font-size:20px; cursor:pointer; transition:border-color .15s,background .15s; }
+      .enemy-hub-emoji-picker button:hover, .enemy-hub-emoji-picker button[aria-pressed=true] { border-color:var(--eh-accent); background:var(--eh-wash); }
+      .enemy-hub-emoji-picker button:focus-visible { outline:2px solid var(--eh-accent); outline-offset:2px; }
+      .enemy-hub-library-count { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+      .enemy-hub-active-filters { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin:-4px 0 16px; color:var(--eh-muted); font-size:11px; }
+      .enemy-hub-active-filters > button { border:0; background:transparent; color:var(--eh-accent); font:inherit; font-weight:800; cursor:pointer; padding:4px 0; text-decoration:underline; text-underline-offset:3px; }
+      .enemy-hub-active-filters > button:focus-visible { outline:2px solid var(--eh-accent); }
+      .enemy-hub-grid.is-list .enemy-hub-card-main { grid-template-columns:66px minmax(0,1fr) minmax(155px,.65fr); }
+      .enemy-hub-grid.is-list .enemy-hub-card-meta { grid-column:2; grid-row:3; }
+      .enemy-hub-grid.is-list .enemy-hub-card-flags { display:none; }
+      .enemy-hub-grid.is-list .enemy-hub-card-bottom { min-width:210px; }
+      @media(max-width:850px) { .enemy-hub-scene-top { flex-wrap:wrap; } }
+      @media(max-width:650px) { .enemy-hub-grid.is-list .enemy-hub-card-meta { grid-column:auto; grid-row:auto; } }
+      @media(max-width:560px) { .enemy-hub-scene { padding:15px; } .enemy-hub-scene-top { gap:12px; } .enemy-hub-scene-tag { width:100%; text-align:center; } .enemy-hub-card-actions .enemy-hub-party-toggle { width:100%; } }
+      @media(max-width:1050px) { .enemy-hub-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .enemy-hub-grid.is-list .enemy-hub-card { grid-template-columns:minmax(0,1fr); } .enemy-hub-grid.is-list .enemy-hub-card-bottom { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; } }
+      @media(max-width:850px) { .enemy-hub-hero { flex-wrap:wrap; } .enemy-hub-hero-actions { display:flex; align-items:center; } .enemy-hub-hero-symbol { width:57px; height:57px; font-size:27px; border-radius:16px; } .enemy-hub-toolbar { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } .enemy-hub-search { grid-column:1/-1; } }
+      @media(max-width:650px) { .enemy-hub-grid.is-list .enemy-hub-card-main { display:flex; flex-direction:column; align-items:stretch; } .enemy-hub-grid.is-list .enemy-hub-card-head { justify-content:space-between; } .enemy-hub-grid.is-list .enemy-hub-card-head .enemy-hub-status-pill { display:inline-flex; } .enemy-hub-grid.is-list .enemy-hub-card-description { -webkit-line-clamp:2; } }
+      @media(max-width:560px) { .enemy-hub { gap:14px; } .enemy-hub-hero { padding:23px; border-radius:19px; } .enemy-hub-hero-symbol { display:none; } .enemy-hub-hero-actions { width:100%; } .enemy-hub-hero .primary-button { width:100%; } .enemy-hub-metrics { gap:8px; } .enemy-hub-metric { padding:12px; gap:9px; } .enemy-hub-metric-icon { width:34px; height:34px; flex-basis:34px; font-size:16px; } .enemy-hub-metric strong { font-size:23px; } .enemy-hub-library { padding:15px; border-radius:19px; } .enemy-hub-toolbar { grid-template-columns:minmax(0,1fr); } .enemy-hub-search { grid-column:auto; } .enemy-hub-controls { align-items:stretch; } .enemy-hub-view-switch { width:100%; } .enemy-hub-view-switch button { flex:1; } .enemy-hub-card-actions { flex-wrap:wrap; } }
+    `}</style>
+
+    {!enemySheetView && (
+      <div className="enemy-hub">
+        <header className="enemy-hub-hero">
+          <div>
+            <span className="enemy-hub-eyebrow">ARQUIVO DO MESTRE · {selectedCampaign.name}</span>
+            <h2>Inimigos da campanha</h2>
+            <p>Seu centro de comando para encontros. Organize ameaças, visualize os recursos de cada ficha e monte a Party de Inimigos sem sair desta página.</p>
+            <span className="enemy-hub-hero-subline"><i aria-hidden="true" /> Dados independentes de personagens e inimigos</span>
+            <div className="enemy-hub-hero-meta">
+              <span>✧ Sistema: <strong>{selectedCampaign.system_name || 'Não definido'}</strong></span>
+              <span>♜ Área exclusiva do mestre</span>
+              <span>◷ Temporada: <strong>{activeSeason?.name || 'Não selecionada'}</strong></span>
+            </div>
+          </div>
+          <div className="enemy-hub-hero-actions">
+            <div className="enemy-hub-hero-symbol" aria-hidden="true"><span>⚔️</span></div>
+            <button type="button" className="primary-button" onClick={() => {
+              setEditingEnemyId(null)
+              setEnemyName('')
+              setEnemyEmoji('👹')
+              setEnemyArchetype('')
+              setEnemyDescription('')
+              setShowEnemyForm(true)
+            }}>＋ Criar inimigo</button>
+          </div>
+        </header>
+
+        <div className="enemy-hub-metrics" aria-label="Resumo dos inimigos da campanha">
+          <article className="enemy-hub-metric"><span className="enemy-hub-metric-icon" aria-hidden="true">⚔</span><div className="enemy-hub-metric-copy"><span>Inimigos cadastrados</span><strong>{enemies.length}</strong></div></article>
+          <article className="enemy-hub-metric is-scene"><span className="enemy-hub-metric-icon" aria-hidden="true">♜</span><div className="enemy-hub-metric-copy"><span>Na Party de Inimigos</span><strong>{enemiesInSelectedSeason.length}</strong></div></article>
+          <article className="enemy-hub-metric"><span className="enemy-hub-metric-icon" aria-hidden="true">◈</span><div className="enemy-hub-metric-copy"><span>Com status na ficha</span><strong>{enemyWithStatsCount}</strong></div></article>
+          <article className="enemy-hub-metric is-warning"><span className="enemy-hub-metric-icon" aria-hidden="true">♥</span><div className="enemy-hub-metric-copy"><span>PV crítico (≤ 25%)</span><strong>{enemyCriticalCount}</strong></div></article>
+        </div>
+
+        <section className="enemy-hub-scene" aria-label="Inimigos em cena na temporada selecionada">
+          <div className="enemy-hub-scene-top">
+            <div className="enemy-hub-scene-title">
+              <span className="enemy-hub-scene-icon" aria-hidden="true">⚔</span>
+              <div><span className="enemy-hub-scene-kicker">ENCONTRO ATUAL</span><h3>Inimigos em cena</h3><p>{activeSeason?.name ? `Party vinculada à temporada ${activeSeason.name}` : 'Escolha uma temporada para preparar o encontro.'}</p></div>
+            </div>
+            <span className="enemy-hub-scene-tag">{enemiesInSelectedSeason.length} {enemiesInSelectedSeason.length === 1 ? 'inimigo' : 'inimigos'} em cena</span>
+          </div>
+          {enemiesInSelectedSeason.length ? (
+            <div className="enemy-hub-scene-list">
+              {enemiesInSelectedSeason.slice(0, 5).map(enemy => {
+                const party = getEnemyPartySeason(enemy, selectedSeasonId)
+                const overview = getEnemySheetOverview(enemy)
+                return <button key={enemy.id} type="button" className="enemy-hub-scene-enemy" onClick={() => openEnemyFromLibrary(enemy)} title={`Abrir ficha de ${enemy.name}`}>
+                  <span className="enemy-hub-scene-face" aria-hidden="true">{enemy.emoji || '👹'}</span>
+                  <span className="enemy-hub-scene-info"><strong>{enemy.name}</strong><small>{overview.hasStats ? `PV ${overview.pv} / ${overview.maxPV}` : 'Status ainda não configurado'} · {party.initiative === null ? 'Sem iniciativa' : `Iniciativa ${party.initiative}`}</small></span>
+                  <span className="enemy-hub-scene-end" aria-hidden="true">↗</span>
+                </button>
+              })}
+              {enemiesInSelectedSeason.length > 5 && <span className="enemy-hub-scene-more">+ {enemiesInSelectedSeason.length - 5} na biblioteca abaixo</span>}
+            </div>
+          ) : (
+            <div className="enemy-hub-scene-empty"><span aria-hidden="true">◌</span>{selectedSeasonId ? 'Nenhum inimigo nesta Party. Use “Adicionar à Party” em qualquer cartão da biblioteca para preparar o encontro.' : 'Selecione uma temporada em Campanhas para acompanhar a Party de Inimigos.'}</div>
+          )}
+        </section>
+
+        <div className="enemy-hub-library">
+          <div className="enemy-hub-section-title">
+            <div className="enemy-hub-section-heading"><span className="enemy-hub-section-icon" aria-hidden="true">☷</span><div><h3>Biblioteca de inimigos</h3><p>Filtre, consulte ou edite as fichas de suas ameaças.</p></div></div>
+            <div className="enemy-hub-library-count"><span className="enemy-hub-result-count" role="status" aria-live="polite">◈ {visibleEnemies.length} {visibleEnemies.length === 1 ? 'resultado' : 'resultados'}</span><span className="enemy-hub-result-count">✧ {enemyArchetypes.length} {enemyArchetypes.length === 1 ? 'arquétipo' : 'arquétipos'}</span></div>
+          </div>
+
+          <div className="enemy-hub-toolbar">
+            <label className="enemy-hub-search">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" value={enemySearch} onChange={event => setEnemySearch(event.target.value)}
+                aria-label="Pesquisar inimigos" placeholder="Buscar nome, arquétipo ou descrição..." />
+              {enemySearch && <button type="button" className="enemy-hub-clear" aria-label="Limpar busca" onClick={() => setEnemySearch('')}>✕</button>}
+            </label>
+            <select value={enemyArchetypeFilter} onChange={event => setEnemyArchetypeFilter(event.target.value)} aria-label="Filtrar por arquétipo">
+              <option value="all">Todos os arquétipos</option>
+              {enemyArchetypes.map(archetype => <option key={archetype} value={archetype}>{archetype}</option>)}
+            </select>
+            <select value={enemySortOrder} onChange={event => setEnemySortOrder(event.target.value as 'recent' | 'name' | 'oldest')} aria-label="Ordenar inimigos">
+              <option value="recent">Atualizados recentemente</option>
+              <option value="name">Nome: A–Z</option>
+              <option value="oldest">Atualizados há mais tempo</option>
+            </select>
+          </div>
+
+          <div className="enemy-hub-controls">
+            <div className="enemy-hub-filter-group" role="group" aria-label="Filtrar inimigos pelo preenchimento da ficha">
+              <button type="button" aria-pressed={enemyStatusFilter === 'all'} onClick={() => setEnemyStatusFilter('all')}>Todos <small>{enemies.length}</small></button>
+              <button type="button" aria-pressed={enemyStatusFilter === 'configured'} onClick={() => setEnemyStatusFilter('configured')}>◈ Com status <small>{enemyWithStatsCount}</small></button>
+              <button type="button" aria-pressed={enemyStatusFilter === 'unconfigured'} onClick={() => setEnemyStatusFilter('unconfigured')}>✎ Sem status <small>{enemyWithoutStatsCount}</small></button>
+              <button type="button" aria-pressed={enemyStatusFilter === 'party'} disabled={!selectedSeasonId} onClick={() => setEnemyStatusFilter('party')}>♜ Em cena <small>{enemiesInSelectedSeason.length}</small></button>
+              <button type="button" aria-pressed={enemyStatusFilter === 'critical'} onClick={() => setEnemyStatusFilter('critical')}>♥ PV crítico <small>{enemyCriticalCount}</small></button>
+            </div>
+            <div className="enemy-hub-view-switch" role="group" aria-label="Modo de exibição dos inimigos">
+              <button type="button" aria-pressed={enemyViewMode === 'grid'} onClick={() => setEnemyViewMode('grid')}>▦ Grade</button>
+              <button type="button" aria-pressed={enemyViewMode === 'list'} onClick={() => setEnemyViewMode('list')}>☷ Lista</button>
+            </div>
+          </div>
+
+          {(enemySearch || enemyArchetypeFilter !== 'all' || enemyStatusFilter !== 'all') && (
+            <div className="enemy-hub-active-filters"><span>Filtros ativos · {visibleEnemies.length} de {enemies.length} inimigos</span><button type="button" onClick={() => { setEnemySearch(''); setEnemyArchetypeFilter('all'); setEnemyStatusFilter('all') }}>Limpar tudo</button></div>
+          )}
+
+          {enemiesLoading ? (
+            <div className="enemy-hub-empty" role="status"><span aria-hidden="true">⏳</span><h4>Carregando inimigos...</h4><p>Buscando as fichas da campanha.</p></div>
+          ) : enemies.length === 0 ? (
+            <div className="enemy-hub-empty">
+              <span aria-hidden="true">⚔</span>
+              <h4>Seu arquivo ainda está vazio</h4>
+              <p>Cadastre o primeiro inimigo para começar a preparar os encontros da campanha.</p>
+              <button type="button" className="primary-button" onClick={() => {
+                setEditingEnemyId(null); setEnemyName(''); setEnemyEmoji('👹');
+                setEnemyArchetype(''); setEnemyDescription(''); setShowEnemyForm(true)
+              }}>+ Criar primeiro inimigo</button>
+            </div>
+          ) : visibleEnemies.length === 0 ? (
+            <div className="enemy-hub-empty">
+              <span aria-hidden="true">⌕</span><h4>Nenhum inimigo encontrado</h4>
+              <p>Tente outra palavra ou remova os filtros para visualizar todas as fichas.</p>
+              <button type="button" className="secondary-button" onClick={() => { setEnemySearch(''); setEnemyArchetypeFilter('all'); setEnemyStatusFilter('all') }}>Limpar filtros</button>
+            </div>
+          ) : (
+            <div className={`enemy-hub-grid${enemyViewMode === 'list' ? ' is-list' : ''}`}>
+              {visibleEnemies.map(enemy => {
+                const status = getEnemySheetOverview(enemy)
+                const updatedAt = new Date(enemy.updated_at || enemy.created_at)
+                const labelDate = Number.isNaN(updatedAt.getTime()) ? 'Data indisponível' : updatedAt.toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' })
+                const party = selectedSeasonId ? getEnemyPartySeason(enemy, selectedSeasonId) : null
+                const isInParty = party?.participating === true
+                const isCritical = status.hasStats && status.maxPV > 0 && status.pv <= status.maxPV * 0.25
+                const resourceRows = [
+                  {key: 'pv', label: 'PV', current: status.pv, max: status.maxPV},
+                  {key: 'ps', label: 'PS', current: status.ps, max: status.maxPS},
+                  {key: 'pr', label: enemyResourceAbbreviation, current: status.pr, max: status.maxPR},
+                ]
+                const open = () => openEnemyFromLibrary(enemy)
+                return (
+                  <article className={`enemy-hub-card${isInParty ? ' is-in-party' : ''}${isCritical ? ' is-critical' : ''}`} key={enemy.id}>
+                    <button type="button" className="enemy-hub-card-main" onClick={open} aria-label={`Abrir ficha de ${enemy.name}`}>
+                      <div className="enemy-hub-card-head">
+                        <span className="enemy-hub-avatar" aria-hidden="true">{enemy.emoji || '👹'}</span>
+                        <span className="enemy-hub-card-flags">
+                          {isInParty && <span className="enemy-hub-status-pill is-in-party">Em cena</span>}
+                          {isCritical && <span className="enemy-hub-status-pill is-critical">PV crítico</span>}
+                          {!isInParty && !isCritical && <span className={`enemy-hub-status-pill${status.hasStats ? ' is-ready' : ''}`}>{status.hasStats ? 'Ficha pronta' : 'Sem status'}</span>}
+                        </span>
+                      </div>
+                      <div className="enemy-hub-card-identity">
+                        <span className="enemy-hub-type">{enemy.archetype || 'Sem arquétipo'}</span>
+                        <h4>{enemy.name}</h4>
+                      </div>
+                      <p className="enemy-hub-card-description">{enemy.description || 'Adicione uma descrição para organizar esta ameaça.'}</p>
+                      <div className="enemy-hub-resource-panel" aria-label={`Recursos de ${enemy.name}`}>
+                        {resourceRows.map(resource => (
+                          <div className={`enemy-hub-resource-row enemy-hub-resource-${resource.key}${resource.key === 'pr' && isKisatsutaiSystem ? ' enemy-hub-resource-blood' : ''}`} key={resource.key}>
+                            <span>{resource.label}</span>
+                            <span className="enemy-hub-resource-track" aria-hidden="true"><span style={{width: `${status.hasStats && resource.max > 0 ? Math.max(0,Math.min(100,(resource.current / resource.max) * 100)) : 0}%`}} /></span>
+                            <strong>{status.hasStats ? `${resource.current} / ${resource.max}` : '—'}</strong>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="enemy-hub-card-meta"><span className="enemy-hub-card-meta-label">{isInParty ? '♜ Participando do encontro' : status.hasStats ? '◈ Ficha configurada' : '✎ Aguardando configuração'}</span>{isInParty && <strong>{party?.initiative == null ? 'Sem iniciativa' : `Iniciativa ${party.initiative}`}</strong>}</div>
+                    </button>
+                    <footer className="enemy-hub-card-bottom">
+                      <small>◷ Atualizado em {labelDate}</small>
+                      <div className="enemy-hub-card-actions">
+                        <button type="button" className="enemy-hub-open" onClick={open}>Abrir ficha ↗</button>
+                        <button type="button" onClick={() => {
+                          setEditingEnemyId(enemy.id)
+                          setEnemyName(enemy.name)
+                          setEnemyEmoji(enemy.emoji || '👹')
+                          setEnemyArchetype(enemy.archetype || '')
+                          setEnemyDescription(enemy.description || '')
+                          setShowEnemyForm(true)
+                        }} aria-label={`Editar informações de ${enemy.name}`} title="Editar informações">✎ Editar</button>
+                        <button type="button" onClick={() => void duplicateEnemy(enemy)} disabled={enemySaving} aria-label={`Duplicar ${enemy.name}`} title="Duplicar ficha">⧉</button>
+                        <button type="button" className="enemy-hub-delete" onClick={() => void deleteEnemy(enemy)} aria-label={`Excluir ${enemy.name}`} title="Excluir inimigo">✕</button>
+                        <button type="button" className={`enemy-hub-party-toggle${isInParty ? ' is-active' : ''}`}
+                          disabled={!selectedSeasonId || enemyPartySavingId !== null}
+                          aria-pressed={isInParty}
+                          title={!selectedSeasonId ? 'Selecione uma temporada para gerenciar a Party' : undefined}
+                          onClick={() => { if (!selectedSeasonId) return; void updateEnemyPartySeason(enemy.id, selectedSeasonId, {participating: !isInParty}, isInParty ? `${enemy.name} removido da Party de Inimigos.` : `${enemy.name} adicionado à Party de Inimigos.`) }}>
+                          {enemyPartySavingId === enemy.id ? 'Salvando participação...' : isInParty ? '✓ Na Party · Remover' : '＋ Adicionar à Party'}
+                        </button>
+                      </div>
+                    </footer>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {showEnemyForm && (
+          <div className="bestiary-modal-overlay" onMouseDown={event => {
+            if (event.target === event.currentTarget && !enemySaving) { setShowEnemyForm(false); setEditingEnemyId(null) }
+          }}>
+            <form className="bestiary-modal enemy-hub-modal" onSubmit={event => { event.preventDefault(); void saveEnemy() }}>
+              <div className="bestiary-modal-header">
+                <div><span className="shops-eyebrow">⚔ FICHAS DA CAMPANHA</span><h2>{editingEnemyId ? 'Editar inimigo' : 'Novo inimigo'}</h2><p>Informações básicas da ficha. Os dados de combate são editados ao abrir o inimigo.</p></div>
+                <button type="button" aria-label="Fechar janela" onClick={() => { if (!enemySaving) { setShowEnemyForm(false); setEditingEnemyId(null) } }}>×</button>
+              </div>
+              <div className="bestiary-form">
+                <div className="enemy-hub-form-preview" aria-live="polite">
+                  <span className="enemy-hub-avatar" aria-hidden="true">{enemyEmoji || '👹'}</span>
+                  <div><strong>{enemyName.trim() || 'Nome do inimigo'}</strong><span>{enemyArchetype.trim() || 'Arquétipo não definido'}</span></div>
+                </div>
+                <label>Nome do inimigo *<input type="text" value={enemyName} onChange={event => setEnemyName(event.target.value)} placeholder="Ex.: Guarda da fortaleza" maxLength={100} required autoFocus /></label>
+                <div className="bestiary-form-row">
+                  <label>Emoji<input type="text" value={enemyEmoji} onChange={event => setEnemyEmoji(event.target.value)} placeholder="👹" maxLength={12} /></label>
+                  <label>Arquétipo<input type="text" value={enemyArchetype} onChange={event => setEnemyArchetype(event.target.value)} placeholder="Ex.: Humanoide, Chefe, Elite..." maxLength={80} /></label>
+                </div>
+                <div><span style={{fontSize:12, color:'var(--eh-muted)',fontWeight:700}}>Escolha rápida de emoji</span><div className="enemy-hub-emoji-picker" role="group" aria-label="Emojis sugeridos para inimigos">{enemyEmojiChoices.map(emoji => <button type="button" key={emoji} aria-pressed={enemyEmoji === emoji} aria-label={`Usar emoji ${emoji}`} onClick={() => setEnemyEmoji(emoji)}>{emoji}</button>)}</div></div>
+                <label>Descrição<textarea value={enemyDescription} onChange={event => setEnemyDescription(event.target.value)} placeholder="Aparência, comportamento, papel na história..." rows={4} maxLength={1000} /></label>
+              </div>
+              <div className="bestiary-modal-actions">
+                <button type="button" disabled={enemySaving} onClick={() => { setShowEnemyForm(false); setEditingEnemyId(null) }}>Cancelar</button>
+                <button type="submit" disabled={enemySaving || !enemyName.trim()}>{enemySaving ? 'Salvando...' : editingEnemyId ? 'Salvar alterações' : 'Criar inimigo'}</button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    )}
+
+{enemySheetView && selectedEnemy && (
+  <div className="enemy-sheet-panel">
+    {enemySheetLoading || enemySheetLoadedForRef.current !== `${selectedCampaignId}:${selectedEnemyId}`
+      ? <p className="master-shield-empty">Carregando ficha do inimigo...</p> : (
+      <>
+        <div className="inventory-heading sheet-page-hero sheet-page-hero-detail sheet-enemy-hero">
+          <div className="enemy-sheet-hero-top">
+            <div className="sheet-page-hero-leading">
+              <span className="sheet-page-hero-icon" aria-hidden="true">{selectedEnemy.emoji || '👹'}</span>
+              <div>
+                <span className="sheet-page-eyebrow">FICHA DE INIMIGO · EXCLUSIVA DO MESTRE</span>
+                <h2>{selectedEnemy.name}</h2>
+                <p>{selectedCampaign?.name} · {enemySystemName || 'Sistema de RPG'}</p>
+              </div>
+            </div>
+            <div className="enemy-sheet-hero-utilities">
+              <button type="button" className="secondary-button" onClick={() => {
+                if (enemySheetDirty && !window.confirm('Existem alterações não salvas na ficha. Deseja voltar sem salvá-las?')) return
+                setEnemySheetView(false)
+                setEnemyItemEditorOpen(false)
+              }}>← Lista de inimigos</button>
+              <button type="button" className="secondary-button" disabled={enemySaving || enemySheetSaving}
+                onClick={() => void duplicateEnemy(selectedEnemy)}>Duplicar ficha</button>
+            </div>
+          </div>
+          <div className="enemy-sheet-toolbar">
+            <div className={`enemy-sheet-save-indicator is-${enemyAutoSaveStatus}`} role="status" aria-live="polite">
+              <span className="enemy-sheet-save-icon" aria-hidden="true">
+                {enemyAutoSaveStatus === 'error' ? '!' : enemyAutoSaveStatus === 'saving' ? '↻' : enemySheetDirty ? '•' : '✓'}
+              </span>
+              <div className="enemy-sheet-save-copy">
+                <strong>
+                  {enemyAutoSaveStatus === 'error' ? 'Não foi possível salvar'
+                    : enemyAutoSaveStatus === 'saving' ? 'Salvando alterações'
+                    : enemyAutoSaveStatus === 'pending' || enemySheetDirty ? 'Alterações pendentes'
+                    : enemyAutoSaveStatus === 'saved' ? 'Ficha salva' : 'Ficha pronta'}
+                </strong>
+                <small>
+                  {enemyAutoSaveStatus === 'error' ? 'Confira a conexão e tente salvar novamente.'
+                    : enemyAutoSaveStatus === 'saving' ? 'Atualizando as informações da ficha…'
+                    : enemyAutoSaveStatus === 'pending' || enemySheetDirty ? 'O salvamento automático está ativo.'
+                    : 'Nenhuma alteração pendente.'}
+                </small>
+              </div>
+            </div>
+            <div className="enemy-sheet-toolbar-actions">
+              <button type="button" className="secondary-button enemy-sheet-edit-button"
+                onClick={() => setEnemyEditingSheet(value => !value)}>
+                <span aria-hidden="true">✎</span>
+                {enemyEditingSheet ? 'Visualizar ficha' : 'Editar ficha'}
+              </button>
+              {(enemySheetDirty || enemySheetSaving) && (
+                <button type="button" className="primary-button enemy-sheet-save-button"
+                  disabled={enemySheetSaving}
+                  onClick={() => void saveEnemySheet()}>
+                  <span aria-hidden="true">{enemySheetSaving ? '↻' : '↓'}</span>
+                  {enemySheetSaving ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <nav className="sheet-quick-nav" aria-label="Navegação da ficha do inimigo">
+          {(enemyEditingSheet ? [
+            ['✎', 'Edição', 'inimigo-edicao'], ['⚔', 'Ações', 'inimigo-acoes'], ['◈', 'Reações', 'inimigo-reacoes'],
+            ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
+          ] : [
+            ['♥', 'Status', 'inimigo-status'], ['✦', 'Atributos', 'inimigo-atributos'], ['✧', 'Perícias', 'inimigo-pericias'],
+            ['⚔', 'Combate', 'inimigo-combate'], ['◈', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'],
+            ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
+          ]).map(([symbol,label,target]) => <button type="button" key={target} onClick={() => document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">{symbol}</span>{label}</button>)}
+        </nav>
+        {renderSharedSheetCore(true)}
+        {renderSharedSheetCore(true, 'armor')}
+<section className="inventory-section sheet-inventory-section" id="inimigo-inventario">
+  <div className="inventory-heading">
+    <div><span className="sheet-page-eyebrow">EQUIPAMENTOS E RECURSOS</span><h3>Inventário</h3><p>Equipamentos e itens exclusivos de {selectedEnemy.name}.</p></div>
+    <button type="button" className="primary-button" onClick={() => openEnemyItemEditor(null)}>
+      + Adicionar item
+    </button>
+  </div>
+  <div className="sheet-capacity-overview" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:12,margin:'4px 0 18px'}}>
+    {([
+      ['▤','Objetos',String(enemyInventory.reduce((sum,item) => sum+Math.max(1,Number(item.quantity)||1),0)),'itens na mochila'],
+      ['⚖','Peso carregado',enemyTotalWeight.toFixed(1)+' kg','peso total dos itens'],
+      ['🎒','Capacidade livre',(enemyMaxCapacity-enemyTotalWeight).toFixed(1)+' kg',enemyIsOverloaded?'acima do limite de carga':'disponíveis para carregar']
+    ] as const).map(([icon,label,value,sub]) => (
+      <div key={label} style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line,rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>{icon}</span>{label}</div>
+        <strong style={{display:'block',fontSize:27,fontWeight:800,color:enemyIsOverloaded && label==='Capacidade livre'?'#ff8b8b':'var(--season-text,#f4efff)'}}>{value}</strong>
+        <small style={{color:'var(--season-muted,#aaa2b5)'}}>{sub}</small>
+      </div>
+    ))}
+    <div style={{gridColumn:'1 / -1',padding:'12px 15px',borderRadius:12,border:'1px solid var(--season-line,rgba(160,140,190,.16))',background:'var(--season-bg,rgba(10,9,15,.28))'}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,fontSize:12,marginBottom:8}}><span>Uso da capacidade</span><strong>{Math.round(Math.min(100,enemyTotalWeight/Math.max(1,enemyMaxCapacity)*100))}%</strong></div>
+      <div role="progressbar" aria-label="Capacidade utilizada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,enemyTotalWeight/Math.max(1,enemyMaxCapacity)*100)} style={{height:8,borderRadius:99,overflow:'hidden',background:'var(--season-line,rgba(160,140,190,.22))'}}>
+        <div style={{height:'100%',width:Math.min(100,enemyTotalWeight/Math.max(1,enemyMaxCapacity)*100)+'%',background:enemyIsOverloaded?'linear-gradient(90deg,#e78b62,#e45f70)':'linear-gradient(90deg,var(--season-secondary,#8d70cf),var(--season-primary,#c8b5ff))'}} />
+      </div>
+    </div>
+  </div>
+  <div className="inventory-toolbar">
+    <div className="category-tabs">
+      {categories.map(category => <button key={category} type="button" className={enemyItemCategory===category?'category-tab selected':'category-tab'} onClick={() => setEnemyItemCategory(category)}>{category}</button>)}
+    </div>
+    <div className="inventory-extra-controls">
+      <label className="search-box"><span>⌕</span><input value={enemyItemSearch} onChange={event=>setEnemyItemSearch(event.target.value)} placeholder="Buscar item..." aria-label="Buscar item"/><kbd>/</kbd></label>
+      <button type="button" className={enemyFavoriteOnly?'category-tab selected':'category-tab'} onClick={()=>setEnemyFavoriteOnly(value=>!value)}>{enemyFavoriteOnly?'★ Favoritos':'☆ Favoritos'}</button>
+      <label className="inventory-sort-label"><span>Ordenar:</span><select value={enemySortBy} onChange={event=>setEnemySortBy(event.target.value)} aria-label="Ordenar itens"><option value="created">Adicionados</option><option value="name">Nome</option><option value="category">Categoria</option><option value="weight">Maior peso</option><option value="quantity">Maior quantidade</option></select></label>
+    </div>
+  </div>
+  {(() => {
+    const visible = (enemyInventory.map((item,index)=>({...item,index})) as Array<Record<string, any> & {index: number}>).filter(item => {
+      const search=enemyItemSearch.trim().toLocaleLowerCase('pt-BR')
+      return (!search || (String(item.name||'')+' '+String(item.description||'')).toLocaleLowerCase('pt-BR').includes(search)) &&
+        (enemyItemCategory==='Todos' || (Array.isArray(item.categories)&&item.categories.includes(enemyItemCategory))) &&
+        (!enemyFavoriteOnly || Boolean(item.favorite))
+    }).sort((a,b)=>enemySortBy==='name'?String(a.name).localeCompare(String(b.name),'pt-BR')
+      :enemySortBy==='category'?String(a.categories?.[0]||'').localeCompare(String(b.categories?.[0]||''),'pt-BR')
+      :enemySortBy==='weight'?(Number(b.weight)||0)-(Number(a.weight)||0)
+      :enemySortBy==='quantity'?(Number(b.quantity)||0)-(Number(a.quantity)||0)
+      :a.index-b.index)
+    if (!visible.length) return <div className="empty-state"><span>▤</span><h3>{enemyInventory.length?'Nenhum item encontrado':'Mochila vazia'}</h3><p>{enemyInventory.length?'Tente outra busca ou selecione outra categoria.':'Adicione o primeiro item deste inimigo.'}</p><button type="button" onClick={()=>enemyInventory.length?(setEnemyItemSearch(''),setEnemyItemCategory('Todos'),setEnemyFavoriteOnly(false)):openEnemyItemEditor(null)}>{enemyInventory.length?'Limpar filtros':'Adicionar primeiro item'}</button></div>
+    return <div className="item-grid">
+      {visible.map(item => <article className="item-card inventory-item-card" key={String(item.id||item.index)} style={{cursor:'pointer'}} onClick={event=>{if((event.target as HTMLElement).closest('button,input,select,textarea,a'))return;openEnemyItemEditor(item.index)}}>
+        <div className="item-card-top">
+          <button type="button" className="item-art" title="Editar emoji e detalhes" aria-label={`Editar \${item.name} `} onClick={event=>{event.stopPropagation();openEnemyItemEditor(item.index)}} style={{font:'inherit',fontSize:28,cursor:'pointer'}}>{String(item.emoji||'📦')}</button>
+          <div className="item-actions">
+            <button type="button" className="item-menu" aria-label="Favorito" title={item.favorite?'Remover dos favoritos':'Adicionar aos favoritos'} onClick={event=>{event.stopPropagation();writeEnemySheet('inventory.items',enemyInventory.map((entry,index)=>index===item.index?{...entry,favorite:!entry.favorite}:entry))}}>{item.favorite?'★':'☆'}</button>
+            <button type="button" className="item-menu" aria-label="Duplicar item" title="Duplicar item" onClick={event=>{event.stopPropagation();const next=[...enemyInventory];next.splice(item.index+1,0,{...item,id:crypto.randomUUID(),name:String(item.name)+' (cópia)'});writeEnemySheet('inventory.items',next)}}>⧉</button>
+            {item.equipmentType && item.equipmentType!=='none' && <button type="button" className={`item-menu equipment-card-icon \${item.equipped?'is-equipped':''}`} title={item.equipped?'Desequipar':'Equipar'} onClick={event=>{event.stopPropagation();equipEnemyItem(item.index)}}>{item.equipped?'✓':item.equipmentType==='armor'?'🛡':item.equipmentType==='protection'?'✧':'⚔'}</button>}
+            <button type="button" className="item-menu" aria-label="Editar item" onClick={event=>{event.stopPropagation();openEnemyItemEditor(item.index)}}>✎</button>
+            <button type="button" className="item-menu" aria-label="Excluir item" onClick={event=>{event.stopPropagation();if(window.confirm('Excluir '+String(item.name||'este item')+'?'))writeEnemySheet('inventory.items',enemyInventory.filter((_,index)=>index!==item.index))}}>×</button>
+          </div>
+        </div>
+        <span className="item-category">{String(item.rarity||'comum').toUpperCase()}</span>
+        <h3>{String(item.name||'Item sem nome')}</h3>
+        <p className="item-description">{String(item.description||'Sem descrição.')}</p>
+        <div className="item-tags">{(Array.isArray(item.categories)?item.categories:[]).map((category:string)=><span key={category} className="item-tag">{category}</span>)}</div>
+        {item.equipmentType && item.equipmentType!=='none' && <div className="inventory-equip-status">{item.equipped?'✓ Equipado':'○ Não equipado'}</div>}
+        {Array.isArray(item.categories)&&item.categories.includes('Consumíveis')&&<div className="scarcity-card"><small>{item.scarcityExhausted?'Esgotado':`Escassez: nível \${item.scarcityLevel||1}`}</small><button type="button" className="secondary-button" disabled={Boolean(item.scarcityExhausted)} onClick={event=>{event.stopPropagation();useEnemyConsumable(item.index)}}>Usar consumível</button></div>}
+        <div className="item-footer"><span>⚖ {(Number(item.weight)||0).toFixed(1)} kg / un.</span><div className="quantity-controls" aria-label={`Quantidade de \${item.name}`}>
+          <button type="button" className="quantity-button" disabled={(Number(item.quantity)||1)<=1} onClick={event=>{event.stopPropagation();writeEnemySheet('inventory.items',enemyInventory.map((entry,index)=>index===item.index?{...entry,quantity:Math.max(1,(Number(entry.quantity)||1)-1)}:entry))}}>−</button>
+          <span className="quantity">{Math.max(1,Number(item.quantity)||1)}</span>
+          <button type="button" className="quantity-button" disabled={(Number(item.quantity)||1)>=999} onClick={event=>{event.stopPropagation();writeEnemySheet('inventory.items',enemyInventory.map((entry,index)=>index===item.index?{...entry,quantity:Math.min(999,(Number(entry.quantity)||1)+1)}:entry))}}>+</button>
+        </div></div>
+      </article>)}
+    </div>
+  })()}
+</section>
+{enemyItemEditorOpen && createPortal(
+              <div className="item-modal-overlay" onMouseDown={event => {
+                if (event.target === event.currentTarget) setEnemyItemEditorOpen(false)
+              }}>
+                <div className="item-modal-content" role="dialog" aria-modal="true"
+                  aria-label={enemyItemEditorIndex===null?'Adicionar item do inimigo':'Editar item do inimigo'}>
+                  <form className="add-form item-editor-form" onSubmit={event => {
+                    event.preventDefault();persistEnemyItemEditor()
+                  }}>
+                    <div className="form-heading"><div>
+                      <h3>{enemyItemEditorIndex===null?'Novo item':'Editar item'}</h3>
+                      <p>Inventário de {selectedEnemy.name} · exclusivo da campanha.</p>
+                    </div><button type="button" className="secondary-button"
+                      onClick={() => setEnemyItemEditorOpen(false)}>Fechar</button></div>
+                    <label>Nome do item
+                      <input required maxLength={100} value={String(enemyItemForm.name||'')}
+                        onChange={event => setEnemyItemForm(current => ({...current,name:event.target.value}))}/>
+                    </label>
+                    <label>Descrição
+                      <textarea maxLength={1000} rows={3} value={String(enemyItemForm.description||'')}
+                        onChange={event => setEnemyItemForm(current => ({...current,description:event.target.value}))}/>
+                    </label>
+                    <div className="emoji-field"><label>Emoji do item</label>
+                      <div className="emoji-grid">
+                        {availableEmojis.map(emoji => <button key={emoji} type="button"
+                          className={enemyItemForm.emoji===emoji?'emoji-option selected':'emoji-option'}
+                          onClick={() => setEnemyItemForm(current => ({...current,emoji}))}>{emoji}</button>)}
+                      </div>
+                    </div>
+                    <fieldset style={{border:'none',padding:0}}><legend>Categorias (escolha ao menos uma)</legend>
+                      <div className="form-row">
+                        {categories.filter(category => category!=='Todos').map(category =>
+                          <label key={category} style={{display:'flex',gap:6,alignItems:'center'}}>
+                            <input type="checkbox" checked={Array.isArray(enemyItemForm.categories) &&
+                              enemyItemForm.categories.includes(category)}
+                              onChange={event => setEnemyItemForm(current => ({...current,
+                                categories:event.target.checked
+                                  ? [...(current.categories || []),category]
+                                  : (current.categories || []).filter((value:string)=>value!==category),
+                              }))}/>{category}</label>)}
+                      </div>
+                    </fieldset>
+                    <div className="form-row">
+                      <label>Raridade<select value={String(enemyItemForm.rarity||'comum')}
+                        onChange={event => setEnemyItemForm(current => ({...current,rarity:event.target.value}))}>
+                        {['comum','incomum','raro','épico','mítico','relíquia'].map(value =>
+                          <option key={value} value={value}>{value}</option>)}
+                      </select></label>
+                      <label>Quantidade<input type="number" min="1" max="999"
+                        value={Number(enemyItemForm.quantity ?? 1)}
+                        onChange={event => setEnemyItemForm(current => ({...current,quantity:event.target.value}))}/></label>
+                      <label>Peso unitário (kg)<input type="number" step="0.1" min="0"
+                        value={Number(enemyItemForm.weight ?? 0)}
+                        onChange={event => setEnemyItemForm(current => ({...current,weight:event.target.value}))}/></label>
+                      <label>Preço unitário<input type="number" min="0" step="0.01"
+                        value={Number(enemyItemForm.unitPrice ?? 0)}
+                        onChange={event => setEnemyItemForm(current => ({...current,unitPrice:event.target.value}))}/></label>
+                      <label>Moeda
+                        <select value={String(enemyItemForm.currencyId||'')}
+                          onChange={event => setEnemyItemForm(current => ({...current,currencyId:event.target.value}))}>
+                          <option value="">Sem moeda específica</option>
+                          {(selectedCampaign?.currency_config?.currencies ?? []).map(currency =>
+                            <option key={currency.id} value={currency.id}>
+                              {currency.name} ({currency.symbol})</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    <label>Tipo de equipamento<select value={String(enemyItemForm.equipmentType||'none')}
+                      onChange={event => setEnemyItemForm(current => ({...current,equipmentType:event.target.value}))}>
+                      <option value="none">Nenhum</option><option value="weapon">Arma</option>
+                      <option value="armor">Armadura</option><option value="protection">Proteção</option>
+                      <option value="cybernetic">Cibernético</option>
+                    </select></label>
+                    {enemyItemForm.equipmentType==='weapon' && <div className="form-row">
+                      <label>Classe da arma<select value={String(enemyItemForm.weaponClass||'improvised')}
+                        onChange={event => setEnemyItemForm(current => ({...current,weaponClass:event.target.value}))}>
+                        {([['improvised','Improvisada'],['advanced','Avançada'],['special','Especial'],
+                          ['black_red','Preta/Vermelha'],['mutable','Mutável']] as const).map(([value,label]) =>
+                          <option key={value} value={value}>{label}</option>)}
+                      </select></label>
+                      <div style={{padding:10,alignSelf:'center'}}>
+                        Dano da arma: <strong>{({improvised:'1d4',advanced:'1d6',special:'1d8',
+                          black_red:'1d10',mutable:'1d12'} as Record<string,string>)[
+                            String(enemyItemForm.weaponClass||'improvised')] || '1d4'}</strong>
+                      </div>
+                    </div>}
+                    {enemyItemForm.equipmentType==='armor' && <div className="form-row">
+                      <label>Classe da armadura<select value={String(enemyItemForm.armorClass||'leve')}
+                        onChange={event => setEnemyItemForm(current => ({...current,armorClass:event.target.value}))}>
+                        <option value="leve">Leve</option><option value="media">Média</option>
+                        <option value="pesada">Pesada</option>
+                      </select></label>
+                      <label>Cobertura<select value={isKisatsutaiSystem ? 'especial_bruto' : String(enemyItemForm.armorCoverage||'cortante_perfurante')}
+                        onChange={event => setEnemyItemForm(current => ({...current,armorCoverage:event.target.value}))}>
+                        {!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante / Perfurante</option>}
+                        <option value="especial_bruto">Especial / Bruto</option>
+                        {!isKisatsutaiSystem && <option value="todos">Todos</option>}
+                      </select></label>
+                    </div>}
+                    {enemyItemForm.equipmentType==='protection' && <div className="form-row">
+                      <label>Nível de proteção<select value={String(enemyItemForm.protectionTier||'basica')}
+                        onChange={event => setEnemyItemForm(current => ({...current,protectionTier:event.target.value}))}>
+                        <option value="basica">Básica</option><option value="moderada">Moderada</option>
+                        <option value="avancada">Avançada</option>
+                      </select></label>
+                      <label>Modo<select value={String(enemyItemForm.protectionMode||'resistencia')}
+                        onChange={event => setEnemyItemForm(current => ({...current,protectionMode:event.target.value}))}>
+                        <option value="resistencia">Resistência</option>
+                        <option value="sanidade">Sanidade</option>
+                      </select></label>
+                    </div>}
+                    {enemyItemForm.equipmentType==='cybernetic' && <div className="form-row">
+                      <label>Categoria cibernética<input value={String(enemyItemForm.cyberneticCategory||'')}
+                        onChange={event => setEnemyItemForm(current => ({...current,cyberneticCategory:event.target.value}))}/></label>
+                      <label>Localização<input value={String(enemyItemForm.cyberneticLocation||'')}
+                        onChange={event => setEnemyItemForm(current => ({...current,cyberneticLocation:event.target.value}))}/></label>
+                      <label>Efeitos<textarea rows={2} value={String(enemyItemForm.cyberneticEffects||'')}
+                        onChange={event => setEnemyItemForm(current => ({...current,cyberneticEffects:event.target.value}))}/></label>
+                    </div>}
+                    {Array.isArray(enemyItemForm.categories) && enemyItemForm.categories.includes('Consumíveis') &&
+                      <div className="form-row">
+                        <label>Nível de escassez<select value={String(enemyItemForm.scarcityLevel||1)}
+                          onChange={event => setEnemyItemForm(current => ({...current,scarcityLevel:Number(event.target.value)}))}>
+                          <option value="1">1 · d12 · carga 7</option><option value="2">2 · d8 · carga 5</option>
+                          <option value="3">3 · d6 · carga 3</option><option value="4">4 · d4 · carga 1</option>
+                        </select></label>
+                        <label><input type="checkbox" checked={Boolean(enemyItemForm.scarcityExhausted)}
+                          onChange={event => setEnemyItemForm(current => ({...current,scarcityExhausted:event.target.checked}))}/>
+                          Esgotado</label>
+                      </div>}
+                    <div className="form-row">
+                      <label><input type="checkbox" checked={Boolean(enemyItemForm.equipped)}
+                        onChange={event => setEnemyItemForm(current => ({...current,equipped:event.target.checked}))}/>
+                        Equipado</label>
+                    </div>
+                    <div className="form-row" style={{justifyContent:'flex-end'}}>
+                      <button type="button" className="secondary-button"
+                        onClick={() => setEnemyItemEditorOpen(false)}>Cancelar</button>
+                      <button type="submit" className="primary-button">
+                        {enemyItemEditorIndex===null?'Adicionar item':'Salvar item'}</button>
+                    </div>
+                  </form>
+                </div>
+              </div>,document.body)}
+          {(selectedCampaign?.currency_config?.currencies?.length ?? 0) > 0 && (
+            <section className="inventory-section currency-wallet" style={{marginTop:18,display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
+              {(() => {
+                const currencies = selectedCampaign?.currency_config?.currencies ?? []
+                const wallet = readEnemySheet('wallet', {}) as Record<string, any>
+                const balances: Record<string, number> = wallet.balances || {}
+                const selectedId = enemyWalletCurrency || currencies[0]?.id || ''
+                const fromId = enemyWalletFrom || currencies[0]?.id || ''
+                const toId = enemyWalletTo || currencies[1]?.id || ''
+                const conversionValue = Number(enemyWalletConversionAmount.replace(',', '.'))
+                const from = currencies.find(entry => entry.id === fromId)
+                const to = currencies.find(entry => entry.id === toId)
+                const conversionResult = from && to && conversionValue > 0 && from.conversionRate > 0 && to.conversionRate > 0
+                  ? conversionValue * from.conversionRate / to.conversionRate : null
+                const history: Array<Record<string, any>> = Array.isArray(wallet.history) ? wallet.history : []
+                const amount = Number(enemyWalletAmount.replace(',', '.'))
+                const formatMoney = (value: number) => value.toLocaleString('pt-BR', {maximumFractionDigits:8})
+                return <>
+                  <div className="inventory-heading" style={{position:'relative',alignItems:'center',gap:16,marginBottom:24,paddingBottom:18,borderBottom:'1px solid var(--season-line,rgba(255,255,255,.12))'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:14}}>
+                      <div aria-hidden="true" style={{width:58,height:58,flex:'0 0 58px',display:'grid',placeItems:'center',borderRadius:19,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'linear-gradient(145deg,var(--season-accent-soft,rgba(220,135,65,.20)),var(--season-surface-alt,rgba(255,255,255,.04)))',fontSize:28}}>👛</div>
+                      <div><h3 style={{margin:'0 0 5px',fontSize:24,fontWeight:850,letterSpacing:'-.04em'}}>Carteira</h3>
+                        <p style={{margin:0,fontSize:13}}>Recursos de <strong>{selectedEnemy.name}</strong></p>
+                        <small style={{display:'block',marginTop:5,opacity:.68}}>Saldos e histórico de movimentações</small>
+                      </div>
+                    </div>
+                    <span style={{marginLeft:'auto',padding:'6px 10px',borderRadius:999,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'var(--season-surface-alt,rgba(255,255,255,.05))',fontSize:11,fontWeight:750,letterSpacing:'.08em',textTransform:'uppercase'}}>Finanças</span>
+                  </div>
+                  <div className="currency-tabs">
+                    <button type="button" className={!enemyWalletShowHistory ? 'currency-tab active' : 'currency-tab'} onClick={() => setEnemyWalletShowHistory(false)}>👛 Carteira</button>
+                    <button type="button" className={enemyWalletShowHistory ? 'currency-tab active' : 'currency-tab'} onClick={() => setEnemyWalletShowHistory(true)}>▤ Histórico</button>
+                  </div>
+                  {!enemyWalletShowHistory ? <>
+                    <div className="currency-balances-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,210px),1fr))',gap:14,marginBottom:24}}>
+                      {currencies.map((currency,index) => <div className="currency-balance" key={currency.id} style={{position:'relative',overflow:'hidden',display:'flex',flexDirection:'column',gap:14,minHeight:132,padding:19,borderRadius:19,border:'1px solid var(--season-line,rgba(255,255,255,.16))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.09)),var(--season-surface,rgba(0,0,0,.10)))'}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                          <span style={{fontSize:12,fontWeight:700,letterSpacing:'.045em',color:'var(--season-muted,#aaa)'}}>{currency.name}</span>
+                          <span aria-hidden="true" style={{width:34,height:34,display:'grid',placeItems:'center',borderRadius:12,background:'var(--season-accent-soft,rgba(220,135,65,.16))'}}>{index===0?'◈':'◇'}</span>
+                        </div>
+                        <strong style={{fontSize:'clamp(25px,3.4vw,33px)',lineHeight:1.12,fontWeight:850,letterSpacing:'-.035em',fontVariantNumeric:'tabular-nums',overflowWrap:'anywhere'}}><span style={{fontSize:'.78em',opacity:.8,marginRight:5}}>{currency.symbol}</span>{formatMoney(Number(balances[currency.id])||0)}</strong>
+                        <span style={{fontSize:11,color:'var(--season-muted,#aaa)'}}>Saldo disponível</span>
+                      </div>)}
+                    </div>
+                    <div className="currency-conversion-panel" style={{display:'grid',gap:16,marginBottom:20,padding:20,borderRadius:18,border:'1px solid var(--season-line,rgba(255,255,255,.12))',background:'var(--season-surface-alt,rgba(255,255,255,.035))'}}>
+                      <div><h4 style={{margin:'0 0 5px',fontSize:16}}>⇄ Converter moedas</h4><p style={{margin:0,fontSize:12,opacity:.7}}>Converta seus saldos entre as moedas da campanha.</p></div>
+                      <div className="form-row">
+                        <label style={labelStyle}>MOEDA DE ORIGEM<select style={inputStyle} value={fromId} onChange={event=>setEnemyWalletFrom(event.target.value)}>{currencies.map(currency=><option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
+                        <label style={labelStyle}>MOEDA DE DESTINO<select style={inputStyle} value={toId} onChange={event=>setEnemyWalletTo(event.target.value)}>{currencies.map(currency=><option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
+                      </div>
+                      <label style={labelStyle}>QUANTIDADE<input style={inputStyle} type="number" min="0" step="any" value={enemyWalletConversionAmount} onChange={event=>setEnemyWalletConversionAmount(event.target.value)}/></label>
+                      <p style={{margin:0,fontSize:13}}>{conversionResult===null?'Informe uma quantidade para visualizar a conversão.':`Você receberá ${to?.symbol||''} ${formatMoney(conversionResult)}`}</p>
+                      <button type="button" className="primary-button" disabled={!conversionResult || fromId===toId || conversionValue > (Number(balances[fromId])||0)} onClick={()=>{convertEnemyWallet(fromId,toId,conversionValue);setEnemyWalletConversionAmount('')}}>⇄ Converter moedas</button>
+                    </div>
+                    <div className="currency-actions" style={{display:'grid',gap:14,padding:20,borderRadius:18,border:'1px solid var(--season-line,rgba(255,255,255,.12))',background:'var(--season-surface-alt,rgba(255,255,255,.035))'}}>
+                      <div><h4 style={{margin:'0 0 5px',fontSize:16}}>Movimentar saldo</h4><p style={{margin:0,fontSize:12,opacity:.7}}>Adicione ou retire moedas desta carteira.</p></div>
+                      <label style={labelStyle}>MOEDA<select style={inputStyle} value={selectedId} onChange={event=>setEnemyWalletCurrency(event.target.value)}>{currencies.map(currency=><option value={currency.id} key={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
+                      <label style={labelStyle}>QUANTIDADE<input style={inputStyle} type="number" min="0" step="any" value={enemyWalletAmount} onChange={event=>setEnemyWalletAmount(event.target.value)}/></label>
+                      <label style={labelStyle}>DESCRIÇÃO<input style={inputStyle} value={enemyWalletDescription} maxLength={150} onChange={event=>setEnemyWalletDescription(event.target.value)} placeholder="Recompensa, compra, saque..."/></label>
+                      <div className="currency-buttons" style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10}}>
+                        <button type="button" className="primary-button currency-action-add" disabled={!selectedId || !(amount>0) || !Number.isFinite(amount)} onClick={()=>{adjustEnemyWallet(selectedId,amount,enemyWalletDescription);setEnemyWalletAmount('');setEnemyWalletDescription('')}}>+ Adicionar</button>
+                        <button type="button" className="secondary-button currency-action-remove" disabled={!selectedId || !(amount>0) || !Number.isFinite(amount) || amount>(Number(balances[selectedId])||0)} onClick={()=>{adjustEnemyWallet(selectedId,-amount,enemyWalletDescription);setEnemyWalletAmount('');setEnemyWalletDescription('')}}>− Retirar</button>
+                      </div>
+                    </div>
+                  </> : <div className="currency-history-page" style={{padding:20,borderRadius:18}}>
+                    <div className="inventory-heading"><div><h3>Histórico de movimentações</h3><p>Acompanhe todas as movimentações desta carteira.</p></div></div>
+                    {history.length ? <>
+                      <div className="currency-history-summary" style={{marginBottom:16}}><strong>{history.length} movimentações registradas</strong></div>
+                      {history.map(entry => <article className="currency-history-entry" key={String(entry.id)}>
+                        <small>{entry.at?new Date(entry.at).toLocaleString('pt-BR'):'Sem data'}</small>
+                        <p>{String(entry.description || 'Movimentação')}</p>
+                        <strong>{Number(entry.amount)>0?'+':''}{formatMoney(Number(entry.amount)||0)} {currencies.find(currency=>currency.id===entry.currencyId)?.symbol||''}</strong>
+                      </article>)}
+                    </> : <p>Nenhuma movimentação registrada.</p>}
+                    <button type="button" className="secondary-button" onClick={()=>setEnemyWalletShowHistory(false)}>← Voltar à carteira</button>
+                  </div>}
+                </>
+              })()}
+            </section>
+          )}
+          </>
+    )}
+  </div>
+)}
+
+  </section>
+)}
+
+          {activePage === 'player-table' && selectedCampaign && (
+            <HaxTable
+              campaignId={selectedCampaign.id}
+              campaignName={selectedCampaign.name}
+              seasonId={selectedSeasonId}
+              seasons={seasons}
+              onSeasonChange={setSelectedSeasonId}
+              isMaster={isMaster}
+              userId={session?.user.id ?? ''}
+              playerName={displayName}
+              characters={characters}
+              enemies={isMaster ? enemies : []}
+            />
+          )}
+
+          {activePage === 'master-shield' && selectedCampaign && isMaster && (
+            <section className="inventory-section master-shield-page-panel hb-master-page">
+              <section className="master-shield hb-ms-dashboard" aria-labelledby="master-shield-title">
+                <div className="master-shield-heading hb-hero">
+                  <div>
+                    <span className="hb-kicker">✦ CENTRAL DE SESSÃO · ÁREA DO MESTRE</span>
+                    <h2 id="master-shield-title">Escudo do Mestre<span className="hb-title-dot">.</span></h2>
+                    <p>Sua mesa de comando: acompanhe os dois grupos, prepare o combate e consulte tudo o que importa durante a sessão.</p>
+                    <div className="hb-hero-tags"><span>⚑ {selectedCampaign.name}</span><span>✧ {selectedCampaign.system_name || 'Sistema não definido'}</span></div>
+                  </div>
+                  <div className="hb-ms-hero-stamp" aria-hidden="true"><span className="master-shield-icon hb-hero-emblem">♜</span><small>PAINEL DO MESTRE</small></div>
+                </div>
+
+                <nav className="hb-ms-quicknav" aria-label="Seções do Escudo do Mestre">
+                  <a href="#hb-ms-players"><span aria-hidden="true">♙</span> Party de personagens</a>
+                  <a href="#hb-ms-enemies"><span aria-hidden="true">⚔</span> Party de inimigos</a>
+                  <a href="#hb-ms-initiative"><span aria-hidden="true">⚡</span> Iniciativa conjunta</a>
+                  <a href="#hb-ms-activities"><span aria-hidden="true">◷</span> Atividades</a>
+                </nav>
+
+                <div className="master-shield-grid hb-ms-stats">
+                  <article className="master-shield-stat"><span>♙ Personagens na party</span><strong>{characters.filter(character => masterShieldSheets[character.id]?.seasonParticipation === true && masterShieldSheets[character.id]?.partyParticipation === true).length}</strong><small>Na temporada selecionada</small></article>
+                  <article className="master-shield-stat"><span>⚔ Inimigos em cena</span><strong>{enemyPartyMembers.length}</strong><small>Na party de inimigos</small></article>
+                  <article className="master-shield-stat hb-ms-stat-ready"><span>⚡ Iniciativas prontas</span><strong>{masterShieldInitiativeEntries.filter(entry => entry.initiative !== null).length}<em> / {masterShieldInitiativeEntries.length}</em></strong><small>Personagens e inimigos</small></article>
+                  <article className="master-shield-stat hb-ms-stat-season"><span>◷ Temporada</span><strong className="hb-ms-season-name">{seasons.find(season => season.id === masterShieldSeasonId)?.name || 'Não selecionada'}</strong><small>{seasons.length} {seasons.length === 1 ? 'temporada' : 'temporadas'} disponíveis</small></article>
+                </div>
+
+                <section className="hb-ms-session-toolbar" aria-label="Controles da sessão">
+                  <div className="hb-ms-session-intro"><span className="hb-kicker">CONTROLES DA SESSÃO</span><h3>Temporada ativa</h3><p>A mesma temporada é usada nas duas parties e na lista de iniciativas.</p></div>
+                  <div className="hb-ms-session-actions">
+                    <label htmlFor="hb-ms-season-select">Selecionar temporada
+                      <select id="hb-ms-season-select" value={masterShieldSeasonId} onChange={event => setMasterShieldSeasonId(event.target.value)}>
+                        <option value="">Selecione uma temporada</option>
+                        {seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name}</option>)}
+                      </select>
+                    </label>
+                    <button type="button" className="secondary-button" disabled={!masterShieldSeasonId || masterShieldLoading} onClick={() => { setMasterShieldRefreshKey(value => value + 1); setEnemyPartyRefreshKey(value => value + 1) }}>↻ Atualizar parties</button>
+                  </div>
+                </section>
+
+                {selectedCampaign.description && <details className="hb-ms-campaign-description"><summary>✧ Sobre esta campanha</summary><p>{selectedCampaign.description}</p></details>}
+
+                <div className="hb-ms-group-heading" aria-label="Grupos da sessão">
+                  <div className="hb-ms-group-heading-left"><span className="hb-ms-group-index" aria-hidden="true">01</span><div><span className="hb-kicker">ELENCO DO ENCONTRO</span><h3>Grupos em cena</h3><p>Seus personagens e seus adversários, lado a lado na batalha e organizados em painéis iguais.</p></div></div>
+                  <div className="hb-ms-legend" aria-label="Tipos de participantes"><span><i className="hb-ms-legend-dot players"/> Personagens</span><span><i className="hb-ms-legend-dot enemies"/> Inimigos</span></div>
+                </div>
+                <div className="hb-ms-party-layout">
+                  <section className="hb-ms-pane hb-ms-party-main" id="hb-ms-players" aria-labelledby="hb-ms-players-heading">
+                    <div className="hb-ms-pane-heading"><div><span className="hb-kicker">PERSONAGENS E RECURSOS</span><h3 id="hb-ms-players-heading">♙ Party dos personagens</h3><p>Visualize PV, PS e os demais recursos diretamente das fichas.</p></div><span className="hb-ms-section-count">{characters.filter(character => masterShieldSheets[character.id]?.seasonParticipation === true && masterShieldSheets[character.id]?.partyParticipation === true).length} ativos</span></div>
+                    {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{characters.map(character => {
+                      const data = masterShieldSheets[character.id]
+                      if (
+  !data ||
+  data.seasonParticipation !== true ||
+  data.partyParticipation !== true
+) return null
+                      const tierKey = String(data.family?.tier ?? '5')
+                      const rankId = String(data.progression?.rankId ?? 'zaidan')
+                      const maximums = calculateSheetResourceMaximums(data, {
+                        skillPointConfig: activeSystem?.data?.skillPoints,
+                        usesFamilyTiers: systemFeatures.usesFamilyTiers ?? false,
+                        familyTier: systemFeatures.usesFamilyTiers ? getSystemFamilyTier(tierKey) : null,
+                        familyBreathingBonus: systemFeatures.usesFamilyTiers
+                          ? getSystemAttributeBonus(tierKey, 'breathing') : 0,
+                        rankStatus: systemFeatures.usesRanks
+                          ? getSystemRankStatus(rankId) : null,
+                      })
+                      const maxes = maximums
+                      const current = data.status?.current ?? {}
+                      const stats = ([['PV',maxes.pv],['PS',maxes.ps],[resourceAbbreviation,maxes.pr]] as const).map(([key,max]) => {
+                        const id = key === 'PV' ? 'pv' : key === 'PS' ? 'ps' : 'pr'
+                        const saved = Number(current[id] ?? max)
+                        const rawValue = Number.isFinite(saved) ? saved : max
+                        // PV pode ultrapassar o máximo normal; PS e PR continuam limitados.
+                        const value=Math.max(0,key==='PV'?rawValue:Math.min(max,rawValue))
+                        const extra=key==='PV'?Math.max(0,value-max):0
+                        return {key,max,value,extra,pct:max>0?Math.min(100,value/max*100):0,extraPct:max>0?Math.min(100,extra/max*100):0}
+                      })
+                      return <button type="button" className="master-shield-character hb-ms-player-card" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title hb-ms-player-identity"><span className="hb-ms-player-avatar" aria-hidden="true">{character.emoji || '🧑'}</span><span className="hb-ms-player-copy"><strong>{character.name}</strong><small>{String(data.progression?.rankName || getSystemRankName(rankId) || character.archetype || 'Sem graduação')}</small></span><span className="hb-ms-card-arrow" aria-hidden="true">↗</span></div><div className="hb-ms-resource-heading"><span>RECURSOS ATUAIS</span><span>ATUAL / MÁX.</span></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Ver ficha completa <span aria-hidden="true">↗</span></small></button>
+                    })}{!characters.some(character =>
+  masterShieldSheets[character.id]?.seasonParticipation === true &&
+  masterShieldSheets[character.id]?.partyParticipation === true
+) && (
+  <p className="master-shield-empty">
+    Nenhum personagem participa da Party nesta temporada.
+  </p>
+)}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
+                  </section>
+                <section className="hb-enemy-party hb-ms-enemy-section" id="hb-ms-enemies" aria-labelledby="hb-enemy-party-heading">
+  <style>{`
+    .hb-enemy-party{grid-column:1/-1;min-width:0;margin-top:8px;padding:clamp(16px,2vw,25px);border-radius:22px;border:1px solid var(--season-line,rgba(255,255,255,.13));background:linear-gradient(140deg,var(--season-surface,rgba(18,16,23,.94)),var(--season-surface-alt,rgba(255,255,255,.04)))}
+    .hb-enemy-party *{box-sizing:border-box}
+    .hb-enemy-party-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+    .hb-enemy-party-header h3{font-size:clamp(19px,2.1vw,25px);letter-spacing:-.04em;margin:3px 0 6px}
+    .hb-enemy-party-header p{margin:0;max-width:580px;font-size:12px;line-height:1.55;color:var(--season-muted,#aaa)}
+    .hb-enemy-party-kicker{font-size:10px;font-weight:800;color:var(--season-accent,#d7a184);letter-spacing:.15em}
+    .hb-enemy-party-counter{padding:8px 13px;border-radius:99px;border:1px solid var(--season-line,rgba(255,255,255,.15));font-size:12px;font-weight:750}
+    .hb-enemy-party-pickers{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:18px}
+    .hb-enemy-party-pickers label{display:grid;gap:6px;min-width:200px;flex:1;font-size:11px;color:var(--season-muted,#bbb)}
+    .hb-enemy-party-pickers select{min-height:41px;width:100%;padding:9px 11px;background:var(--season-surface-alt,var(--season-surface,#222));border:1px solid var(--season-line,rgba(255,255,255,.2));border-radius:11px;color:inherit}
+    .hb-enemy-party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:13px}
+    .hb-enemy-party-card{min-width:0;padding:17px;border:1px solid var(--season-line,rgba(255,255,255,.13));border-radius:17px;background:var(--season-surface-alt,rgba(255,255,255,.04));display:grid;gap:14px}
+    .hb-enemy-party-card-head{display:flex;align-items:center;gap:11px;min-width:0}
+    .hb-enemy-party-avatar{display:grid;place-items:center;width:48px;height:48px;flex:0 0 48px;border-radius:14px;background:var(--season-accent-soft,rgba(220,160,115,.13));font-size:27px}
+    .hb-enemy-party-card-head strong{display:block;font-size:15px;overflow-wrap:anywhere}
+    .hb-enemy-party-card-head small{display:block;margin-top:4px;opacity:.7;font-size:11px}
+    .hb-enemy-party-resources{display:grid;gap:9px}
+    .hb-enemy-party-resource{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;font-size:11px}
+    .hb-enemy-party-resource>span{font-weight:850}
+    .hb-enemy-party-resource>strong{font-size:11px;font-variant-numeric:tabular-nums}
+    .hb-enemy-party-track{height:6px;border-radius:20px;background:rgba(128,128,128,.2);overflow:hidden}
+    .hb-enemy-party-track>i{display:block;height:100%;background:var(--season-primary,var(--season-accent,#bd9b73));border-radius:20px;transition:width .2s}
+    .hb-enemy-party-resource.blood .hb-enemy-party-track>i{background:#c34c55}
+    .hb-enemy-party-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .hb-enemy-party-actions button{flex:1;min-height:35px;font-size:11px}
+    .hb-enemy-party-initiative{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:14px}
+    .hb-enemy-party-initiative label{display:grid;gap:6px;flex:1;min-width:105px;font-size:11px}
+    .hb-enemy-party-initiative input{width:100%;min-height:35px;padding:6px 9px;border-radius:9px;background:var(--season-surface-alt,var(--season-surface,#222));border:1px solid var(--season-line,rgba(255,255,255,.17));color:inherit;font:inherit}
+    .hb-enemy-party-initiative button{min-height:35px;font-size:11px}
+    .hb-enemy-party-order{margin-top:20px;border-top:1px solid var(--season-line,rgba(255,255,255,.12));padding-top:16px}
+    .hb-enemy-party-order h4{margin:0 0 12px;font-size:15px}
+    .hb-enemy-party-order-list{display:grid;gap:7px}
+    .hb-enemy-party-order-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:11px;background:var(--season-surface-alt,rgba(255,255,255,.045))}
+    .hb-enemy-party-order-row strong{font-variant-numeric:tabular-nums}
+    .hb-enemy-party-empty{margin:8px 0 0;padding:17px;text-align:center;border:1px dashed var(--season-line,rgba(255,255,255,.22));border-radius:13px;color:var(--season-muted,#aaa);font-size:12px;line-height:1.5}
+    @media(max-width:620px){.hb-enemy-party{padding:14px}.hb-enemy-party-header{gap:10px}.hb-enemy-party-card{padding:13px}.hb-enemy-party-pickers select{min-width:0}}
+  `}</style>
+  <div className="hb-enemy-party-header">
+    <div><span className="hb-enemy-party-kicker">⚔ ENCONTROS E AMEAÇAS</span>
+      <h3 id="hb-enemy-party-heading">⚔ Party dos inimigos</h3>
+      <p>Gerencie os adversários da temporada, confira PV, PS e SG e controle a iniciativa de cada um.</p>
+    </div>
+    <span className="hb-enemy-party-counter hb-ms-section-count">{enemyPartyMembers.length} {enemyPartyMembers.length === 1 ? 'ativo' : 'ativos'}</span>
+  </div>
+  {!masterShieldSeasonId ? <p className="hb-enemy-party-empty">Selecione uma temporada na Party acima para administrar os inimigos.</p> : <>
+    <div className="hb-enemy-party-pickers">
+      <label>Adicionar inimigo à party
+        <select aria-label="Adicionar inimigo à Party de Inimigos" value="" disabled={enemyPartySavingId !== null || enemies.every(enemy => getEnemyPartySeason(enemy, masterShieldSeasonId).participating)}
+          onChange={event => { if (event.target.value) void updateEnemyPartySeason(event.target.value, masterShieldSeasonId, { participating: true }) }}>
+          <option value="">Selecione um inimigo...</option>
+          {enemies.filter(enemy => !getEnemyPartySeason(enemy, masterShieldSeasonId).participating)
+            .map(enemy => <option value={enemy.id} key={enemy.id}>{enemy.emoji || '👹'} {enemy.name}</option>)}
+        </select>
+      </label>
+      <button type="button" className="secondary-button" disabled={enemyPartySavingId !== null} onClick={() => setEnemyPartyRefreshKey(value => value + 1)}>↻ Atualizar inimigos</button>
+    </div>
+    {!enemies.length ? <p className="hb-enemy-party-empty">Nenhum inimigo cadastrado. Use “Inimigos da campanha” para criar a primeira ficha.</p>
+      : !enemyPartyMembers.length ? <p className="hb-enemy-party-empty">Nenhum inimigo adicionado a esta temporada. Escolha um na lista acima para começar.</p>
+      : <>
+        <div className="hb-enemy-party-grid">{enemyPartyMembers.map(enemy => {
+          const status = getEnemySheetOverview(enemy)
+          const party = getEnemyPartySeason(enemy, masterShieldSeasonId)
+          const busy = enemyPartySavingId !== null
+          const resources = ([
+            { label: 'PV', current: status.pv, max: status.maxPV },
+            { label: 'PS', current: status.ps, max: status.maxPS },
+            { label: enemyResourceAbbreviation, current: status.pr, max: status.maxPR },
+          ])
+          return <article key={enemy.id} className="hb-enemy-party-card">
+            <div className="hb-enemy-party-card-head">
+              <span className="hb-enemy-party-avatar" aria-hidden="true">{enemy.emoji || '👹'}</span>
+              <div><strong>{enemy.name}</strong><small>{enemy.archetype || 'Sem arquétipo'} · Inimigo ativo</small></div>
+            </div>
+            <div className="hb-ms-resource-heading"><span>RECURSOS ATUAIS</span><span>ATUAL / MÁX.</span></div><div className="hb-enemy-party-resources">{resources.map(resource => <div className={`hb-enemy-party-resource${resource.label === 'SG' ? ' blood' : ''}`} key={resource.label}>
+              <span>{resource.label}</span><div className="hb-enemy-party-track" aria-hidden="true"><i style={{width: `${resource.max > 0 ? Math.max(0, Math.min(100, resource.current / resource.max * 100)) : 0}%`}} /></div>
+              <strong>{resource.current} / {resource.max}</strong>
+            </div>)}</div>
+            <div className="hb-enemy-party-initiative"><label>Iniciativa
+              <input type="number" step="1" aria-label={`Iniciativa de ${enemy.name}`} placeholder="Não rolou"
+                value={enemyPartyInitiativeDrafts[enemy.id] ?? (party.initiative === null ? '' : String(party.initiative))}
+                onChange={event => setEnemyPartyInitiativeDrafts(current => ({ ...current, [enemy.id]: event.target.value }))}
+                disabled={busy} />
+              </label>
+              <button type="button" className="secondary-button" disabled={busy} onClick={() => rollEnemyPartyInitiative(enemy)}>⚡ Rolar</button>
+              <button type="button" className="secondary-button" disabled={busy} onClick={() => {
+                const text = enemyPartyInitiativeDrafts[enemy.id] ?? (party.initiative === null ? '' : String(party.initiative))
+                if (text.trim() && !Number.isFinite(Number(text))) { setError('Informe uma iniciativa válida.'); return }
+                void updateEnemyPartySeason(enemy.id, masterShieldSeasonId, { initiative: text.trim() ? Math.floor(Number(text)) : null })
+              }}>Salvar</button>
+            </div>
+            <div className="hb-enemy-party-actions">
+              <button type="button" className="primary-button" onClick={() => { setSelectedEnemyId(enemy.id); setEnemySheetView(true); setActivePage('enemies') }}>Abrir ficha ↗</button>
+              <button type="button" className="secondary-button" disabled={busy} onClick={() => void updateEnemyPartySeason(enemy.id, masterShieldSeasonId, { participating: false })}>Remover da party</button>
+            </div>
+          </article>
+        })}</div>
+      </>}
+  </>}
+</section>
+
+
+                </div>
+
+                <section className="hb-ms-pane hb-ms-initiative-section" id="hb-ms-initiative" aria-labelledby="hb-ms-initiative-heading">
+                  <div className="hb-ms-pane-heading">
+                    <div>
+                      <span className="hb-kicker">02 · ORDEM DE COMBATE</span>
+                      <h3 id="hb-ms-initiative-heading">⚡ Iniciativa da batalha</h3>
+                      <p>Personagens e inimigos juntos, da maior iniciativa para a menor.</p>
+                    </div>
+                    <span className="hb-ms-section-count">{masterShieldInitiativeEntries.filter(entry => entry.initiative !== null).length} de {masterShieldInitiativeEntries.length} prontos</span>
+                  </div>
+                  {masterShieldSeasonId && (
+                    <div className="hb-ms-initiative-content">
+                      <div className="hb-ms-initiative-toolbar">
+                        <p>As iniciativas continuam salvas nas fichas de origem de cada participante.</p>
+                        <button type="button" className="secondary-button" style={{ padding: '8px 12px', fontSize: 12 }}
+                          disabled={sheetSaving || enemyPartySavingId !== null || masterShieldLoading ||
+                            !masterShieldInitiativeEntries.some(entry => entry.initiative !== null)}
+                          onClick={() => void clearAllMasterShieldInitiatives(masterShieldSeasonId)}>
+                          ↺ Limpar iniciativas
+                        </button>
+                      </div>
+                      {masterShieldLoading && <p className="master-shield-empty">Carregando iniciativas dos personagens...</p>}
+                      {!masterShieldLoading && !masterShieldInitiativeEntries.length &&
+                        <p className="master-shield-empty">Nenhum personagem ou inimigo participa desta batalha.</p>}
+                      {!masterShieldLoading && masterShieldInitiativeEntries.length > 0 &&
+                        <div className="hb-ms-combined-initiative-list">
+                          {masterShieldInitiativeEntries.map((entry, index) => (
+                            <div className={`hb-ms-initiative-row hb-ms-initiative-${entry.kind}${index === 0 && entry.initiative !== null ? ' hb-ms-initiative-leader' : ''}`} key={`${entry.kind}-${entry.id}`}>
+                              <div className="hb-ms-initiative-identity">
+                                <strong className="hb-ms-initiative-rank" aria-label={`${index + 1}ª posição`}>{index + 1}<small>º</small></strong>
+                                <span className="hb-ms-initiative-avatar" aria-hidden="true">{entry.emoji || (entry.kind === 'enemy' ? '👹' : '🧑')}</span>
+                                <div className="hb-ms-initiative-person">
+                                  <strong>{entry.name}</strong>
+                                  <small>{entry.kind === 'enemy' ? '⚔ Inimigo' : '♙ Personagem'}</small>
+                                </div>
+                              </div>
+                              <div className="hb-ms-initiative-score">
+                                <strong className={entry.initiative === null ? 'pending' : ''}>
+                                  {entry.initiative ?? 'Não rolou'}
+                                </strong>
+                                {entry.initiative !== null && (
+                                  <button type="button" className="secondary-button"
+                                    disabled={sheetSaving || enemyPartySavingId !== null}
+                                    onClick={() => entry.kind === 'enemy'
+                                      ? void updateEnemyPartySeason(entry.id, masterShieldSeasonId, { initiative: null },
+                                        `Iniciativa de ${entry.name} removida.`)
+                                      : void clearCharacterInitiative(entry.id, masterShieldSeasonId)}>
+                                    Limpar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>}
+                    </div>
+                  )}
+                  {!masterShieldSeasonId && <p className="master-shield-empty">Selecione uma temporada para conferir as iniciativas.</p>}
+                </section>
+
+                <div className="hb-ms-support-heading"><span className="hb-ms-group-index" aria-hidden="true">03</span><div><span className="hb-kicker">ACOMPANHAMENTO</span><h3>Equipe e histórico</h3></div></div>
+                <div className="hb-ms-support-grid">
+                  <aside className="hb-ms-pane hb-ms-party-members" aria-label="Integrantes da party">
+                    <div className="hb-ms-pane-heading"><div><span className="hb-kicker">EQUIPE DA CAMPANHA</span><h3>✦ Integrantes</h3><p>Jogadores vinculados à party de personagens.</p></div><span className="hb-ms-section-count">{masterShieldPartyMembers.length} membros</span></div>
+                    {masterShieldPartyMembers.length
+                      ? <ul className="hb-ms-member-list">{masterShieldPartyMembers.map(member => <li key={member.user_id}><span className="hb-ms-member-avatar" aria-hidden="true">{member.display_name.charAt(0).toUpperCase()}</span><span className="hb-ms-member-name">{member.display_name}</span><small>{member.role === 'master' ? 'Mestre' : 'Jogador'}</small></li>)}</ul>
+                      : <p className="master-shield-empty">Nenhum integrante encontrado nesta party.</p>}
+                  </aside>
+
+                <section className="campaign-activity-panel hb-ms-activity-section" id="hb-ms-activities" aria-labelledby="hb-ms-activity-heading">
+  <div className="campaign-activity-heading">
+    <div>
+      <h3 id="hb-ms-activity-heading">Atividades recentes</h3>
+      <p>Acompanhe as novidades desta campanha.</p>
+    </div>
+    <span>{campaignActivities.length} registros</span>
+  </div>
+
+  {activityLoading ? (
+    <p className="master-shield-empty">Carregando atividades...</p>
+  ) : activityTableMissing ? (
+    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
+  ) : campaignActivities.length > 0 ? (
+  <>
+    <ul className="campaign-activity-list">
+      {campaignActivities
+        .slice(0, showAllCampaignActivities ? campaignActivities.length : 5)
+        .map(activity => (
+          <li key={activity.id}>
+            <span className="campaign-activity-marker" aria-hidden="true">•</span>
+            <div className="campaign-activity-content">
+              <strong>{activity.title}</strong>
+              {activity.description && <p>{activity.description}</p>}
+              <small>
+                {activity.actor_name} · {new Date(activity.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+              </small>
+            </div>
+          </li>
+        ))}
+    </ul>
+
+    {campaignActivities.length > 5 && (
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={() => setShowAllCampaignActivities(value => !value)}
+      >
+        {showAllCampaignActivities ? 'Mostrar menos' : 'Atividades completas'}
+      </button>
+    )}
+  </>
+  ) : (
+    <p className="master-shield-empty">Nenhuma atividade registrada ainda.</p>
+  )}
+</section>
+                </div>
+              </section>
+            </section>
+          )}
+
+          {activePage === 'sheets' && selectedCampaignId && (
+            <section className="inventory-section sheet-page-panel">
+            
+              {!sheetCharacterView ? <>
+                <div className="inventory-heading sheet-page-hero sheet-page-hero-library">
+                  <div className="sheet-page-hero-leading"><span className="sheet-page-hero-icon" aria-hidden="true">◈</span><div><span className="sheet-page-eyebrow">ARQUIVO DA CAMPANHA</span><h2>Fichas de personagens</h2><p>Crie personagens, consulte suas fichas e gerencie o grupo em um só lugar.</p></div></div>
+                  <div className="sheet-library-toolbar">
+                    <span className="sheet-library-total">{characters.length} {characters.length === 1 ? 'personagem' : 'personagens'}</span>
+                    {isMaster && <button type="button" className="secondary-button sheet-library-manage-button" onClick={() => { setShowCharacterManagement(value => !value); setShowCharacterForm(false) }} aria-pressed={showCharacterManagement}>
+                      {showCharacterManagement ? '✓ Concluir gerenciamento' : '⚙ Gerenciar personagens'}
+                    </button>}
+                    {!showCharacterManagement && <button type="button" className="primary-button sheet-library-create-button" onClick={() => setShowCharacterForm(value => !value)} aria-expanded={showCharacterForm}>
+                      {showCharacterForm ? 'Fechar criação' : '+ Novo personagem'}
+                    </button>}
+                  </div>
+                </div>
+                {showCharacterManagement && isMaster && <div className="sheet-library-admin-notice"><span aria-hidden="true">⚙</span><div><strong>Gerenciamento de personagens</strong><p>Exclua personagens usando os controles dos cartões. A gestão de acessos e permissões continua em Campanhas.</p></div><button type="button" className="secondary-button" onClick={() => setActivePage('campaigns')}>Acessos e permissões ↗</button></div>}
+    {!showCharacterManagement && showCharacterForm && (
+      <form className="add-form hb-form hb-character-form" onSubmit={createCharacter}>
+        <div className="hb-form-heading"><span className="hb-heading-icon">✦</span><div><span className="hb-kicker">NOVO PROTAGONISTA</span><h3>Criar personagem</h3><p>Defina identidade, arquétipo e progressão inicial.</p></div></div>
+        <label>
+          Nome
+          <input
+            value={characterName}
+            onChange={e => setCharacterName(e.target.value)}
+            required
+            style={inputStyle}
+          />
+        </label>
+        <div className="emoji-field">
+          <label>Emoji do personagem</label>
+          <div className="emoji-grid">
+            {availableEmojis.map((emoji) => (
+              <button key={emoji} type="button" className={characterEmoji === emoji ? 'emoji-option selected' : 'emoji-option'} onClick={() => setCharacterEmoji(emoji)} aria-label={`Selecionar emoji ${emoji}`} aria-pressed={characterEmoji === emoji}>{emoji}</button>
+            ))}
+          </div>
+          <small>Selecione um dos emojis disponíveis para representar o personagem.</small>
+        </div>
+
+{systemFeatures.usesRanks ? (
+  <>
+    <label>
+      Arquétipo primário
+      <select
+        value={primaryArchetype}
+        onChange={e => setPrimaryArchetype(e.target.value)}
+        required
+        style={inputStyle}
+      >
+        <option value="">Selecione...</option>
+        {systemArchetypes.map(item => (
+          <option
+            key={item}
+            value={item}
+            disabled={
+              (item === 'Linha de Frente' && secondaryArchetype === 'Suporte') ||
+              (item === 'Suporte' && secondaryArchetype === 'Linha de Frente') ||
+              (item === 'Defensor' && secondaryArchetype === 'Flanco') ||
+              (item === 'Flanco' && secondaryArchetype === 'Defensor')
+            }
+          >
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
+
+    <label>
+      Arquétipo secundário
+      <select
+        value={secondaryArchetype}
+        onChange={e => setSecondaryArchetype(e.target.value)}
+        required
+        style={inputStyle}
+      >
+        <option value="">Selecione...</option>
+        {systemArchetypes.map(item => (
+          <option
+            key={item}
+            value={item}
+disabled={
+  item === primaryArchetype ||
+  (item === 'Linha de Frente' && primaryArchetype === 'Suporte') ||
+  (item === 'Suporte' && primaryArchetype === 'Linha de Frente') ||
+  (item === 'Defensor' && primaryArchetype === 'Flanco') ||
+  (item === 'Flanco' && primaryArchetype === 'Defensor')
+}
+          >
+            {item}
+          </option>
+        ))}
+      </select>
+    </label>
+  </>
+) : (
+  <label>
+    Arquétipo
+    <input
+      value={archetype}
+      onChange={e => setArchetype(e.target.value)}
+      style={inputStyle}
+    />
+  </label>
+)}
+
+{systemFeatures.usesRanks ? (
+  <label>
+    Graduação
+    <select
+      value={characterRank}
+      onChange={(event) => setCharacterRank(event.target.value)}
+      required
+    >
+      {systemRanks.map(rank => (
+        <option key={rank.id} value={rank.id}>
+          {rank.name}
+        </option>
+      ))}
+    </select>
+  </label>
+) : (
+  <label>
+    Nível
+    <input
+      type="number"
+      min="1"
+      max="999"
+      value={characterLevel}
+      onChange={(event) => setCharacterLevel(event.target.value)}
+      required
+    />
+  </label>
+)}
+
+{systemFeatures.usesFamilyTiers && (
+  <label>
+    Tier da família
+    <select
+      value={characterFamilyTier}
+      onChange={event => setCharacterFamilyTier(event.target.value)}
+      required
+      style={inputStyle}
+    >
+      {getSystemFamilyTiers().map(([key, value]) => (
+        <option key={key} value={key}>
+          {value.label}
+        </option>
+      ))}
+    </select>
+  </label>
+)}
+
+        <button className="primary-button" type="submit" disabled={loading}>
+          Salvar personagem
+        </button>
+      </form>
+    )}
+                {characters.length === 0 ? <div className="empty-state sheet-library-empty"><span aria-hidden="true">◈</span><h3>Nenhum personagem nesta campanha</h3><p>Crie seu primeiro personagem para começar uma ficha.</p>{!showCharacterForm && !showCharacterManagement && <button type="button" className="primary-button" onClick={() => setShowCharacterForm(true)}>+ Criar personagem</button>}</div> :
+                  <div className="sheet-library-grid">{characters.map(character => <article className="sheet-library-card" key={character.id}>
+                    <div className="sheet-library-top">
+                      <button
+                        type="button"
+                        className="sheet-library-avatar sheet-library-avatar-edit"
+                        onClick={() => openCharacterEmojiPicker(character)}
+                        title={`Alterar emoji de ${character.name}`}
+                        aria-label={`Alterar emoji de ${character.name}`}
+                      >
+                        {character.emoji || '⚔️'}
+                      </button>
+                      <span className="sheet-library-system">{activeSystem?.name || 'RPG'}</span>
+                    </div>
+                    <div className="sheet-library-info"><span className="sheet-page-eyebrow">{systemFeatures.usesRanks ? 'PERSONAGEM' : `NÍVEL ${character.level}`}</span><h3>{character.name}</h3><p>{character.archetype || 'Arquétipo não definido'}</p>{systemFeatures.usesRanks && <span className="sheet-library-rank">✦ {characterRanks[character.id] || 'Graduação não definida'}</span>}</div>
+                    <button type="button" className="sheet-library-open" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha <span aria-hidden="true">↗</span></button>
+                    {isMaster && showCharacterManagement && <button type="button" className="secondary-button sheet-library-delete-button" disabled={deletingCharacterId !== null} onClick={() => void deleteCharacter(character)}>{deletingCharacterId === character.id ? 'Excluindo…' : 'Excluir personagem'}</button>}
+                  </article>)}</div>}
+              </> : <>
+                <div className="inventory-heading sheet-page-hero sheet-page-hero-detail"><div className="sheet-page-hero-leading"><span className="sheet-page-hero-icon" aria-hidden="true">{selectedCharacter?.emoji || '⚔️'}</span><div><span className="sheet-page-eyebrow">FICHA DE PERSONAGEM · {activeSystem?.name ?? 'RPG'}</span><h2>{selectedCharacter?.name ?? 'Personagem'}</h2><p>{selectedCampaign?.name} · Consulte e administre as informações do personagem.</p></div></div><button type="button" className="secondary-button sheet-page-back" onClick={() => setSheetCharacterView(false)}>← Voltar à lista</button></div>
+                <label className="sheet-season-selector" style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
+                {selectedSeasonId && !sheetLoading && <label className={`season-participation-toggle ${(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'is-participating' : ''}`}><input type="checkbox" checked={(() => { try { return (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() } catch { return false } })()} disabled={!canEditSelectedSheet || sheetSaving} onChange={e => { void toggleSeasonParticipation(e.target.checked) }} /><span><strong>{(() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'Participando desta temporada' : 'Não participa desta temporada'}</strong><small>{sheetSaving ? 'Salvando participação…' : 'Altere esta opção para incluir ou retirar o personagem. A ficha e o histórico permanecem preservados.'}</small></span><b className="season-participation-status">{sheetSaving ? '…' : (() => { try { return JSON.parse(sheetDraft || '{}').seasonParticipation === true } catch { return false } })() ? 'ATIVO' : 'INATIVO'}</b></label>}
+{selectedSeasonId && !sheetLoading && (() => {
+  let partyParticipation = false
+  let seasonParticipation = false
+
+  try {
+    const parsed = JSON.parse(sheetDraft || '{}')
+    partyParticipation = parsed.partyParticipation === true
+    seasonParticipation = parsed.seasonParticipation === true
+  } catch {}
+
+  return (
+    <label className={`season-participation-toggle ${partyParticipation ? 'is-participating' : ''}`}>
+      <input
+        type="checkbox"
+        checked={partyParticipation}
+        disabled={!canEditSelectedSheet || sheetSaving || !seasonParticipation}
+        onChange={e => {
+          const participates = e.target.checked
+
+          let parsed: Record<string, any> = {}
+          try {
+            parsed = JSON.parse(sheetDraft || '{}')
+          } catch {}
+
+          const next = {
+            ...parsed,
+            partyParticipation: participates,
+          }
+
+          setSheetDraft(JSON.stringify(next, null, 2))
+        }}
+      />
+
+      <span>
+        <strong>
+          {partyParticipation ? 'Participando da Party' : 'Não participa da Party'}
+        </strong>
+        <small>
+          {!seasonParticipation
+            ? 'O personagem precisa participar da temporada para entrar na Party.'
+            : 'Defina se este personagem faz parte da Party desta temporada.'}
+        </small>
+      </span>
+
+      <b className="season-participation-status">
+        {partyParticipation ? 'ATIVO' : 'INATIVO'}
+      </b>
+    </label>
+  )
+})()}
+                {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
+                {selectedSeasonId && <div className="season-theme-panel">
+                  <div className="season-theme-heading"><div><strong>Identidade visual</strong><small>Tema desta temporada: <b>{activeTheme.label}</b></small></div><span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} /></div>
+                  {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
+                </div>}
+
+                {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
+                  <div className="sheet-toolbar">
+                    <div className="sheet-toolbar-title"><span aria-hidden="true">◈</span><div><strong>Visão da ficha</strong><p>Consulte os dados calculados e edite os detalhes quando necessário.</p></div></div>
+                    {canEditSelectedSheet && (
+  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+
+    <button
+      className="primary-button"
+      type="button"
+      onClick={()=>setEditingSheet(value=>!value)}
+    >
+      {editingSheet?'Fechar edição':'Editar ficha'}
+    </button>
+    {isCyberFlowerSystem && (
+  <span className="sheet-autosave-status">
+    {sheetAutoSaveStatus === 'saving' && 'Salvando...'}
+    {sheetAutoSaveStatus === 'saved' && 'Salvo automaticamente'}
+    {sheetAutoSaveStatus === 'error' && 'Erro ao salvar'}
+    {sheetAutoSaveStatus === 'pending' && 'Alterações pendentes'}
+  </span>
+)}
+  </div>
+)}
+                  </div>
+                  <nav className="sheet-quick-nav" aria-label="Navegação da ficha">
+                    {(editingSheet ? [
+                      ['✎', 'Edição', 'ficha-edicao'], ['⚔', 'Ações', 'ficha-acoes'], ['◈', 'Reações', 'ficha-reacoes'],
+                      ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
+                    ] : [
+                      ['♥', 'Status', 'ficha-status'], ['✦', 'Atributos', 'ficha-atributos'], ['✧', 'Perícias', 'ficha-pericias'],
+                      ['⚔', 'Combate', 'ficha-combate'], ['◈', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'],
+                      ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
+                    ]).map(([symbol,label,target]) => <button type="button" key={target} onClick={() => document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">{symbol}</span>{label}</button>)}
+                  </nav>
+                  {renderSharedSheetCore(false)}
+                  {editingSheet && canEditSelectedSheet && (
+  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
+    <button
+      className="secondary-button"
+      type="button"
+      disabled={!sheet}
+      onClick={()=>void createSheetMilestone()}
+    >
+      Registrar marco no histórico
+    </button>
+  </div>
+)}
+                
+
+{canAccessSelectedCharacter && selectedCharacter && renderSharedSheetCore(false, 'armor')}
+
+{canAccessSelectedCharacter && selectedCharacter && (
+  <section className="inventory-section sheet-inventory-section" id="ficha-inventario">
+    <div className="inventory-heading">
+      <div><span className="sheet-page-eyebrow">EQUIPAMENTOS E RECURSOS</span><h3>Inventário</h3><p>Gerencie itens, carga, equipamentos e consumíveis.</p></div>
+      <button
+        type="button"
+        className="primary-button"
+        onClick={() => {
+  if (showItemForm) {
+    resetItemForm()
+    setShowItemForm(false)
+  } else {
+    resetItemForm()
+    setShowItemForm(true)
+  }
+}}
+        disabled={loading}
+      >
+        + Adicionar item
+      </button>
+    </div>
+
+{showItemForm &&
+  (selectedCharacterId || editingItem) &&
+  createPortal(
+    <div className="item-modal-overlay">
+      <div
+        className="item-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="item-modal-title"
+      >
+        <form className="add-form item-editor-form" onSubmit={createItem}>
+                    <div className="form-heading">
+                      <div>
+                        <h3>{editingItem ? 'Editar item' : 'Novo item'}</h3>
+                        <p>
+                          {editingItem
+                            ? 'Altere os dados do item e salve as mudanças.'
+                            : 'O item será associado ao personagem selecionado.'}
+                        </p>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span>{editingItem ? '✎' : '✧'}</span>
+                        <button type="button" className="secondary-button" onClick={() => { resetItemForm(); setShowItemForm(false) }}>Fechar</button>
+                      </div>
+                    </div>
+
+                    <label>
+                      Nome do item
+                      <input
+                        value={newItemName}
+                        onChange={(event) => setNewItemName(event.target.value)}
+                        placeholder="Ex.: Espada de prata"
+                        maxLength={100}
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      Descrição
+                      <input
+                        value={newItemDescription}
+                        onChange={(event) =>
+                          setNewItemDescription(event.target.value)
+                        }
+                        placeholder="Detalhes do item (opcional)"
+                        maxLength={1000}
+                      />
+                    </label>
+
+                    <div className="form-row">
+                      <div className="emoji-field">
+                        <label>Emoji do item</label>
+
+                        <div className="emoji-grid">
+                          {availableEmojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              className={
+                                newItemEmoji === emoji
+                                  ? 'emoji-option selected'
+                                  : 'emoji-option'
+                              }
+                              onClick={() => setNewItemEmoji(emoji)}
+                              aria-label={`Selecionar emoji ${emoji}`}
+                              aria-pressed={newItemEmoji === emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+
+<p className="emoji-preview">
+  <span className="emoji-preview-label">Emoji selecionado:</span>
+  <span className="emoji-preview-icon">{newItemEmoji}</span>
+</p>
+                      </div>
+
+                      <section className="item-classifications-panel">
+                        <div className="item-classifications-heading">
+                          <div><strong>Classificações do item</strong><p>Marque todas as opções que se aplicam. Um item pode ter várias classificações.</p></div>
+                          <span>{newItemCategories.length} selecionada{newItemCategories.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <div className="item-classifications-grid">
+                          {categories.filter(category => category !== 'Todos').map(category => (
+                            <label key={category} className={newItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
+                              <input type="checkbox" checked={newItemCategories.includes(category)} onChange={event => {
+                                const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
+                                setNewItemCategories(next)
+                                if (next.length) setNewItemCategory(next[0])
+                                const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
+                                if (automaticWeight !== null) setNewItemWeight(String(automaticWeight))
+                              }} />
+                              <span className="item-classification-check">{newItemCategories.includes(category) ? '✓' : '+'}</span>
+                              <span>{category}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {!newItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
+                      </section>
+
+                      {newItemCategories.includes('Consumíveis') && (
+                        <section className="scarcity-editor-card">
+                          <div className="scarcity-editor-heading">
+                            <span className="scarcity-editor-icon">⌛</span>
+                            <div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div>
+                          </div>
+                          <label>Nível inicial de escassez
+                            <select value={newScarcityLevel} disabled={newScarcityExhausted} onChange={event => setNewScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}>
+                              <option value="1">Nível 1 — d12</option>
+                              <option value="2">Nível 2 — d8</option>
+                              <option value="3">Nível 3 — d6</option>
+                              <option value="4">Nível 4 — d4</option>
+                            </select>
+                          </label>
+                          <div className="scarcity-level-preview">
+                            <div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[newScarcityLevel]}</strong></div>
+                            <div><span>Carga</span><strong>{newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]}</strong></div>
+                          </div>
+                          <p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p>
+                          <label className="scarcity-exhausted-toggle"><input type="checkbox" checked={newScarcityExhausted} onChange={event => {
+  const exhausted = event.target.checked
+  setNewScarcityExhausted(exhausted)
+  setNewItemWeight(
+    String(exhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
+  )
+}} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label>
+                        </section>
+                      )}
+
+<label style={labelStyle}>
+  Raridade
+</label>
+
+<select
+  value={newItemRarity}
+  onChange={event => setNewItemRarity(event.target.value)}
+  style={inputStyle}
+>
+  <option value="comum">Comum</option>
+  <option value="incomum">Incomum</option>
+  <option value="raro">Raro</option>
+  <option value="épico">Épico</option>
+  <option value="mítico">Mítico</option>
+  <option value="relíquia">Relíquia</option>
+</select>
+
+                      <label>
+                        Tipo de equipamento
+                        <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
+                          <option value="none">Item comum</option>
+                          <option value="armor">Armadura</option>
+<option value="protection">Proteção</option>
+{isCyberFlowerSystem && (
+  <option value="cybernetic">Cibernética</option>
+)}
+                        </select>
+                      </label>
+
+                      {newEquipmentType === 'armor' && <>
+                        <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
+                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={isKisatsutaiSystem ? 'especial_bruto' : newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}>{!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante e perfurante</option>}<option value="especial_bruto">Especial e bruto</option></select></label>}
+                        <div className="equipment-rules-preview">
+  <strong>Regras da armadura</strong>
+  <p>
+    Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}
+  </p>
+  <p>
+    Proteção: {newArmorClass === 'leve'
+      ? '(Resistência ÷ 2) + 4'
+      : newArmorClass === 'media'
+        ? 'Resistência + 6'
+        : '(Resistência × 2) + 8'}
+  </p>
+  <p>
+    Destreza de armadura: {newArmorClass === 'leve'
+      ? 'Destreza integral'
+      : newArmorClass === 'media'
+        ? '½ dos pontos de destreza'
+        : '0'}
+  </p>
+  <p>
+    Penalidades: {newArmorClass === 'media'
+      ? '−5 em Reflexo; metade do deslocamento'
+      : newArmorClass === 'pesada'
+        ? '−10 em Reflexo e Corrida; ¼ do deslocamento'
+        : 'Sem penalidade; deslocamento normal'}
+  </p>
+</div>
+                      </>}
+
+                      {newEquipmentType === 'protection' && <>
+                        <label>Nível de proteção<select value={newProtectionTier} onChange={event => setNewProtectionTier(event.target.value as 'basica' | 'moderada' | 'avancada')}><option value="basica">Básica</option><option value="moderada">Moderada</option><option value="avancada">Avançada</option></select></label>
+                        <label>Tipo de resistência<select value={newProtectionMode} onChange={event => setNewProtectionMode(event.target.value as 'resistencia' | 'sanidade')}><option value="resistencia">Resistência (especial e bruto)</option><option value="sanidade">Sanidade (pontos mentais)</option></select></label>
+                        <div className="equipment-rules-preview"><strong>Regras da proteção</strong><p>Carga: 0</p><p>Proteção: {newProtectionTier === 'basica' ? '¼' : newProtectionTier === 'moderada' ? '½' : 'integral'} dos pontos de {newProtectionMode === 'resistencia' ? 'resistência' : 'mental'}.</p><p>Dano de sanidade ao perder: {newProtectionTier === 'basica' ? '1d8' : newProtectionTier === 'moderada' ? '2d8' : '2d12 + 1d4'}.</p></div>
+                      </>}
+
+{isCyberFlowerSystem && newEquipmentType === 'cybernetic' && <>
+  <label>
+    Categoria da cibernética
+    <select
+      value={newCyberneticCategory}
+      onChange={event => setNewCyberneticCategory(event.target.value)}
+    >
+      <option value="Neurológico">Neurológico</option>
+      <option value="Sensorial">Sensorial</option>
+      <option value="Órgãos">Órgãos</option>
+      <option value="Membros">Membros</option>
+      <option value="Estrutural">Estrutural</option>
+      <option value="Armamento">Armamento</option>
+      <option value="Suporte">Suporte</option>
+      <option value="Outro">Outro</option>
+    </select>
+  </label>
+
+  <label>
+    Localização no corpo
+    <input
+      value={newCyberneticLocation}
+      onChange={event => setNewCyberneticLocation(event.target.value)}
+      placeholder="Ex.: Crânio, braço esquerdo..."
+    />
+  </label>
+
+  <label>
+    Carga biológica
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={newCyberneticLoad}
+      onChange={event => setNewCyberneticLoad(event.target.value)}
+    />
+  </label>
+
+  <label>
+    Efeitos
+    <textarea
+      value={newCyberneticEffects}
+      onChange={event => setNewCyberneticEffects(event.target.value)}
+      placeholder="Descreva os efeitos da cibernética..."
+    />
+  </label>
+</>}
+
+                      {newItemCategories.includes('Armas') && <>
+                        <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
+                        <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[newWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[newWeaponClass]} kg</p></div>
+                      </>}
+
+                      <label>
+                        Quantidade
+                        <input
+                          type="number"
+                          min="1"
+                          max="999"
+                          step="1"
+                          value={newItemQuantity}
+                          onChange={(event) =>
+                            setNewItemQuantity(event.target.value)
+                          }
+                          required
+                        />
+                      </label>
+
+<label>
+  Peso por unidade (kg)
+  <input
+    type="number"
+    min="0"
+    max="100000"
+    step="0.1"
+    value={
+      newItemCategories.includes('Consumíveis')
+        ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
+        : newItemWeight
+    }
+    onChange={(event) => setNewItemWeight(event.target.value)}
+    disabled={
+      newItemCategories.includes('Consumíveis') ||
+      getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+    }
+    required
+  />
+  <small>
+    {newItemCategories.includes('Consumíveis')
+      ? 'Peso definido automaticamente pela carga restante do consumível.'
+      : getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
+        ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
+        : 'Informe o peso por unidade deste item.'}
+  </small>
+</label>
+                    </div>
+
+<label>
+  Valor unitário
+  <input
+    type="number"
+    min="0"
+    step="0.01"
+    value={newScarcityExhausted && newItemCategories.includes('Consumíveis') ? '0' : newItemUnitPrice}
+    onChange={event => setNewItemUnitPrice(event.target.value)}
+    disabled={newScarcityExhausted && newItemCategories.includes('Consumíveis')}
+    placeholder="Ex.: 500"
+  />
+</label>
+
+<label>
+  Moeda
+  <select
+    value={newItemCurrencyId}
+    onChange={event => setNewItemCurrencyId(event.target.value)}
+  >
+    <option value="">Sem moeda definida</option>
+    {selectedCampaign?.currency_config?.currencies?.map((currency, index) => (
+      <option key={currency.id} value={currency.id}>
+        {index === 0 ? '★ Moeda do sistema — ' : ''}{currency.name} ({currency.symbol})
+      </option>
+    ))}
+  </select>
+</label>
+
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={loading}
+                    >
+                      {loading
+                        ? 'Salvando...'
+                        : editingItem
+                          ? 'Salvar alterações'
+                          : 'Salvar item'}
+                    </button>
+        </form>
+      </div>
+    </div>,
+    document.body
+  )}
+
+    <div className="sheet-capacity-overview" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:12,margin:'4px 0 18px'}}>
+      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>▤</span> Objetos</div>
+        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{totalObjects}</div>
+        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>{totalObjects === 1 ? 'item na mochila' : 'itens na mochila'}</div>
+      </div>
+      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>⚖</span> Peso carregado</div>
+        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{totalWeight.toFixed(1)}<span style={{fontSize:14,fontWeight:650,marginLeft:4}}>kg</span></div>
+        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>peso total dos itens</div>
+      </div>
+      <div style={{padding:'15px 17px',borderRadius:14,border:'1px solid var(--season-line, rgba(160,140,190,.2))',background:'linear-gradient(145deg,var(--season-surface-alt,rgba(140,120,170,.12)),var(--season-surface,rgba(20,18,28,.72)))',minWidth:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:9,color:'var(--season-muted,#aaa2b5)',fontSize:12,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase'}}><span aria-hidden="true" style={{fontSize:17}}>🎒</span> Capacidade livre</div>
+        <div style={{fontSize:27,fontWeight:800,lineHeight:1.15,color:remainingCapacity < 0 ? '#ff8b8b' : 'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{remainingCapacity.toFixed(1)}<span style={{fontSize:14,fontWeight:650,marginLeft:4}}>kg</span></div>
+        <div style={{fontSize:12,marginTop:5,color:'var(--season-muted,#aaa2b5)'}}>{remainingCapacity < 0 ? 'acima do limite de carga' : 'disponíveis para carregar'}</div>
+      </div>
+      <div style={{gridColumn:'1 / -1',padding:'12px 15px',borderRadius:12,border:'1px solid var(--season-line,rgba(160,140,190,.16))',background:'var(--season-bg,rgba(10,9,15,.28))'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:8,fontSize:12}}><span style={{color:'var(--season-muted,#aaa2b5)',fontWeight:650}}>Uso da capacidade</span><strong style={{color:'var(--season-text,#f4efff)',fontVariantNumeric:'tabular-nums'}}>{capacityPercent.toFixed(0)}%</strong></div>
+        <div role="progressbar" aria-label="Capacidade utilizada" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100,Math.max(0,capacityPercent))} style={{height:8,overflow:'hidden',borderRadius:99,background:'var(--season-line,rgba(160,140,190,.22))'}}><div style={{height:'100%',width:`${Math.min(100,Math.max(0,capacityPercent))}%`,borderRadius:99,background:remainingCapacity < 0 ? 'linear-gradient(90deg,#e78b62,#e45f70)' : 'linear-gradient(90deg,var(--season-secondary,#8d70cf),var(--season-primary,#c8b5ff))',transition:'width .25s ease'}} /></div>
+      </div>
+    </div>
+
+    <div className="inventory-toolbar">
+      <div className="category-tabs">
+        {categories.map(category => (
+          <button key={category} className={activeCategory === category ? 'category-tab selected' : 'category-tab'} onClick={() => setActiveCategory(category)}>
+            {category}
+          </button>
+        ))}
+      </div>
+      <div className="inventory-extra-controls">
+        <label className="search-box">
+          <span>⌕</span>
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar item..." aria-label="Buscar item" />
+          <kbd>/</kbd>
+        </label>
+        <button type="button" className={favoriteOnly ? 'category-tab selected' : 'category-tab'} onClick={() => setFavoriteOnly(current => !current)} aria-pressed={favoriteOnly}>
+          {favoriteOnly ? '★ Favoritos' : '☆ Favoritos'}
+        </button>
+        <label className="inventory-sort-label">
+          <span>Ordenar:</span>
+          <select value={sortBy} onChange={event => setSortBy(event.target.value)} aria-label="Ordenar itens">
+            <option value="created">Adicionados</option>
+            <option value="name">Nome</option>
+            <option value="category">Categoria</option>
+            <option value="weight">Maior peso</option>
+            <option value="quantity">Maior quantidade</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    {itemsLoading ? (
+      <div className="empty-state"><p>Carregando inventário...</p></div>
+    ) : filteredItems.length === 0 ? (
+      <div className="empty-state">
+        <span>▤</span>
+        <h3>{items.length === 0 ? 'Mochila vazia' : 'Nenhum item encontrado'}</h3>
+        <p>{items.length === 0 ? 'Adicione o primeiro item deste personagem.' : 'Tente outra busca ou selecione outra categoria.'}</p>
+        {items.length === 0 ? (
+          <button type="button" onClick={() => {
+  resetItemForm()
+  setShowItemForm(true)
+}}>Adicionar primeiro item</button>
+        ) : (
+          <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setFavoriteOnly(false) }}>Limpar filtros</button>
+        )}
+      </div>
+    ) : (
+      <div className="item-grid">
+        {filteredItems.map(item => (
+          <article className="item-card inventory-item-card" key={item.id} onClickCapture={event => {
+  const target = event.target as HTMLElement
+  if (target.closest('button, input, select, textarea, a, [role=\"button\"]')) return
+  setSelectedItemDetails(item)
+}}
+style={{cursor:'pointer'}}>
+            <div className="item-card-top">
+              <button type="button" className="item-art" onClick={event => { event.stopPropagation(); setEmojiPickerItem(item) }} title="Clique para alterar o emoji" aria-label={`Alterar emoji de ${item.name}`} style={{cursor:'pointer',font:'inherit',fontSize:28}}>
+                {typeof item.metadata?.icon === 'string' ? item.metadata.icon : '📦'}
+              </button>
+              <div className="item-actions">
+                <button type="button" className="item-menu" title={item.metadata?.favorite === true ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} aria-label={item.metadata?.favorite === true ? `Remover ${item.name} dos favoritos` : `Adicionar ${item.name} aos favoritos`} aria-pressed={item.metadata?.favorite === true} onClick={event => { event.stopPropagation(); void toggleFavorite(item) }}>{item.metadata?.favorite === true ? '★' : '☆'}</button>
+                <button type="button" className="item-menu" title="Duplicar item" aria-label={`Duplicar ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void duplicateItem(item) }}>⧉</button>
+                {item.metadata?.equipmentType === 'armor' && <button type="button" className={`item-menu equipment-card-icon armor-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar armadura' : 'Equipar armadura'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; if(nextEquipped){ const others=items.filter(entry=>entry.character_id===item.character_id && entry.id!==item.id && entry.metadata?.equipmentType==='armor' && entry.metadata?.equipped===true); for(const other of others) await supabase.from('inventory_items').update({metadata:{...(other.metadata||{}),equipped:false}}).eq('id',other.id) } const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a armadura: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.character_id===item.character_id&&entry.metadata?.equipmentType==='armor'&&entry.id!==item.id?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'🛡'}</button>}
+                {item.metadata?.equipmentType === 'protection' && <button type="button" className={`item-menu equipment-card-icon protection-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar proteção' : 'Equipar proteção'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a proteção: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'✧'}</button>}
+                {Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas') && <button type="button" className={`item-menu equipment-card-icon weapon-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar arma' : 'Equipar arma'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped = item.metadata?.equipped !== true; if (nextEquipped) { const otherEquipped = items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas')); for (const other of otherEquipped) { await supabase.from('inventory_items').update({metadata:{...(other.metadata || {}),equipped:false}}).eq('id',other.id) } } const {data,error: equipError}=await supabase.from('inventory_items').update({metadata:{...(item.metadata || {}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if (equipError || !data) { setError(`Não foi possível alterar a arma equipada: ${equipError?.message || 'sem retorno'}`); return } setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.id!==item.id&&entry.character_id===item.character_id&&entry.metadata?.equipped===true&&Array.isArray(entry.metadata?.categories)&&entry.metadata.categories.includes('Armas')?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped === true ? '✓' : '⚔'}</button>}
+                <button type="button" className="item-menu" title="Editar item" aria-label={`Editar ${item.name}`} disabled={loading} onClick={event => {
+  event.stopPropagation()
+  startEditingItem(item)
+}}>✎</button>
+                <button type="button" className="item-menu" title="Remover item" aria-label={`Remover ${item.name}`} disabled={loading} onClick={event => { event.stopPropagation(); void removeItem(item) }}>×</button>
+              </div>
+            </div>
+            
+            <div className="item-category">{item.category}</div>
+            <h3>{item.name}</h3>
+            <p className="item-description">{item.description || 'Sem descrição.'}</p>
+            {(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
+              <span className="inventory-equipment-label">EQUIPAMENTO</span>
+              <button type="button" className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => {
+                event.stopPropagation();
+                const isWeapon = Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas');
+                const type = isWeapon ? 'weapon' : item.metadata?.equipmentType;
+                const nextEquipped = item.metadata?.equipped !== true;
+                const others = nextEquipped && (type === 'weapon' || type === 'armor') ? items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && (type === 'weapon' ? Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas') : entry.metadata?.equipmentType === 'armor')) : [];
+                for (const other of others) {
+                  const { error: otherError } = await supabase.from('inventory_items').update({ metadata: { ...(other.metadata || {}), equipped: false } }).eq('id', other.id);
+                  if (otherError) { setError(`Não foi possível atualizar outro equipamento: ${otherError.message}`); return; }
+                }
+                const { data, error: equipError } = await supabase.from('inventory_items').update({ metadata: { ...(item.metadata || {}), equipped: nextEquipped } }).eq('id', item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle();
+                if (equipError || !data) { setError(`Não foi possível alterar o equipamento: ${equipError?.message || 'sem retorno'}`); return; }
+                setItems(current => current.map(entry => entry.id === item.id ? data as Item : others.some(other => other.id === entry.id) ? { ...entry, metadata: { ...(entry.metadata || {}), equipped: false } } : entry));
+                setNotice(nextEquipped ? `${item.name} equipado(a).` : `${item.name} desequipado(a).`);
+              }}>
+                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
+                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
+              </button>
+            </div>}
+            <div className="item-footer">
+              <span>⚖ {`${(Number(item.weight) || 0).toFixed(1)} kg / un.`}</span>
+              <div className="quantity-controls" aria-label={`Quantidade de ${item.name}`}>
+                <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)-1) }} disabled={Number(item.quantity)<=1 || updatingQuantityItemId===item.id} aria-label={`Diminuir quantidade de ${item.name}`}>−</button>
+                <span className="quantity" aria-live="polite">{item.quantity}</span>
+                <button type="button" className="quantity-button" onClick={event => { event.stopPropagation(); void changeItemQuantity(item, Number(item.quantity)+1) }} disabled={Number(item.quantity)>=999 || updatingQuantityItemId===item.id} aria-label={`Aumentar quantidade de ${item.name}`}>+</button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+    <small style={{display:'block',marginTop:12,color:'var(--season-muted, #b9b4c2)'}}>
+      Os itens pertencem ao personagem selecionado na campanha. Alterações, equipamentos e quantidades são sincronizados com a ficha.
+    </small>
+  </section>
+)}
+
+{isCyberFlowerSystem &&
+  canAccessSelectedCharacter &&
+  selectedCharacter &&
+  selectedSeasonId &&
+  !sheetLoading && (
+    <CyberneticsInventory
+      sheetDraft={sheetDraft}
+      setSheetDraft={setSheetDraft}
+      characterId={selectedCharacter.id}
+      seasonId={selectedSeasonId}
+      canManageCybernetics={canManageCybernetics}
+      sheetSaving={sheetSaving}
+      inventoryItems={items}
+      onInventoryItemsChange={setItems}
+      onSaveCybernetics={(cybernetics) =>
+        saveCharacterCybernetics(
+          selectedCharacter.id,
+          selectedSeasonId,
+          cybernetics,
+        )
+      }
+    />
+  )}
+
+{canAccessSelectedCharacter &&
+  (selectedCampaign?.currency_config?.currencies?.length ?? 0) > 0 && (
+  <section className="inventory-section currency-wallet" style={{display:'grid',gridTemplateColumns:'minmax(0,1.05fr) minmax(0,.95fr)',columnGap:22,rowGap:0,alignItems:'start',width:'100%',boxSizing:'border-box',position:'relative',isolation:'isolate',overflow:'hidden',padding:24,borderRadius:24,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'radial-gradient(ellipse at 8% 0%,var(--season-accent-soft,rgba(220,135,65,.16)),transparent 42%),linear-gradient(145deg,var(--season-surface,rgba(20,18,25,.96)),var(--season-surface-alt,rgba(255,255,255,.035)))',boxShadow:'0 18px 48px rgba(0,0,0,.16)'}}>
+
     <div className="inventory-heading" style={{position:'relative',alignItems:'center',gap:16,marginBottom:24,paddingBottom:18,borderBottom:'1px solid var(--season-line,rgba(255,255,255,.12))'}}>
       <div style={{display:'flex',alignItems:'center',gap:14}}>
         <div aria-hidden="true" style={{width:58,height:58,flex:'0 0 58px',display:'grid',placeItems:'center',borderRadius:19,border:'1px solid var(--season-line,rgba(255,255,255,.14))',background:'linear-gradient(145deg,var(--season-accent-soft,rgba(220,135,65,.20)),var(--season-surface-alt,rgba(255,255,255,.04)))',fontSize:28,boxShadow:'0 10px 28px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.12)'}}>👛</div>
@@ -8378,260 +11724,6 @@ style={{cursor:'pointer'}}>
               </>}
             </section>
           )}
-          {activePage === 'characters' && selectedCampaignId && (
-  <section className="inventory-section characters-page-panel">
-    <div className="inventory-heading">
-      <div>
-        <h2>{showCharacterManagement ? 'Gerenciar personagens' : 'Personagens'}</h2>
-        <p>
-          {showCharacterManagement
-            ? 'Área administrativa da campanha.'
-            : 'Personagens da campanha selecionada.'}
-        </p>
-      </div>
-
-      {showCharacterManagement ? (
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => setShowCharacterManagement(false)}
-        >
-          ← Voltar aos personagens
-        </button>
-      ) : (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {isMaster && (
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setShowCharacterManagement(true)}
-            >
-              ⚙ Gerenciar personagens
-            </button>
-          )}
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => setShowCharacterForm(true)}
-          >
-            + Novo personagem
-          </button>
-        </div>
-      )}
-    </div>
-
-    {!showCharacterManagement && showCharacterForm && (
-      <form className="add-form" onSubmit={createCharacter}>
-        <label>
-          Nome
-          <input
-            value={characterName}
-            onChange={e => setCharacterName(e.target.value)}
-            required
-            style={inputStyle}
-          />
-        </label>
-        <div className="emoji-field">
-          <label>Emoji do personagem</label>
-          <div className="emoji-grid">
-            {availableEmojis.map((emoji) => (
-              <button key={emoji} type="button" className={characterEmoji === emoji ? 'emoji-option selected' : 'emoji-option'} onClick={() => setCharacterEmoji(emoji)} aria-label={`Selecionar emoji ${emoji}`} aria-pressed={characterEmoji === emoji}>{emoji}</button>
-            ))}
-          </div>
-          <small>Selecione um dos emojis disponíveis para representar o personagem.</small>
-        </div>
-
-{systemFeatures.usesRanks ? (
-  <>
-    <label>
-      Arquétipo primário
-      <select
-        value={primaryArchetype}
-        onChange={e => setPrimaryArchetype(e.target.value)}
-        required
-        style={inputStyle}
-      >
-        <option value="">Selecione...</option>
-        {systemArchetypes.map(item => (
-          <option
-            key={item}
-            value={item}
-            disabled={
-              (item === 'Linha de Frente' && secondaryArchetype === 'Suporte') ||
-              (item === 'Suporte' && secondaryArchetype === 'Linha de Frente') ||
-              (item === 'Defensor' && secondaryArchetype === 'Flanco') ||
-              (item === 'Flanco' && secondaryArchetype === 'Defensor')
-            }
-          >
-            {item}
-          </option>
-        ))}
-      </select>
-    </label>
-
-    <label>
-      Arquétipo secundário
-      <select
-        value={secondaryArchetype}
-        onChange={e => setSecondaryArchetype(e.target.value)}
-        required
-        style={inputStyle}
-      >
-        <option value="">Selecione...</option>
-        {systemArchetypes.map(item => (
-          <option
-            key={item}
-            value={item}
-disabled={
-  item === primaryArchetype ||
-  (item === 'Linha de Frente' && primaryArchetype === 'Suporte') ||
-  (item === 'Suporte' && primaryArchetype === 'Linha de Frente') ||
-  (item === 'Defensor' && primaryArchetype === 'Flanco') ||
-  (item === 'Flanco' && primaryArchetype === 'Defensor')
-}
-          >
-            {item}
-          </option>
-        ))}
-      </select>
-    </label>
-  </>
-) : (
-  <label>
-    Arquétipo
-    <input
-      value={archetype}
-      onChange={e => setArchetype(e.target.value)}
-      style={inputStyle}
-    />
-  </label>
-)}
-
-{systemFeatures.usesRanks ? (
-  <label>
-    Graduação
-    <select
-      value={characterRank}
-      onChange={(event) => setCharacterRank(event.target.value)}
-      required
-    >
-      {systemRanks.map(rank => (
-        <option key={rank.id} value={rank.id}>
-          {rank.name}
-        </option>
-      ))}
-    </select>
-  </label>
-) : (
-  <label>
-    Nível
-    <input
-      type="number"
-      min="1"
-      max="999"
-      value={characterLevel}
-      onChange={(event) => setCharacterLevel(event.target.value)}
-      required
-    />
-  </label>
-)}
-
-{systemFeatures.usesFamilyTiers && (
-  <label>
-    Tier da família
-    <select
-      value={characterFamilyTier}
-      onChange={event => setCharacterFamilyTier(event.target.value)}
-      required
-      style={inputStyle}
-    >
-      {getSystemFamilyTiers().map(([key, value]) => (
-        <option key={key} value={key}>
-          {value.label}
-        </option>
-      ))}
-    </select>
-  </label>
-)}
-
-        <button className="primary-button" type="submit" disabled={loading}>
-          Salvar personagem
-        </button>
-      </form>
-    )}
-
-{!showCharacterManagement ? (
-  <div className="item-grid">
-    {characters.map(character => (
-      <article className="item-card" key={character.id}>
-        <div className="item-art">{character.emoji || '⚔️'}</div>
-        <h3>{character.name}</h3>
-        <p>
-          {character.archetype || 'Arquétipo não definido'}{!systemFeatures.usesRanks && <> · Nível {character.level}</>}
-        </p>
-        {systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
-        <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
-
-        <button
-          className="primary-button"
-          onClick={() => {
-            setSelectedCharacterId(character.id)
-            setActivePage('sheets')
-            setSheetCharacterView(true)
-          }}
-        >
-          Abrir ficha
-        </button>
-      </article>
-    ))}
-  </div>
-) : (
-  <div className="item-grid">
-    {characters.map(character => (
-      <article className="item-card" key={character.id}>
-        <div className="item-art">{character.emoji || '⚔️'}</div>
-        <h3>{character.name}</h3>
-        <p>
-          {character.archetype || 'Arquétipo não definido'}{!systemFeatures.usesRanks && <> · Nível {character.level}</>}
-        </p>
-        {systemFeatures.usesRanks && <p className="item-description">⛩️ {characterRanks[character.id] || 'Graduação não definida'}</p>}
-        <button type="button" className="secondary-button" onClick={() => openCharacterEmojiPicker(character)}>Alterar emoji</button>
-
-        <button
-          className="primary-button"
-          onClick={() => {
-            setSelectedCharacterId(character.id)
-            setActivePage('sheets')
-            setSheetCharacterView(true)
-          }}
-        >
-          Abrir ficha
-        </button>
-
-        {isMaster && (
-          <button
-            type="button"
-            className="secondary-button"
-            style={{
-              marginTop: 8,
-              width: '100%',
-              borderColor: '#b94b55',
-              color: '#ff929a',
-            }}
-            disabled={deletingCharacterId !== null}
-            onClick={() => void deleteCharacter(character)}
-          >
-            {deletingCharacterId === character.id
-              ? 'Excluindo...'
-              : 'Excluir personagem'}
-          </button>
-        )}
-      </article>
-    ))}
-  </div>
-)}
-</section>
-)}
 
 {activePage === 'bestiary' && (
   <section className="inventory-section bestiary-page-panel">
@@ -8641,11 +11733,11 @@ disabled={
         <p>Selecione uma campanha para acessar o bestiário.</p>
       </div>
     ) : (
-<div className="bestiary-container">
-<div className="inventory-heading">
+<div className="bestiary-container hb-bestiary">
+<div className="inventory-heading hb-hero hb-bestiary-hero">
   <div>
-    <span className="shops-eyebrow">✦ ENCICLOPÉDIA DE CRIATURAS</span>
-    <h2>Conhecimento sobre as criaturas</h2>
+    <span className="hb-kicker">♞ ARQUIVO DE CRIATURAS</span>
+    <h2>Bestiário<span className="hb-title-dot">.</span></h2>
     <p>
       Consulte monstros, ameaças e seres encontrados nas suas aventuras.
     </p>
@@ -8675,7 +11767,15 @@ onClick={() => {
   )}
 </div>
 
-  <div className="bestiary-toolbar">
+  <div className="hb-bestiary-metrics hb-metric-grid">
+    <article className="hb-metric"><span className="hb-metric-icon">♞</span><span className="hb-metric-content"><span className="hb-metric-label">Criaturas</span><strong>{creatures.length}</strong><small>Registros da campanha</small></span></article>
+    <article className="hb-metric"><span className="hb-metric-icon">◉</span><span className="hb-metric-content"><span className="hb-metric-label">Visíveis</span><strong>{creatures.filter(creature => !creature.is_hidden).length}</strong><small>Disponíveis aos jogadores</small></span></article>
+    {isMaster && <article className="hb-metric"><span className="hb-metric-icon">◌</span><span className="hb-metric-content"><span className="hb-metric-label">Ocultas</span><strong>{creatures.filter(creature => creature.is_hidden).length}</strong><small>Apenas para mestres</small></span></article>}
+    <article className="hb-metric"><span className="hb-metric-icon">✦</span><span className="hb-metric-content"><span className="hb-metric-label">Categorias</span><strong>{Math.max(0, creatureCategories.length - 1)}</strong><small>Tipos catalogados</small></span></article>
+  </div>
+  <div className="hb-toolbar-label"><span className="hb-kicker">EXPLORAR ARQUIVO</span><strong>{filteredCreatures.length} {filteredCreatures.length === 1 ? 'resultado' : 'resultados'}</strong></div>
+  <div className="bestiary-toolbar hb-bestiary-toolbar">
+    <span className="hb-search-symbol" aria-hidden="true">⌕</span>
     <input
       type="text"
       placeholder="Pesquisar criatura..."
@@ -8693,6 +11793,7 @@ onClick={() => {
         </option>
       ))}
     </select>
+    {(creatureSearch || creatureCategoryFilter !== 'Todas') && <button type="button" className="secondary-button hb-reset-filters" onClick={() => { setCreatureSearch(''); setCreatureCategoryFilter('Todas') }}>Limpar filtros</button>}
   </div>
 
 {showCreatureForm && (
@@ -9012,7 +12113,7 @@ onClick={() => {
     {filteredCreatures.map(creature => (
 <article
   key={creature.id}
-  className={`bestiary-creature-card ${creature.is_hidden ? 'is-hidden' : ''}`}
+  className={`bestiary-creature-card hb-bestiary-card ${creature.is_hidden ? 'is-hidden' : ''}`}
   onClick={() => setSelectedCreatureId(creature.id)}
   role="button"
   tabIndex={0}
@@ -9050,9 +12151,9 @@ onClick={() => {
         )}
 
 <div className="bestiary-creature-info">
-  <span>{creature.category}</span>
+  <span className="hb-bestiary-category">{creature.category}</span>
   <h3>{creature.name}</h3>
-  <p>{creature.threat_level}</p>
+  <p><span className="hb-danger-indicator"/> Nível de ameaça: <strong>{creature.threat_level}</strong></p>
 
   {isMaster && (
     <small className={`bestiary-creature-status ${creature.is_hidden ? 'is-hidden' : 'is-visible'}`}>
@@ -9080,10 +12181,10 @@ onClick={() => {
       </div>
     ) : (
       <>
-        <div className="inventory-heading shops-heading">
+        <div className="inventory-heading shops-heading hb-hero hb-shops-hero">
           <div>
-            <span className="shops-eyebrow">✦ COMÉRCIO DA CAMPANHA</span>
-            <h2>Mercado da campanha</h2>
+            <span className="hb-kicker">♜ COMÉRCIO DA CAMPANHA</span>
+            <h2>Mercado da campanha<span className="hb-title-dot">.</span></h2>
             <p>
               {isMaster
                 ? 'Administre estabelecimentos e seus produtos.'
@@ -9107,9 +12208,14 @@ onClick={() => {
           )}
         </div>
 
+        <div className="hb-market-metrics hb-metric-grid">
+          <article className="hb-metric"><span className="hb-metric-icon">♜</span><span className="hb-metric-content"><span className="hb-metric-label">Estabelecimentos</span><strong>{shops.length}</strong><small>Lojas cadastradas</small></span></article>
+          <article className="hb-metric"><span className="hb-metric-icon">✧</span><span className="hb-metric-content"><span className="hb-metric-label">Loja selecionada</span><strong className="hb-metric-name">{shops.find(shop => shop.id === selectedShopId)?.name || 'Nenhuma'}</strong><small>Escolha ao lado para explorar</small></span></article>
+          <article className="hb-metric"><span className="hb-metric-icon">▣</span><span className="hb-metric-content"><span className="hb-metric-label">Produtos</span><strong>{selectedShopId ? shopItems.filter(item => item.shop_id === selectedShopId).length : 0}</strong><small>Na loja selecionada</small></span></article>
+        </div>
         {isMaster && showShopForm && (
           <form
-            className="add-form"
+            className="add-form hb-form hb-market-form"
             onSubmit={event => {
               event.preventDefault()
               void saveShop()
@@ -9531,7 +12637,7 @@ onClick={() => {
 
                               {shopItemEquipmentType === 'armor' && <>
                                 <label style={labelStyle}>Tipo de armadura<select value={shopItemArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setShopItemArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, nextClass, shopItemWeaponClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
-                                {shopItemArmorClass !== 'pesada' && <label style={labelStyle}>Tipos de dano protegidos<select value={shopItemArmorCoverage} onChange={event => setShopItemArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')} style={inputStyle}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
+                                {shopItemArmorClass !== 'pesada' && <label style={labelStyle}>Tipos de dano protegidos<select value={isKisatsutaiSystem ? 'especial_bruto' : shopItemArmorCoverage} onChange={event => setShopItemArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')} style={inputStyle}>{!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante e perfurante</option>}<option value="especial_bruto">Especial e bruto</option></select></label>}
                                 <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {shopItemArmorClass === 'leve' ? 2 : shopItemArmorClass === 'media' ? 4 : 6} kg</p><p>Proteção: {shopItemArmorClass === 'leve' ? '(Resistência ÷ 2) + 4' : shopItemArmorClass === 'media' ? 'Resistência + 6' : '(Resistência × 2) + 8'}</p><p>Destreza: {shopItemArmorClass === 'leve' ? 'Integral' : shopItemArmorClass === 'media' ? '½ dos pontos' : '0'}</p><p>Penalidades: {shopItemArmorClass === 'media' ? '−5 em Reflexo; metade do deslocamento' : shopItemArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade'}</p></div>
                               </>}
 
@@ -9982,15 +13088,28 @@ onClick={() => {
   </section>
 )}
 
-          {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel"><h2>Campanhas</h2>
+          {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel hb-campaigns-page">
+            <header className="hb-hero hb-campaigns-hero">
+              <div><span className="hb-kicker">⚑ ADMINISTRAÇÃO</span><h2>Campanhas<span className="hb-title-dot">.</span></h2><p>Organize mundos, temporadas, participantes e o acesso aos personagens.</p><div className="hb-hero-tags"><span>{campaigns.length} {campaigns.length === 1 ? 'campanha' : 'campanhas'}</span><span>{seasons.length} temporadas na atual</span><span>{campaignMembers.length} membros</span></div></div>
+              <button type="button" className="primary-button" onClick={() => { setShowCampaignForm(true); setEditingCampaignId(null); setCampaignName(''); setCampaignDescription(''); setCampaignSystemChoice(''); setSystemName('') }}>＋ Criar campanha</button>
+            </header>
+            <div className="hb-campaign-chooser hb-panel"><div className="hb-panel-heading"><div><span className="hb-kicker">MUNDOS DISPONÍVEIS</span><h3>Suas campanhas</h3><p>Escolha a campanha que deseja administrar.</p></div><span className="hb-heading-icon">⚑</span></div>
+              {campaigns.length ? <div className="hb-campaign-chooser-grid">{campaigns.map(campaign => <button type="button" key={campaign.id} className={`hb-campaign-option ${selectedCampaignId === campaign.id ? 'is-selected' : ''}`} onClick={async () => {
+                  setSelectedCampaignId(campaign.id)
+                  const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaign.id } })
+                  if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
+                }} aria-pressed={selectedCampaignId === campaign.id}>
+                <span className="hb-campaign-option-art">⚑</span><span className="hb-campaign-option-copy"><strong>{campaign.name}</strong><small>{campaign.system_name || 'Sistema não definido'}</small></span><span className="hb-campaign-selection">{selectedCampaignId === campaign.id ? '✓ Selecionada' : 'Selecionar ↗'}</span>
+              </button>)}</div> : <div className="hb-minimal-empty">Crie sua primeira campanha para começar.</div>}
+            </div>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
-            <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Tenho um convite</h3><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
+            <form className="add-form hb-form hb-invite-form" onSubmit={joinCampaignWithInvite}><div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">ACESSAR NOVO MUNDO</span><h3>Tenho um convite</h3><p>Entre em outra campanha com um código de convite.</p></div></div><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
             {showCampaignForm && (
               <form
-                className="add-form"
+                className="add-form hb-form hb-campaign-form"
                 onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}
               >
-                <h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3>
+                <div className="hb-form-heading"><span className="hb-heading-icon">⚑</span><div><span className="hb-kicker">CONFIGURAÇÕES DA CAMPANHA</span><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><p>Defina o nome, o sistema e a descrição do cenário.</p></div></div>
 
                 <label>
                   Nome
@@ -10090,8 +13209,8 @@ onClick={() => {
             )}
 
 {selectedCampaign && isMaster && (
-  <div className="add-form" style={{ marginTop: 20 }}>
-    <h3>Convites de campanha</h3>
+  <div className="add-form hb-form hb-admin-panel hb-invite-admin" style={{ marginTop: 20 }}>
+    <div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">CONVIDAR JOGADORES</span><h3>Convites de campanha</h3><p>Gere um convite seguro para reunir o grupo.</p></div></div>
 
     <p>
       Gere um link para convidar jogadores para{' '}
@@ -10190,9 +13309,9 @@ onClick={() => {
 )}
 
 {selectedCampaign && isMaster && showSeasonEditor && (
-  <section className="add-form season-editor-panel">
-    <form onSubmit={createSeason}>
-      <h3>Criar nova temporada</h3>
+  <section className="add-form season-editor-panel hb-admin-panel hb-season-editor">
+    <form onSubmit={createSeason} className="hb-season-create-form">
+      <div className="hb-form-heading"><span className="hb-heading-icon">◷</span><div><span className="hb-kicker">NOVA ETAPA</span><h3>Criar nova temporada</h3><p>Adicione um novo capítulo à história da campanha.</p></div></div>
 
       <label style={labelStyle}>
         Nome da temporada
@@ -10221,8 +13340,8 @@ onClick={() => {
     </form>
 
     {seasons.length > 0 && (
-      <section className="add-form season-order-panel">
-        <h3>Ordem das temporadas</h3>
+      <section className="add-form season-order-panel hb-season-order">
+        <div className="hb-form-heading"><span className="hb-heading-icon">☷</span><div><span className="hb-kicker">LINHA DO TEMPO</span><h3>Ordem das temporadas</h3></div></div>
         <p>Organize a sequência das temporadas desta campanha.</p>
 
         <div style={{ display: 'grid', gap: 10 }}>
@@ -10296,83 +13415,9 @@ onClick={() => {
   </section>
 )}
 
-            {selectedCampaign && isMaster && seasons.length > 0 && showSeasonEditor && (
-  <section className="add-form season-order-panel">
-    <h3>Ordem das temporadas</h3>
-    <p>Organize a sequência das temporadas desta campanha.</p>
-
-    <div style={{ display: 'grid', gap: 10 }}>
-      {[...seasons]
-        .sort((a, b) => a.season_number - b.season_number)
-        .map((season, index, orderedSeasons) => (
-          <div
-            key={season.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              padding: 12,
-              border: '1px solid var(--season-line, #444)',
-              borderRadius: 10,
-            }}
-          >
-            <div>
-              <strong>
-                {index + 1}. {season.name}
-              </strong>
-              <small style={{ display: 'block', opacity: 0.7 }}>
-                Temporada {season.season_number}
-              </small>
-            </div>
-
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={index === 0 || seasonOrderSaving}
-                onClick={() => void moveSeason(season.id, -1)}
-                aria-label={`Mover ${season.name} para cima`}
-              >
-                ↑
-              </button>
-
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={
-                  index === orderedSeasons.length - 1 ||
-                  seasonOrderSaving
-                }
-                onClick={() => void moveSeason(season.id, 1)}
-                aria-label={`Mover ${season.name} para baixo`}
-              >
-                ↓
-              </button>
-              <button
-  type="button"
-  className="secondary-button"
-  disabled={loading || seasonOrderSaving}
-  onClick={() => void deleteSeason(season.id)}
-  aria-label={`Excluir temporada ${season.name}`}
->
-  Excluir
-</button>
-            </div>
-          </div>
-        ))}
-    </div>
-
-    {seasonOrderSaving && (
-      <p style={{ opacity: 0.7 }}>Salvando nova ordem...</p>
-    )}
-  </section>
-)}
-
-
             {selectedCampaign && isMaster && (
-  <section className="inventory-section" style={{ marginBottom: 16 }}>
-    <div className="inventory-heading"><div><h3>Moedas da campanha</h3><p>A primeira moeda é a moeda do sistema, usada por padrão na carteira e nos novos produtos.</p></div></div>
+  <section className="inventory-section hb-admin-panel hb-currency-panel" style={{ marginBottom: 16 }}>
+    <div className="inventory-heading"><div><span className="hb-kicker">✦ ECONOMIA</span><h3>Moedas da campanha</h3><p>A primeira moeda é a moeda do sistema, usada por padrão na carteira e nos novos produtos.</p></div></div>
     {(selectedCampaign.currency_config?.currencies ?? []).map((currency, index) => (
       <div key={currency.id} className="currency-balance" style={{ gap: 10 }}>
         <span>{currency.name} ({currency.symbol}) {index === 0 ? '· Moeda do sistema' : ''}</span>
@@ -10395,9 +13440,9 @@ onClick={() => {
   </section>
 )}
           {selectedCampaign && isMaster && (
-            <section className="inventory-section">
+            <section className="inventory-section hb-admin-panel hb-members-panel">
               <div className="inventory-heading">
-                <div>
+                <div><span className="hb-kicker">♙ PARTICIPANTES</span>
                   <h2>Membros da campanha</h2>
                   <p>
                     {campaignMembers.length} membro(s) ·{' '}
@@ -10420,7 +13465,7 @@ onClick={() => {
                       campaignMembers.filter((entry) => entry.role === 'master').length <= 1
 
                     return (
-                      <article className="item-card" key={member.user_id}>
+                      <article className="item-card hb-member-card" key={member.user_id}>
                         <div className="item-art">
                           {member.role === 'master' ? '👑' : '♙'}
                         </div>
@@ -10469,8 +13514,8 @@ onClick={() => {
           )}
 
             {selectedCampaign && isMaster && (
-              <section className="inventory-section character-access-settings">
-                <div className="inventory-heading"><div><h2>Acesso do personagem</h2><p>Selecione um personagem da campanha para definir quem controla e quem pode visualizá-lo.</p></div></div>
+              <section className="inventory-section character-access-settings hb-admin-panel hb-access-panel">
+                <div className="inventory-heading"><div><span className="hb-kicker">◈ PERMISSÕES</span><h2>Acesso do personagem</h2><p>Selecione um personagem da campanha para definir quem controla e quem pode visualizá-lo.</p></div></div>
                 <div style={{ maxWidth: 460, marginBottom: 16 }}>
                   <label style={labelStyle} htmlFor="character-access-selector">Personagem</label>
                   <select
@@ -10582,7 +13627,7 @@ onClick={() => {
 
           {/* O formulário de campanha fica somente na página Campanhas. */}
 
-          {selectedCampaign && (
+          {activePage === 'campaigns' && selectedCampaign && (
             <section className="character-banner">
               <div className="banner-art">
                 <span>✧</span>
@@ -10608,7 +13653,7 @@ onClick={() => {
             </section>
           )}
 
-          {!selectedCampaignId && (
+          {activePage === 'campaigns' && !selectedCampaignId && (
             <div className="empty-state">
               <span>⚑</span>
               <h3>Vamos começar uma aventura?</h3>
@@ -10619,7 +13664,7 @@ onClick={() => {
             </div>
           )}
 
-          {selectedCampaignId && (
+          {activePage === 'campaigns' && selectedCampaignId && (
             <>
               <section className="inventory-section">
                 <div className="inventory-heading">
@@ -11068,7 +14113,7 @@ onClick={() => {
 
                       {newEquipmentType === 'armor' && <>
                         <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
-                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
+                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={isKisatsutaiSystem ? 'especial_bruto' : newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}>{!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante e perfurante</option>}<option value="especial_bruto">Especial e bruto</option></select></label>}
                         <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}</p><p>Resistência adicional: {newArmorClass === 'leve' ? '½ dos pontos de resistência + 4' : newArmorClass === 'media' ? '+6 pontos' : '2× os pontos de resistência + 8'}</p><p>Destreza de armadura: {newArmorClass === 'leve' ? 'Destreza integral' : newArmorClass === 'media' ? 'Metade do valor de destreza' : '0'}</p><p>Penalidades: {newArmorClass === 'media' ? '−5 em Reflexo; ½ do deslocamento' : newArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade; deslocamento normal'}</p></div>
                       </>}
 
@@ -11774,6 +14819,7 @@ onClick={() => {
     </div>
   ), document.body)}
 
+            {activePage !== 'player-table' && (
             <footer className="page-footer">
               <span>
                 HäxBag
@@ -11784,6 +14830,7 @@ onClick={() => {
                 FEITO PARA QUEM VIVE GRANDES AVENTURAS <span>✧</span>
               </span>
             </footer>
+            )}
           </div>
         </main>
       </div>
