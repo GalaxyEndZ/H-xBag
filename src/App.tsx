@@ -779,6 +779,7 @@ const resetCreatureFilters = () => {
   const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
   const [profileBioDraft, setProfileBioDraft] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
+  const [profileEditing, setProfileEditing] = useState(false)
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
@@ -5937,6 +5938,7 @@ async function duplicateItem(item: Item) {
     setProfileNameDraft(String(displayName))
     setProfileAvatarDraft(accountAvatar)
     setProfileBioDraft(accountBio)
+    setProfileEditing(false)
     setError('')
     setNotice('')
     setActivePage('profile')
@@ -9676,27 +9678,39 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
 `}</style>
           {activePage === 'profile' && (
-            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13" aria-labelledby="hb-profile-title">
-              <header className="hb-profile-hero hb-profile-banner">
-                <span className="hb-profile-banner-art" aria-hidden="true" />
-                <span className="hb-profile-banner-stamp" aria-hidden="true">{activeVisualStyle.symbol}</span>
-                <div className="hb-profile-banner-body">
-                  <div className="hb-profile-banner-eyebrow"><span aria-hidden="true">✦</span> SEU ESPAÇO PESSOAL <span className="hb-profile-banner-line" /></div>
-                  <div className="hb-profile-title-row">
-                    <span className="hb-profile-avatar hb-profile-avatar-xl" aria-hidden="true">
-                      {profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}
+            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v14" aria-labelledby="hb-profile-title">
+              <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
+                <div className="hb-profile-identity-cover">
+                  <span className="hb-profile-identity-cover-art" aria-hidden="true" />
+                  <span className="hb-profile-identity-cover-vignette" aria-hidden="true" />
+                  <div className="hb-profile-identity-crest" aria-hidden="true">{activeVisualStyle.symbol}</div>
+                  <div className="hb-profile-identity-cover-topline">
+                    <span><span aria-hidden="true">✦</span> HÄXBAG <span className="hb-profile-identity-overline">/ PERFIL DO AVENTUREIRO</span></span>
+                    <span className="hb-profile-identity-style">{activeVisualStyle.label}</span>
+                  </div>
+                  <div className="hb-profile-identity-cover-bottomline" aria-hidden="true"><span>✧</span><i /><span>✧</span></div>
+                </div>
+                <div className="hb-profile-identity-main">
+                  <div className="hb-profile-identity-avatar-wrap">
+                    <span className="hb-profile-identity-avatar" aria-label="Avatar do perfil">
+                      {accountAvatar || String(displayName).charAt(0).toUpperCase()}
                     </span>
-                    <div className="hb-profile-heading">
-                      <h1 id="hb-profile-title">Meu perfil</h1>
-                      <strong>{profileNameDraft.trim() || displayName}</strong>
-                      <p>O rosto e a história por trás das suas aventuras. Personalize sua presença no HäxBag.</p>
+                    <span className="hb-profile-identity-avatar-spark" aria-hidden="true">✦</span>
+                  </div>
+                  <div className="hb-profile-identity-copy">
+                    <span className="hb-profile-identity-kicker">SUA HISTÓRIA COMEÇA AQUI</span>
+                    <h1 id="hb-profile-title">{displayName}</h1>
+                    <p>{accountBio.trim() || 'Toda aventura merece uma história. Personalize a sua apresentação e deixe sua marca no HäxBag.'}</p>
+                    <div className="hb-profile-identity-badges">
+                      <span><i aria-hidden="true" className="hb-profile-status-light" /> Conta ativa</span>
+                      <span aria-label={`Estilo ${activeVisualStyle.label}`}>{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
+                      <span>✧ Desde {accountCreatedAt}</span>
                     </div>
                   </div>
-                  <div className="hb-profile-hero-tags">
-                    <span className="hb-profile-presence"><i aria-hidden="true" /> Conta ativa</span>
-                    <span>✦ Identidade {activeVisualStyle.label}</span>
-                    <span>✧ Membro desde {accountCreatedAt}</span>
-                  </div>
+                  <button type="button" className="hb-profile-identity-edit" onClick={() => setProfileEditing(value => !value)}
+                    aria-expanded={profileEditing} aria-controls="hb-profile-editor-region">
+                    <span aria-hidden="true">{profileEditing ? '←' : '✎'}</span> {profileEditing ? 'Voltar ao perfil' : 'Editar perfil'}
+                  </button>
                 </div>
               </header>
 
@@ -9721,7 +9735,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </article>
               </div>
 
-              <div className="hb-profile-layout">
+              <div className="hb-profile-layout" id="hb-profile-editor-region">
+                {profileEditing ? (
                 <form className="hb-profile-card hb-profile-edit-card" onSubmit={async event => {
                   event.preventDefault()
                   if (profileSaving || !profileHasChanges) return
@@ -9753,6 +9768,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     } else {
                       setNotice('Perfil atualizado com sucesso.')
                     }
+                    setProfileEditing(false)
                   } catch (err) {
                     setError('Erro ao salvar seu perfil: ' + (err instanceof Error ? err.message : String(err)))
                   } finally {
@@ -9799,19 +9815,40 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     </div>
                   </div>
                 </form>
+                ) : (
+                  <article className="hb-profile-story" aria-labelledby="hb-profile-story-title">
+                    <div className="hb-profile-story-heading">
+                      <span className="hb-profile-story-emblem" aria-hidden="true">✦</span>
+                      <div><span className="hb-kicker">O AVENTUREIRO</span><h2 id="hb-profile-story-title">Sobre mim</h2></div>
+                      <span className="hb-profile-story-chapter">CAPÍTULO I</span>
+                    </div>
+                    <div className="hb-profile-story-content">
+                      <span className="hb-profile-story-quote" aria-hidden="true">“</span>
+                      <p>{accountBio.trim() || 'Ainda não escrevi minha história... Mas toda grande aventura começa com o primeiro passo.'}</p>
+                    </div>
+                    <div className="hb-profile-story-rule" aria-hidden="true"><span>✦</span></div>
+                    <div className="hb-profile-story-inscription">
+                      <div><span>ASSINADO POR</span><strong>{displayName}</strong></div>
+                      <span className="hb-profile-story-seal" aria-label={`Estilo ${activeVisualStyle.label}`}>{activeVisualStyle.symbol}</span>
+                    </div>
+                    <button type="button" className="hb-profile-story-action" onClick={() => setProfileEditing(true)}>
+                      <span aria-hidden="true">✎</span> {accountBio.trim() ? 'Editar minha história' : 'Escrever minha história'} <span aria-hidden="true">↗</span>
+                    </button>
+                  </article>
+                )}
 
                 <aside className="hb-profile-side-panel">
                   <section className="hb-profile-side-card hb-profile-preview-panel" aria-label="Prévia do perfil">
-                    <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">EM TEMPO REAL</span><h2>Prévia do perfil</h2></div></div>
+                    <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Prévia do perfil' : 'Cartão do aventureiro'}</h2></div></div>
                     <div className="hb-profile-preview-card">
                       <span className="hb-profile-preview-art" aria-hidden="true" />
                       <div className="hb-profile-preview-topline"><span>HÄXBAG</span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
-                      <span className="hb-profile-preview-avatar" aria-hidden="true">{profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}</span>
-                      <strong className="hb-profile-preview-name">{profileNameDraft.trim() || 'Seu nome de exibição'}</strong>
-                      <p className="hb-profile-preview-bio">{profileBioDraft.trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
+                      <span className="hb-profile-preview-avatar" aria-hidden="true">{profileEditing ? (profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()) : (accountAvatar || String(displayName).charAt(0).toUpperCase())}</span>
+                      <strong className="hb-profile-preview-name">{profileEditing ? (profileNameDraft.trim() || 'Seu nome de exibição') : displayName}</strong>
+                      <p className="hb-profile-preview-bio">{(profileEditing ? profileBioDraft : accountBio).trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
                       <span className="hb-profile-preview-signature">✦ IDENTIDADE DO AVENTUREIRO</span>
                     </div>
-                    <p className="hb-profile-preview-help">Uma amostra de como seu perfil pode aparecer. Apenas o que você salvar ficará na sua conta.</p>
+                    <p className="hb-profile-preview-help">{profileEditing ? 'Prévia das suas alterações. Somente as informações salvas ficarão na sua conta.' : 'Seu cartão pessoal, com a identidade visual da temporada em uso.'}</p>
                   </section>
                   <section className="hb-profile-side-card">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">⌘</span><div><span className="hb-kicker">DADOS DA CONTA</span><h2>Informações</h2></div></div>
