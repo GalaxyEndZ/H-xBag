@@ -560,6 +560,16 @@ function App() {
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const [overviewTab, setOverviewTab] = useState<'summary' | 'news'>('summary')
+  const [campaignNews, setCampaignNews] = useState<Array<{id:string;title:string;body:string;created_at:string;updated_at:string}>>([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [newsError, setNewsError] = useState('')
+  const [newsEditingId, setNewsEditingId] = useState<string | null>(null)
+  const [newsTitle, setNewsTitle] = useState('')
+  const [newsBody, setNewsBody] = useState('')
+  const [newsSaving, setNewsSaving] = useState(false)
+  const [newsRefresh, setNewsRefresh] = useState(0)
+
   const selectedCampaign = campaigns.find(
     (campaign) => campaign.id === selectedCampaignId,
   )
@@ -654,6 +664,52 @@ function App() {
   const createSystemDefaultCurrencyConfig = () =>
     systemLogic?.createDefaultCurrencyConfig?.() ?? { currencies: [] }
   const isMaster = selectedCampaign?.role === 'master'
+  useEffect(() => {
+    setOverviewTab('summary')
+    setNewsEditingId(null)
+    setNewsTitle('')
+    setNewsBody('')
+  }, [selectedCampaignId])
+
+  useEffect(() => {
+    if (!selectedCampaignId) { setCampaignNews([]); setNewsError(''); return }
+    let cancelled = false
+    const load = async () => {
+      setNewsLoading(true)
+      const { data, error } = await supabase.from('campaign_news')
+        .select('id,title,body,created_at,updated_at')
+        .eq('campaign_id', selectedCampaignId)
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      setNewsLoading(false)
+      setNewsError(error ? 'Não foi possível carregar as notícias. Confira se a migração SQL v122 foi aplicada.' : '')
+      setCampaignNews((data ?? []) as typeof campaignNews)
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [selectedCampaignId, newsRefresh])
+
+  const saveCampaignNews = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!isMaster || !selectedCampaignId || !newsTitle.trim() || !newsBody.trim() || newsSaving) return
+    setNewsSaving(true)
+    setNewsError('')
+    const payload = { title: newsTitle.trim(), body: newsBody.trim() }
+    const result = newsEditingId
+      ? await supabase.from('campaign_news').update(payload).eq('id', newsEditingId).eq('campaign_id', selectedCampaignId)
+      : await supabase.from('campaign_news').insert({ ...payload, campaign_id: selectedCampaignId, author_id: session?.user.id })
+    setNewsSaving(false)
+    if (result.error) { setNewsError(result.error.message); return }
+    setNewsEditingId(null); setNewsTitle(''); setNewsBody(''); setNewsRefresh(n => n + 1)
+  }
+  const deleteCampaignNews = async (id: string) => {
+    if (!isMaster || !selectedCampaignId || !window.confirm('Excluir esta notícia da campanha?')) return
+    const { error } = await supabase.from('campaign_news').delete().eq('id', id).eq('campaign_id', selectedCampaignId)
+    if (error) { setNewsError(error.message); return }
+    if (newsEditingId === id) { setNewsEditingId(null); setNewsTitle(''); setNewsBody('') }
+    setNewsRefresh(n => n + 1)
+  }
+
   const [characters, setCharacters] = useState<Character[]>([])
   const [sheetCharacterSearch, setSheetCharacterSearch] = useState('')
   const [sheetCharacterArchetype, setSheetCharacterArchetype] = useState('all')
@@ -8301,7 +8357,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     )}
   </>
 )}
-                      {isKisatsutaiSystem && panel('6. Perícias extras e treinamentos', <div className="kisatsutai-extra-skills">
+                      {isKisatsutaiSystem && panel('6. Perícias extras, arquétipo ou extras', <div className="kisatsutai-extra-skills">
                         <KisatsutaiSkillDistribution fullPath={getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))} skills={read('skills', {})} onChange={next => write('skills', next)} intellectExtraLevels={extraLevels} disabled={!renderCanEdit} />
                         <details className="kisatsutai-skill-group"><summary>Consultar lista de perícias e descrições</summary>
                           {Object.entries(KISATSUTAI_SKILL_GROUPS).map(([group, groupSkills]) => <details key={group} className="kisatsutai-skill-group"><summary>{group} <small>({groupSkills.length} perícias)</small></summary><div className="kisatsutai-skill-grid">{groupSkills.map(skill => <div key={skill.name} className="kisatsutai-skill-entry"><span><strong>{skill.name}</strong><small>{skill.description}</small></span></div>)}</div></details>)}
@@ -10583,8 +10639,27 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
         <button type="button" className="secondary-button" onClick={() => setActivePage('campaigns')}>Gerenciar campanhas</button>
       </div>
     </header>
+    {selectedCampaign && <div className="hb-overview-tabs" role="tablist" aria-label="Seções da visão geral">
+      <button type="button" role="tab" aria-selected={overviewTab === 'summary'} className={overviewTab === 'summary' ? 'active' : ''} onClick={() => setOverviewTab('summary')}>Resumo</button>
+      <button type="button" role="tab" aria-selected={overviewTab === 'news'} className={overviewTab === 'news' ? 'active' : ''} onClick={() => setOverviewTab('news')}>Notícias e atualizações {campaignNews.length > 0 && <span className="hb-news-count">{campaignNews.length}</span>}</button>
+    </div>}
     {selectedCampaign ? (
-      <>
+      overviewTab === 'news' ? <section className="hb-news-panel">
+        <div className="hb-panel-heading"><div><span className="hb-kicker">MURAL DA CAMPANHA</span><h3>Notícias e atualizações</h3><p>Comunicados publicados pelo mestre para todos os participantes.</p></div><span className="hb-heading-icon">✦</span></div>
+        {isMaster && <form className="hb-news-editor" onSubmit={saveCampaignNews}>
+          <h4>{newsEditingId ? 'Editar publicação' : 'Nova publicação'}</h4>
+          <label>Título<input value={newsTitle} maxLength={120} onChange={event => setNewsTitle(event.target.value)} placeholder="Ex.: Próxima sessão" required /></label>
+          <label>Mensagem<textarea value={newsBody} maxLength={10000} rows={5} onChange={event => setNewsBody(event.target.value)} placeholder="Escreva as novidades para os jogadores..." required /></label>
+          <div className="hb-news-editor-actions"><button className="primary-button" type="submit" disabled={newsSaving || !newsTitle.trim() || !newsBody.trim()}>{newsSaving ? 'Salvando...' : newsEditingId ? 'Salvar alterações' : 'Publicar notícia'}</button>
+          {newsEditingId && <button type="button" className="secondary-button" onClick={() => { setNewsEditingId(null); setNewsTitle(''); setNewsBody('') }}>Cancelar edição</button>}</div>
+        </form>}
+        {newsError && <p className="hb-news-error" role="alert">{newsError}</p>}
+        {newsLoading ? <div className="hb-minimal-empty">Carregando notícias...</div> : campaignNews.length ? <div className="hb-news-feed">{campaignNews.map(item => <article className="hb-news-card" key={item.id}>
+          <div className="hb-news-card-top"><span className="hb-news-date">{new Date(item.created_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}</span>
+          {isMaster && <div className="hb-news-card-actions"><button type="button" onClick={() => { setNewsEditingId(item.id); setNewsTitle(item.title); setNewsBody(item.body) }}>Editar</button><button type="button" onClick={() => void deleteCampaignNews(item.id)}>Excluir</button></div>}</div>
+          <h4>{item.title}</h4><p>{item.body}</p>{item.updated_at !== item.created_at && <small>Atualizada após a publicação</small>}
+        </article>)}</div> : <div className="hb-minimal-empty">Ainda não há notícias publicadas nesta campanha.</div>}
+      </section> : <>
         <div className="hb-metric-grid hb-overview-metrics">
           {([
             ['♙', 'Personagens', characters.length, 'Fichas na campanha', 'sheets'],
