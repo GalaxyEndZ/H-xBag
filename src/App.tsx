@@ -1113,7 +1113,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -8484,14 +8484,7 @@ counterAttackDT
           <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
         </a>
 
-        <div className="hb-sidebar-style-identity" aria-label={`Estilo visual ativo: ${activeVisualStyle.label}`}>
-          <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
-          <span className="hb-sidebar-style-text">
-            <small>IDENTIDADE VISUAL</small>
-            <strong>{activeVisualStyle.label}</strong>
-          </span>
-          <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
-        </div>
+
 
         <section className="hb-sidebar-workspace" aria-label="Campanha atual" style={{display:"flex",flexDirection:"column",height:"auto",minHeight:0,maxHeight:"none",overflow:"visible",flexShrink:0,position:"relative",zIndex:2,padding:"15px 13px 12px"}}>
           <div className="hb-sidebar-workspace-top">
@@ -8563,6 +8556,9 @@ counterAttackDT
             <button type="button" className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }} aria-current={activePage === 'campaigns' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">⚑</span><span className="hb-sidebar-nav-name">Campanhas</span><span className="nav-count">{campaigns.length}</span>
             </button>
+            <button type="button" className={`nav-link ${activePage === 'customization' ? 'active' : ''}`} onClick={() => setActivePage('customization')} disabled={!selectedCampaignId} aria-current={activePage === 'customization' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">✧</span><span className="hb-sidebar-nav-name">Customização</span>
+            </button>
           </div>
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">CONTA</span>
@@ -8602,7 +8598,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -9933,6 +9929,99 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 @media(prefers-reduced-motion:reduce){.hb-polish .hb-ms-dashboard :is(.hb-ms-player-card,.hb-enemy-party-card,.hb-ms-initiative-row,.hb-ms-quicknav a){transition:none;transform:none}}
 
 `}</style>
+
+          {activePage === 'customization' && (
+            <section className="hb-customization-page" aria-labelledby="hb-customization-title">
+              <header className="hb-customization-hero">
+                <div className="hb-customization-hero-copy">
+                  <span className="hb-customization-eyebrow">✦ APARÊNCIA DA CAMPANHA</span>
+                  <h1 id="hb-customization-title">Customização<span aria-hidden="true">.</span></h1>
+                  <p>Defina a identidade visual da temporada. Combine cores e estilos para personalizar toda a experiência no HäxBag.</p>
+                  <div className="hb-customization-hero-badges">
+                    <span>◈ {activeTheme.label}</span>
+                    <span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
+                    <span>{isMaster ? '✎ Edição do mestre' : '◉ Visualização'}</span>
+                  </div>
+                </div>
+                <div className="hb-customization-hero-preview" aria-label={`Prévia: ${activeTheme.label} com estilo ${activeVisualStyle.label}`}>
+                  <span className="hb-customization-preview-orbit" aria-hidden="true" />
+                  <span className="hb-customization-preview-symbol" aria-hidden="true">{activeVisualStyle.symbol}</span>
+                  <strong>{activeVisualStyle.label}</strong>
+                  <small>{selectedCampaign?.name || 'HäxBag'}</small>
+                </div>
+              </header>
+
+              {!selectedCampaignId ? (
+                <div className="hb-customization-empty">
+                  <span aria-hidden="true">⚑</span>
+                  <h2>Selecione uma campanha</h2>
+                  <p>Escolha uma campanha para consultar a identidade visual de suas temporadas.</p>
+                  <button type="button" className="primary-button" onClick={() => setActivePage('campaigns')}>Ir para Campanhas</button>
+                </div>
+              ) : seasons.length === 0 ? (
+                <div className="hb-customization-empty">
+                  <span aria-hidden="true">✧</span>
+                  <h2>Nenhuma temporada criada</h2>
+                  <p>Crie uma temporada na área de Fichas para poder configurar o tema e o estilo visual.</p>
+                  <button type="button" className="primary-button" onClick={() => { setActivePage('sheets'); setSheetCharacterView(false) }}>Abrir Fichas</button>
+                </div>
+              ) : (
+                <>
+                  <div className="hb-customization-season-bar">
+                    <div className="hb-customization-season-copy">
+                      <span className="hb-customization-eyebrow">TEMPORADA EM EDIÇÃO</span>
+                      <strong>{activeSeason?.name || 'Escolha uma temporada'}</strong>
+                      <small>As alterações afetam a aparência da temporada selecionada.</small>
+                    </div>
+                    <label htmlFor="hb-customization-season-select">
+                      <span>Selecionar temporada</span>
+                      <select id="hb-customization-season-select" value={selectedSeasonId} onChange={event => setSelectedSeasonId(event.target.value)}>
+                        <option value="">Selecione uma temporada</option>
+                        {seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  {selectedSeasonId ? (
+                <section className="season-theme-panel" aria-label="Identidade visual da temporada">
+                  <div className="season-theme-heading">
+                    <div><strong>Identidade visual</strong><small>Combine uma paleta de cores com um estilo de interface.</small></div>
+                    <span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} />
+                  </div>
+                  <div className="season-visual-group">
+                    <div className="season-visual-group-heading"><span>01 · Tema</span><strong>{activeTheme.label}</strong><small>Define as cores da temporada.</small></div>
+                    {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
+                  </div>
+                  <div className="season-visual-group season-visual-style-group">
+                    <div className="season-visual-group-heading"><span>02 · Estilo</span><strong>{activeVisualStyle.label}</strong><small>Transforma todas as páginas, incluindo menus e janelas, preservando as cores do tema.</small></div>
+                    <div className="season-style-grid">
+                      {(Object.entries(visualStyles) as [VisualStyleKey, typeof visualStyles[VisualStyleKey]][]).map(([key, style]) => (
+                        <button key={key} type="button" aria-pressed={activeVisualStyleKey === key}
+                          disabled={!isMaster || seasonVisualStyleSaving} onClick={() => void saveSeasonVisualStyle(key)}
+                          className={`season-style-card season-style-${key} ${activeVisualStyleKey === key ? 'active' : ''}`}>
+                          <span className="season-style-signature" aria-hidden="true"><span>✦</span>{style.signature}<span>✦</span></span>
+                          <span className="season-style-preview" aria-hidden="true">
+                            <span className="season-style-preview-orb" />
+                            <span className="season-style-preview-glyph">{style.symbol}</span>
+                            <span className="season-style-preview-lines"><i /><i /><i /></span>
+                          </span>
+                          <span className="season-style-card-info"><strong>{style.label}</strong><small>{style.description}</small></span>
+                          <span className="season-style-card-check" aria-hidden="true">{activeVisualStyleKey === key ? '✓' : '＋'}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {!isMaster && <small className="season-style-readonly">O mestre escolhe o estilo desta temporada.</small>}
+                    <p className="season-style-hint">Combinação atual: <b>{activeTheme.label}</b> + <b>{activeVisualStyle.label}</b>. O estilo modifica apenas a aparência: regras e dados da temporada continuam iguais.</p>
+                  </div>
+                </section>
+                  ) : (
+                    <div className="hb-customization-empty"><h2>Escolha uma temporada</h2><p>Selecione uma temporada acima para visualizar as opções de identidade visual.</p></div>
+                  )}
+                  {!isMaster && <p className="hb-customization-readonly">Você pode visualizar a identidade visual da campanha. Apenas o mestre pode alterá-la.</p>}
+                </>
+              )}
+            </section>
+          )}
+
           {activePage === 'profile' && (
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15" aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
@@ -10217,7 +10306,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && (
           <section className="welcome-row">
 
 
@@ -11695,37 +11784,7 @@ disabled={
   )
 })()}
                 {isMaster && selectedSeasonId && <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12,margin:'12px 0'}}><label style={labelStyle}>Nome da temporada<input value={seasonNameDraft} onChange={e=>setSeasonNameDraft(e.target.value)} style={inputStyle}/></label><label style={labelStyle}>Descrição<input value={seasonDescriptionDraft} onChange={e=>setSeasonDescriptionDraft(e.target.value)} style={inputStyle}/></label><button className="primary-button" type="button" onClick={()=>void saveSeasonDetails()}>Salvar detalhes da temporada</button><label style={labelStyle}>Status<select value={seasons.find(s=>s.id===selectedSeasonId)?.status ?? 'draft'} onChange={e=>void changeSeasonStatus(e.target.value as Season['status'])} style={inputStyle}><option value="draft">Rascunho</option><option value="active">Ativa</option><option value="completed">Concluída</option><option value="archived">Arquivada</option></select></label></div>}
-                {selectedSeasonId && <section className="season-theme-panel" aria-label="Identidade visual da temporada">
-                  <div className="season-theme-heading">
-                    <div><strong>Identidade visual</strong><small>Combine uma paleta de cores com um estilo de interface.</small></div>
-                    <span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} />
-                  </div>
-                  <div className="season-visual-group">
-                    <div className="season-visual-group-heading"><span>01 · Tema</span><strong>{activeTheme.label}</strong><small>Define as cores da temporada.</small></div>
-                    {isMaster ? <div className="season-theme-options">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="season-theme-swatches"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span>{theme.label}</span>{activeThemeKey===key&&<b>✓</b>}</button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
-                  </div>
-                  <div className="season-visual-group season-visual-style-group">
-                    <div className="season-visual-group-heading"><span>02 · Estilo</span><strong>{activeVisualStyle.label}</strong><small>Transforma todas as páginas, incluindo menus e janelas, preservando as cores do tema.</small></div>
-                    <div className="season-style-grid">
-                      {(Object.entries(visualStyles) as [VisualStyleKey, typeof visualStyles[VisualStyleKey]][]).map(([key, style]) => (
-                        <button key={key} type="button" aria-pressed={activeVisualStyleKey === key}
-                          disabled={!isMaster || seasonVisualStyleSaving} onClick={() => void saveSeasonVisualStyle(key)}
-                          className={`season-style-card season-style-${key} ${activeVisualStyleKey === key ? 'active' : ''}`}>
-                          <span className="season-style-signature" aria-hidden="true"><span>✦</span>{style.signature}<span>✦</span></span>
-                          <span className="season-style-preview" aria-hidden="true">
-                            <span className="season-style-preview-orb" />
-                            <span className="season-style-preview-glyph">{style.symbol}</span>
-                            <span className="season-style-preview-lines"><i /><i /><i /></span>
-                          </span>
-                          <span className="season-style-card-info"><strong>{style.label}</strong><small>{style.description}</small></span>
-                          <span className="season-style-card-check" aria-hidden="true">{activeVisualStyleKey === key ? '✓' : '＋'}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {!isMaster && <small className="season-style-readonly">O mestre escolhe o estilo desta temporada.</small>}
-                    <p className="season-style-hint">Combinação atual: <b>{activeTheme.label}</b> + <b>{activeVisualStyle.label}</b>. O estilo modifica apenas a aparência: regras e dados da temporada continuam iguais.</p>
-                  </div>
-                </section>}
+
 
                 {!selectedSeasonId ? <p>Crie ou selecione uma temporada para editar a ficha.</p> : sheetLoading ? <p>Carregando ficha…</p> : <>
                   <div className="sheet-toolbar">

@@ -13904,3 +13904,60 @@ button:disabled { opacity: .58; }
 .inventory-item-card.inventory-dragging { opacity: .5; }
 .inventory-item-card.inventory-drop-target { outline: 2px dashed var(--accent, #b9a47b); outline-offset: 3px; }
 
+
+
+/* HäxBag v72 — Página dedicada à customização da identidade visual */
+.app-shell .page-customization { max-width: 1460px; width: 100%; margin: 0 auto; }
+.app-shell .hb-customization-page { display: grid; gap: 22px; min-width: 0; }
+.app-shell .hb-customization-hero {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 350px);
+  align-items: stretch; gap: 24px; padding: clamp(22px, 3vw, 36px);
+  border: 1px solid color-mix(in srgb, var(--season-primary) 33%, transparent);
+  border-radius: 24px;
+  background: linear-gradient(125deg, color-mix(in srgb, var(--season-primary) 12%, var(--season-surface, #17151c)), color-mix(in srgb, var(--season-bg, #100e19) 96%, transparent));
+  box-shadow: 0 15px 45px rgba(0,0,0,.13);
+  overflow: hidden;
+}
+.app-shell .hb-customization-hero-copy { display: flex; flex-direction: column; justify-content: center; gap: 14px; min-width: 0; }
+.app-shell .hb-customization-eyebrow { color: var(--season-primary); font-size: 11px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+.app-shell .hb-customization-hero h1 { margin: 0; font-size: clamp(29px, 4vw, 46px); line-height: 1.08; letter-spacing: -.035em; }
+.app-shell .hb-customization-hero h1 > span { color: var(--season-primary); }
+.app-shell .hb-customization-hero p { margin: 0; max-width: 630px; line-height: 1.6; color: var(--season-muted, #bbb3c4); font-size: 14px; }
+.app-shell .hb-customization-hero-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
+.app-shell .hb-customization-hero-badges > span { padding: 7px 11px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--season-primary) 30%, transparent); background: color-mix(in srgb, var(--season-primary) 9%, transparent); font-size: 12px; font-weight: 650; }
+.app-shell .hb-customization-hero-preview { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 210px; border-radius: 19px; border: 1px solid color-mix(in srgb, var(--season-primary) 36%, transparent); background: radial-gradient(circle at 50% 36%, var(--season-glow), transparent 68%), linear-gradient(140deg, var(--season-surface-alt, #211c31), var(--season-bg, #100e19)); overflow: hidden; }
+.app-shell .hb-customization-preview-orbit { position: absolute; z-index: -1; width: 185px; height: 185px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--season-primary) 33%, transparent); box-shadow: 0 0 0 28px color-mix(in srgb, var(--season-primary) 5%, transparent), 0 0 0 57px color-mix(in srgb, var(--season-primary) 3%, transparent); }
+.app-shell .hb-customization-preview-symbol { font-size: 62px; line-height: 1.2; color: var(--season-primary); text-shadow: 0 0 28px var(--season-glow); }
+.app-shell .hb-customization-hero-preview strong { font-size: 19px; letter-spacing: -.02em; }
+.app-shell .hb-customization-hero-preview small { font-size: 12px; color: var(--season-muted, #bbb3c4); }
+.app-shell .hb-customization-season-bar { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 18px; padding: 17px 20px; border-radius: 17px; border: 1px solid var(--season-line, rgba(255,255,255,.14)); background: var(--season-surface, #19161f); }
+.app-shell .hb-customization-season-copy { display: grid; gap: 5px; }
+.app-shell .hb-customization-season-copy strong { font-size: 18px; }
+.app-shell .hb-customization-season-copy small { color: var(--season-muted, #bbb3c4); font-size: 12px; }
+.app-shell .hb-customization-season-bar label { display: grid; gap: 8px; min-width: min(100%, 310px); font-size: 12px; font-weight: 700; }
+.app-shell .hb-customization-season-bar select { width: 100%; min-height: 43px; padding: 9px 13px; border: 1px solid color-mix(in srgb, var(--season-primary) 30%, var(--season-line, #333)); border-radius: 10px; background: var(--season-surface-alt, #211c31); color: inherit; color-scheme: dark; }
+.app-shell .hb-customization-season-bar select:focus-visible { outline: 2px solid var(--season-primary); outline-offset: 2px; }
+.app-shell .hb-customization-page .season-theme-panel { margin: 0; padding: clamp(18px, 2.5vw, 29px); gap: 23px; border-radius: 20px; }
+.app-shell .hb-customization-page .season-theme-heading strong { font-size: 20px; }
+.app-shell .hb-customization-page .season-theme-heading small { font-size: 13px; }
+.app-shell .hb-customization-page .season-visual-group { min-width: 0; }
+.app-shell .hb-customization-page .season-visual-group-heading strong { font-size: 16px; }
+.app-shell .hb-customization-page .season-theme-options { grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
+.app-shell .hb-customization-page .season-theme-option { min-height: 55px; font-size: 13px; }
+.app-shell .hb-customization-page .season-style-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.app-shell .hb-customization-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 35px; border: 1px dashed color-mix(in srgb, var(--season-primary) 38%, transparent); border-radius: 18px; background: var(--season-surface, #19161f); }
+.app-shell .hb-customization-empty > span { font-size: 30px; color: var(--season-primary); }
+.app-shell .hb-customization-empty h2 { margin: 0; font-size: 20px; }
+.app-shell .hb-customization-empty p { margin: 0 0 5px; color: var(--season-muted, #bbb3c4); line-height: 1.5; }
+.app-shell .hb-customization-readonly { margin: 0; padding: 12px 16px; border-radius: 12px; background: color-mix(in srgb, var(--season-primary) 9%, transparent); color: var(--season-muted, #bbb3c4); }
+@media (max-width: 850px) {
+  .app-shell .hb-customization-hero { grid-template-columns: 1fr; }
+  .app-shell .hb-customization-hero-preview { min-height: 150px; }
+}
+@media (max-width: 520px) {
+  .app-shell .hb-customization-hero { padding: 20px; }
+  .app-shell .hb-customization-season-bar { padding: 15px; }
+  .app-shell .hb-customization-season-bar label { width: 100%; }
+  .app-shell .hb-customization-page .season-style-grid, .app-shell .hb-customization-page .season-theme-options { grid-template-columns: 1fr; }
+  .app-shell .hb-customization-empty { padding: 24px; }
+}
