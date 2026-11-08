@@ -9678,15 +9678,19 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
 `}</style>
           {activePage === 'profile' && (
-            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v14" aria-labelledby="hb-profile-title">
+            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15" aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
                 <div className="hb-profile-identity-cover">
                   <span className="hb-profile-identity-cover-art" aria-hidden="true" />
                   <span className="hb-profile-identity-cover-vignette" aria-hidden="true" />
-                  <div className="hb-profile-identity-crest" aria-hidden="true">{activeVisualStyle.symbol}</div>
                   <div className="hb-profile-identity-cover-topline">
-                    <span><span aria-hidden="true">✦</span> HÄXBAG <span className="hb-profile-identity-overline">/ PERFIL DO AVENTUREIRO</span></span>
-                    <span className="hb-profile-identity-style">{activeVisualStyle.label}</span>
+                    <span><span aria-hidden="true">✦</span> HÄXBAG <span className="hb-profile-identity-overline">/ ARQUIVO DO AVENTUREIRO</span></span>
+                    <span className="hb-profile-identity-style">{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
+                  </div>
+                  <div className="hb-profile-cover-story">
+                    <span className="hb-profile-cover-chapter"><span aria-hidden="true">✧</span> CRÔNICAS PESSOAIS <span className="hb-profile-cover-chapter-index">· VOL. I</span></span>
+                    <p className="hb-profile-cover-title">Toda jornada tem<br /><em>uma história.</em></p>
+                    <p className="hb-profile-cover-subtitle">O seu espaço entre mundos, personagens e aventuras.</p>
                   </div>
                   <div className="hb-profile-identity-cover-bottomline" aria-hidden="true"><span>✧</span><i /><span>✧</span></div>
                 </div>
@@ -9695,16 +9699,16 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <span className="hb-profile-identity-avatar" aria-label="Avatar do perfil">
                       {accountAvatar || String(displayName).charAt(0).toUpperCase()}
                     </span>
-                    <span className="hb-profile-identity-avatar-spark" aria-hidden="true">✦</span>
+                    <span className="hb-profile-identity-avatar-spark" aria-hidden="true">{activeVisualStyle.symbol}</span>
                   </div>
                   <div className="hb-profile-identity-copy">
-                    <span className="hb-profile-identity-kicker">SUA HISTÓRIA COMEÇA AQUI</span>
+                    <span className="hb-profile-identity-kicker"><span aria-hidden="true">✦</span> IDENTIDADE DO AVENTUREIRO</span>
                     <h1 id="hb-profile-title">{displayName}</h1>
                     <p>{accountBio.trim() || 'Toda aventura merece uma história. Personalize a sua apresentação e deixe sua marca no HäxBag.'}</p>
                     <div className="hb-profile-identity-badges">
                       <span><i aria-hidden="true" className="hb-profile-status-light" /> Conta ativa</span>
                       <span aria-label={`Estilo ${activeVisualStyle.label}`}>{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
-                      <span>✧ Desde {accountCreatedAt}</span>
+                      <span>✧ Membro desde {accountCreatedAt}</span>
                     </div>
                   </div>
                   <button type="button" className="hb-profile-identity-edit" onClick={() => setProfileEditing(value => !value)}
@@ -9714,6 +9718,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </div>
               </header>
 
+              <div className="hb-profile-section-heading" aria-hidden="true">
+                <span className="hb-profile-section-emblem">✧</span>
+                <span>MINHA JORNADA</span>
+                <i />
+                <span className="hb-profile-section-end">EM NÚMEROS</span>
+              </div>
               <div className="hb-profile-overview-grid">
                 <article className="hb-profile-info-tile">
                   <span className="hb-profile-tile-icon" aria-hidden="true">⚑</span>
@@ -9822,9 +9832,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <div><span className="hb-kicker">O AVENTUREIRO</span><h2 id="hb-profile-story-title">Sobre mim</h2></div>
                       <span className="hb-profile-story-chapter">CAPÍTULO I</span>
                     </div>
-                    <div className="hb-profile-story-content">
+                    <div className={`hb-profile-story-content ${accountBio.trim() ? 'has-bio' : 'is-empty'}`}>
                       <span className="hb-profile-story-quote" aria-hidden="true">“</span>
-                      <p>{accountBio.trim() || 'Ainda não escrevi minha história... Mas toda grande aventura começa com o primeiro passo.'}</p>
+                      <div className="hb-profile-story-text">
+                        {!accountBio.trim() && <span className="hb-profile-story-empty-label">O PRÓXIMO CAPÍTULO É SEU</span>}
+                        <p>{accountBio.trim() || 'Toda grande aventura começa com uma página em branco. Escreva a sua história e dê vida ao seu perfil.'}</p>
+                      </div>
                     </div>
                     <div className="hb-profile-story-rule" aria-hidden="true"><span>✦</span></div>
                     <div className="hb-profile-story-inscription">
@@ -9842,11 +9855,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Prévia do perfil' : 'Cartão do aventureiro'}</h2></div></div>
                     <div className="hb-profile-preview-card">
                       <span className="hb-profile-preview-art" aria-hidden="true" />
-                      <div className="hb-profile-preview-topline"><span>HÄXBAG</span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
+                      <div className="hb-profile-preview-topline"><span>HÄXBAG <span className="hb-profile-preview-edition">· CARTA DE IDENTIDADE</span></span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
+                      <span className="hb-profile-preview-decor" aria-hidden="true">✧</span>
                       <span className="hb-profile-preview-avatar" aria-hidden="true">{profileEditing ? (profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()) : (accountAvatar || String(displayName).charAt(0).toUpperCase())}</span>
                       <strong className="hb-profile-preview-name">{profileEditing ? (profileNameDraft.trim() || 'Seu nome de exibição') : displayName}</strong>
                       <p className="hb-profile-preview-bio">{(profileEditing ? profileBioDraft : accountBio).trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
-                      <span className="hb-profile-preview-signature">✦ IDENTIDADE DO AVENTUREIRO</span>
+                      <span className="hb-profile-preview-signature"><span>✦ CARTÃO DO AVENTUREIRO</span><span>HÄXBAG · I</span></span>
                     </div>
                     <p className="hb-profile-preview-help">{profileEditing ? 'Prévia das suas alterações. Somente as informações salvas ficarão na sua conta.' : 'Seu cartão pessoal, com a identidade visual da temporada em uso.'}</p>
                   </section>

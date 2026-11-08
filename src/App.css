@@ -13277,241 +13277,594 @@ button:disabled { opacity: .58; }
 @media(max-width:650px){.hb-profile-page-v13 .hb-profile-side-panel{grid-template-columns:1fr}.hb-profile-page-v13 .hb-profile-preview-panel{grid-column:auto}.hb-profile-page-v13 .hb-profile-banner-stamp{font-size:65px}.hb-profile-page-v13 .hb-profile-hero-tags>span{padding:6px 10px}.hb-profile-page-v13 .hb-profile-avatar-options{grid-template-columns:repeat(5,minmax(0,1fr))}.hb-profile-page-v13 .hb-profile-info-tile{padding:16px}}
 @media(prefers-reduced-motion:reduce){.hb-profile-page-v13 .hb-profile-bio-meter>i{transition:none}}
 
-
-/* ===================================================================
-   HÄXBAG v14 · Perfil do aventureiro
-   Página de identidade antes da edição; artes locais dos quatro estilos.
-   =================================================================== */
-.hb-profile-page-v14 {
-  --profile-ink: color-mix(in srgb,var(--season-primary) 63%,transparent);
-  --profile-edge: color-mix(in srgb,var(--season-primary) 27%,var(--season-line));
-  --profile-soft: color-mix(in srgb,var(--season-primary) 9%,transparent);
-  display:grid;gap:19px;max-width:1280px;margin:0 auto;padding:3px 0 50px;
+/* ========================================================================
+   HÄXBAG • PERFIL ATELIÊ v15
+   Perfil editorial de fantasia, sem camadas v14 duplicadas.
+   A identidade acompanha o tema e a arte SVG do estilo selecionado.
+   ======================================================================== */
+.hb-profile-page-v15 {
+  --profile-ink: color-mix(in srgb, var(--season-primary) 70%, transparent);
+  --profile-edge: color-mix(in srgb, var(--season-primary) 28%, var(--season-line));
+  --profile-soft: color-mix(in srgb, var(--season-primary) 9%, transparent);
+  --profile-paper: color-mix(in srgb, var(--season-surface) 80%, var(--season-bg));
+  --profile-shadow: 0 16px 38px rgba(0,0,0,.16);
+  display: grid;
+  gap: 19px;
+  width: 100%;
+  max-width: 1320px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 3px 0 56px;
 }
-.hb-profile-page-v14 .hb-profile-identity {
-  display:block;min-width:0;position:relative;isolation:isolate;overflow:hidden;
-  border:1px solid var(--profile-edge);border-radius:21px;
-  background:var(--season-surface);box-shadow:0 24px 55px rgba(0,0,0,.21);
+/* CAPA · Os ornamentos ocupam a direita, com narrativa real na esquerda. */
+.hb-profile-page-v15 .hb-profile-identity {
+  position: relative;
+  isolation: isolate;
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--profile-edge);
+  border-radius: 20px;
+  background: var(--season-surface);
+  box-shadow: 0 24px 55px rgba(0,0,0,.19), inset 0 1px 0 var(--profile-soft);
 }
-.hb-profile-page-v14 .hb-profile-identity-cover {
-  position:relative;isolation:isolate;height:clamp(165px,19vw,235px);overflow:hidden;
+.hb-profile-page-v15 .hb-profile-identity-cover {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: clamp(235px,24vw,290px);
+  border-bottom: 1px solid var(--profile-edge);
   background:
-    linear-gradient(115deg,color-mix(in srgb,var(--season-primary) 14%,var(--season-bg)),var(--season-bg) 60%),
-    var(--season-bg);
-  border-bottom:1px solid var(--profile-edge);
+    radial-gradient(ellipse at 78% 50%, var(--profile-soft), transparent 65%),
+    linear-gradient(125deg, var(--season-bg), var(--season-surface-alt));
 }
-.hb-profile-page-v14 .hb-profile-identity-cover-art {
-  position:absolute;inset:0;z-index:0;opacity:.54;
-  background-size:cover;background-repeat:no-repeat;background-position:60% 48%;
-  pointer-events:none;
+.hb-profile-page-v15 .hb-profile-identity-cover-art {
+  position: absolute;
+  inset: -12% -3% -16% 30%;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center right;
+  opacity: .73;
+  pointer-events: none;
 }
-.hb-profile-page-v14 .hb-profile-identity-cover-vignette {
-  position:absolute;inset:0;z-index:0;pointer-events:none;
-  background:linear-gradient(90deg,var(--season-bg) 0%,transparent 55%),
-    linear-gradient(0deg,color-mix(in srgb,var(--season-bg) 92%,transparent) 0%,transparent 60%);
-}
-.hb-profile-page-v14 .hb-profile-identity-cover::before,
-.hb-profile-page-v14 .hb-profile-identity-cover::after {
-  content:"";position:absolute;width:45px;height:45px;pointer-events:none;z-index:2;opacity:.7;
-}
-.hb-profile-page-v14 .hb-profile-identity-cover::before {top:15px;left:17px;border-left:1px solid var(--season-primary);border-top:1px solid var(--season-primary)}
-.hb-profile-page-v14 .hb-profile-identity-cover::after {bottom:15px;right:17px;border-right:1px solid var(--season-primary);border-bottom:1px solid var(--season-primary)}
-.hb-profile-page-v14 .hb-profile-identity-crest {
-  position:absolute;right:clamp(30px,7vw,105px);top:50%;transform:translateY(-50%);
-  color:var(--season-primary);opacity:.25;text-shadow:0 0 40px var(--profile-soft);
-  font:normal clamp(65px,10vw,142px)/1 Georgia,serif;pointer-events:none;user-select:none;z-index:1;
-}
-.hb-profile-page-v14 .hb-profile-identity-cover-topline {
-  position:absolute;left:clamp(23px,3.8vw,49px);right:clamp(23px,3.8vw,49px);top:23px;z-index:2;
-  display:flex;justify-content:space-between;align-items:center;gap:14px;
-  color:var(--season-primary);font-size:10px;font-weight:850;letter-spacing:.22em;
-}
-.hb-profile-page-v14 .hb-profile-identity-cover-topline>span:first-child {display:inline-flex;align-items:center;gap:7px}
-.hb-profile-page-v14 .hb-profile-identity-overline {color:var(--season-muted);font-size:9px;letter-spacing:.14em}
-.hb-profile-page-v14 .hb-profile-identity-style {
-  padding:7px 12px;border:1px solid var(--profile-edge);border-radius:999px;
-  background:color-mix(in srgb,var(--season-bg) 75%,transparent);letter-spacing:.12em;white-space:nowrap;
-}
-.hb-profile-page-v14 .hb-profile-identity-cover-bottomline {
-  position:absolute;z-index:1;left:clamp(24px,4vw,53px);right:clamp(24px,4vw,53px);bottom:24px;
-  display:flex;align-items:center;gap:10px;color:var(--profile-ink);
-}
-.hb-profile-page-v14 .hb-profile-identity-cover-bottomline i {height:1px;width:100%;background:linear-gradient(90deg,var(--profile-ink),transparent)}
-.hb-profile-page-v14 .hb-profile-identity-main {
-  position:relative;display:flex;align-items:center;gap:22px;padding:25px clamp(20px,3.6vw,45px) 30px;
-  background:radial-gradient(ellipse at 100% 0%,var(--profile-soft),transparent 50%);
-}
-.hb-profile-page-v14 .hb-profile-identity-avatar-wrap {
-  position:relative;flex:0 0 124px;width:124px;height:124px;margin-top:-81px;z-index:3;
-}
-.hb-profile-page-v14 .hb-profile-identity-avatar {
-  width:124px;height:124px;display:grid;place-items:center;overflow:hidden;
-  border:3px solid var(--season-primary);border-radius:27px;
-  background:radial-gradient(circle at 38% 20%,var(--profile-soft),transparent 60%),var(--season-surface-alt);
-  color:var(--season-primary);font-size:56px;font-weight:800;line-height:1;
-  box-shadow:0 0 0 5px var(--season-bg),0 0 0 6px var(--profile-edge),0 20px 32px rgba(0,0,0,.30);
-}
-.hb-profile-page-v14 .hb-profile-identity-avatar-spark {
-  position:absolute;right:-11px;bottom:7px;display:grid;place-items:center;width:35px;height:35px;
-  border:2px solid var(--season-bg);border-radius:11px;background:var(--season-primary);
-  color:var(--season-on-primary,#101014);font-size:16px;
-}
-.hb-profile-page-v14 .hb-profile-identity-copy {flex:1;min-width:0}
-.hb-profile-page-v14 .hb-profile-identity-kicker {display:block;margin-bottom:7px;color:var(--season-primary);font-size:10px;font-weight:900;letter-spacing:.2em}
-.hb-profile-page-v14 .hb-profile-identity-copy h1 {
-  margin:0;max-width:100%;overflow-wrap:anywhere;
-  font:750 clamp(27px,3vw,43px)/1.1 Georgia,'Times New Roman',serif;
-  letter-spacing:-.025em;color:var(--season-text);
-}
-.hb-profile-page-v14 .hb-profile-identity-copy p {
-  margin:11px 0 16px;max-width:610px;white-space:pre-wrap;overflow-wrap:anywhere;
-  font-size:12px;line-height:1.75;color:var(--season-muted);
-}
-.hb-profile-page-v14 .hb-profile-identity-badges {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
-.hb-profile-page-v14 .hb-profile-identity-badges>span {
-  display:inline-flex;align-items:center;gap:7px;padding:7px 11px;
-  border:1px solid var(--profile-edge);border-radius:100px;
-  background:color-mix(in srgb,var(--season-bg) 75%,transparent);
-  color:var(--season-text);font-size:10px;font-weight:700;
-}
-.hb-profile-page-v14 .hb-profile-status-light {width:7px;height:7px;border-radius:50%;background:#6bd5a3;box-shadow:0 0 8px #6bd5a37c}
-.hb-profile-page-v14 .hb-profile-identity-edit {
-  flex:0 0 auto;align-self:flex-start;display:flex;align-items:center;justify-content:center;gap:10px;
-  padding:11px 17px;border:1px solid var(--season-primary);border-radius:10px;
-  background:linear-gradient(130deg,var(--profile-soft),var(--season-surface));
-  color:var(--season-text);font-size:11px;font-weight:800;line-height:1.2;font-family:inherit;cursor:pointer;
-  box-shadow:inset 0 1px 0 var(--profile-soft);transition:background .15s,transform .15s,box-shadow .15s;
-}
-.hb-profile-page-v14 .hb-profile-identity-edit:hover {background:color-mix(in srgb,var(--season-primary) 15%,var(--season-surface));transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.16)}
-.hb-profile-page-v14 .hb-profile-identity-edit>span {font-size:17px;color:var(--season-primary)}
-.hb-profile-page-v14 .hb-profile-identity-edit:focus-visible,
-.hb-profile-page-v14 .hb-profile-story-action:focus-visible {outline:2px solid var(--season-primary);outline-offset:3px}
-
-/* Resumo curto da jornada */
-.hb-profile-page-v14 .hb-profile-overview-grid {gap:13px}
-.hb-profile-page-v14 .hb-profile-info-tile {
-  min-height:116px;gap:9px;padding:21px 23px 19px;
-  border:1px solid var(--profile-edge);border-radius:15px;
-  background:linear-gradient(140deg,var(--season-surface),var(--season-surface-alt));
-  box-shadow:0 10px 22px rgba(0,0,0,.09);overflow:hidden;
-}
-.hb-profile-page-v14 .hb-profile-info-tile::after {
-  content:"";position:absolute;bottom:0;left:21px;right:40%;height:2px;
-  background:linear-gradient(90deg,var(--season-primary),transparent);opacity:.5;
-}
-.hb-profile-page-v14 .hb-profile-info-tile strong {font:750 clamp(19px,2vw,26px)/1.1 Georgia,serif}
-.hb-profile-page-v14 .hb-profile-tile-icon {font-size:27px;opacity:.5}
-
-/* História em destaque no lugar do formulário permanente */
-.hb-profile-page-v14 .hb-profile-layout {grid-template-columns:minmax(0,1.25fr) minmax(285px,.78fr);gap:17px}
-.hb-profile-page-v14 .hb-profile-story {
-  position:relative;isolation:isolate;display:flex;flex-direction:column;gap:21px;min-height:440px;
-  overflow:hidden;padding:clamp(24px,3vw,35px);
-  border:1px solid var(--profile-edge);border-radius:19px;
+.hb-profile-page-v15 .hb-profile-identity-cover-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background:
-    radial-gradient(ellipse at 110% 100%,var(--profile-soft),transparent 54%),
-    linear-gradient(155deg,var(--season-surface),var(--season-surface-alt));
-  box-shadow:0 14px 30px rgba(0,0,0,.12);
+    linear-gradient(90deg, var(--season-bg) 1%, color-mix(in srgb,var(--season-bg) 96%,transparent) 28%, transparent 72%),
+    linear-gradient(0deg, color-mix(in srgb,var(--season-bg) 71%,transparent), transparent 30%);
+  pointer-events: none;
 }
-.hb-profile-page-v14 .hb-profile-story::before {
-  content:"";position:absolute;right:5px;bottom:10px;width:min(63%,350px);height:190px;
-  background-image:url('./themes/style-art/eclipse-crest.svg');background-position:center;
-  background-size:contain;background-repeat:no-repeat;opacity:.07;pointer-events:none;z-index:-1;
+.hb-profile-page-v15 .hb-profile-identity-cover::before,
+.hb-profile-page-v15 .hb-profile-identity-cover::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  width: 37px;
+  height: 37px;
+  opacity: .66;
+  pointer-events: none;
 }
-.hb-profile-page-v14 .hb-profile-story-heading {display:flex;align-items:center;gap:15px;padding-bottom:21px;border-bottom:1px solid var(--profile-edge)}
-.hb-profile-page-v14 .hb-profile-story-emblem {
-  display:grid;place-items:center;width:48px;height:48px;flex:0 0 48px;border:1px solid var(--profile-edge);border-radius:14px;
-  background:var(--profile-soft);font-size:26px;color:var(--season-primary);
+.hb-profile-page-v15 .hb-profile-identity-cover::before {
+  top: 16px; left: 18px;
+  border-top: 1px solid var(--season-primary);
+  border-left: 1px solid var(--season-primary);
 }
-.hb-profile-page-v14 .hb-profile-story-heading h2 {margin:3px 0 0;font:700 25px/1.1 Georgia,serif;color:var(--season-text)}
-.hb-profile-page-v14 .hb-profile-story-chapter {margin-left:auto;color:var(--season-muted);font-size:9px;font-weight:900;letter-spacing:.16em;white-space:nowrap}
-.hb-profile-page-v14 .hb-profile-story-content {display:flex;gap:13px;align-items:flex-start;flex:1}
-.hb-profile-page-v14 .hb-profile-story-quote {font:italic 76px/.8 Georgia,serif;color:var(--season-primary);opacity:.65;user-select:none}
-.hb-profile-page-v14 .hb-profile-story-content p {
-  margin:6px 0 0;max-width:660px;color:var(--season-text);font:normal clamp(14px,1.6vw,17px)/1.85 Georgia,serif;
-  overflow-wrap:anywhere;white-space:pre-wrap;
+.hb-profile-page-v15 .hb-profile-identity-cover::after {
+  right: 18px; bottom: 17px;
+  border-right: 1px solid var(--season-primary);
+  border-bottom: 1px solid var(--season-primary);
 }
-.hb-profile-page-v14 .hb-profile-story-rule {display:flex;align-items:center;gap:11px;color:var(--season-primary);opacity:.7}
-.hb-profile-page-v14 .hb-profile-story-rule::before,.hb-profile-page-v14 .hb-profile-story-rule::after {content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--profile-ink))}
-.hb-profile-page-v14 .hb-profile-story-rule::after {transform:scaleX(-1)}
-.hb-profile-page-v14 .hb-profile-story-inscription {display:flex;align-items:center;justify-content:space-between;gap:20px}
-.hb-profile-page-v14 .hb-profile-story-inscription>div {display:grid;gap:6px;min-width:0}
-.hb-profile-page-v14 .hb-profile-story-inscription>div span {font-size:9px;font-weight:850;letter-spacing:.2em;color:var(--season-muted)}
-.hb-profile-page-v14 .hb-profile-story-inscription>div strong {font:700 18px/1.3 Georgia,serif;color:var(--season-primary);overflow-wrap:anywhere}
-.hb-profile-page-v14 .hb-profile-story-seal {display:grid;place-items:center;width:53px;height:53px;flex:0 0 53px;border:1px solid var(--profile-edge);border-radius:15px;background:var(--profile-soft);color:var(--season-primary);font:31px/1 Georgia,serif}
-.hb-profile-page-v14 .hb-profile-story-action {
-  display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:4px;
-  padding:14px 16px;border:1px solid var(--profile-edge);border-radius:10px;
-  background:color-mix(in srgb,var(--season-primary) 9%,var(--season-bg));color:var(--season-text);font-size:12px;font-weight:800;cursor:pointer;
-  transition:border-color .16s,background .16s;
+.hb-profile-page-v15 .hb-profile-identity-cover-topline {
+  position: absolute;
+  z-index: 3;
+  top: 23px;
+  left: clamp(24px,3.5vw,48px);
+  right: clamp(24px,3.5vw,48px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  color: var(--season-primary);
 }
-.hb-profile-page-v14 .hb-profile-story-action>span:last-child {margin-left:auto;color:var(--season-primary)}
-.hb-profile-page-v14 .hb-profile-story-action:hover {border-color:var(--season-primary);background:var(--profile-soft)}
-.hb-profile-page-v14 .hb-profile-side-card,
-.hb-profile-page-v14 .hb-profile-edit-card {border-color:var(--profile-edge);border-radius:17px}
-.hb-profile-page-v14 .hb-profile-side-heading {padding-bottom:13px}
-.hb-profile-page-v14 .hb-profile-side-heading>span {border-color:var(--profile-edge);background:var(--profile-soft)}
-.hb-profile-page-v14 .hb-profile-preview-card {min-height:260px;border-color:var(--profile-edge);border-radius:12px;gap:10px}
-.hb-profile-page-v14 .hb-profile-preview-avatar {height:80px;width:80px;font-size:37px;border-radius:22px}
-.hb-profile-page-v14 .hb-profile-preview-name {font-size:21px}
-.hb-profile-page-v14 .hb-profile-preview-bio {max-width:300px;font-size:11px}
-.hb-profile-page-v14 .hb-profile-shortcuts button {border-color:var(--profile-edge);transition:border-color .15s,transform .15s}
-.hb-profile-page-v14 .hb-profile-shortcuts button:hover:not(:disabled) {transform:translateX(3px)}
-.hb-profile-page-v14 .hb-profile-avatar-option {border-color:var(--profile-edge)}
-.hb-profile-page-v14 .hb-profile-avatar-option.active {box-shadow:0 0 0 3px var(--profile-soft)}
-
-/* As quatro assinaturas decorativas acompanham a escolha de Identidade Visual */
-.app-shell.visual-style-classic .hb-profile-page-v14 .hb-profile-identity-cover-art {background-image:url('./themes/style-art/eclipse-hero.svg')}
-.app-shell.visual-style-japanese .hb-profile-page-v14 .hb-profile-identity-cover-art {background-image:url('./themes/style-art/kisatsutai-hero.svg')}
-.app-shell.visual-style-cyberpunk .hb-profile-page-v14 .hb-profile-identity-cover-art {background-image:url('./themes/style-art/cyberflower-hero.svg')}
-.app-shell.visual-style-ciclos .hb-profile-page-v14 .hb-profile-identity-cover-art {background-image:url('./themes/style-art/ciclos-hero.svg')}
-.app-shell.visual-style-japanese .hb-profile-page-v14 .hb-profile-story::before {background-image:url('./themes/style-art/kisatsutai-crest.svg')}
-.app-shell.visual-style-cyberpunk .hb-profile-page-v14 .hb-profile-story::before {background-image:url('./themes/style-art/cyberflower-crest.svg')}
-.app-shell.visual-style-ciclos .hb-profile-page-v14 .hb-profile-story::before {background-image:url('./themes/style-art/ciclos-crest.svg')}
-.app-shell.visual-style-japanese .hb-profile-page-v14 :is(.hb-profile-identity,.hb-profile-story) {border-radius:9px}
-.app-shell.visual-style-japanese .hb-profile-page-v14 .hb-profile-identity-avatar {border-radius:17px}
-.app-shell.visual-style-cyberpunk .hb-profile-page-v14 :is(.hb-profile-identity,.hb-profile-story) {border-radius:5px;border-left:3px solid var(--season-primary)}
-.app-shell.visual-style-cyberpunk .hb-profile-page-v14 :is(.hb-profile-identity-avatar,.hb-profile-story-seal,.hb-profile-identity-edit) {border-radius:5px}
-.app-shell.visual-style-ciclos .hb-profile-page-v14 :is(.hb-profile-identity,.hb-profile-story) {border-top:2px solid var(--season-primary)}
-.app-shell.visual-style-ciclos .hb-profile-page-v14 .hb-profile-identity-avatar {border-radius:17px}
-.app-shell.visual-style-ciclos .hb-profile-page-v14 .hb-profile-identity-cover::before,
-.app-shell.visual-style-ciclos .hb-profile-page-v14 .hb-profile-identity-cover::after {width:60px;height:32px}
-
-@media(max-width:1090px) {
-  .hb-profile-page-v14 .hb-profile-identity-main {align-items:flex-start;flex-wrap:wrap}
-  .hb-profile-page-v14 .hb-profile-identity-edit {margin-left:auto}
+.hb-profile-page-v15 .hb-profile-identity-cover-topline > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
 }
-@media(max-width:900px) {
-  .hb-profile-page-v14 .hb-profile-layout {grid-template-columns:1fr}
-  .hb-profile-page-v14 .hb-profile-side-panel {grid-template-columns:repeat(2,minmax(0,1fr))}
-  .hb-profile-page-v14 .hb-profile-preview-panel {grid-column:1/-1}
+.hb-profile-page-v15 .hb-profile-identity-overline { color: var(--season-muted); font-size: 9px; letter-spacing: .11em; }
+.hb-profile-page-v15 .hb-profile-identity-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--profile-edge);
+  border-radius: 999px;
+  background: color-mix(in srgb,var(--season-bg) 83%,transparent);
+  color: var(--season-text);
+  letter-spacing: .09em;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
 }
-@media(max-width:650px) {
-  .hb-profile-page-v14 {gap:13px}
-  .hb-profile-page-v14 .hb-profile-identity-cover {height:160px}
-  .hb-profile-page-v14 .hb-profile-identity-cover-art {opacity:.32}
-  .hb-profile-page-v14 .hb-profile-identity-cover-topline {top:18px;left:19px;right:19px;font-size:9px;letter-spacing:.1em}
-  .hb-profile-page-v14 .hb-profile-identity-overline {display:none}
-  .hb-profile-page-v14 .hb-profile-identity-main {display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px 17px;padding:15px 20px 24px}
-  .hb-profile-page-v14 .hb-profile-identity-avatar-wrap {grid-column:1;grid-row:1;width:83px;height:83px;flex-basis:83px;margin-top:-58px}
-  .hb-profile-page-v14 .hb-profile-identity-avatar {width:83px;height:83px;border-radius:19px;font-size:37px}
-  .hb-profile-page-v14 .hb-profile-identity-avatar-spark {width:28px;height:28px;font-size:13px;right:-5px;bottom:0}
-  .hb-profile-page-v14 .hb-profile-identity-copy {grid-column:1/-1;grid-row:2}
-  .hb-profile-page-v14 .hb-profile-identity-copy h1 {font-size:29px}
-  .hb-profile-page-v14 .hb-profile-identity-edit {grid-column:2;grid-row:1;align-self:center;justify-self:end;margin:0;padding:9px 11px;font-size:10px}
-  .hb-profile-page-v14 .hb-profile-overview-grid {grid-template-columns:1fr 1fr}
-  .hb-profile-page-v14 .hb-profile-overview-grid .hb-profile-info-tile:last-child {grid-column:1/-1}
-  .hb-profile-page-v14 .hb-profile-info-tile {min-height:103px;padding:17px}
-  .hb-profile-page-v14 .hb-profile-story {min-height:350px;padding:22px;gap:17px}
-  .hb-profile-page-v14 .hb-profile-side-panel {grid-template-columns:1fr}
-  .hb-profile-page-v14 .hb-profile-preview-panel {grid-column:auto}
+.hb-profile-page-v15 .hb-profile-cover-story {
+  position: absolute;
+  z-index: 2;
+  top: 63px;
+  left: clamp(24px,4.3vw,58px);
+  width: min(57%,580px);
+  max-width: 580px;
+  pointer-events: none;
 }
-@media(max-width:370px) {
-  .hb-profile-page-v14 .hb-profile-overview-grid {grid-template-columns:1fr}
-  .hb-profile-page-v14 .hb-profile-overview-grid .hb-profile-info-tile:last-child {grid-column:auto}
-  .hb-profile-page-v14 .hb-profile-identity-cover-topline {gap:4px}
-  .hb-profile-page-v14 .hb-profile-identity-style {font-size:9px;padding:6px}
+.hb-profile-page-v15 .hb-profile-cover-chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  color: var(--season-primary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .22em;
 }
-@media(prefers-reduced-motion:reduce) {
-  .hb-profile-page-v14 :is(.hb-profile-identity-edit,.hb-profile-story-action,.hb-profile-shortcuts button) {transition:none!important;transform:none!important}
+.hb-profile-page-v15 .hb-profile-cover-chapter > span:first-child { font-size: 19px; font-weight: 400; }
+.hb-profile-page-v15 .hb-profile-cover-chapter-index { color: var(--season-muted); font-weight: 600; letter-spacing: .1em; }
+.hb-profile-page-v15 .hb-profile-cover-title {
+  margin: 0;
+  max-width: 590px;
+  color: var(--season-text);
+  font: 700 clamp(31px,4.6vw,59px)/.99 Georgia,'Times New Roman',serif;
+  letter-spacing: -.035em;
+  text-shadow: 0 2px 14px color-mix(in srgb,var(--season-bg) 75%,transparent);
+}
+.hb-profile-page-v15 .hb-profile-cover-title em { color: var(--season-primary); font-weight: 500; }
+.hb-profile-page-v15 .hb-profile-cover-subtitle {
+  margin: 17px 0 0;
+  color: var(--season-muted);
+  font-size: clamp(10px,1.25vw,13px);
+  line-height: 1.6;
+}
+.hb-profile-page-v15 .hb-profile-identity-cover-bottomline {
+  position: absolute;
+  z-index: 2;
+  bottom: 19px;
+  left: clamp(25px,3.7vw,50px);
+  right: clamp(25px,3.7vw,50px);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--season-primary);
+  opacity: .65;
+  pointer-events: none;
+}
+.hb-profile-page-v15 .hb-profile-identity-cover-bottomline i {
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg,var(--profile-ink),transparent 55%);
+}
+/* IDENTIDADE · o retrato cruza a capa, enquanto nome e ação têm espaço. */
+.hb-profile-page-v15 .hb-profile-identity-main {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: 122px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 23px;
+  min-width: 0;
+  padding: 26px clamp(23px,3.6vw,48px) 27px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb,var(--season-primary) 3%,transparent),transparent 80%),
+    var(--season-surface);
+}
+.hb-profile-page-v15 .hb-profile-identity-avatar-wrap {
+  position: relative;
+  z-index: 4;
+  width: 119px;
+  height: 119px;
+  margin-top: -80px;
+}
+.hb-profile-page-v15 .hb-profile-identity-avatar {
+  display: grid;
+  place-items: center;
+  width: 119px;
+  height: 119px;
+  overflow: hidden;
+  border: 2px solid var(--season-primary);
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse at 40% 22%, var(--profile-soft),transparent 62%),
+    var(--season-surface-alt);
+  color: var(--season-primary);
+  font-size: 53px;
+  font-weight: 850;
+  line-height: 1;
+  box-shadow: 0 0 0 5px var(--season-bg),0 0 0 6px var(--profile-edge),0 16px 28px rgba(0,0,0,.24);
+}
+.hb-profile-page-v15 .hb-profile-identity-avatar-spark {
+  position: absolute;
+  right: -9px;
+  bottom: 3px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--season-bg);
+  border-radius: 12px;
+  background: var(--season-primary);
+  color: var(--season-on-primary, var(--season-bg));
+  font-size: 19px;
+  box-shadow: 0 5px 13px rgba(0,0,0,.24);
+}
+.hb-profile-page-v15 .hb-profile-identity-copy { min-width: 0; }
+.hb-profile-page-v15 .hb-profile-identity-kicker {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--season-primary);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .17em;
+}
+.hb-profile-page-v15 .hb-profile-identity-kicker span { margin-right: 6px; }
+.hb-profile-page-v15 .hb-profile-identity-copy h1 {
+  margin: 0;
+  color: var(--season-text);
+  font: 750 clamp(28px,3.4vw,43px)/1.07 Georgia,'Times New Roman',serif;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+.hb-profile-page-v15 .hb-profile-identity-copy p {
+  max-width: 590px;
+  margin: 8px 0 13px;
+  color: var(--season-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.hb-profile-page-v15 .hb-profile-identity-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.hb-profile-page-v15 .hb-profile-identity-badges > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid var(--profile-edge);
+  border-radius: 999px;
+  color: var(--season-text);
+  background: color-mix(in srgb,var(--season-bg) 55%,transparent);
+  font-size: 10px;
+  font-weight: 700;
+}
+.hb-profile-page-v15 .hb-profile-status-light {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #6cd7a9; box-shadow: 0 0 7px #6cd7a970;
+}
+.hb-profile-page-v15 .hb-profile-identity-edit {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 9px;
+  align-self: start;
+  padding: 12px 17px;
+  border: 1px solid var(--season-primary);
+  border-radius: 11px;
+  background: linear-gradient(125deg,var(--profile-soft),var(--season-surface-alt));
+  color: var(--season-text);
+  font-size: 12px; font-weight: 800; line-height: 1.2; font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform .18s,border-color .18s,box-shadow .18s;
+}
+.hb-profile-page-v15 .hb-profile-identity-edit > span { color: var(--season-primary); font-size: 18px; }
+.hb-profile-page-v15 .hb-profile-identity-edit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 21px var(--profile-soft),0 5px 16px rgba(0,0,0,.13);
+}
+/* JORNADA · small horizontal editorial markers instead of separate large panels. */
+.hb-profile-page-v15 .hb-profile-section-heading {
+  display: flex; align-items: center; gap: 13px; min-width: 0;
+  padding: 2px 4px 0; color: var(--season-muted);
+  font-size: 9px; font-weight: 850; letter-spacing: .18em;
+}
+.hb-profile-page-v15 .hb-profile-section-emblem { color: var(--season-primary); font-size: 20px; font-weight: 400; }
+.hb-profile-page-v15 .hb-profile-section-heading i {
+  flex: 1; min-width: 10px; height: 1px;
+  background: linear-gradient(90deg,var(--profile-edge),transparent);
+}
+.hb-profile-page-v15 .hb-profile-section-end { white-space: nowrap; opacity: .65; }
+.hb-profile-page-v15 .hb-profile-overview-grid { gap: 12px; }
+.hb-profile-page-v15 .hb-profile-info-tile {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+  min-height: 122px; padding: 21px 22px 19px; gap: 6px;
+  border: 1px solid var(--profile-edge); border-radius: 14px;
+  background:
+    linear-gradient(140deg,var(--profile-soft),transparent 48%),
+    linear-gradient(160deg,var(--season-surface),var(--season-surface-alt));
+  overflow: hidden; box-shadow: 0 9px 22px rgba(0,0,0,.08);
+  transition: transform .17s,border-color .17s;
+}
+.hb-profile-page-v15 .hb-profile-info-tile::after {
+  content: ''; position: absolute; bottom: 0; left: 21px; right: 60%; height: 2px;
+  background: linear-gradient(90deg,var(--season-primary),transparent);
+  opacity: .72;
+}
+.hb-profile-page-v15 .hb-profile-info-tile > span:not(.hb-profile-tile-icon) {
+  color: var(--season-muted); font-size: 10px; letter-spacing: .12em;
+  font-weight: 850; text-transform: uppercase;
+}
+.hb-profile-page-v15 .hb-profile-info-tile strong {
+  color: var(--season-text); font: 700 clamp(22px,2.4vw,30px)/1.2 Georgia,serif;
+  overflow-wrap: anywhere;
+}
+.hb-profile-page-v15 .hb-profile-info-tile small { font-size: 11px; line-height: 1.4; color: var(--season-muted); }
+.hb-profile-page-v15 .hb-profile-tile-icon {
+  position: absolute; top: 17px; right: 19px; opacity: .36;
+  color: var(--season-primary); font-size: 33px;
+}
+.hb-profile-page-v15 .hb-profile-info-tile:hover { transform: translateY(-2px); border-color: var(--season-primary); }
+/* HISTÓRIA · “página do diário” com uma composição narrativa. */
+.hb-profile-page-v15 .hb-profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1.35fr) minmax(310px,.83fr);
+  align-items: start;
+  gap: 17px;
+}
+.hb-profile-page-v15 .hb-profile-story {
+  position: relative; isolation: isolate;
+  display: flex; flex-direction: column; gap: 24px;
+  min-height: 398px; min-width: 0; overflow: hidden;
+  padding: clamp(22px,3.2vw,39px);
+  border: 1px solid var(--profile-edge); border-radius: 17px;
+  background:
+    radial-gradient(ellipse at 115% 95%,var(--profile-soft),transparent 54%),
+    linear-gradient(155deg,var(--season-surface),var(--profile-paper));
+  box-shadow: var(--profile-shadow);
+}
+.hb-profile-page-v15 .hb-profile-story::before {
+  content: ''; position: absolute; z-index: -1;
+  right: -50px; bottom: -40px; width: min(70%,370px); height: 255px;
+  background: url('./themes/style-art/eclipse-crest.svg') center / contain no-repeat;
+  opacity: .10; pointer-events: none;
+}
+.hb-profile-page-v15 .hb-profile-story::after {
+  content: ''; position: absolute; top: 16px; right: 16px;
+  height: 28px; width: 28px;
+  border-top: 1px solid var(--profile-edge); border-right: 1px solid var(--profile-edge);
+  pointer-events: none;
+}
+.hb-profile-page-v15 .hb-profile-story-heading {
+  display: flex; align-items: center; gap: 15px;
+  padding-bottom: 18px; border-bottom: 1px solid var(--profile-edge);
+}
+.hb-profile-page-v15 .hb-profile-story-emblem {
+  display: grid; place-items: center; flex: 0 0 45px;
+  width: 45px; height: 45px; border: 1px solid var(--profile-edge);
+  border-radius: 13px; background: var(--profile-soft);
+  color: var(--season-primary); font-size: 24px;
+}
+.hb-profile-page-v15 .hb-profile-story-heading h2 {
+  margin: 3px 0 0; font: 700 clamp(21px,2vw,27px)/1.1 Georgia,serif;
+  color: var(--season-text);
+}
+.hb-profile-page-v15 .hb-profile-story-chapter {
+  margin-left: auto; color: var(--season-muted);
+  font-size: 9px; font-weight: 900; letter-spacing: .14em; white-space: nowrap;
+}
+.hb-profile-page-v15 .hb-profile-story-content {
+  display: flex; align-items: flex-start; gap: 12px; flex: 1; min-height: 110px;
+}
+.hb-profile-page-v15 .hb-profile-story-quote {
+  color: var(--season-primary); opacity: .7; user-select: none;
+  font: italic 69px/.8 Georgia,serif;
+}
+.hb-profile-page-v15 .hb-profile-story-text { min-width: 0; padding-top: 5px; }
+.hb-profile-page-v15 .hb-profile-story-empty-label {
+  color: var(--season-primary); font-size: 9px; letter-spacing: .2em; font-weight: 850;
+}
+.hb-profile-page-v15 .hb-profile-story-content p {
+  margin: 7px 0 0; max-width: 640px;
+  color: var(--season-text);
+  font: normal clamp(14px,1.55vw,17px)/1.75 Georgia,serif;
+  overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.hb-profile-page-v15 .hb-profile-story-rule { display: flex; align-items: center; gap: 14px; color: var(--season-primary); opacity: .68; }
+.hb-profile-page-v15 .hb-profile-story-rule::before,
+.hb-profile-page-v15 .hb-profile-story-rule::after {
+  content: ''; height: 1px; flex: 1;
+  background: linear-gradient(90deg,transparent,var(--profile-ink));
+}
+.hb-profile-page-v15 .hb-profile-story-rule::after { transform: scaleX(-1); }
+.hb-profile-page-v15 .hb-profile-story-inscription { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.hb-profile-page-v15 .hb-profile-story-inscription > div { display: grid; gap: 7px; min-width: 0; }
+.hb-profile-page-v15 .hb-profile-story-inscription > div span {
+  color: var(--season-muted); font-size: 9px; font-weight: 850; letter-spacing: .19em;
+}
+.hb-profile-page-v15 .hb-profile-story-inscription > div strong {
+  color: var(--season-primary); font: 700 19px/1.2 Georgia,serif; overflow-wrap: anywhere;
+}
+.hb-profile-page-v15 .hb-profile-story-seal {
+  flex: 0 0 48px; display: grid; place-items: center;
+  width: 48px; height: 48px; border: 1px solid var(--profile-edge);
+  border-radius: 14px; background: var(--profile-soft);
+  color: var(--season-primary); font: 27px/1 Georgia,serif;
+}
+.hb-profile-page-v15 .hb-profile-story-action {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  margin-top: auto; padding: 13px 15px;
+  border: 1px solid var(--profile-edge); border-radius: 9px;
+  background: color-mix(in srgb,var(--season-primary) 7%,var(--season-bg));
+  color: var(--season-text); font-size: 12px; font-weight: 800;
+  cursor: pointer; transition: background .17s,border-color .17s,transform .17s;
+}
+.hb-profile-page-v15 .hb-profile-story-action > span:first-child { color: var(--season-primary); }
+.hb-profile-page-v15 .hb-profile-story-action > span:last-child { margin-left: auto; color: var(--season-primary); }
+.hb-profile-page-v15 .hb-profile-story-action:hover { border-color: var(--season-primary); background: var(--profile-soft); transform: translateY(-1px); }
+/* Cartão pessoal e coluna de informações. */
+.hb-profile-page-v15 .hb-profile-side-panel { display: grid; gap: 14px; min-width: 0; }
+.hb-profile-page-v15 .hb-profile-side-card,
+.hb-profile-page-v15 .hb-profile-edit-card {
+  min-width: 0; border: 1px solid var(--profile-edge); border-radius: 17px;
+  background: linear-gradient(150deg,var(--season-surface),var(--season-surface-alt));
+  box-shadow: 0 10px 25px rgba(0,0,0,.11);
+}
+.hb-profile-page-v15 .hb-profile-side-heading { padding-bottom: 14px; }
+.hb-profile-page-v15 .hb-profile-side-heading > span { border-color: var(--profile-edge); background: var(--profile-soft); }
+.hb-profile-page-v15 .hb-profile-preview-card {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 9px; min-height: 286px; padding: 17px 17px 13px;
+  border: 1px solid var(--profile-edge); border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% 65%,var(--profile-soft),transparent 57%),
+    linear-gradient(140deg,var(--season-bg),var(--season-surface-alt));
+  box-shadow: inset 0 0 0 5px color-mix(in srgb,var(--season-bg) 55%,transparent);
+}
+.hb-profile-page-v15 .hb-profile-preview-card::before,
+.hb-profile-page-v15 .hb-profile-preview-card::after {
+  content: ''; position: absolute; z-index: 2;
+  width: 18px; height: 18px; pointer-events: none; opacity: .72;
+}
+.hb-profile-page-v15 .hb-profile-preview-card::before { top: 5px; left: 5px; border-top: 1px solid var(--season-primary); border-left: 1px solid var(--season-primary); }
+.hb-profile-page-v15 .hb-profile-preview-card::after { right: 5px; bottom: 5px; border-right: 1px solid var(--season-primary); border-bottom: 1px solid var(--season-primary); }
+.hb-profile-page-v15 .hb-profile-preview-art {
+  position: absolute; z-index: 0; inset: 0;
+  background-position: center right; background-size: cover;
+  background-repeat: no-repeat; opacity: .22; pointer-events: none;
+}
+.hb-profile-page-v15 .hb-profile-preview-card > :not(.hb-profile-preview-art) { position: relative; z-index: 1; }
+.hb-profile-page-v15 .hb-profile-preview-topline {
+  align-items: center; gap: 8px; width: 100%;
+  color: var(--season-primary); font-size: 9px; font-weight: 850; letter-spacing: .09em;
+}
+.hb-profile-page-v15 .hb-profile-preview-edition { color: var(--season-muted); font-weight: 600; }
+.hb-profile-page-v15 .hb-profile-preview-decor {
+  width: 74%; margin-top: 5px; display: flex; align-items: center; justify-content: center;
+  gap: 9px; color: var(--season-primary); opacity: .5;
+}
+.hb-profile-page-v15 .hb-profile-preview-decor::before,
+.hb-profile-page-v15 .hb-profile-preview-decor::after { content: ''; height: 1px; flex: 1; background: var(--profile-edge); }
+.hb-profile-page-v15 .hb-profile-preview-avatar {
+  display: grid; place-items: center;
+  width: 77px; height: 77px; margin-top: 0;
+  border: 2px solid var(--season-primary); border-radius: 23px;
+  background: var(--season-surface-alt); color: var(--season-primary);
+  font-size: 37px; box-shadow: 0 0 0 4px var(--profile-soft),0 10px 20px rgba(0,0,0,.2);
+}
+.hb-profile-page-v15 .hb-profile-preview-name {
+  margin-top: 1px; color: var(--season-text);
+  font: 700 22px/1.22 Georgia,serif; text-align: center;
+}
+.hb-profile-page-v15 .hb-profile-preview-bio {
+  max-width: 300px; min-height: 32px; margin: 0;
+  color: var(--season-muted); font-size: 11px; line-height: 1.55; text-align: center;
+}
+.hb-profile-page-v15 .hb-profile-preview-signature {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; gap: 8px; margin-top: auto; padding-top: 12px;
+  border-top: 1px solid var(--profile-edge); font-size: 9px; font-weight: 850;
+  color: var(--season-primary); letter-spacing: .075em;
+}
+.hb-profile-page-v15 .hb-profile-preview-signature > span:last-child { color: var(--season-muted); font-weight: 700; }
+.hb-profile-page-v15 .hb-profile-preview-help { margin: 0; font-size: 11px; color: var(--season-muted); line-height: 1.5; }
+.hb-profile-page-v15 .hb-profile-account-line { border-bottom-color: var(--profile-edge); }
+.hb-profile-page-v15 .hb-profile-shortcuts button {
+  border: 1px solid var(--profile-edge); border-radius: 10px;
+  background: color-mix(in srgb,var(--season-primary) 3%,var(--season-bg));
+  transition: transform .17s,border-color .17s;
+}
+.hb-profile-page-v15 .hb-profile-shortcuts button:hover:not(:disabled) {
+  transform: translateX(3px); border-color: var(--season-primary);
+}
+/* Editor preserves the data/validation of v14, with cleaner field contrast. */
+.hb-profile-page-v15 .hb-profile-edit-card { gap: 22px; }
+.hb-profile-page-v15 .hb-profile-card-heading { border-bottom-color: var(--profile-edge); }
+.hb-profile-page-v15 .hb-profile-avatar-option { border-color: var(--profile-edge); }
+.hb-profile-page-v15 .hb-profile-avatar-option.active {
+  border-color: var(--season-primary);
+  box-shadow: 0 0 0 3px var(--profile-soft);
+}
+.hb-profile-page-v15 .hb-profile-field :is(input,textarea) { border-color: var(--profile-edge); }
+.hb-profile-page-v15 :is(.hb-profile-identity-edit,.hb-profile-story-action,.hb-profile-shortcuts button,.hb-profile-avatar-option):focus-visible {
+  outline: 2px solid var(--season-primary); outline-offset: 3px;
+}
+/* Quatro identidades: artes distintas no banner, no selo e no cartão. */
+.app-shell.visual-style-classic .hb-profile-page-v15 .hb-profile-identity-cover-art { background-image: url('./themes/style-art/eclipse-hero.svg'); }
+.app-shell.visual-style-japanese .hb-profile-page-v15 .hb-profile-identity-cover-art { background-image: url('./themes/style-art/kisatsutai-hero.svg'); }
+.app-shell.visual-style-cyberpunk .hb-profile-page-v15 .hb-profile-identity-cover-art { background-image: url('./themes/style-art/cyberflower-hero.svg'); }
+.app-shell.visual-style-ciclos .hb-profile-page-v15 .hb-profile-identity-cover-art { background-image: url('./themes/style-art/ciclos-hero.svg'); }
+.app-shell.visual-style-classic .hb-profile-page-v15 .hb-profile-preview-art { background-image: url('./themes/style-art/eclipse-hero.svg'); }
+.app-shell.visual-style-japanese .hb-profile-page-v15 .hb-profile-preview-art { background-image: url('./themes/style-art/kisatsutai-hero.svg'); }
+.app-shell.visual-style-cyberpunk .hb-profile-page-v15 .hb-profile-preview-art { background-image: url('./themes/style-art/cyberflower-hero.svg'); }
+.app-shell.visual-style-ciclos .hb-profile-page-v15 .hb-profile-preview-art { background-image: url('./themes/style-art/ciclos-hero.svg'); }
+.app-shell.visual-style-japanese .hb-profile-page-v15 .hb-profile-story::before { background-image: url('./themes/style-art/kisatsutai-crest.svg'); }
+.app-shell.visual-style-cyberpunk .hb-profile-page-v15 .hb-profile-story::before { background-image: url('./themes/style-art/cyberflower-crest.svg'); }
+.app-shell.visual-style-ciclos .hb-profile-page-v15 .hb-profile-story::before { background-image: url('./themes/style-art/ciclos-crest.svg'); }
+.app-shell.visual-style-japanese .hb-profile-page-v15 :is(.hb-profile-identity,.hb-profile-story,.hb-profile-preview-card) { border-radius: 9px; }
+.app-shell.visual-style-japanese .hb-profile-page-v15 :is(.hb-profile-identity-avatar,.hb-profile-preview-avatar) { border-radius: 18px; }
+.app-shell.visual-style-cyberpunk .hb-profile-page-v15 :is(.hb-profile-identity,.hb-profile-story,.hb-profile-preview-card) {
+  border-radius: 5px; border-left: 3px solid var(--season-primary);
+}
+.app-shell.visual-style-cyberpunk .hb-profile-page-v15 :is(.hb-profile-identity-avatar,.hb-profile-preview-avatar,.hb-profile-identity-edit) { border-radius: 5px; }
+.app-shell.visual-style-cyberpunk .hb-profile-page-v15 .hb-profile-identity-cover-art { opacity: .8; }
+.app-shell.visual-style-ciclos .hb-profile-page-v15 :is(.hb-profile-identity,.hb-profile-story,.hb-profile-preview-card) { border-top: 2px solid var(--season-primary); }
+.app-shell.visual-style-ciclos .hb-profile-page-v15 :is(.hb-profile-identity-avatar,.hb-profile-preview-avatar) { border-radius: 17px; }
+/* Responsive profile, no overlapping labels or clipped controls. */
+@media (max-width: 1100px) {
+  .hb-profile-page-v15 .hb-profile-identity-main { grid-template-columns: 112px minmax(0,1fr) auto; gap: 17px; }
+  .hb-profile-page-v15 .hb-profile-identity-avatar-wrap,
+  .hb-profile-page-v15 .hb-profile-identity-avatar { width: 109px; height: 109px; }
+  .hb-profile-page-v15 .hb-profile-identity-avatar { font-size: 48px; }
+}
+@media (max-width: 900px) {
+  .hb-profile-page-v15 .hb-profile-layout { grid-template-columns: 1fr; }
+  .hb-profile-page-v15 .hb-profile-side-panel { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .hb-profile-page-v15 .hb-profile-preview-panel { grid-column: 1 / -1; }
+  .hb-profile-page-v15 .hb-profile-preview-card { min-height: 290px; }
+}
+@media (max-width: 720px) {
+  .hb-profile-page-v15 .hb-profile-identity-cover { height: 228px; }
+  .hb-profile-page-v15 .hb-profile-identity-cover-art { inset: -8% -29% -10% 34%; opacity: .45; }
+  .hb-profile-page-v15 .hb-profile-cover-story { top: 70px; left: 28px; width: min(76%,500px); }
+  .hb-profile-page-v15 .hb-profile-cover-title { font-size: clamp(31px,6vw,43px); }
+  .hb-profile-page-v15 .hb-profile-cover-subtitle { font-size: 10px; }
+  .hb-profile-page-v15 .hb-profile-identity-main { grid-template-columns: 95px minmax(0,1fr); gap: 12px 17px; padding: 20px 23px 25px; }
+  .hb-profile-page-v15 .hb-profile-identity-avatar-wrap { grid-column: 1; grid-row: 1; width: 94px; height: 94px; margin-top: -69px; }
+  .hb-profile-page-v15 .hb-profile-identity-avatar { width: 94px; height: 94px; border-radius: 21px; font-size: 41px; }
+  .hb-profile-page-v15 .hb-profile-identity-avatar-spark { width: 29px; height: 29px; font-size: 16px; }
+  .hb-profile-page-v15 .hb-profile-identity-copy { grid-column: 1/-1; grid-row: 2; }
+  .hb-profile-page-v15 .hb-profile-identity-edit { grid-column: 2; grid-row: 1; justify-self: end; align-self: center; padding: 9px 11px; font-size: 11px; }
+  .hb-profile-page-v15 .hb-profile-overview-grid { grid-template-columns: 1fr 1fr; }
+  .hb-profile-page-v15 .hb-profile-overview-grid .hb-profile-info-tile:last-child { grid-column: 1/-1; }
+  .hb-profile-page-v15 .hb-profile-story { min-height: 360px; }
+  .hb-profile-page-v15 .hb-profile-side-panel { grid-template-columns: 1fr; }
+  .hb-profile-page-v15 .hb-profile-preview-panel { grid-column: auto; }
+}
+@media (max-width: 460px) {
+  .hb-profile-page-v15 { gap: 14px; }
+  .hb-profile-page-v15 .hb-profile-identity-cover { height: 213px; }
+  .hb-profile-page-v15 .hb-profile-identity-cover-topline { left: 20px; right: 20px; top: 20px; font-size: 8px; letter-spacing: .08em; }
+  .hb-profile-page-v15 .hb-profile-identity-overline { display: none; }
+  .hb-profile-page-v15 .hb-profile-cover-story { top: 71px; left: 25px; width: 82%; }
+  .hb-profile-page-v15 .hb-profile-cover-title { font-size: clamp(27px,8vw,35px); }
+  .hb-profile-page-v15 .hb-profile-cover-chapter { font-size: 8px; }
+  .hb-profile-page-v15 .hb-profile-cover-subtitle { max-width: 250px; margin-top: 9px; }
+  .hb-profile-page-v15 .hb-profile-identity-main { padding: 18px 20px 22px; }
+  .hb-profile-page-v15 .hb-profile-identity-copy h1 { font-size: 29px; }
+  .hb-profile-page-v15 .hb-profile-overview-grid { grid-template-columns: 1fr; }
+  .hb-profile-page-v15 .hb-profile-overview-grid .hb-profile-info-tile:last-child { grid-column: auto; }
+  .hb-profile-page-v15 .hb-profile-info-tile { min-height: 104px; }
+  .hb-profile-page-v15 .hb-profile-story { padding: 21px; gap: 18px; }
+  .hb-profile-page-v15 .hb-profile-story-chapter { font-size: 8px; }
+  .hb-profile-page-v15 .hb-profile-story-content p { font-size: 15px; }
+  .hb-profile-page-v15 .hb-profile-preview-edition { display: none; }
+  .hb-profile-page-v15 .hb-profile-preview-signature { font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hb-profile-page-v15 :is(.hb-profile-identity-edit,.hb-profile-story-action,.hb-profile-info-tile,.hb-profile-shortcuts button) {
+    transition: none !important;
+    transform: none !important;
+  }
 }
