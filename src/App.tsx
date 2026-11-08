@@ -26,7 +26,6 @@ const SKILL_GROUP_ALIAS: Record<string, string[]> = {
   Flanco: ['Flanco'], Especialista: ['Especialistas'], Especialistas: ['Especialistas'],
   Suporte: ['Suporte'], Gerais: ['Sociais', 'Conhecimentos Gerais', 'Naturais'],
   'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
-  'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
   'Suporte/Defensor': ['Suporte', 'Defensores'],
 }
 const KISATSUTAI_GROUP_NAMES = Object.keys(KISATSUTAI_SKILL_GROUPS)
@@ -142,12 +141,15 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
           // Uma perícia aparece apenas uma vez e não volta a ser oferecida após distribuída.
           // A seleção desta vaga permanece visível para permitir sua edição.
           const uniqueOptions = new Map<string, { key: string; name: string; group: string }>()
-          req.groups.forEach(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).forEach(skill => {
+          req.groups.forEach(group => {
+            const groupSkills: ReadonlyArray<{ name: string; description: string }> = KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []
+            groupSkills.forEach(skill => {
             const key = `${group}:${skill.name}`
             if (!uniqueOptions.has(key) && (!assigned.has(key) || distribution[req.id] === key)) {
               uniqueOptions.set(key, { key, name: skill.name, group })
             }
-          }))
+            })
+          })
           const options = Array.from(uniqueOptions.values())
           return <label key={req.id} className="kisatsutai-distribution-row"><span><strong>{req.category === 'qualquer Arquétipo' ? 'Qualquer Arquétipo' : req.category}</strong><small>{distribution[req.id] ? 'Distribuída' : 'Disponível'}</small></span><select disabled={disabled} value={distribution[req.id] || ''} onChange={e => change(req.id, e.target.value)}><option value="">Selecionar perícia...</option>{options.map(option => <option key={option.key} value={option.key}>{option.name} · {option.group}</option>)}</select></label>
         })}</div></div>)}
@@ -560,13 +562,16 @@ function App() {
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState('')
-  const [overviewTab, setOverviewTab] = useState<'summary' | 'news'>('summary')
-  const [campaignNews, setCampaignNews] = useState<Array<{id:string;title:string;body:string;created_at:string;updated_at:string}>>([])
+  const [campaignNews, setCampaignNews] = useState<Array<{id:string;title:string;body:string;image_url:string|null;created_at:string;updated_at:string}>>([])
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsError, setNewsError] = useState('')
   const [newsEditingId, setNewsEditingId] = useState<string | null>(null)
   const [newsTitle, setNewsTitle] = useState('')
   const [newsBody, setNewsBody] = useState('')
+  const [newsImageUrl, setNewsImageUrl] = useState('')
+  const [newsImageFile, setNewsImageFile] = useState<File | null>(null)
+  const [newsShowHistory, setNewsShowHistory] = useState(false)
+  const [newsShowEditor, setNewsShowEditor] = useState(false)
   const [newsSaving, setNewsSaving] = useState(false)
   const [newsRefresh, setNewsRefresh] = useState(0)
 
@@ -665,10 +670,13 @@ function App() {
     systemLogic?.createDefaultCurrencyConfig?.() ?? { currencies: [] }
   const isMaster = selectedCampaign?.role === 'master'
   useEffect(() => {
-    setOverviewTab('summary')
     setNewsEditingId(null)
     setNewsTitle('')
     setNewsBody('')
+    setNewsImageUrl('')
+    setNewsImageFile(null)
+    setNewsShowHistory(false)
+    setNewsShowEditor(false)
   }, [selectedCampaignId])
 
   useEffect(() => {
@@ -677,7 +685,7 @@ function App() {
     const load = async () => {
       setNewsLoading(true)
       const { data, error } = await supabase.from('campaign_news')
-        .select('id,title,body,created_at,updated_at')
+        .select('id,title,body,image_url,created_at,updated_at')
         .eq('campaign_id', selectedCampaignId)
         .order('created_at', { ascending: false })
       if (cancelled) return
@@ -689,24 +697,42 @@ function App() {
     return () => { cancelled = true }
   }, [selectedCampaignId, newsRefresh])
 
+  const resetNewsEditor = () => {
+    setNewsEditingId(null); setNewsTitle(''); setNewsBody(''); setNewsImageUrl(''); setNewsImageFile(null); setNewsShowEditor(false)
+  }
+  const editCampaignNews = (item: (typeof campaignNews)[number]) => {
+    setNewsEditingId(item.id); setNewsTitle(item.title); setNewsBody(item.body)
+    setNewsImageUrl(item.image_url || ''); setNewsImageFile(null); setNewsShowEditor(true)
+  }
   const saveCampaignNews = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!isMaster || !selectedCampaignId || !newsTitle.trim() || !newsBody.trim() || newsSaving) return
     setNewsSaving(true)
     setNewsError('')
-    const payload = { title: newsTitle.trim(), body: newsBody.trim() }
+    let imageUrl = newsImageUrl.trim() || null
+    if (newsImageFile) {
+      if (!newsImageFile.type.startsWith('image/') || newsImageFile.size > 5 * 1024 * 1024) {
+        setNewsError('Selecione uma imagem válida de até 5 MB.'); setNewsSaving(false); return
+      }
+      const extension = (newsImageFile.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const filePath = `${selectedCampaignId}/${crypto.randomUUID()}.${extension}`
+      const upload = await supabase.storage.from('campaign-news-images').upload(filePath, newsImageFile, { contentType: newsImageFile.type, upsert: false })
+      if (upload.error) { setNewsError(`Erro ao enviar imagem: ${upload.error.message}`); setNewsSaving(false); return }
+      imageUrl = supabase.storage.from('campaign-news-images').getPublicUrl(filePath).data.publicUrl
+    }
+    const payload = { title: newsTitle.trim(), body: newsBody.trim(), image_url: imageUrl }
     const result = newsEditingId
       ? await supabase.from('campaign_news').update(payload).eq('id', newsEditingId).eq('campaign_id', selectedCampaignId)
       : await supabase.from('campaign_news').insert({ ...payload, campaign_id: selectedCampaignId, author_id: session?.user.id })
     setNewsSaving(false)
     if (result.error) { setNewsError(result.error.message); return }
-    setNewsEditingId(null); setNewsTitle(''); setNewsBody(''); setNewsRefresh(n => n + 1)
+    resetNewsEditor(); setNewsRefresh(n => n + 1)
   }
   const deleteCampaignNews = async (id: string) => {
     if (!isMaster || !selectedCampaignId || !window.confirm('Excluir esta notícia da campanha?')) return
     const { error } = await supabase.from('campaign_news').delete().eq('id', id).eq('campaign_id', selectedCampaignId)
     if (error) { setNewsError(error.message); return }
-    if (newsEditingId === id) { setNewsEditingId(null); setNewsTitle(''); setNewsBody('') }
+    if (newsEditingId === id) resetNewsEditor()
     setNewsRefresh(n => n + 1)
   }
 
@@ -10639,27 +10665,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
         <button type="button" className="secondary-button" onClick={() => setActivePage('campaigns')}>Gerenciar campanhas</button>
       </div>
     </header>
-    {selectedCampaign && <div className="hb-overview-tabs" role="tablist" aria-label="Seções da visão geral">
-      <button type="button" role="tab" aria-selected={overviewTab === 'summary'} className={overviewTab === 'summary' ? 'active' : ''} onClick={() => setOverviewTab('summary')}>Resumo</button>
-      <button type="button" role="tab" aria-selected={overviewTab === 'news'} className={overviewTab === 'news' ? 'active' : ''} onClick={() => setOverviewTab('news')}>Notícias e atualizações {campaignNews.length > 0 && <span className="hb-news-count">{campaignNews.length}</span>}</button>
-    </div>}
     {selectedCampaign ? (
-      overviewTab === 'news' ? <section className="hb-news-panel">
-        <div className="hb-panel-heading"><div><span className="hb-kicker">MURAL DA CAMPANHA</span><h3>Notícias e atualizações</h3><p>Comunicados publicados pelo mestre para todos os participantes.</p></div><span className="hb-heading-icon">✦</span></div>
-        {isMaster && <form className="hb-news-editor" onSubmit={saveCampaignNews}>
-          <h4>{newsEditingId ? 'Editar publicação' : 'Nova publicação'}</h4>
-          <label>Título<input value={newsTitle} maxLength={120} onChange={event => setNewsTitle(event.target.value)} placeholder="Ex.: Próxima sessão" required /></label>
-          <label>Mensagem<textarea value={newsBody} maxLength={10000} rows={5} onChange={event => setNewsBody(event.target.value)} placeholder="Escreva as novidades para os jogadores..." required /></label>
-          <div className="hb-news-editor-actions"><button className="primary-button" type="submit" disabled={newsSaving || !newsTitle.trim() || !newsBody.trim()}>{newsSaving ? 'Salvando...' : newsEditingId ? 'Salvar alterações' : 'Publicar notícia'}</button>
-          {newsEditingId && <button type="button" className="secondary-button" onClick={() => { setNewsEditingId(null); setNewsTitle(''); setNewsBody('') }}>Cancelar edição</button>}</div>
-        </form>}
-        {newsError && <p className="hb-news-error" role="alert">{newsError}</p>}
-        {newsLoading ? <div className="hb-minimal-empty">Carregando notícias...</div> : campaignNews.length ? <div className="hb-news-feed">{campaignNews.map(item => <article className="hb-news-card" key={item.id}>
-          <div className="hb-news-card-top"><span className="hb-news-date">{new Date(item.created_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}</span>
-          {isMaster && <div className="hb-news-card-actions"><button type="button" onClick={() => { setNewsEditingId(item.id); setNewsTitle(item.title); setNewsBody(item.body) }}>Editar</button><button type="button" onClick={() => void deleteCampaignNews(item.id)}>Excluir</button></div>}</div>
-          <h4>{item.title}</h4><p>{item.body}</p>{item.updated_at !== item.created_at && <small>Atualizada após a publicação</small>}
-        </article>)}</div> : <div className="hb-minimal-empty">Ainda não há notícias publicadas nesta campanha.</div>}
-      </section> : <>
+      <>
         <div className="hb-metric-grid hb-overview-metrics">
           {([
             ['♙', 'Personagens', characters.length, 'Fichas na campanha', 'sheets'],
@@ -10687,6 +10694,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
             ) : <div className="hb-minimal-empty">Nenhuma temporada cadastrada por enquanto.</div>}
           </section>
+          <div className="hb-overview-right-column">
           <section className="hb-panel hb-roster-panel">
             <div className="hb-panel-heading"><div><span className="hb-kicker">SEU GRUPO</span><h3>Personagens</h3><p>Os protagonistas desta campanha.</p></div><span className="hb-heading-icon">♙</span></div>
             {characters.length ? (
@@ -10698,6 +10706,31 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </button>))}</div>
             ) : <div className="hb-minimal-empty">Nenhum personagem criado ainda.</div>}
           </section>
+          <section className="hb-panel hb-news-panel">
+            <div className="hb-panel-heading"><div><span className="hb-kicker">MURAL DA CAMPANHA</span><h3>Notícias e atualizações</h3><p>A última notícia publicada pelo mestre.</p></div><span className="hb-heading-icon">✦</span></div>
+            {isMaster && <div className="hb-news-toolbar"><button type="button" className="secondary-button" onClick={() => { if (newsShowEditor) resetNewsEditor(); else setNewsShowEditor(true) }}>{newsShowEditor ? 'Fechar editor' : '+ Nova notícia'}</button></div>}
+            {isMaster && newsShowEditor && <form className="hb-news-editor" onSubmit={saveCampaignNews}>
+              <h4>{newsEditingId ? 'Editar publicação' : 'Nova publicação'}</h4>
+              <label>Título<input value={newsTitle} maxLength={120} onChange={event => setNewsTitle(event.target.value)} placeholder="Ex.: Próxima sessão" required /></label>
+              <label>Mensagem<textarea value={newsBody} maxLength={10000} rows={5} onChange={event => setNewsBody(event.target.value)} placeholder="Escreva as novidades para os jogadores..." required /></label>
+              <label>Imagem (opcional)<input type="file" accept="image/*" onChange={event => setNewsImageFile(event.target.files?.[0] || null)} /></label>
+              <label>Ou endereço da imagem<input type="url" value={newsImageUrl} onChange={event => setNewsImageUrl(event.target.value)} placeholder="https://..." /></label>
+              {(newsImageFile || newsImageUrl) && <p className="hb-news-image-hint">{newsImageFile ? `Arquivo selecionado: ${newsImageFile.name}` : 'Imagem vinculada por endereço.'}</p>}
+              <div className="hb-news-editor-actions"><button className="primary-button" type="submit" disabled={newsSaving || !newsTitle.trim() || !newsBody.trim()}>{newsSaving ? 'Salvando...' : newsEditingId ? 'Salvar alterações' : 'Publicar notícia'}</button>
+                <button type="button" className="secondary-button" onClick={resetNewsEditor}>Cancelar</button></div>
+            </form>}
+            {newsError && <p className="hb-news-error" role="alert">{newsError}</p>}
+            {newsLoading ? <div className="hb-minimal-empty">Carregando notícias...</div> : campaignNews.length ? <>
+              <div className="hb-news-feed">{(newsShowHistory ? campaignNews : campaignNews.slice(0, 1)).map(item => <article className="hb-news-card" key={item.id}>
+                <div className="hb-news-card-top"><span className="hb-news-date">{new Date(item.created_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})}</span>
+                  {isMaster && <div className="hb-news-card-actions"><button type="button" onClick={() => editCampaignNews(item)}>Editar</button><button type="button" onClick={() => void deleteCampaignNews(item.id)}>Excluir</button></div>}</div>
+                <h4>{item.title}</h4>{item.image_url && <img className="hb-news-image" src={item.image_url} alt={`Imagem da notícia: ${item.title}`} loading="lazy" />}
+                <p>{item.body}</p>{item.updated_at !== item.created_at && <small>Atualizada após a publicação</small>}
+              </article>)}</div>
+              {campaignNews.length > 1 && <button type="button" className="secondary-button hb-news-history-button" onClick={() => setNewsShowHistory(value => !value)}>{newsShowHistory ? 'Mostrar somente a última notícia' : `Ver notícias antigas (${campaignNews.length - 1})`}</button>}
+            </> : <div className="hb-minimal-empty">Ainda não há notícias publicadas nesta campanha.</div>}
+          </section>
+          </div>
         </div>
         <section className="hb-panel hb-overview-activity">
           <div className="hb-panel-heading"><div><span className="hb-kicker">LINHA DO TEMPO</span><h3>Últimas atividades</h3><p>Movimentações recentes da campanha.</p></div><span className="hb-heading-icon">✧</span></div>

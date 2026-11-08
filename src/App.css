@@ -14199,3 +14199,17 @@ button:disabled { opacity: .58; }
 .hb-news-card h4{font-size:19px;margin:12px 0 9px}.hb-news-card p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}.hb-news-card small{display:block;margin-top:12px;opacity:.7}
 .hb-news-card-actions{display:flex;gap:8px}.hb-news-card-actions button{border:1px solid var(--hb-border,rgba(255,255,255,.2));border-radius:8px;background:transparent;color:inherit;padding:6px 10px;cursor:pointer}
 .hb-news-error{color:#ff9898}
+
+/* Notícias integradas à visão geral, abaixo dos cartões de personagens e temporadas. */
+.hb-news-panel{margin-top:22px;margin-bottom:22px}
+
+/* v125 — Notícias diretamente abaixo dos personagens, na coluna direita */
+.hb-overview-right-column{display:flex;flex-direction:column;gap:18px;min-width:0}
+.hb-overview-right-column>.hb-panel{min-width:0}
+.hb-overview-right-column .hb-news-panel{margin:0}
+.hb-news-toolbar{margin-top:14px}
+.hb-news-history-button{margin-top:14px;width:100%}
+.hb-news-image{display:block;width:100%;max-height:320px;object-fit:contain;border-radius:12px;margin:12px 0;background:rgba(0,0,0,.12)}
+.hb-news-image-hint{font-size:12px;opacity:.75;margin:0}
+.hb-overview .hb-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+@media(max-width:850px){.hb-overview .hb-dashboard-grid{grid-template-columns:minmax(0,1fr)}}
