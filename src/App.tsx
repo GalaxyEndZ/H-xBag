@@ -14,9 +14,158 @@ import './themes/visualStyles.css'
 import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
+import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSUTAI_ONI_CLASSES } from './systems/kisatsutai/extendedData'
 import HaxTable from './components/HaxTable'
 import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
+
+type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
+const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
+const SKILL_GROUP_ALIAS: Record<string, string[]> = {
+  'Linha de Frente': ['Linha de Frente'], Defensor: ['Defensores'], Defensores: ['Defensores'],
+  Flanco: ['Flanco'], Especialista: ['Especialistas'], Especialistas: ['Especialistas'],
+  Suporte: ['Suporte'], Gerais: ['Sociais', 'Conhecimentos Gerais', 'Naturais'],
+  'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  'Suporte/Defensor': ['Suporte', 'Defensores'],
+}
+const KISATSUTAI_GROUP_NAMES = Object.keys(KISATSUTAI_SKILL_GROUPS)
+function resolveTrainingGroups(category: string): string[] {
+  const candidates = SKILL_GROUP_ALIAS[category] || [category]
+  return candidates.flatMap(candidate => KISATSUTAI_GROUP_NAMES.filter(name => name === candidate || (category === 'Gerais' && !['Defensores','Linha de Frente','Flanco','Especialistas','Suporte'].includes(name))))
+}
+/** A combinação define a trilha-base; o arquétipo primário define a especialização única. */
+function getKisatsutaiPath(primary: string, secondary: string): string {
+  if (!primary || !secondary || primary === secondary) return ''
+  const pair = [primary.trim(), secondary.trim()].sort().join('|')
+  const combinations: Record<string, string> = {
+    'Flanco|Linha de Frente': 'Assassino',
+    'Especialista|Flanco': 'Estrategista',
+    'Especialista|Suporte': 'Detetive',
+    'Defensor|Suporte': 'Guardião',
+    'Defensor|Linha de Frente': 'Guerreiro',
+    'Especialista|Linha de Frente': 'Duelista',
+    'Defensor|Especialista': 'Sentinela',
+    'Flanco|Suporte': 'Socorrista',
+  }
+  return combinations[pair] || ''
+}
+
+function getKisatsutaiFullPath(primary: string, secondary: string): string {
+  const path = getKisatsutaiPath(primary, secondary)
+  return path ? `${primary.trim()} ${path}` : ''
+}
+
+function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtraLevels = 0, disabled = false }: {
+  fullPath: string; skills: Record<string, any>; intellectExtraLevels?: number;
+  onChange: (next: Record<string, any>) => void; disabled?: boolean
+}) {
+  // A trilha completa (ex.: "Linha de Frente Duelista") é a única fonte das vagas.
+  // O arquétipo não é usado como uma segunda regra de distribuição.
+  const pathName = Object.keys(KISATSUTAI_PATHS).find(name => fullPath.endsWith(` ${name}`)) || ''
+  const path = KISATSUTAI_PATHS[pathName as keyof typeof KISATSUTAI_PATHS]
+  const benefitEntry = path && Object.entries(path.benefits).find(([title]) => title === fullPath)
+  const requirements = (benefitEntry?.[1] || []).flatMap((line, row) => {
+    const match = line.match(/^Treinamento (Avançado|Médio|Leve|Completo) em (\d+) Perícias? (?:de |Gerais$)(.*)$/i)
+    if (!match) return []
+    const level = ({ 'Avançado':'avancado', 'Médio':'medio', 'Leve':'leve', 'Completo':'completo' } as Record<string, TrainingLevel>)[match[1]]
+    const category = line.endsWith('Gerais') ? 'Gerais' : match[3].trim()
+    return Array.from({length: Number(match[2])}, (_, index) => ({ id: `${row}-${index}`, level, category, groups: resolveTrainingGroups(category) }))
+  })
+  // Mantém a chave de persistência anterior para preservar distribuições existentes.
+  const key = `${pathName}:${fullPath.slice(0, -(pathName.length + 1))}`
+  const distribution = (skills.distributionByPath?.[key] || {}) as Record<string, string>
+  // Cada ponto de Intelecto dedicado a perícias extras concede um passo de +5.
+  // Pode iniciar uma perícia geral em +5 ou melhorar uma já treinada até +15.
+  const generalGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais']
+  const generalOptions = generalGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
+  const intellectSelections: string[] = Array.isArray(skills.intellectExtraAllocations) ? skills.intellectExtraAllocations.slice(0, intellectExtraLevels) : []
+  const baseTrainings: Record<string, TrainingLevel> = {}
+  requirements.forEach(item => { if (distribution[item.id]) baseTrainings[distribution[item.id]] = item.level })
+  const trainingSteps = (key: string, selections: string[] = intellectSelections) => {
+    const base = baseTrainings[key] ? KISATSUTAI_TRAINING[baseTrainings[key]] : 0
+    return base + selections.filter(selected => selected === key).length * 5
+  }
+  const buildTrainings = (allocations: string[]) => {
+    const result: Record<string, TrainingLevel> = { ...baseTrainings }
+    for (const selected of new Set(allocations.filter(Boolean))) {
+      const points = trainingSteps(selected, allocations)
+      result[selected] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
+    }
+    return result
+  }
+  const updateIntellect = (index: number, value: string) => {
+    if (disabled) return
+    const next = [...intellectSelections]
+    next[index] = value
+    onChange({ ...skills, intellectExtraAllocations: next, extraTrainings: buildTrainings(next) })
+  }
+  const validSlots = new Set(requirements.map(req => req.id))
+  const assigned = new Set(requirements.map(req => distribution[req.id]).filter(Boolean))
+  const change = (id: string, value: string) => {
+    if (disabled || !validSlots.has(id)) return
+    const req = requirements.find(item => item.id === id)
+    const permitted = req?.groups.some(group => KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS]?.some(skill => `${group}:${skill.name}` === value))
+    if (value && (!permitted || (assigned.has(value) && distribution[id] !== value))) return
+    const all = { ...(skills.distributionByPath || {}) }
+    const previous = { ...(all[key] || {}) }
+    const next = { ...previous, [id]: value }
+    all[key] = next
+    const base: Record<string, TrainingLevel> = {}
+    requirements.forEach(item => { if (next[item.id]) base[next[item.id]] = item.level })
+    const updated: Record<string, TrainingLevel> = { ...base }
+    for (const selected of new Set(intellectSelections.filter(Boolean))) {
+      const points = (base[selected] ? KISATSUTAI_TRAINING[base[selected]] : 0) + intellectSelections.filter(s => s === selected).length * 5
+      updated[selected] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
+    }
+    onChange({ ...skills, distributionByPath: all, extraTrainings: updated })
+  }
+  if (!fullPath || !path) return <div className="kisatsutai-distribution"><strong>Distribuição de perícias extras e de arquétipo</strong><p className="kisatsutai-editor-note">Defina os arquétipos primário e secundário na Identidade para calcular automaticamente a trilha e as vagas de treinamento.</p></div>
+  if (!benefitEntry) return <p className="kisatsutai-editor-note">A trilha {fullPath} não possui benefícios de treinamento cadastrados.</p>
+  const sections = [
+    { id: 'arquetipo', title: 'Pontos de perícias de arquétipo', description: 'Treinamentos das perícias dos arquétipos previstos na trilha.', slots: requirements.filter(req => req.category !== 'Gerais') },
+    { id: 'extras', title: 'Pontos de perícias extras', description: 'Treinamentos exclusivos das perícias gerais: Sociais, Conhecimentos Gerais e Naturais.', slots: requirements.filter(req => req.category === 'Gerais') },
+  ]
+  return <div className="kisatsutai-distribution sheet-distribution-panel">
+    <div className="kisatsutai-distribution-title"><span className="kisatsutai-distribution-symbol">✦</span><div><small>DESENVOLVIMENTO · {fullPath.toUpperCase()}</small><strong>Distribuição de perícias extras e de arquétipo</strong><p>Os dois tipos de pontos são independentes e definidos pela trilha {fullPath}.</p></div></div>
+    {sections.map(section => {
+      const used = section.slots.filter(req => !!distribution[req.id]).length
+      const levels = (['avancado', 'medio', 'leve', 'completo'] as const).filter(level => section.slots.some(req => req.level === level))
+      return <section className="kisatsutai-distribution-section" key={section.id}>
+        <div className="kisatsutai-distribution-section-heading"><div><h3>{section.title}</h3><p>{section.description}</p></div><strong>{used} / {section.slots.length}</strong></div>
+        <div className="kisatsutai-distribution-overall"><strong>{used} pontos distribuídos</strong><span>{section.slots.length - used} restantes</span></div>
+        <div className="kisatsutai-distribution-progress"><span style={{width: `${section.slots.length ? used / section.slots.length * 100 : 0}%`}} /></div>
+        <div className="kisatsutai-distribution-summary">
+          {levels.map(level => { const slots = section.slots.filter(req => req.level === level); const count = slots.filter(req => !!distribution[req.id]).length; return <div className="kisatsutai-distribution-stat" key={level}><span>{TRAINING_LABELS[level]} <em>+{KISATSUTAI_TRAINING[level]}</em></span><strong>{count} <small>/ {slots.length}</small></strong><div className="kisatsutai-distribution-progress"><span style={{width: `${slots.length ? count / slots.length * 100 : 0}%`}} /></div><small>{slots.length - count} vagas livres</small></div> })}
+        </div>
+        {levels.map(level => <div className="kisatsutai-distribution-tier" key={level}><h4>{TRAINING_LABELS[level]} <span>+{KISATSUTAI_TRAINING[level]}</span></h4><div className="kisatsutai-distribution-rows">{section.slots.filter(req => req.level === level).map(req => {
+          // Uma perícia aparece apenas uma vez e não volta a ser oferecida após distribuída.
+          // A seleção desta vaga permanece visível para permitir sua edição.
+          const uniqueOptions = new Map<string, { key: string; name: string; group: string }>()
+          req.groups.forEach(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).forEach(skill => {
+            const key = `${group}:${skill.name}`
+            if (!uniqueOptions.has(key) && (!assigned.has(key) || distribution[req.id] === key)) {
+              uniqueOptions.set(key, { key, name: skill.name, group })
+            }
+          }))
+          const options = Array.from(uniqueOptions.values())
+          return <label key={req.id} className="kisatsutai-distribution-row"><span><strong>{req.category === 'qualquer Arquétipo' ? 'Qualquer Arquétipo' : req.category}</strong><small>{distribution[req.id] ? 'Distribuída' : 'Disponível'}</small></span><select disabled={disabled} value={distribution[req.id] || ''} onChange={e => change(req.id, e.target.value)}><option value="">Selecionar perícia...</option>{options.map(option => <option key={option.key} value={option.key}>{option.name} · {option.group}</option>)}</select></label>
+        })}</div></div>)}
+        {section.slots.length > 0 && used === section.slots.length && <p className="kisatsutai-distribution-complete">Distribuição de {section.id === 'extras' ? 'perícias extras' : 'perícias de arquétipo'} concluída!</p>}
+      </section>
+    })}
+    <section className="kisatsutai-distribution-section">
+      <div className="kisatsutai-distribution-section-heading"><div><h3>Desenvolvimento por Intelecto</h3><p>Os pontos de Intelecto destinados às perícias extras são independentes das vagas da trilha. Cada ponto concede +5 a uma perícia geral, até +15.</p></div><strong>{intellectSelections.filter(Boolean).length} / {intellectExtraLevels}</strong></div>
+      <div className="kisatsutai-distribution-rows">
+        {Array.from({ length: intellectExtraLevels }, (_, index) => {
+          const selected = intellectSelections[index] || ''
+          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected ? `Treinamento total: +${trainingSteps(selected)}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia extra...</option>{generalOptions.filter(option => option.key === selected || trainingSteps(option.key) < 15).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(15, trainingSteps(option.key) + (option.key === selected ? 0 : 5))})</option>)}</select></label>
+        })}
+      </div>
+    </section>
+    <p className="kisatsutai-editor-note">Cada vaga pertence a um único tipo de perícia. Não é possível repetir a mesma perícia entre as duas distribuições.</p>
+  </div>
+}
 
 type SheetAttribute = 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
 
@@ -1109,6 +1258,9 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
   const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
   const [combatActionResult, setCombatActionResult] = useState<string>('')
+  const [selectedSkillTest, setSelectedSkillTest] = useState<string>('')
+  const [skillTestOpen, setSkillTestOpen] = useState(false)
+  const [selectedSkillAttribute, setSelectedSkillAttribute] = useState<string>('strength')
   const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
   const [blockIncomingDamage, setBlockIncomingDamage] = useState('')
   const [blockPhysicalDamageType, setBlockPhysicalDamageType] = useState<'cortante_perfurante' | 'especial_bruto'>('cortante_perfurante')
@@ -6659,6 +6811,27 @@ useEffect(() => {
                         node = node[part]
                       }
                       node[parts[parts.length - 1]] = value
+                      // Sincroniza a trilha salva ao alterar qualquer um dos arquétipos.
+                      if ((path === 'identity.primaryArchetype' || path === 'identity.secondaryArchetype') &&
+                          String(read('progression.system', selectedCampaign?.system_name || '')).toLowerCase().includes('kisatsutai')) {
+                        next.identity = { ...(next.identity || {}) }
+                        const oldPath = getKisatsutaiPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))
+                        const oldPrimary = String(read('identity.primaryArchetype', ''))
+                        next.identity.path = getKisatsutaiFullPath(
+                          String(next.identity.primaryArchetype || ''),
+                          String(next.identity.secondaryArchetype || '')
+                        )
+                        // Ao mudar a trilha ou o arquétipo principal, as vagas antigas deixam de conceder bônus.
+                        if (oldPath !== getKisatsutaiPath(String(next.identity.primaryArchetype || ''), String(next.identity.secondaryArchetype || '')) || oldPrimary !== next.identity.primaryArchetype) {
+                          const oldKey = `${oldPath}:${oldPrimary}`
+                          const previousSlots = (read('skills.distributionByPath', {}) || {})[oldKey] || {}
+                          const oldTrainings = { ...(read('skills.extraTrainings', {}) || {}) }
+                          for (const skillName of Object.values(previousSlots) as string[]) {
+                            if (skillName) delete oldTrainings[skillName]
+                          }
+                          next.skills = { ...(next.skills || {}), extraTrainings: oldTrainings }
+                        }
+                      }
                       updateRenderDraft(JSON.stringify(next, null, 2))
                     }
 
@@ -8080,7 +8253,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     </label>
   )
 })}
-{field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
+{!isKisatsutaiSystem && field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
                       {panel('3. Combate', <><div className="sheet-editor-combat-content"><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
@@ -8128,6 +8301,16 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     )}
   </>
 )}
+                      {isKisatsutaiSystem && panel('6. Perícias extras e treinamentos', <div className="kisatsutai-extra-skills">
+                        <KisatsutaiSkillDistribution fullPath={getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))} skills={read('skills', {})} onChange={next => write('skills', next)} intellectExtraLevels={extraLevels} disabled={!renderCanEdit} />
+                        <details className="kisatsutai-skill-group"><summary>Consultar lista de perícias e descrições</summary>
+                          {Object.entries(KISATSUTAI_SKILL_GROUPS).map(([group, groupSkills]) => <details key={group} className="kisatsutai-skill-group"><summary>{group} <small>({groupSkills.length} perícias)</small></summary><div className="kisatsutai-skill-grid">{groupSkills.map(skill => <div key={skill.name} className="kisatsutai-skill-entry"><span><strong>{skill.name}</strong><small>{skill.description}</small></span></div>)}</div></details>)}
+                        </details>
+                      </div>)}
+                      {isKisatsutaiSystem && panel('7. Trilhas', <div className="kisatsutai-path-editor">
+                        <label>Trilha definida automaticamente<input readOnly value={getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', ''))) || 'Defina os dois arquétipos na seção Identidade'} style={inputStyle} /></label>
+                        {Object.entries(KISATSUTAI_PATHS).filter(([name]) => name === getKisatsutaiPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))).map(([name,path]) => <div key={name} className="kisatsutai-path-details"><p>Trilha do personagem: <strong>{getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))}</strong></p><p>Combinação: <strong>{path.combination}</strong></p><p className="kisatsutai-editor-note">Os benefícios abaixo determinam as vagas da distribuição de perícias, na seção anterior.</p>{Object.entries(path.benefits).filter(([title]) => title === getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))).map(([title,benefits]) => <details key={title} open><summary>{title}</summary><ul>{benefits.map((benefit,i) => <li key={i}>{benefit}</li>)}</ul></details>)}<h4>Habilidades por graduação</h4>{(['Mizunoe','Kanoe','Tsuchinoe','Hinoe','Kinoe'] as const).map(rank => { const ability = path.abilities[rank]; return <div key={rank} className="kisatsutai-path-ability"><strong>{rank}{ability?.name ? ` · ${ability.name}` : ''}</strong><p>{ability?.description || 'Habilidade ainda não definida no material do sistema.'}</p></div> })}</div>)}
+                      </div>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary sheet-overview-premium">
                         <header className="sheet-summary-header">
@@ -8323,7 +8506,61 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <strong>Ataque Especial</strong>
                               <small>{Math.floor(1 + breathing) <= 0 ? `${2 - Math.floor(1 + breathing)}D20 (desvantagem)` : `${Math.floor(1 + breathing)}D20`} + Habilidade ({ability})</small>
                             </button>
+                            {isKisatsutaiSystem && <button type="button" className="combat-action-card" aria-expanded={skillTestOpen} onClick={() => setSkillTestOpen(open => !open)}>
+                              <span className="combat-action-icon">✧</span>
+                              <strong>Teste de Perícia</strong>
+                              <small>{skillTestOpen ? 'Fechar teste' : 'Escolher perícia e atributo'}</small>
+                            </button>}
                           </div>
+                          {isKisatsutaiSystem && (() => {
+                            const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
+                            const available = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, groupSkills]) =>
+                              groupSkills.flatMap(skill => {
+                                const key = `${group}:${skill.name}`
+                                const level = trainings[key] as TrainingLevel | undefined
+                                return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
+                                  ? [{ key, name: skill.name, group, bonus: KISATSUTAI_TRAINING[level] }]
+                                  : []
+                              })
+                            )
+                            const selected = available.find(skill => skill.key === selectedSkillTest)
+                            const testAttributes = [
+                              { key: 'strength', label: 'Força', value: strength },
+                              { key: 'agility', label: 'Agilidade', value: agility },
+                              { key: 'defense', label: 'Defesa', value: defense },
+                              { key: 'breathing', label: sheetResourceName, value: breathing },
+                              { key: 'intellect', label: 'Intelecto', value: intellect },
+                            ]
+                            const testAttribute = testAttributes.find(attribute => attribute.key === selectedSkillAttribute) || testAttributes[0]
+                            const testDiceCount = 1 + Math.floor(testAttribute.value)
+                            const testDiceLabel = testDiceCount <= 0
+                              ? `${2 - testDiceCount}D20 (desvantagem)`
+                              : `${testDiceCount}D20 (maior dado)`
+                            return skillTestOpen && <div className="combat-skill-test">
+                              <div className="combat-skill-test-heading"><strong>✧ Teste de Perícia</strong><small>Escolha uma perícia e um atributo principal. O atributo define a quantidade de D20; o treinamento soma ao maior resultado.</small></div>
+                              <div className="combat-skill-test-controls">
+                                <label className="combat-skill-test-field"><span>Atributo principal</span><select aria-label="Atributo para o teste de perícia" value={testAttribute.key} onChange={event => setSelectedSkillAttribute(event.target.value)}>
+                                  {testAttributes.map(attribute => <option key={attribute.key} value={attribute.key}>{attribute.label} ({attribute.value >= 0 ? '+' : ''}{attribute.value})</option>)}
+                                </select></label>
+                                <label className="combat-skill-test-field"><span>Perícia treinada</span><select aria-label="Perícia para o teste" value={selected?.key || ''} onChange={event => setSelectedSkillTest(event.target.value)}>
+                                  <option value="">Selecionar perícia...</option>
+                                  {available.map(skill => <option key={skill.key} value={skill.key}>{skill.name} · {skill.group} (+{skill.bonus})</option>)}
+                                </select></label>
+                                <button type="button" disabled={!selected} onClick={() => {
+                                  if (!selected) return
+                                  const roll = rollAttributeDice(testDiceCount, testAttribute.key === 'agility')
+                                  const total = roll.result + selected.bonus
+                                  const diceDescription = roll.hasDisadvantage
+                                    ? `${roll.rolls.length}D20 [${roll.rolls.join(', ')}] (desvantagem: ${roll.result})`
+                                    : `${roll.effectiveDiceCount}D20 [${roll.rolls.join(', ')}] (maior: ${roll.result})`
+                                  setBlockDamageReduction(null)
+                                  setCombatActionResult(`Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus}) = ${total}.`)
+                                }}>🎲 Rolar teste</button>
+                              </div>
+                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Treinamento: {selected ? `+${selected.bonus}` : 'selecione uma perícia'}</small>
+                              {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia treinada. Distribua treinamentos em Editar ficha para habilitar os testes.</small>}
+                            </div>
+                          })()}
                           <div className="combat-complementary-section">
                             <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares {forEnemy ? 'do inimigo' : 'do personagem'}.</p></div>
                             <div className="combat-action-grid combat-complementary-grid">
@@ -12978,8 +13215,8 @@ style={{cursor:'pointer'}}>
                 <section className="hb-beast-form-section">
                   <div className="hb-beast-form-heading"><span>01</span><div><h3>Identidade</h3><p>Como a criatura será reconhecida no bestiário.</p></div></div>
                   <label>Nome da criatura *<input type="text" maxLength={100} value={creatureName} onChange={event => setCreatureName(event.target.value)} placeholder="Ex.: Oni das Sombras"/></label>
-                  <div className="bestiary-form-row"><label>Categoria<select value={creatureCategory} onChange={event => setCreatureCategory(event.target.value)}>{['Outros', 'Humanoide', 'Fera', 'Monstro', 'Espírito', 'Demônio', 'Morto-vivo', 'Chefe'].map(category => <option key={category} value={category}>{category}</option>)}</select></label><label>Nível de ameaça<select value={creatureThreatLevel} onChange={event => setCreatureThreatLevel(event.target.value)}>{['Comum','Baixo','Moderado','Alto','Extremo',...(isKisatsutaiSystem ? ['Lua Inferior','Lua Superior'] : []),'Lendário'].map(level => <option key={level} value={level}>{level}</option>)}</select></label></div>
-                  <label>Descrição<textarea value={creatureDescription} onChange={event => setCreatureDescription(event.target.value)} placeholder="Aparência, comportamento, origem e informações importantes..." rows={4}/></label>
+                  <div className="bestiary-form-row"><label>Categoria<select value={creatureCategory} onChange={event => setCreatureCategory(event.target.value)}>{['Outros', 'Humanoide', 'Fera', 'Monstro', 'Espírito', 'Demônio', 'Morto-vivo', 'Chefe', ...(isKisatsutaiSystem ? Object.keys(KISATSUTAI_ONI_CLASSES).map(name => `Oni ${name}`) : [])].map(category => <option key={category} value={category}>{category}</option>)}</select></label><label>Nível de ameaça<select value={creatureThreatLevel} onChange={event => setCreatureThreatLevel(event.target.value)}>{['Comum','Baixo','Moderado','Alto','Extremo',...(isKisatsutaiSystem ? ['Lua Inferior','Lua Superior'] : []),'Lendário'].map(level => <option key={level} value={level}>{level}</option>)}</select></label></div>
+                  {isKisatsutaiSystem && creatureCategory.startsWith('Oni ') && <p className="kisatsutai-oni-hint">{KISATSUTAI_ONI_CLASSES[creatureCategory.slice(4) as keyof typeof KISATSUTAI_ONI_CLASSES] || ''}</p>}<label>Descrição<textarea value={creatureDescription} onChange={event => setCreatureDescription(event.target.value)} placeholder="Aparência, comportamento, origem e informações importantes..." rows={4}/></label>
                 </section>
                 <section className="hb-beast-form-section">
                   <div className="hb-beast-form-heading"><span>02</span><div><h3>Retrato</h3><p>PNG, JPG ou WebP, até 5 MB. A imagem é exibida nos cartões e na ficha.</p></div></div>
@@ -13013,7 +13250,7 @@ style={{cursor:'pointer'}}>
               </div>
               <div className="hb-beast-detail-content">
                 <div className="hb-beast-detail-stats"><article><span>❤ PONTOS DE VIDA</span><strong>{selectedCreature.pv ?? '—'}</strong><small>PV</small></article><article><span>◈ SANIDADE</span><strong>{selectedCreature.ps ?? '—'}</strong><small>PS</small></article><article><span>◆ PONTOS DE SANGUE</span><strong>{selectedCreature.pr ?? '—'}</strong><small>SG</small></article></div>
-                {selectedCreature.description && <section className="hb-beast-detail-section"><div className="hb-beast-detail-section-title"><span>01</span><h3>Sobre a criatura</h3></div><p>{selectedCreature.description}</p></section>}
+                {isKisatsutaiSystem && selectedCreature.category.startsWith('Oni ') && <section className="hb-beast-detail-section"><h3>Classificação de Oni</h3><p>{KISATSUTAI_ONI_CLASSES[selectedCreature.category.slice(4) as keyof typeof KISATSUTAI_ONI_CLASSES] || ''}</p></section>}{selectedCreature.description && <section className="hb-beast-detail-section"><div className="hb-beast-detail-section-title"><span>01</span><h3>Sobre a criatura</h3></div><p>{selectedCreature.description}</p></section>}
                 <div className="hb-beast-detail-traits">{[
                   {title:'Resistências', icon:'🛡', items:selectedCreature.resistances ?? [], tone:'resistance'},
                   {title:'Fraquezas', icon:'⚠', items:selectedCreature.weaknesses ?? [], tone:'weakness'},

@@ -14109,3 +14109,77 @@ button:disabled { opacity: .58; }
   .app-shell .sheet-editor-layout .sheet-editor-manager-title { gap: 10px; }
   .app-shell .sheet-editor-layout .sheet-editor-manager-title h3 { font-size: 18px; }
 }
+
+/* Kisatsutai: perícias extras, treinamentos e trilhas */
+.kisatsutai-extra-skills,.kisatsutai-path-editor{display:grid;gap:12px;min-width:0;width:100%}
+.kisatsutai-editor-note,.kisatsutai-oni-hint{color:var(--season-muted,#aab);font-size:.85rem;line-height:1.55;margin:0}
+.kisatsutai-skill-group,.kisatsutai-path-details>details{border:1px solid var(--season-line,#444);border-radius:12px;padding:12px;background:var(--season-surface-alt,#202029)}
+.kisatsutai-skill-group>summary,.kisatsutai-path-details>details>summary{cursor:pointer;font-weight:700}
+.kisatsutai-skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px;margin-top:12px}
+.kisatsutai-skill-entry{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid var(--season-line,#444);border-radius:9px;min-width:0}
+.kisatsutai-skill-entry>span{display:flex;flex-direction:column;gap:4px}.kisatsutai-skill-entry small{font-size:.75rem;line-height:1.4;color:var(--season-muted,#aab)}
+.kisatsutai-skill-entry select,.kisatsutai-path-editor select{width:100%;min-width:0;padding:9px;border:1px solid var(--season-line,#444);border-radius:8px;background:var(--season-surface,#161620);color:var(--season-text,#fff)}
+.kisatsutai-path-details{display:grid;gap:10px}.kisatsutai-path-details ul{margin:12px 0 0;padding-left:20px}.kisatsutai-path-details li{margin:5px 0}.kisatsutai-path-ability{padding:10px;border-left:2px solid var(--season-primary,#aaa);background:var(--season-surface-alt,#222);border-radius:6px}.kisatsutai-path-ability p{margin:5px 0 0;font-size:.85rem}
+
+/* Kisatsutai · distribuição de treinamentos por trilha e arquétipo */
+.kisatsutai-distribution{padding:18px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:16px;background:color-mix(in srgb,var(--season-primary,#b49aff) 5%,transparent);margin-bottom:18px}
+.kisatsutai-distribution-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.kisatsutai-distribution-head>div{display:flex;flex-direction:column;gap:4px}
+.kisatsutai-distribution-head strong{font-size:17px}
+.kisatsutai-distribution-head small{font-size:12px;color:var(--season-muted,#b9b4c2)}
+.kisatsutai-distribution-counter{text-align:right}
+.kisatsutai-distribution-progress{height:7px;border-radius:99px;background:rgba(255,255,255,.10);overflow:hidden;margin:13px 0}
+.kisatsutai-distribution-progress span{display:block;height:100%;background:var(--season-primary,#b49aff);border-radius:inherit;transition:width .2s}
+.kisatsutai-distribution-rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:9px;margin-top:12px}
+.kisatsutai-distribution-row{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:12px;border:1px solid var(--season-line-soft,rgba(255,255,255,.1));background:var(--season-surface-alt,rgba(0,0,0,.12));min-width:0}
+.kisatsutai-distribution-row>span{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kisatsutai-distribution-row strong{font-size:13px}
+.kisatsutai-distribution-row strong em{font-style:normal;color:var(--season-primary,#b49aff)}
+.kisatsutai-distribution-row small{font-size:11px;color:var(--season-muted,#b9b4c2);text-align:right}
+.kisatsutai-distribution-row select{width:100%;min-width:0}
+.kisatsutai-distribution-complete{margin:12px 0 0;font-weight:700;color:var(--season-primary,#b49aff)}
+
+/* Testes de perícias treinadas — Kisatsutai */
+.combat-skill-test{margin:16px 0 20px;padding:17px;border:1px solid var(--season-line,rgba(255,255,255,.15));border-radius:16px;background:var(--season-surface-alt,rgba(255,255,255,.045))}
+.combat-skill-test-heading{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.combat-skill-test-heading strong{font-size:16px}
+.combat-skill-test-heading small,.combat-skill-test-empty{color:var(--season-muted,#b9b4c2);font-size:12px}
+.combat-skill-test-controls{display:flex;gap:10px;flex-wrap:wrap}
+.combat-skill-test-controls select{flex:1 1 240px;min-width:0;padding:11px 12px;border-radius:10px;background:var(--season-surface,#211c31);color:inherit;border:1px solid var(--season-line,rgba(255,255,255,.2))}
+.combat-skill-test-controls button{padding:11px 18px;border:1px solid var(--season-primary,#b49aff);border-radius:10px;background:var(--season-primary,#b49aff);color:var(--season-bg,#120d1b);font-weight:800;cursor:pointer}
+.combat-skill-test-controls button:disabled{opacity:.45;cursor:not-allowed}
+.combat-skill-test-empty{display:block;margin-top:10px}
+
+.combat-skill-test-field{display:flex;flex:1 1 210px;min-width:0;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:var(--season-muted,#b9b4c2)}
+.combat-skill-test-controls .combat-skill-test-field select{width:100%;flex:none}
+.combat-skill-test-controls button{align-self:flex-end;min-height:43px}
+.combat-skill-test-dice{display:block;margin-top:10px;color:var(--season-muted,#b9b4c2)}
+
+/* v115: distribuidor de perícias com visual da distribuição de atributos */
+.kisatsutai-distribution{padding:20px;background:linear-gradient(150deg,var(--season-surface-alt,#211c31),var(--season-surface,#100e19));box-shadow:0 14px 34px rgba(0,0,0,.18)}
+.kisatsutai-distribution-title{display:flex;align-items:flex-start;gap:12px;margin-bottom:17px}
+.kisatsutai-distribution-title>div{display:flex;flex-direction:column;gap:3px}
+.kisatsutai-distribution-title small{font-size:10px;font-weight:800;letter-spacing:1.4px;color:var(--season-primary,#b49aff)}
+.kisatsutai-distribution-title strong{font-size:17px}
+.kisatsutai-distribution-title p{margin:2px 0 0;color:var(--season-muted,#b9b4c2);font-size:12px}
+.kisatsutai-distribution-symbol{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border-radius:12px;background:var(--season-glow,rgba(180,154,255,.15));color:var(--season-primary,#b49aff);font-size:18px}
+.kisatsutai-distribution-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:16px 0}
+.kisatsutai-distribution-stat{padding:13px 14px;border:1px solid var(--season-line-soft,rgba(255,255,255,.12));border-radius:15px;background:rgba(255,255,255,.045);display:flex;flex-direction:column;gap:5px}
+.kisatsutai-distribution-stat>span{font-size:13px;font-weight:750}
+.kisatsutai-distribution-stat em{font-style:normal;color:var(--season-primary,#b49aff)}
+.kisatsutai-distribution-stat>strong{font-size:28px;line-height:1.1}
+.kisatsutai-distribution-stat>strong small{font-size:12px;color:var(--season-muted,#b9b4c2)}
+.kisatsutai-distribution-stat>small{font-size:11px;color:var(--season-muted,#b9b4c2)}
+.kisatsutai-distribution-stat .kisatsutai-distribution-progress{margin:4px 0}
+.kisatsutai-distribution-overall{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px}
+.kisatsutai-distribution-overall span{color:var(--season-muted,#b9b4c2)}
+.kisatsutai-distribution-tier{margin-top:20px}
+.kisatsutai-distribution-tier h4{font-size:14px;margin:0 0 10px}
+.kisatsutai-distribution-tier h4 span{color:var(--season-primary,#b49aff)}
+
+/* Distribuições independentes de perícias da trilha Kisatsutai */
+.kisatsutai-distribution-section { margin-top: 20px; padding: 18px; border: 1px solid var(--border, rgba(160,160,180,.25)); border-radius: 16px; background: rgba(120,120,140,.045); }
+.kisatsutai-distribution-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.kisatsutai-distribution-section-heading h3 { margin: 0 0 5px; font-size: 1.05rem; }
+.kisatsutai-distribution-section-heading p { margin: 0; opacity: .75; font-size: .85rem; }
+.kisatsutai-distribution-section-heading > strong { white-space: nowrap; font-size: 1.1rem; }

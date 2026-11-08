@@ -2914,7 +2914,7 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 }
 /* Vale dos Corvos — assinatura // no seletor, no mesmo padrão do estilo Häx. */
 .app-shell .season-style-vale_fantasma .season-style-card-info strong::after {
-  content: " // REALIDADE INEXISTIDA";
+  content: " // TUDO ESTÁ NORMAL";
   display: block;
   margin-top: 6px;
   font: 650 9px/1.4 "Cascadia Code", Consolas, monospace;
