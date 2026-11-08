@@ -77,7 +77,8 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   // Cada ponto de Intelecto dedicado a perícias extras concede um passo de +5.
   // Pode iniciar uma perícia geral em +5 ou melhorar uma já treinada até +15.
   const generalGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais']
-  const generalOptions = generalGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
+  const intellectGroups = [...generalGroups, 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte']
+  const intellectOptions = intellectGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
   const intellectSelections: string[] = Array.isArray(skills.intellectExtraAllocations) ? skills.intellectExtraAllocations.slice(0, intellectExtraLevels) : []
   const baseTrainings: Record<string, TrainingLevel> = {}
   requirements.forEach(item => { if (distribution[item.id]) baseTrainings[distribution[item.id]] = item.level })
@@ -97,6 +98,8 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
     if (disabled) return
     const next = [...intellectSelections]
     next[index] = value
+    // Um ponto pode iniciar ou melhorar uma perícia extra OU de arquétipo, até +15.
+    if (value && trainingSteps(value, next) > 15) return
     onChange({ ...skills, intellectExtraAllocations: next, extraTrainings: buildTrainings(next) })
   }
   const validSlots = new Set(requirements.map(req => req.id))
@@ -157,11 +160,11 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
       </section>
     })}
     <section className="kisatsutai-distribution-section">
-      <div className="kisatsutai-distribution-section-heading"><div><h3>Desenvolvimento por Intelecto</h3><p>Os pontos de Intelecto destinados às perícias extras são independentes das vagas da trilha. Cada ponto concede +5 a uma perícia geral, até +15.</p></div><strong>{intellectSelections.filter(Boolean).length} / {intellectExtraLevels}</strong></div>
+      <div className="kisatsutai-distribution-section-heading"><div><h3>Desenvolvimento por Intelecto</h3><p>Os pontos de Intelecto são independentes das vagas da trilha. Cada ponto concede +5 a uma perícia extra ou de arquétipo, até +15.</p></div><strong>{intellectSelections.filter(Boolean).length} / {intellectExtraLevels}</strong></div>
       <div className="kisatsutai-distribution-rows">
         {Array.from({ length: intellectExtraLevels }, (_, index) => {
           const selected = intellectSelections[index] || ''
-          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected ? `Treinamento total: +${trainingSteps(selected)}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia extra...</option>{generalOptions.filter(option => option.key === selected || trainingSteps(option.key) < 15).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(15, trainingSteps(option.key) + (option.key === selected ? 0 : 5))})</option>)}</select></label>
+          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected ? `Treinamento total: +${trainingSteps(selected)}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia...</option>{intellectOptions.filter(option => option.key === selected || trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) < 15).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(15, trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) + 5)})</option>)}</select></label>
         })}
       </div>
     </section>
@@ -8335,6 +8338,16 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     </label>
   )
 })}
+{isKisatsutaiSystem && <label style={{...labelStyle, display:'flex', flexDirection:'column', gap:6}}>
+  Trilha
+  <input
+    type="text"
+    readOnly
+    value={getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', ''))) || 'Selecione os arquétipos primário e secundário'}
+    style={{...inputStyle, cursor:'default'}}
+    title="Definida automaticamente pelos arquétipos primário e secundário"
+  />
+</label>}
 {!isKisatsutaiSystem && field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
