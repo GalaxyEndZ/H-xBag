@@ -26,6 +26,7 @@ const SKILL_GROUP_ALIAS: Record<string, string[]> = {
   Flanco: ['Flanco'], Especialista: ['Especialistas'], Especialistas: ['Especialistas'],
   Suporte: ['Suporte'], Gerais: ['Sociais', 'Conhecimentos Gerais', 'Naturais'],
   'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  'qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
   'Suporte/Defensor': ['Suporte', 'Defensores'],
 }
 const KISATSUTAI_GROUP_NAMES = Object.keys(KISATSUTAI_SKILL_GROUPS)
