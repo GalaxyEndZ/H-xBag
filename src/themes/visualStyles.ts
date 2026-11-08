@@ -34,6 +34,12 @@ export const visualStyles = {
     signature: 'VIGÍLIA LUNAR',
     description: 'Corvos de tinta, runas antigas, pergaminho escuro e gravuras nórdicas.',
   },
+  vale_fantasma: {
+    label: 'Vale dos Corvos',
+    symbol: '✧',
+    signature: 'TUDO ESTÁ NORMAL',
+    description: 'Tinta, lua pálida e névoa sobre o vale.',
+  },
 } as const
 
 export type VisualStyleKey = keyof typeof visualStyles

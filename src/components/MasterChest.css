@@ -325,3 +325,35 @@
 .mc-page .mc-grid .mc-delete-link{align-self:flex-end;justify-self:auto;margin:0;padding:5px 0;font-size:12px;white-space:normal}
 @media(min-width:1100px){.mc-page .mc-grid .mc-item-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.mc-page .mc-grid .mc-item-actions .mc-icon-action{grid-column:auto}.mc-page .mc-grid .mc-item-actions .mc-button{font-size:11px}}
 @media(max-width:420px){.mc-page .mc-grid .mc-item{padding:14px}.mc-page .mc-grid .mc-item-actions{grid-template-columns:1fr 1fr}}
+
+/* v76 — Configuração de recompensas variáveis */
+.mc-random-config{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px;border:1px solid rgba(144,173,171,.24);border-radius:14px;background:rgba(113,151,148,.055)}
+.mc-random-config>strong{font-size:13px;font-weight:750;letter-spacing:.01em}
+.mc-random-config>small{font-size:12px;line-height:1.5;opacity:.78}
+.mc-random-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mc-random-modes button{min-width:0;padding:10px 12px;border:1px solid rgba(154,177,180,.24);border-radius:10px;background:rgba(0,0,0,.08);color:inherit;cursor:pointer;font-size:12px;font-weight:650;transition:background .15s,border-color .15s}
+.mc-random-modes button:hover{border-color:rgba(154,195,180,.55)}
+.mc-random-modes button.active{border-color:var(--season-accent,rgba(130,202,169,.7));background:var(--season-accent-soft,rgba(110,180,145,.14))}
+.mc-random-modes button:focus-visible{outline:2px solid var(--season-accent,#80c4aa);outline-offset:2px}
+.mc-random-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+.mc-random-fields label{min-width:0}
+.mc-random-fields input,.mc-random-fields select{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+.mc-random-badge{margin:8px 0;padding:9px 11px;border:1px solid rgba(146,177,165,.22);border-radius:10px;background:rgba(104,157,135,.08);font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+@media(max-width:550px){.mc-random-fields,.mc-random-modes{grid-template-columns:minmax(0,1fr)}.mc-random-config{padding:12px}}
+
+/* v85 — mensagem personalizada ao receber drops */
+.mc-message-config{display:grid;gap:12px;margin:14px 0;padding:16px;border:1px solid var(--mc-border);border-radius:14px;background:var(--mc-bg)}
+.mc-message-config.enabled{border-color:color-mix(in srgb,var(--mc-accent) 44%,var(--mc-border));background:color-mix(in srgb,var(--mc-accent) 5%,var(--mc-bg))}
+.mc-message-toggle{display:flex!important;align-items:flex-start!important;flex-direction:row!important;gap:11px!important;cursor:pointer}
+.mc-message-toggle input{margin-top:3px;flex:none;width:17px;height:17px}
+.mc-message-toggle span{display:grid;gap:4px}
+.mc-message-toggle strong{font-size:13px}
+.mc-message-toggle small{font-size:11px;color:var(--mc-muted);line-height:1.5}
+.mc-message-field{display:grid;gap:7px;font-size:12px;font-weight:700}
+.mc-message-field textarea{width:100%;min-height:112px;resize:vertical;padding:12px 13px;border-radius:10px;border:1px solid var(--mc-border);background:var(--mc-surface);color:var(--mc-ink);line-height:1.55}
+.mc-message-preview{padding:13px 15px;border:1px dashed color-mix(in srgb,var(--mc-accent) 50%,var(--mc-border));border-radius:11px;background:var(--mc-surface)}
+.mc-message-preview>span{font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--mc-accent)}
+.mc-message-preview p{margin:10px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.65}
+.mc-message-preview small{font-size:10px;color:var(--mc-muted)}
+.mc-message-tag{display:inline-flex;align-items:center;width:fit-content;margin-top:7px;padding:4px 8px;border:1px solid var(--mc-border);border-radius:7px;color:var(--mc-accent);font-size:10px;font-weight:700}
+.mc-delivery-message-note{margin:12px 0;padding:10px 13px;border:1px solid var(--mc-border);border-radius:10px;background:var(--mc-soft);font-size:12px;line-height:1.5}

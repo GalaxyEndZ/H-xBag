@@ -13961,3 +13961,151 @@ button:disabled { opacity: .58; }
   .app-shell .hb-customization-page .season-style-grid, .app-shell .hb-customization-page .season-theme-options { grid-template-columns: 1fr; }
   .app-shell .hb-customization-empty { padding: 24px; }
 }
+
+
+/* HäxBag v91 — Ritmo e alinhamento de "Editar ficha".
+   Restringir ao fieldset de edição: não alterar visualização, inventário ou outras páginas. */
+.app-shell .character-sheet-editor.sheet-editor-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Evita somar margin dos cartões ao gap do fieldset. */
+.app-shell .sheet-editor-layout > .sheet-current-player-panel,
+.app-shell .sheet-editor-layout > .sheet-editor-manager,
+.app-shell .sheet-editor-layout > .sheet-editor-premium {
+  margin: 0 !important;
+  min-width: 0;
+}
+
+/* Respiro constante entre a identidade, progressão e os demais blocos. */
+.app-shell .sheet-editor-layout > .sheet-current-player-panel {
+  padding: 19px 21px;
+  gap: 16px 24px;
+}
+.app-shell .sheet-editor-layout .sheet-current-player-info {
+  align-items: flex-start;
+  min-width: 0;
+}
+.app-shell .sheet-editor-layout .sheet-current-player-field {
+  min-width: min(100%, 230px);
+  margin: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-current-player-field select {
+  width: 100%;
+  margin: 0 !important;
+}
+
+/* Painéis sanfonados: remover separador e margem duplicados entre título e grade. */
+.app-shell .sheet-editor-layout .sheet-editor-premium > summary {
+  min-height: 60px;
+  padding: 14px 19px !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-premium > .sheet-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
+  align-items: start;
+  gap: 17px 19px;
+  margin: 0 !important;
+  padding: 20px 21px 22px !important;
+  border-top: 0 !important;
+  min-width: 0;
+}
+.app-shell .sheet-editor-layout .sheet-editor-fields > label {
+  min-width: 0;
+  margin: 0 !important;
+  line-height: 1.45;
+}
+.app-shell .sheet-editor-layout .sheet-editor-fields > label > :is(input, select, textarea) {
+  width: 100%;
+  min-width: 0;
+  min-height: 41px;
+  margin: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-fields > label:has(> textarea),
+.app-shell .sheet-editor-layout .sheet-editor-fields > .identity-character-name-editor,
+.app-shell .sheet-editor-layout .sheet-editor-fields > .sheet-editor-combat-content {
+  grid-column: 1 / -1;
+}
+.app-shell .sheet-editor-layout .identity-character-name-editor {
+  max-width: 100%;
+  margin: 0 !important;
+}
+.app-shell .sheet-editor-layout .identity-character-name-editor > div {
+  min-width: 0;
+  gap: 10px;
+}
+.app-shell .sheet-editor-layout .identity-character-name-editor input {
+  width: auto;
+  min-width: 0;
+  margin: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-combat-content {
+  min-width: 0;
+  margin: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-combat-content > div {
+  min-width: 0;
+}
+.app-shell .sheet-editor-layout .sheet-editor-combat-content > div > div {
+  margin-bottom: 12px;
+}
+.app-shell .sheet-editor-layout .sheet-editor-combat-content > div > div:last-child {
+  margin-bottom: 0;
+}
+.app-shell .sheet-editor-layout .sheet-editor-combat-content label {
+  min-width: 0;
+}
+.app-shell .sheet-editor-layout .sheet-editor-combat-content label > :is(input, select, textarea) {
+  margin-bottom: 0 !important;
+}
+
+/* Progressão: um único espaçamento vertical, inclusive nas distribuições. */
+.app-shell .sheet-editor-layout > .sheet-editor-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 21px !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-manager > * {
+  min-width: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-manager-title {
+  align-items: flex-start;
+  gap: 13px;
+  padding-bottom: 17px;
+}
+.app-shell .sheet-editor-layout .sheet-editor-manager label {
+  min-width: 0;
+  margin-bottom: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-manager label > :is(input, select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: 0 !important;
+}
+.app-shell .sheet-editor-layout .sheet-editor-manager > label > :is(input, select, textarea) {
+  margin-top: 8px !important;
+}
+
+@media (max-width: 650px) {
+  .app-shell .character-sheet-editor.sheet-editor-layout { gap: 13px; }
+  .app-shell .sheet-editor-layout > .sheet-current-player-panel,
+  .app-shell .sheet-editor-layout > .sheet-editor-manager { padding: 16px !important; }
+  .app-shell .sheet-editor-layout .sheet-current-player-info { flex-basis: 100%; }
+  .app-shell .sheet-editor-layout .sheet-current-player-field { flex: 1 1 100%; min-width: 0; }
+  .app-shell .sheet-editor-layout .sheet-editor-premium > summary { padding: 12px 15px !important; }
+  .app-shell .sheet-editor-layout .sheet-editor-premium > .sheet-editor-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px !important;
+  }
+  .app-shell .sheet-editor-layout .sheet-editor-manager { gap: 16px; }
+  .app-shell .sheet-editor-layout .sheet-editor-manager-title { gap: 10px; }
+  .app-shell .sheet-editor-layout .sheet-editor-manager-title h3 { font-size: 18px; }
+}

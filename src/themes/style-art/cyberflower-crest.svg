@@ -1,8 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
-<defs><linearGradient id="cPetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff9bd4"/><stop offset=".55" stop-color="#f05bae"/><stop offset="1" stop-color="#aa62fa"/></linearGradient></defs>
-<circle cx="64" cy="64" r="52" stroke="#5ad9f5" stroke-width="1.6" opacity=".48" stroke-dasharray="20 8 4 8"/>
-<circle cx="64" cy="64" r="41" stroke="#59cfe9" stroke-width=".9" opacity=".4"/>
-<g fill="url(#cPetal)" stroke="#ffb4df" stroke-width=".7"><path transform="translate(64 64) rotate(0)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(60)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(120)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(180)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(240)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/><path transform="translate(64 64) rotate(300)" d="M5 -3C18 -19 33 -20 43 0C32 20 18 19 5 3Z" opacity=".85"/></g><circle cx="64" cy="64" r="13" fill="#14222e" stroke="#69d9ef" stroke-width="2"/><circle cx="64" cy="64" r="6" fill="#b0f5ff"/>
-<path d="M64 8V2h24M64 120v6H40M13 64H1v-20M115 64h12v22" stroke="#5bd1ef" stroke-width="2"/>
-<g fill="#ff91d0"><circle cx="88" cy="2" r="3"/><circle cx="40" cy="126" r="3"/><circle cx="1" cy="44" r="3"/><circle cx="127" cy="86" r="3"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Cyberflower: flor biônica de seis pétalas com circuitos delicados">
+<defs>
+ <linearGradient id="petal" x1="70" y1="48" x2="109" y2="82" gradientUnits="userSpaceOnUse"><stop stop-color="#ffb4e4"/><stop offset=".48" stop-color="#ee63b5"/><stop offset="1" stop-color="#9252d5"/></linearGradient>
+ <radialGradient id="core"><stop stop-color="#a6f9ff"/><stop offset=".48" stop-color="#60d5f0"/><stop offset="1" stop-color="#203a59"/></radialGradient>
+</defs>
+<!-- Six independent petals, arranged in exact 60-degree radial symmetry. -->
+<circle cx="64" cy="64" r="53.5" stroke="#6cdaef" stroke-width=".8" opacity=".25" stroke-dasharray="2 7"/>
+<g stroke="#75e5f5" stroke-width="1.4" stroke-linecap="round" opacity=".8">
+ <path d="M64 5 V13 M64 115 V123 M5 64 H13 M115 64 H123"/>
+ <path d="M21 21 L27 27 M101 101 L107 107 M107 21 L101 27 M27 101 L21 107"/>
+</g>
+<g fill="#8cecf7" opacity=".9"><circle cx="64" cy="5" r="2"/><circle cx="64" cy="123" r="2"/><circle cx="5" cy="64" r="2"/><circle cx="123" cy="64" r="2"/><circle cx="21" cy="21" r="1.7"/><circle cx="107" cy="21" r="1.7"/><circle cx="21" cy="107" r="1.7"/><circle cx="107" cy="107" r="1.7"/></g>
+<g transform="rotate(0 64 64)"><path d="M70 62 C83 48 99 46 108 64 C99 82 83 80 70 66 Z" fill="url(#petal)" stroke="#ffc4eb" stroke-width="1"/><path d="M80 64 Q90 62 98 64" stroke="#ffe2f5" stroke-width=".9" stroke-linecap="round" opacity=".52"/></g>
+<g transform="rotate(60 64 64)"><path d="M70 62 C83 48 99 46 108 64 C99 82 83 80 70 66 Z" fill="url(#petal)" stroke="#ffc4eb" stroke-width="1"/><path d="M80 64 Q90 62 98 64" stroke="#ffe2f5" stroke-width=".9" stroke-linecap="round" opacity=".52"/></g>
+<g transform="rotate(120 64 64)"><path d="M70 62 C83 48 99 46 108 64 C99 82 83 80 70 66 Z" fill="url(#petal)" stroke="#ffc4eb" stroke-width="1"/><path d="M80 64 Q90 62 98 64" stroke="#ffe2f5" stroke-width=".9" stroke-linecap="round" opacity=".52"/></g>
+<g transform="rotate(180 64 64)"><path d="M70 62 C83 48 99 46 108 64 C99 82 83 80 70 66 Z" fill="url(#petal)" stroke="#ffc4eb" stroke-width="1"/><path d="M80 64 Q90 62 98 64" stroke="#ffe2f5" stroke-width=".9" stroke-linecap="round" opacity=".52"/></g>
+<g transform="rotate(240 64 64)"><path d="M70 62 C83 48 99 46 108 64 C99 82 83 80 70 66 Z" fill="url(#petal)" stroke="#ffc4eb" stroke-width="1"/><path d="M80 64 Q90 62 98 64" stroke="#ffe2f5" stroke-width=".9" stroke-linecap="round" opacity=".52"/></g>
+<g transform="rotate(300 64 64)"><path d="M70 62 C83 48 99 46 108 64 C99 82 83 80 70 66 Z" fill="url(#petal)" stroke="#ffc4eb" stroke-width="1"/><path d="M80 64 Q90 62 98 64" stroke="#ffe2f5" stroke-width=".9" stroke-linecap="round" opacity=".52"/></g>
+<circle cx="64" cy="64" r="14.5" fill="#111a30" stroke="#ffc3e7" stroke-width="1.4"/>
+<circle cx="64" cy="64" r="11.4" stroke="#69dcec" stroke-width="1" opacity=".85" stroke-dasharray="3 2"/>
+<circle cx="64" cy="64" r="8.2" fill="url(#core)" stroke="#82f2ff" stroke-width="1.4"/>
+<circle cx="61.7" cy="61.7" r="2.5" fill="#e2ffff" opacity=".9"/>
 </svg>

@@ -16,6 +16,7 @@ import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import HaxTable from './components/HaxTable'
 import MasterChest from './components/MasterChest'
+import ChestMessages from './components/ChestMessages'
 
 type SheetAttribute = 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
 
@@ -195,7 +196,7 @@ function rollSheetAttributeDice(diceCount: number, agilityOverloaded = false, si
   return {
     rolls, result, effectiveDiceCount, hasDisadvantage,
     description: hasDisadvantage
-      ? `${rollCount}D${diceSides} = [${rolls.join(', ')}] (desvantagem: menor ${result})`
+      ? `${rollCount}D${diceSides} = [${rolls.join(', ')}] (desvantagem) → ${result}`
       : `${effectiveDiceCount}D${diceSides} = [${rolls.join(', ')}] (maior: ${result})`,
   }
 }
@@ -294,6 +295,18 @@ type CampaignCreature = {
   updated_at: string
 }
 
+// Traços adicionais são armazenados em campaign_creatures.attributes (JSONB).
+// Não exigem novas colunas e não alteram as características anteriores.
+function readCreatureTraits(creature: CampaignCreature, key: 'vices' | 'peculiarities'): string[] {
+  const value = creature.attributes?.[key]
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === 'string' && Boolean(entry.trim()))
+    : []
+}
+const parseCreatureTraits = (text: string): string[] => [...new Set(
+  text.split(/\r?\n/).map(value => value.trim()).filter(Boolean),
+)]
+
 type CampaignEnemy = {
   id: string
   campaign_id: string
@@ -370,6 +383,7 @@ const categories = [
   'Todos',
   'Armas',
   'Equipamento',
+  'Kits',
   'Consumíveis',
   'Tesouros',
   'Diversos',
@@ -584,6 +598,8 @@ function App() {
   const [creatureResistances, setCreatureResistances] = useState('')
   const [creatureWeaknesses, setCreatureWeaknesses] = useState('')
   const [creatureImmunities, setCreatureImmunities] = useState('')
+  const [creatureVices, setCreatureVices] = useState('')
+  const [creaturePeculiarities, setCreaturePeculiarities] = useState('')
 
 const accessibleCreatures = isMaster ? creatures : creatures.filter(creature => !creature.is_hidden)
 const creatureThreatOrder = ['Comum', 'Baixo', 'Moderado', 'Alto', 'Lua Inferior', 'Extremo', 'Lua Superior', 'Lendário']
@@ -609,6 +625,7 @@ const filteredCreatures = accessibleCreatures.filter(creature => {
   const searchText = [creature.name, creature.category, creature.threat_level,
     creature.description ?? '', ...(creature.resistances ?? []),
     ...(creature.weaknesses ?? []), ...(creature.immunities ?? []),
+    ...readCreatureTraits(creature, 'vices'), ...readCreatureTraits(creature, 'peculiarities'),
   ].join(' ').toLocaleLowerCase('pt-BR')
   return (!query || searchText.includes(query)) &&
     (creatureCategoryFilter === 'Todas' || creature.category === creatureCategoryFilter) &&
@@ -992,7 +1009,9 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     const categories = Array.isArray(enemyItemForm.categories)
       ? enemyItemForm.categories.filter((item: unknown) => typeof item === 'string' && item.trim()) : []
     if (!categories.length) { setError('Selecione ao menos uma categoria.'); return }
-    const type = String(enemyItemForm.equipmentType || 'none')
+    const type = categories.includes('Equipamento')
+      ? String(enemyItemForm.equipmentType || 'none')
+      : categories.includes('Armas') ? 'weapon' : 'none'
     const finalCategories = [...categories]
     if (type === 'weapon' && !finalCategories.includes('Armas')) finalCategories.push('Armas')
     if (['armor','protection'].includes(type) && !finalCategories.includes('Equipamento'))
@@ -2117,6 +2136,8 @@ function openNewCreatureForm() {
   setCreatureResistances('')
   setCreatureWeaknesses('')
   setCreatureImmunities('')
+  setCreatureVices('')
+  setCreaturePeculiarities('')
   setShowCreatureForm(true)
 }
 
@@ -2142,6 +2163,8 @@ setCreatureStoredImagePreview(
   setCreatureResistances(creature.resistances.join('\n'))
   setCreatureWeaknesses(creature.weaknesses.join('\n'))
   setCreatureImmunities(creature.immunities.join('\n'))
+  setCreatureVices(readCreatureTraits(creature, 'vices').join('\n'))
+  setCreaturePeculiarities(readCreatureTraits(creature, 'peculiarities').join('\n'))
   setShowCreatureForm(true)
 }
 
@@ -2222,7 +2245,11 @@ async function saveCreature() {
     pv: creaturePv.trim() === '' ? null : Number(creaturePv),
     ps: creaturePs.trim() === '' ? null : Number(creaturePs),
     pr: creaturePr.trim() === '' ? null : Number(creaturePr),
-    attributes: existingCreature?.attributes ?? {},
+    attributes: {
+      ...(existingCreature?.attributes ?? {}),
+      peculiarities: parseCreatureTraits(creaturePeculiarities),
+      ...(isKisatsutaiSystem ? { vices: parseCreatureTraits(creatureVices) } : {}),
+    },
 resistances: creatureResistances
   .split('\n')
   .map(value => value.trim())
@@ -2965,6 +2992,7 @@ async function saveShopItem() {
   setError('')
   setNotice('')
 
+  const shopEquipmentTypeForSave = shopItemCategories.includes('Equipamento') ? shopItemEquipmentType : 'none'
   const payload = {
     shop_id: selectedShopId,
     name: shopItemName.trim(),
@@ -2979,13 +3007,13 @@ async function saveShopItem() {
       icon: shopItemEmoji.trim() || '📦',
       rarity: shopItemRarity,
       categories: shopItemCategories.length ? shopItemCategories : [shopItemCategory],
-      equipmentType: isCyberFlowerSystem ? shopItemEquipmentType : (
-  shopItemEquipmentType === 'cybernetic' ? 'none' : shopItemEquipmentType
+      equipmentType: isCyberFlowerSystem ? shopEquipmentTypeForSave : (
+  shopEquipmentTypeForSave === 'cybernetic' ? 'none' : shopEquipmentTypeForSave
 ),
-      armorClass: shopItemEquipmentType === 'armor' ? shopItemArmorClass : null,
-      armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : shopItemArmorCoverage) : null,
-      protectionTier: shopItemEquipmentType === 'protection' ? shopItemProtectionTier : null,
-      protectionMode: shopItemEquipmentType === 'protection' ? shopItemProtectionMode : null,
+      armorClass: shopEquipmentTypeForSave === 'armor' ? shopItemArmorClass : null,
+      armorCoverage: shopEquipmentTypeForSave === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : shopItemArmorCoverage) : null,
+      protectionTier: shopEquipmentTypeForSave === 'protection' ? shopItemProtectionTier : null,
+      protectionMode: shopEquipmentTypeForSave === 'protection' ? shopItemProtectionMode : null,
       scarcityLevel: shopItemCategories.includes('Consumíveis') ? Number(shopItemScarcityLevel) : null,
       scarcityDie: shopItemCategories.includes('Consumíveis') ? ({ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' } as Record<string, string>)[shopItemScarcityLevel] : null,
       scarcityCharge: shopItemCategories.includes('Consumíveis') ? ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[shopItemScarcityLevel] : null,
@@ -2994,12 +3022,12 @@ async function saveShopItem() {
       weaponDamage: shopItemCategories.includes('Armas') ? ({ improvised: '1d4', advanced: '1d6', special: '1d8', black_red: '1d10', mutable: '1d12' } as Record<string, string>)[shopItemWeaponClass] || '1d4' : null,
       weaponWeight: shopItemCategories.includes('Armas') ? weight : null,
 
-cybernetic: isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic',
+cybernetic: isCyberFlowerSystem && shopEquipmentTypeForSave === 'cybernetic',
 cyberneticEquipped: false,
-biologicalLoad: isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic'
+biologicalLoad: isCyberFlowerSystem && shopEquipmentTypeForSave === 'cybernetic'
   ? Math.max(0, Number(shopCyberneticLoad) || 0)
   : null,
-cyberneticData: isCyberFlowerSystem && shopItemEquipmentType === 'cybernetic'
+cyberneticData: isCyberFlowerSystem && shopEquipmentTypeForSave === 'cybernetic'
   ? {
       name: shopItemName.trim(),
       category: shopCyberneticCategory,
@@ -5235,7 +5263,7 @@ async function deleteCharacter(character: Character) {
 
 
   async function changeCharacterPlayer(userId: string) {
-    if (!selectedCharacter || !isMaster) return
+    if (!selectedCharacter || !isMaster || !selectedCampaignId) return
     setVisibilitySaving(true)
     setError('')
     setNotice('')
@@ -5243,6 +5271,7 @@ async function deleteCharacter(character: Character) {
       .from('characters')
       .update({ current_player_id: userId || null })
       .eq('id', selectedCharacter.id)
+      .eq('campaign_id', selectedCampaignId)
       .select('id, campaign_id, user_id, name, emoji, archetype, level, strength, visibility, current_player_id, created_at')
       .maybeSingle()
     setVisibilitySaving(false)
@@ -5381,6 +5410,7 @@ async function deleteCharacter(character: Character) {
       const weaponWeights: Record<string, number> = { improvised: 0.5, advanced: 1, special: 1, black_red: 1.5, mutable: 2 }
       return weaponWeights[weaponClass] ?? 0.5
     }
+    if (!categories.includes('Equipamento')) return null
     if (equipmentType === 'armor') return armorClass === 'pesada' ? 6 : armorClass === 'media' ? 4 : 2
     if (equipmentType === 'protection') return 0
     return null
@@ -5491,6 +5521,8 @@ const weight = newItemCategories.includes('Consumíveis')
     setError('')
     setNotice('')
 
+    const itemEquipmentTypeForSave = newItemCategories.includes('Equipamento') ? newEquipmentType : 'none'
+
     const itemData = {
       name: newItemName.trim(),
       description: newItemDescription.trim() || null,
@@ -5504,17 +5536,17 @@ const weight = newItemCategories.includes('Consumíveis')
   icon: newItemEmoji,
   rarity: newItemRarity,
   categories: newItemCategories.length ? newItemCategories : [newItemCategory],
-  equipmentType: isCyberFlowerSystem ? newEquipmentType : (
-  newEquipmentType === 'cybernetic' ? 'none' : newEquipmentType
+  equipmentType: isCyberFlowerSystem ? itemEquipmentTypeForSave : (
+  itemEquipmentTypeForSave === 'cybernetic' ? 'none' : itemEquipmentTypeForSave
 ),
-  cybernetic: isCyberFlowerSystem && newEquipmentType === 'cybernetic',
-cyberneticEquipped: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
+  cybernetic: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic',
+cyberneticEquipped: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
   ? editingItem?.metadata?.cyberneticEquipped === true
   : false,
-biologicalLoad: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
+biologicalLoad: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
   ? Math.max(0, Number(newCyberneticLoad) || 0)
   : null,
-cyberneticData: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
+cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
   ? {
       name: newItemName.trim(),
       category: newCyberneticCategory,
@@ -5528,10 +5560,10 @@ cyberneticData: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
         : 'stored',
     }
   : null,
-  armorClass: newEquipmentType === 'armor' ? newArmorClass : null,
-  armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : newArmorCoverage) : null,
-  protectionTier: newEquipmentType === 'protection' ? newProtectionTier : null,
-  protectionMode: newEquipmentType === 'protection' ? newProtectionMode : null,
+  armorClass: itemEquipmentTypeForSave === 'armor' ? newArmorClass : null,
+  armorCoverage: itemEquipmentTypeForSave === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : newArmorCoverage) : null,
+  protectionTier: itemEquipmentTypeForSave === 'protection' ? newProtectionTier : null,
+  protectionMode: itemEquipmentTypeForSave === 'protection' ? newProtectionMode : null,
   scarcityLevel: newItemCategories.includes('Consumíveis') ? Number(newScarcityLevel) : null,
   scarcityDie: newItemCategories.includes('Consumíveis') ? ({ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' } as Record<string, string>)[newScarcityLevel] : null,
   scarcityCharge: newItemCategories.includes('Consumíveis') ? (newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]) : null,
@@ -6487,13 +6519,30 @@ useEffect(() => {
     return sum + unitWeight * (Number(item.quantity) || 0)
   }, 0)
 
-  const maxCapacity = 10 + 2 * (selectedCharacter?.strength ?? 0)
+  // A Força da tabela characters pode não incluir a penalidade voluntária (-1).
+  // A ficha é a fonte de verdade para a capacidade, inclusive antes do autosave.
+  const strengthForInventory = (() => {
+    const fallback = Number(selectedCharacter?.strength ?? 0)
+    if (!selectedCharacterId || !selectedSeasonId || (sheet && (sheet.character_id !== selectedCharacterId || sheet.season_id !== selectedSeasonId))) return fallback
+    try {
+      const parsed: unknown = JSON.parse(sheetDraft || '{}')
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return fallback
+      const data = parsed as Record<string, any>
+      if (!data.attributes || typeof data.attributes !== 'object') return fallback
+      const read = (path: string, defaultValue: any = 0) => path.split('.').reduce(
+        (node: any, key) => node && typeof node === 'object' ? node[key] : undefined, data,
+      ) ?? defaultValue
+      const tier = String(read('family.tier', '5'))
+      const familyBonus = systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'strength') : 0
+      return calculateSheetAttribute(read, 'strength', familyBonus)
+    } catch { return fallback }
+  })()
+  const maxCapacity = Math.max(0, 10 + 2 * strengthForInventory)
   const remainingCapacity = maxCapacity - totalWeight
   const isOverloaded = totalWeight > maxCapacity
-  const capacityPercent = Math.min(
-    100,
-    (totalWeight / maxCapacity) * 100,
-  )
+  const capacityPercent = maxCapacity > 0
+    ? Math.min(100, (totalWeight / maxCapacity) * 100)
+    : totalWeight > 0 ? 100 : 0
 
 
   // A MESMA ficha visual, progressão e ações de combate para jogadores e inimigos.
@@ -6879,7 +6928,7 @@ const attribute =
   const total = highest + bonus
 
   const diceDescription = roll.hasDisadvantage
-    ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem: utilizando o menor resultado ${highest})`
+    ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem) → ${highest}`
     : `${roll.effectiveDiceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
   if (kind === 'Bloqueio') {
     const critical = highest >= criticalValue
@@ -7486,6 +7535,32 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                         id={forEnemy ? 'inimigo-edicao' : 'ficha-edicao'}
                         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
                       >
+                      {!forEnemy && isMaster && selectedCharacter && (
+                  <section className="sheet-current-player-panel" aria-labelledby="sheet-current-player-heading">
+                    <div className="sheet-current-player-info">
+                      <span className="sheet-current-player-icon" aria-hidden="true">♙</span>
+                      <div>
+                        <span className="sheet-page-eyebrow">GERENCIAMENTO DO MESTRE</span>
+                        <h3 id="sheet-current-player-heading">Jogador atual</h3>
+                        <p>Escolha quem controla este personagem. A atribuição também é usada na Party do Escudo do Mestre.</p>
+                      </div>
+                    </div>
+                    <label className="sheet-current-player-field" htmlFor="sheet-character-current-player">
+                      <span>Jogador atribuído</span>
+                      <select
+                        id="sheet-character-current-player"
+                        value={selectedCharacter.current_player_id ?? ''}
+                        onChange={(event) => void changeCharacterPlayer(event.target.value)}
+                        disabled={visibilitySaving}
+                      >
+                        <option value="">Sem jogador atribuído</option>
+                        {campaignMembers.filter(member => member.role !== 'master').map(member => (
+                          <option key={member.user_id} value={member.user_id}>{member.display_name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </section>
+                )}
                       {(() => {
                         const system = forEnemy ? (selectedCampaign?.system_name || '') : String(read('progression.system', selectedCampaign?.system_name || ''))
                         const systemFeatures = getSystemByName(system)?.data?.features
@@ -7622,7 +7697,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
 
   updateRenderDraft(JSON.stringify(next, null, 2))
 }
-                        return <section className="sheet-editor-manager" style={{padding:16,margin:'14px 0',border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:12,background:'var(--season-surface, var(--season-bg, #100e19))'}}>
+                        return <section className="sheet-editor-manager">
                           <div className="sheet-editor-manager-title"><span aria-hidden="true">✦</span><div><small>DESENVOLVIMENTO DO PERSONAGEM</small><h3>Família, classe e progressão</h3><p>Configure hierarquia, atributos e distribuições de pontos.</p></div></div>
                                                     <label style={labelStyle}>
                             Sistema de progressão
@@ -8008,7 +8083,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 {field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
-                      {panel('3. Combate', <><div style={{marginTop:14}}><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
+                      {panel('3. Combate', <><div className="sheet-editor-combat-content"><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
   <small>DESLOCAMENTO</small>
 <div className="sheet-movement-values">
   <strong>
@@ -8278,13 +8353,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 className="combat-action-card"
                                 onClick={() => {
                                   const diceCount = 1 + Math.floor(strength)
-                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
-                                  const highest = Math.max(...rolls)
-                                  const total = highest + vigor
+                                  const roll = rollSheetAttributeDice(diceCount)
+                                  const total = roll.result + vigor
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Manobra de Luta: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Vigor (${vigor}) = ${total}.`
+                                    `Manobra de Luta: ${roll.description} + Vigor (${vigor}) = ${total}.`
                                   )
                                 }}
                               >
@@ -8298,13 +8372,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 className="combat-action-card"
                                 onClick={() => {
                                   const diceCount = 1 + Math.floor(defense)
-                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
-                                  const highest = Math.max(...rolls)
-                                  const total = highest + resistance
+                                  const roll = rollSheetAttributeDice(diceCount)
+                                  const total = roll.result + resistance
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Resistência Física: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Resistência (${resistance}) = ${total}.`
+                                    `Resistência Física: ${roll.description} + Resistência (${resistance}) = ${total}.`
                                   )
                                 }}
                               >
@@ -8318,13 +8391,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 className="combat-action-card"
                                 onClick={() => {
                                   const diceCount = 1 + Math.floor(intellect)
-                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
-                                  const highest = Math.max(...rolls)
-                                  const total = highest + mental
+                                  const roll = rollSheetAttributeDice(diceCount)
+                                  const total = roll.result + mental
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Teste de Sanidade: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Mental (${mental}) = ${total}.`
+                                    `Teste de Sanidade: ${roll.description} + Mental (${mental}) = ${total}.`
                                   )
                                 }}
                               >
@@ -8474,6 +8546,7 @@ counterAttackDT
 
   return (
     <div className={`app-shell hb-polish theme-${activeThemeKey} visual-style-${activeVisualStyleKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
+      <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
       <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
           <span className="brand-mark">H</span>
@@ -8484,7 +8557,15 @@ counterAttackDT
           <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
         </a>
 
-
+        <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
+          <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
+          <span className="hb-sidebar-style-text">
+            <small>ESTILO DA TEMPORADA</small>
+            <strong>{activeVisualStyle.label}</strong>
+            <span className="hb-sidebar-style-signature">// {(selectedCampaign?.name?.trim() || 'CAMPANHA').toLocaleUpperCase('pt-BR')}</span>
+          </span>
+          <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
+        </div>
 
         <section className="hb-sidebar-workspace" aria-label="Campanha atual" style={{display:"flex",flexDirection:"column",height:"auto",minHeight:0,maxHeight:"none",overflow:"visible",flexShrink:0,position:"relative",zIndex:2,padding:"15px 13px 12px"}}>
           <div className="hb-sidebar-workspace-top">
@@ -8502,7 +8583,7 @@ counterAttackDT
                 setSelectedCampaignId(campaignId)
                 const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
                 if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-                else if (activePage !== 'profile') setNotice('Campanha principal atualizada para este perfil.')
+                else if (activePage !== 'profile' && activePage !== 'master-chest') setNotice('Campanha principal atualizada para este perfil.')
               }}
               aria-label="Selecionar campanha ativa"
             >
@@ -8532,7 +8613,7 @@ counterAttackDT
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
-            {isMaster && <button type="button" className={`nav-link ${activePage === 'master-chest' ? 'active' : ''}`} onClick={() => setActivePage('master-chest')} disabled={!selectedCampaignId} aria-current={activePage === 'master-chest' ? 'page' : undefined}>
+            {isMaster && <button type="button" className={`nav-link ${activePage === 'master-chest' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('master-chest') }} disabled={!selectedCampaignId} aria-current={activePage === 'master-chest' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">🗝</span><span className="hb-sidebar-nav-name">Baú do Mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
           </div>
@@ -8556,7 +8637,7 @@ counterAttackDT
             <button type="button" className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }} aria-current={activePage === 'campaigns' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">⚑</span><span className="hb-sidebar-nav-name">Campanhas</span><span className="nav-count">{campaigns.length}</span>
             </button>
-            <button type="button" className={`nav-link ${activePage === 'customization' ? 'active' : ''}`} onClick={() => setActivePage('customization')} disabled={!selectedCampaignId} aria-current={activePage === 'customization' ? 'page' : undefined}>
+            <button type="button" className={`nav-link ${activePage === 'customization' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('customization') }} disabled={!selectedCampaignId} aria-current={activePage === 'customization' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">✧</span><span className="hb-sidebar-nav-name">Customização</span>
             </button>
           </div>
@@ -8723,6 +8804,18 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .sheet-library-open span { color:var(--sheet-accent); font-size:19px; }
 .sheet-library-empty { text-align:center; padding:48px 20px; border:1px dashed var(--sheet-line); border-radius:20px; }
 .sheet-library-empty > span { display:block; margin:0 auto 14px; color:var(--sheet-accent); font-size:42px; }
+/* Atribuição de jogador: apenas o mestre, dentro da ficha do personagem. */
+.sheet-current-player-panel { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px 26px; margin:0 0 21px; padding:17px 19px; border:1px solid var(--sheet-line); border-radius:16px; background:linear-gradient(145deg,var(--season-surface-alt,rgba(255,255,255,.045)),var(--season-surface,rgba(0,0,0,.15))); }
+.sheet-current-player-info { display:flex; align-items:center; gap:13px; flex:1 1 290px; min-width:0; }
+.sheet-current-player-icon { display:grid; place-items:center; width:43px; height:43px; flex:0 0 43px; border:1px solid color-mix(in srgb,var(--sheet-accent) 28%,transparent); border-radius:12px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:24px; }
+.sheet-current-player-info .sheet-page-eyebrow { margin-bottom:4px; font-size:9px; }
+.sheet-current-player-info h3 { margin:0; color:var(--sheet-ink); font-size:17px; font-weight:800; }
+.sheet-current-player-info p { margin:5px 0 0; color:var(--sheet-dim); font-size:11px; line-height:1.5; }
+.sheet-current-player-field { display:grid; gap:7px; flex:0 1 270px; min-width:min(100%,230px); color:var(--sheet-dim); font-size:11px; font-weight:750; }
+.sheet-current-player-field select { box-sizing:border-box; width:100%; min-height:44px; padding:10px 12px; border:1px solid var(--sheet-line); border-radius:11px; background:var(--season-surface-alt,var(--season-surface,#29252d)); color:var(--sheet-ink); font:inherit; font-size:12px; }
+.sheet-current-player-field select:focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
+.sheet-current-player-field select:disabled { opacity:.65; cursor:wait; }
+@media(max-width:600px){ .sheet-current-player-field { flex:1 1 100%; } }
 .sheet-season-selector { display:flex !important; flex-direction:column; gap:7px; max-width:450px; padding:0 0 4px; margin:4px 0 16px !important; color:var(--sheet-dim); font-size:12px; font-weight:750; }
 .sheet-season-selector select { min-height:47px; padding:10px 12px; border-radius:12px !important; border:1px solid var(--sheet-line) !important; background:var(--season-surface-alt,var(--season-surface,#29252d)) !important; color:var(--sheet-ink); }
 .sheet-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:13px; margin:22px 0 13px; padding:17px 20px; border:1px solid var(--sheet-line); border-radius:17px; background:var(--season-surface-alt,rgba(255,255,255,.035)); }
@@ -9581,7 +9674,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .hb-beast-upload-label { flex:1; min-width:0; }
 .hb-beast-upload-label input { width:100%; max-width:100%; }
 .hb-beast-upload-label small { color:var(--hb-muted); overflow-wrap:anywhere; }
-.hb-beast-trait-inputs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.hb-beast-trait-inputs { display:grid; grid-template-columns:repeat(auto-fit,minmax(185px,1fr)); gap:12px; }
 .hb-beast-trait-inputs label { min-width:0; }
 .hb-beast-trait-inputs textarea { width:100%; min-height:100px; }
 .hb-polish .hb-beast .hb-beast-editor-actions { position:sticky; bottom:0; z-index:2; display:flex; justify-content:flex-end; gap:9px; padding:16px 26px; margin:0; border-top:1px solid var(--hb-line); background:var(--hb-surface); }
@@ -9607,7 +9700,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .hb-beast-detail-section-title span { color:var(--hb-accent); font-size:11px; font-weight:900; }
 .hb-beast-detail-section-title h3 { margin:0; color:var(--hb-fg); font-size:16px; }
 .hb-beast-detail-section p { margin:0; color:var(--hb-muted); font-size:13px; line-height:1.75; white-space:pre-wrap; }
-.hb-beast-detail-traits { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:24px; }
+.hb-beast-detail-traits { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:10px; margin-top:24px; }
 .hb-beast-trait-panel { min-width:0; padding:15px; border:1px solid var(--hb-line); border-radius:12px; background:var(--hb-surface-alt); }
 .hb-beast-trait-panel h3 { display:flex; align-items:center; gap:6px; margin:0 0 12px; color:var(--hb-fg); font-size:12px; }
 .hb-beast-trait-panel h3 span { color:var(--hb-accent); font-size:16px; }
@@ -9617,6 +9710,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .hb-beast-trait-panel > p { margin:0; color:var(--hb-muted); font-size:11px; }
 .hb-beast-trait-weakness h3 span { color:#e8a074; }
 .hb-beast-trait-immunity h3 span { color:#7dcbb9; }
+.hb-beast-trait-peculiarity h3 span { color:#9cc9f1; }
+.hb-beast-trait-vice h3 span { color:#e4a0c0; }
 .hb-beast-detail-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:9px; margin-top:24px; padding-top:18px; border-top:1px solid var(--hb-line); }
 .hb-beast-detail-actions button { min-height:42px; border-radius:10px; }
 @media(max-width:950px) { .hb-beast-hero-symbol { display:none; } .hb-beast-list-mode .hb-beast-card-media { width:185px; flex-basis:185px; } }
@@ -10976,13 +11071,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         </select>
                       </label>
                     </div>
-                    <label>Tipo de equipamento<select value={String(enemyItemForm.equipmentType||'none')}
+                    {Array.isArray(enemyItemForm.categories) && enemyItemForm.categories.includes('Equipamento') && <label>Tipo de equipamento<select value={String(enemyItemForm.equipmentType||'none')}
                       onChange={event => setEnemyItemForm(current => ({...current,equipmentType:event.target.value}))}>
                       <option value="none">Nenhum</option><option value="weapon">Arma</option>
                       <option value="armor">Armadura</option><option value="protection">Proteção</option>
                       <option value="cybernetic">Cibernético</option>
-                    </select></label>
-                    {enemyItemForm.equipmentType==='weapon' && <div className="form-row">
+                    </select></label>}
+                    {(enemyItemForm.equipmentType==='weapon' || (Array.isArray(enemyItemForm.categories) && enemyItemForm.categories.includes('Armas')))  && <div className="form-row">
                       <label>Classe da arma<select value={String(enemyItemForm.weaponClass||'improvised')}
                         onChange={event => setEnemyItemForm(current => ({...current,weaponClass:event.target.value}))}>
                         {([['improvised','Improvisada'],['advanced','Avançada'],['special','Especial'],
@@ -10995,7 +11090,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                             String(enemyItemForm.weaponClass||'improvised')] || '1d4'}</strong>
                       </div>
                     </div>}
-                    {enemyItemForm.equipmentType==='armor' && <div className="form-row">
+                    {Array.isArray(enemyItemForm.categories) && enemyItemForm.categories.includes('Equipamento') && enemyItemForm.equipmentType==='armor' && <div className="form-row">
                       <label>Classe da armadura<select value={String(enemyItemForm.armorClass||'leve')}
                         onChange={event => setEnemyItemForm(current => ({...current,armorClass:event.target.value}))}>
                         <option value="leve">Leve</option><option value="media">Média</option>
@@ -11008,7 +11103,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         {!isKisatsutaiSystem && <option value="todos">Todos</option>}
                       </select></label>
                     </div>}
-                    {enemyItemForm.equipmentType==='protection' && <div className="form-row">
+                    {Array.isArray(enemyItemForm.categories) && enemyItemForm.categories.includes('Equipamento') && enemyItemForm.equipmentType==='protection' && <div className="form-row">
                       <label>Nível de proteção<select value={String(enemyItemForm.protectionTier||'basica')}
                         onChange={event => setEnemyItemForm(current => ({...current,protectionTier:event.target.value}))}>
                         <option value="basica">Básica</option><option value="moderada">Moderada</option>
@@ -11020,7 +11115,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         <option value="sanidade">Sanidade</option>
                       </select></label>
                     </div>}
-                    {enemyItemForm.equipmentType==='cybernetic' && <div className="form-row">
+                    {Array.isArray(enemyItemForm.categories) && enemyItemForm.categories.includes('Equipamento') && enemyItemForm.equipmentType==='cybernetic' && <div className="form-row">
                       <label>Categoria cibernética<input value={String(enemyItemForm.cyberneticCategory||'')}
                         onChange={event => setEnemyItemForm(current => ({...current,cyberneticCategory:event.target.value}))}/></label>
                       <label>Localização<input value={String(enemyItemForm.cyberneticLocation||'')}
@@ -11713,7 +11808,7 @@ disabled={
                           </div>
                         </div>
                         <div className="sheet-library-info sheet-roster-card-info">
-                          <span className="sheet-page-eyebrow">{systemFeatures.usesRanks ? 'PERSONAGEM' : `NÍVEL ${character.level}`}</span>
+                          <span className="sheet-page-eyebrow">{systemFeatures.usesRanks ? 'PERSONAGEM' : `NÍVEL ${character.level}`}<span className="sheet-roster-campaign-signature"> // {(selectedCampaign?.name?.trim() || 'CAMPANHA').toLocaleUpperCase('pt-BR')}</span></span>
                           <h3>{character.name}</h3>
                           <p>{character.archetype?.trim() || 'Arquétipo não definido'}</p>
                         </div>
@@ -12006,7 +12101,7 @@ disabled={
   <option value="relíquia">Relíquia</option>
 </select>
 
-                      <label>
+                      {newItemCategories.includes('Equipamento') && <><label>
                         Tipo de equipamento
                         <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
                           <option value="none">Item comum</option>
@@ -12103,6 +12198,7 @@ disabled={
     />
   </label>
 </>}
+                      </>}
 
                       {newItemCategories.includes('Armas') && <>
                         <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
@@ -12898,7 +12994,7 @@ style={{cursor:'pointer'}}>
                 </section>
                 <section className="hb-beast-form-section">
                   <div className="hb-beast-form-heading"><span>04</span><div><h3>Características</h3><p>Insira uma característica por linha.</p></div></div>
-                  <div className="hb-beast-trait-inputs"><label>🛡 Resistências<textarea value={creatureResistances} onChange={event => setCreatureResistances(event.target.value)} placeholder={'Fogo\nCorte'} rows={3}/></label><label>⚠ Fraquezas<textarea value={creatureWeaknesses} onChange={event => setCreatureWeaknesses(event.target.value)} placeholder={'Água\nLuz'} rows={3}/></label><label>✧ Imunidades<textarea value={creatureImmunities} onChange={event => setCreatureImmunities(event.target.value)} placeholder={'Veneno\nMedo'} rows={3}/></label></div>
+                  <div className="hb-beast-trait-inputs"><label>🛡 Resistências<textarea value={creatureResistances} onChange={event => setCreatureResistances(event.target.value)} placeholder={'Fogo\nCorte'} rows={3}/></label><label>⚠ Fraquezas<textarea value={creatureWeaknesses} onChange={event => setCreatureWeaknesses(event.target.value)} placeholder={'Água\nLuz'} rows={3}/></label><label>✧ Imunidades<textarea value={creatureImmunities} onChange={event => setCreatureImmunities(event.target.value)} placeholder={'Veneno\nMedo'} rows={3}/></label><label>✦ Peculiaridades<textarea value={creaturePeculiarities} onChange={event => setCreaturePeculiarities(event.target.value)} placeholder={'Olhos brilhantes\nAudição sobrenatural'} rows={3}/></label>{isKisatsutaiSystem && <label>⛓ Vícios<textarea value={creatureVices} onChange={event => setCreatureVices(event.target.value)} placeholder={'Obsessão por sangue\nCompulsão por desafios'} rows={3}/></label>}</div>
                 </section>
               </div>
               <div className="bestiary-modal-actions hb-beast-editor-actions"><button type="button" disabled={creatureSaving} onClick={() => { setShowCreatureForm(false); setEditingCreatureId(null) }}>Cancelar</button><button type="button" disabled={creatureSaving || !creatureName.trim()} onClick={() => void saveCreature()}>{creatureSaving ? 'Salvando…' : editingCreatureId ? 'Salvar alterações' : 'Cadastrar criatura'}</button></div>
@@ -12922,6 +13018,8 @@ style={{cursor:'pointer'}}>
                   {title:'Resistências', icon:'🛡', items:selectedCreature.resistances ?? [], tone:'resistance'},
                   {title:'Fraquezas', icon:'⚠', items:selectedCreature.weaknesses ?? [], tone:'weakness'},
                   {title:'Imunidades', icon:'✧', items:selectedCreature.immunities ?? [], tone:'immunity'},
+                   {title:'Peculiaridades', icon:'✦', items:readCreatureTraits(selectedCreature, 'peculiarities'), tone:'peculiarity'},
+                   ...(isKisatsutaiSystem ? [{title:'Vícios', icon:'⛓', items:readCreatureTraits(selectedCreature, 'vices'), tone:'vice'}] : []),
                 ].map(section => <section key={section.title} className={`hb-beast-trait-panel hb-beast-trait-${section.tone}`}><h3><span>{section.icon}</span>{section.title}<small>{section.items.length}</small></h3>{section.items.length > 0 ? <div className="hb-beast-trait-tags">{section.items.map((item,index) => <span key={`${item}-${index}`}>{item}</span>)}</div> : <p>Não registradas.</p>}</section>)}</div>
                 <div className="hb-beast-detail-actions"><button type="button" className="secondary-button" onClick={() => setSelectedCreatureId(null)}>← Voltar ao catálogo</button>{isMaster && <button type="button" className="primary-button" onClick={() => { const creature = selectedCreature; setSelectedCreatureId(null); openCreatureEditor(creature) }}>✎ Editar criatura</button>}</div>
               </div>
@@ -13371,7 +13469,7 @@ style={{cursor:'pointer'}}>
                                 </select>
                               </div>
 
-                              <label style={labelStyle}>Tipo de equipamento
+                              {shopItemCategories.includes('Equipamento') && <><label style={labelStyle}>Tipo de equipamento
 <select
   value={shopItemEquipmentType}
   onChange={event => {
@@ -13460,6 +13558,7 @@ style={{cursor:'pointer'}}>
     />
   </label>
 </>}
+                              </>}
 
                               {shopItemCategories.includes('Armas') && <>
                                 <label style={labelStyle}>Classificação da arma<select value={shopItemWeaponClass} onChange={event => { const nextClass = event.target.value; setShopItemWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, nextClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
@@ -14300,22 +14399,6 @@ style={{cursor:'pointer'}}>
                   </div>
                 ) : (
                 <div style={{ minWidth: 220, padding: '12px', border: '1px solid var(--season-line, var(--season-surface-alt, #211c31))', borderRadius: 10, background: 'var(--season-bg, var(--season-bg, #100e19))' }}>
-                      <label style={labelStyle} htmlFor="character-current-player">Jogador atual</label>
-                      <select
-                        id="character-current-player"
-                        value={selectedCharacter.current_player_id ?? ''}
-                        onChange={(event) => void changeCharacterPlayer(event.target.value)}
-                        disabled={visibilitySaving}
-                        style={{ ...inputStyle, marginBottom: 12 }}
-                      >
-                        <option value="">Sem jogador atribuído</option>
-                        {campaignMembers.filter(member => member.role !== 'master').map(member => (
-                          <option key={member.user_id} value={member.user_id}>{member.display_name}</option>
-                        ))}
-                      </select>
-                      <small style={{ display: 'block', color: 'var(--season-muted, #b9b4c2)', lineHeight: 1.5, marginBottom: 12 }}>
-                        Este jogador aparecerá como integrante da party no Escudo do mestre quando o personagem participar da temporada.
-                      </small>
                       <label style={labelStyle} htmlFor="character-visibility">Visibilidade</label>
                       <select
                         id="character-visibility"
@@ -14374,7 +14457,7 @@ style={{cursor:'pointer'}}>
             </div>
           )}
 
-          {notice && (
+          {notice && activePage !== 'customization' && activePage !== 'master-chest' && (
             <div className="notice" role="status">
               <span>✓</span> {notice}
               <button
@@ -14860,7 +14943,7 @@ style={{cursor:'pointer'}}>
   </select>
 </label>
 
-                      <label>
+                      {newItemCategories.includes('Equipamento') && <><label>
                         Tipo de equipamento
                         <select value={newEquipmentType} onChange={event => { const nextType = event.target.value as 'none' | 'armor' | 'protection' | 'cybernetic'; setNewEquipmentType(nextType); const automaticWeight = getAutomaticItemWeight(newItemCategories, nextType, newArmorClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}>
                           <option value="none">Item comum</option>
@@ -14931,6 +15014,7 @@ style={{cursor:'pointer'}}>
     />
   </label>
 </>}
+                      </>}
 
                       {newItemCategories.includes('Armas') && <>
                         <label>Classificação da arma<select value={newWeaponClass} onChange={event => { const nextClass = event.target.value; setNewWeaponClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, nextClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="improvised">Improvisada — 1d4 · 0,5 kg</option><option value="advanced">Lâmina avançada — 1d6 · 1 kg</option><option value="special">Lâmina especial — 1d8 · 1 kg</option><option value="black_red">Lâmina preta/vermelha — 1d10 · 1,5 kg</option><option value="mutable">Lâmina mutável — 1d12 · 2 kg</option></select></label>
