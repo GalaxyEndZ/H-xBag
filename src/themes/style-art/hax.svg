@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" fill="none" aria-hidden="true">
+<defs><linearGradient id="gold" x1="80" y1="20" x2="560" y2="380" gradientUnits="userSpaceOnUse"><stop stop-color="#e6bdaa"/><stop offset=".48" stop-color="#80585c"/><stop offset="1" stop-color="#c99e97"/></linearGradient><radialGradient id="red"><stop stop-color="#e9505f"/><stop offset=".6" stop-color="#9b1c37"/><stop offset="1" stop-color="#451021"/></radialGradient></defs>
+<path d="M65 30h510l28 28v284l-28 28H65l-28-28V58Z" stroke="url(#gold)" stroke-width="2"/>
+<path d="M79 45h482l26 26v258l-26 26H79l-26-26V71Z" stroke="#a96272" stroke-opacity=".6"/>
+<circle cx="320" cy="195" r="118" fill="url(#red)" opacity=".75"/>
+<circle cx="320" cy="195" r="134" stroke="url(#gold)" stroke-opacity=".6"/>
+<circle cx="320" cy="195" r="153" stroke="#c68891" stroke-opacity=".25" stroke-dasharray="2 10"/>
+<path d="M216 195q104-100 208 0-104 100-208 0Z" fill="#0e0d14" stroke="url(#gold)" stroke-width="3.7"/>
+<circle cx="320" cy="195" r="43" fill="#681528" stroke="#e7a79d" stroke-width="3"/>
+<circle cx="320" cy="195" r="19" fill="#df4057" stroke="#efc1ad" stroke-width="2"/>
+<circle cx="320" cy="195" r="8" fill="#140912"/>
+<path d="M320 28v46m0 242v54M141 195h76m206 0h76" stroke="url(#gold)" stroke-width="2"/>
+<g fill="#130d14" stroke="#a78785" stroke-width="1.5">
+ <path d="M179 138q-50-40-91-20 23 5 40 24-18-6-33 3 28 18 75 25Z"/>
+ <path d="M461 138q50-40 91-20-23 5-40 24 18-6 33 3-28 18-75 25Z"/>
+</g>
+<g fill="#e6b4a5"><path d="m320 12 5 12-5 12-5-12Z"/><path d="m320 361 5 12-5 12-5-12Z"/></g>
+</svg>

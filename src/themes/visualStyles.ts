@@ -28,6 +28,12 @@ export const visualStyles = {
     signature: 'CRÔNICAS DOS REINOS',
     description: 'Heráldica medieval, filigranas, pergaminhos e ciclos das estações.',
   },
+  hax: {
+    label: 'Häx',
+    symbol: 'キ',
+    signature: 'VIGÍLIA LUNAR',
+    description: 'Corvos de tinta, runas antigas, pergaminho escuro e gravuras nórdicas.',
+  },
 } as const
 
 export type VisualStyleKey = keyof typeof visualStyles

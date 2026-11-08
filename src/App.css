@@ -13868,3 +13868,39 @@ button:disabled { opacity: .58; }
     transform: none !important;
   }
 }
+
+/* Inventário: reordenação por arrastar e soltar */
+.inventory-item-card { position: relative; }
+.inventory-drag-handle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; min-width: 30px; height: 34px; padding: 0;
+  border: 1px solid var(--border, rgba(180,190,190,.28));
+  border-radius: 9px; background: rgba(110,130,130,.10);
+  color: inherit; font-size: 23px; cursor: grab; touch-action: none;
+  user-select: none;
+}
+.inventory-drag-handle:active { cursor: grabbing; }
+.inventory-drag-handle:focus-visible { outline: 2px solid var(--accent, #b9a47b); outline-offset: 2px; }
+.inventory-item-card.inventory-dragging { opacity: .48; }
+.inventory-item-card.inventory-drop-target { outline: 2px dashed var(--accent, #b9a47b); outline-offset: 3px; }
+
+.inventory-item-card .inventory-drag-handle {
+  flex:0 0 34px!important;
+  display:inline-flex!important;
+  align-items:center!important;justify-content:center!important;
+  opacity:1!important;visibility:visible!important;
+  color:var(--season-primary,#d6a37d)!important;
+  border:1px solid currentColor!important;
+  background:rgba(0,0,0,.17)!important;
+  position:relative!important;z-index:3!important;
+}
+
+/* v47 — arraste pelo cartão inteiro; sem alça de seis pontos. */
+.inventory-item-card { cursor: grab !important; }
+.inventory-item-card:active { cursor: grabbing !important; }
+.inventory-item-card button, .inventory-item-card input,
+.inventory-item-card select, .inventory-item-card textarea,
+.inventory-item-card a { cursor: pointer; }
+.inventory-item-card.inventory-dragging { opacity: .5; }
+.inventory-item-card.inventory-drop-target { outline: 2px dashed var(--accent, #b9a47b); outline-offset: 3px; }
+

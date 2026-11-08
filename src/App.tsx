@@ -15,6 +15,7 @@ import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import HaxTable from './components/HaxTable'
+import MasterChest from './components/MasterChest'
 
 type SheetAttribute = 'strength' | 'agility' | 'defense' | 'breathing' | 'intellect'
 
@@ -182,17 +183,20 @@ function calculateSheetPhysicalDamage(input: {
   }
 }
 
-function rollSheetAttributeDice(diceCount: number, agilityOverloaded = false) {
-  const effectiveDiceCount = Math.max(0, Math.floor(diceCount) - (agilityOverloaded ? 1 : 0))
-  const hasDisadvantage = effectiveDiceCount === 0
-  const rolls = Array.from({length: hasDisadvantage ? 2 : effectiveDiceCount},
-    () => Math.floor(Math.random() * 20) + 1)
+function rollSheetAttributeDice(diceCount: number, agilityOverloaded = false, sides = 20) {
+  const effectiveDiceCount = Math.floor(diceCount) - (agilityOverloaded ? 1 : 0)
+  const hasDisadvantage = effectiveDiceCount <= 0
+  const diceSides = Math.max(2, Math.floor(sides))
+  // 0 dados -> 2 dados; -1 -> 3; -2 -> 4; etc.
+  const rollCount = hasDisadvantage ? 2 - effectiveDiceCount : effectiveDiceCount
+  const rolls = Array.from({length: rollCount},
+    () => Math.floor(Math.random() * diceSides) + 1)
   const result = hasDisadvantage ? Math.min(...rolls) : Math.max(...rolls)
   return {
     rolls, result, effectiveDiceCount, hasDisadvantage,
     description: hasDisadvantage
-      ? `${rolls.length}D20 = [${rolls.join(', ')}] (desvantagem: menor ${result})`
-      : `${effectiveDiceCount}D20 = [${rolls.join(', ')}] (maior: ${result})`,
+      ? `${rollCount}D${diceSides} = [${rolls.join(', ')}] (desvantagem: menor ${result})`
+      : `${effectiveDiceCount}D${diceSides} = [${rolls.join(', ')}] (maior: ${result})`,
   }
 }
 
@@ -385,6 +389,7 @@ const availableEmojis = [
   '🦑', '🐦‍⬛',
 ]
 
+
 function App() {                                                                                                                                                                                                                                                                                                                                                                                                                                                                
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -487,6 +492,19 @@ function App() {
     systemLogic?.createDefaultCurrencyConfig?.() ?? { currencies: [] }
   const isMaster = selectedCampaign?.role === 'master'
   const [characters, setCharacters] = useState<Character[]>([])
+  const [sheetCharacterSearch, setSheetCharacterSearch] = useState('')
+  const [sheetCharacterArchetype, setSheetCharacterArchetype] = useState('all')
+  const [sheetCharacterOwnerFilter, setSheetCharacterOwnerFilter] = useState<'all' | 'mine' | 'assigned' | 'unassigned'>('all')
+  const [sheetCharacterSort, setSheetCharacterSort] = useState<'name' | 'recent' | 'level' | 'favorites'>('name')
+  const [sheetCharacterLayout, setSheetCharacterLayout] = useState<'grid' | 'list'>('grid')
+  const [sheetOnlyFavorites, setSheetOnlyFavorites] = useState(false)
+  const [sheetFavoriteCollections, setSheetFavoriteCollections] = useState<Record<string, string[]>>(() => {
+    try {
+      const stored = window.localStorage.getItem('haxbag:sheet-character-favorites:v1')
+      const parsed: unknown = stored ? JSON.parse(stored) : {}
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, string[]> : {}
+    } catch { return {} }
+  })
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
   const [characterNameDraft, setCharacterNameDraft] = useState('')
   const [characterNameSaving, setCharacterNameSaving] = useState(false)
@@ -736,7 +754,11 @@ const resetCreatureFilters = () => {
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
   const activeTheme = seasonThemes[activeThemeKey]
-  const activeVisualStyleKey: VisualStyleKey = activeSeason?.visual_style_key && activeSeason.visual_style_key in visualStyles ? activeSeason.visual_style_key as VisualStyleKey : 'classic'
+  const activeVisualStyleKey: VisualStyleKey = activeSeason?.visual_style_key === 'tyr'
+    ? 'hax' // Compatibilidade com temporadas que usavam o antigo Tÿr
+    : activeSeason?.visual_style_key && activeSeason.visual_style_key in visualStyles
+      ? activeSeason.visual_style_key as VisualStyleKey
+      : 'classic'
   const activeVisualStyle = visualStyles[activeVisualStyleKey]
 
   // Janelas renderizadas por createPortal ficam fora de .app-shell.
@@ -956,7 +978,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     setEnemyItemForm(index === null ? {
       name: '', emoji: '📦', description: '', rarity: 'comum', categories: ['Diversos'],
       quantity: 1, weight: 0, unitPrice: 0, equipmentType: 'none', equipped: false,
-      weaponClass: 'improvised', armorClass: 'leve', armorCoverage: isKisatsutaiSystem ? 'especial_bruto' : 'cortante_perfurante',
+      weaponClass: 'improvised', armorClass: 'leve', armorCoverage: 'cortante_perfurante',
       protectionTier: 'basica', protectionMode: 'resistencia', scarcityLevel: 1,
       scarcityExhausted: false,
     } : structuredClone(enemyInventory[index]))
@@ -999,7 +1021,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
       equipped: Boolean(enemyItemForm.equipped),
       weaponDamage: type === 'weapon' ? weaponDamages[weaponClass] || '1d4' : null,
       armorCoverage: type === 'armor' && enemyItemForm.armorClass === 'pesada'
-        ? 'todos' : isKisatsutaiSystem && type === 'armor' ? 'especial_bruto' : enemyItemForm.armorCoverage,
+        ? 'todos' : type === 'armor' ? enemyItemForm.armorCoverage : enemyItemForm.armorCoverage,
       scarcityLevel: isConsumable ? level : null,
       scarcityDie: isConsumable ? `d${scarcityDie}` : null,
       scarcityCharge: isConsumable ? scarcityCharge : null,
@@ -1091,7 +1113,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'shops' | 'master-shield' | 'bestiary' | 'enemies' | 'profile'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -1113,6 +1135,59 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [characterName, setCharacterName] = useState('')
   const [characterEmoji, setCharacterEmoji] = useState('⚔️')
   const [characterRanks, setCharacterRanks] = useState<Record<string, string>>({})
+  // Fichas: o filtro só atua nos personagens que as políticas do Supabase já retornaram.
+  const sheetFavoriteScope = `${session?.user.id ?? 'guest'}:${selectedCampaignId}`
+  const sheetFavoriteIds = Array.isArray(sheetFavoriteCollections[sheetFavoriteScope])
+    ? sheetFavoriteCollections[sheetFavoriteScope] : []
+  const sheetFavoriteSet = new Set(sheetFavoriteIds)
+  const sheetArchetypes = Array.from(new Set(characters.map(character => character.archetype?.trim() || '').filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const sheetCharacterIsMine = (character: Character) => Boolean(session?.user.id &&
+    (character.current_player_id ? character.current_player_id === session.user.id : character.user_id === session.user.id))
+  const sheetCharactersWithPlayer = characters.filter(character => Boolean(character.current_player_id)).length
+  const sheetMyCharacters = characters.filter(sheetCharacterIsMine).length
+  const sheetFilteredCharacters = characters.filter(character => {
+    const text = [character.name, character.archetype, systemFeatures.usesRanks ? characterRanks[character.id] : character.level]
+      .map(value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')).join(' ')
+    const query = sheetCharacterSearch.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
+    if (query && !text.includes(query)) return false
+    if (sheetCharacterArchetype !== 'all' && (character.archetype?.trim() || '') !== sheetCharacterArchetype) return false
+    if (sheetCharacterOwnerFilter === 'mine' && !sheetCharacterIsMine(character)) return false
+    if (sheetCharacterOwnerFilter === 'assigned' && !character.current_player_id) return false
+    if (sheetCharacterOwnerFilter === 'unassigned' && character.current_player_id) return false
+    if (sheetOnlyFavorites && !sheetFavoriteSet.has(character.id)) return false
+    return true
+  }).sort((a, b) => {
+    if (sheetCharacterSort === 'favorites') {
+      const diff = Number(sheetFavoriteSet.has(b.id)) - Number(sheetFavoriteSet.has(a.id))
+      if (diff) return diff
+    }
+    if (sheetCharacterSort === 'recent') {
+      const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      if (diff) return diff
+    }
+    if (sheetCharacterSort === 'level' && !systemFeatures.usesRanks) {
+      const diff = b.level - a.level
+      if (diff) return diff
+    }
+    return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+  })
+  const sheetHasActiveFilters = Boolean(sheetCharacterSearch.trim() || sheetCharacterArchetype !== 'all' ||
+    sheetCharacterOwnerFilter !== 'all' || sheetOnlyFavorites)
+  const resetSheetFilters = () => {
+    setSheetCharacterSearch(''); setSheetCharacterArchetype('all')
+    setSheetCharacterOwnerFilter('all'); setSheetOnlyFavorites(false)
+  }
+  const toggleSheetFavorite = (id: string) => {
+    setSheetFavoriteCollections(current => {
+      const existing = Array.isArray(current[sheetFavoriteScope]) ? current[sheetFavoriteScope] : []
+      const updated = existing.includes(id) ? existing.filter(value => value !== id) : [...existing, id]
+      const next = { ...current, [sheetFavoriteScope]: updated }
+      try { window.localStorage.setItem('haxbag:sheet-character-favorites:v1', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
   const [archetype, setArchetype] = useState('')
   const [primaryArchetype, setPrimaryArchetype] = useState('')
   const [secondaryArchetype, setSecondaryArchetype] = useState('')
@@ -1148,6 +1223,9 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [emojiPickerCharacter, setEmojiPickerCharacter] = useState<Character | null>(null)
   const [favoriteOnly, setFavoriteOnly] = useState(false)
   const [sortBy, setSortBy] = useState('created')
+  const [draggedInventoryId, setDraggedInventoryId] = useState<string | null>(null)
+  const [inventoryDropId, setInventoryDropId] = useState<string | null>(null)
+  const inventoryReorderBusy = useRef(false)
   const [updatingQuantityItemId, setUpdatingQuantityItemId] = useState<string | null>(null)
   const [usingScarcityItemId, setUsingScarcityItemId] = useState<string | null>(null)
 
@@ -2905,7 +2983,7 @@ async function saveShopItem() {
   shopItemEquipmentType === 'cybernetic' ? 'none' : shopItemEquipmentType
 ),
       armorClass: shopItemEquipmentType === 'armor' ? shopItemArmorClass : null,
-      armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : isKisatsutaiSystem ? 'especial_bruto' : shopItemArmorCoverage) : null,
+      armorCoverage: shopItemEquipmentType === 'armor' ? (shopItemArmorClass === 'pesada' ? 'todos' : shopItemArmorCoverage) : null,
       protectionTier: shopItemEquipmentType === 'protection' ? shopItemProtectionTier : null,
       protectionMode: shopItemEquipmentType === 'protection' ? shopItemProtectionMode : null,
       scarcityLevel: shopItemCategories.includes('Consumíveis') ? Number(shopItemScarcityLevel) : null,
@@ -5451,7 +5529,7 @@ cyberneticData: isCyberFlowerSystem && newEquipmentType === 'cybernetic'
     }
   : null,
   armorClass: newEquipmentType === 'armor' ? newArmorClass : null,
-  armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : isKisatsutaiSystem ? 'especial_bruto' : newArmorCoverage) : null,
+  armorCoverage: newEquipmentType === 'armor' ? (newArmorClass === 'pesada' ? 'todos' : newArmorCoverage) : null,
   protectionTier: newEquipmentType === 'protection' ? newProtectionTier : null,
   protectionMode: newEquipmentType === 'protection' ? newProtectionMode : null,
   scarcityLevel: newItemCategories.includes('Consumíveis') ? Number(newScarcityLevel) : null,
@@ -6331,6 +6409,74 @@ useEffect(() => {
   return a.name.localeCompare(b.name)
 })
 
+  // Ordem manual é armazenada no metadata existente, sem migração de banco.
+  const orderedInventoryItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === 'manual') {
+      const aOrder = Number(a.metadata?.manualOrder)
+      const bOrder = Number(b.metadata?.manualOrder)
+      const aValid = Number.isFinite(aOrder) && a.metadata?.manualOrder != null
+      const bValid = Number.isFinite(bOrder) && b.metadata?.manualOrder != null
+      if (aValid && bValid && aOrder !== bOrder) return aOrder - bOrder
+      if (aValid !== bValid) return aValid ? -1 : 1
+      return items.findIndex(x => x.id === a.id) - items.findIndex(x => x.id === b.id)
+    }
+    if (sortBy === 'name') return a.name.localeCompare(b.name, 'pt-BR')
+    if (sortBy === 'category') return a.category.localeCompare(b.category, 'pt-BR')
+    if (sortBy === 'weight') return Number(b.weight) - Number(a.weight)
+    if (sortBy === 'quantity') return Number(b.quantity) - Number(a.quantity)
+    return items.findIndex(x => x.id === a.id) - items.findIndex(x => x.id === b.id)
+  })
+
+  async function reorderInventoryItem(sourceId: string, targetId: string) {
+    if (sourceId === targetId || inventoryReorderBusy.current || !selectedCharacterId) return
+    // Com filtros ativos, a movimentação afeta somente os itens visíveis.
+    const visible = orderedInventoryItems.map(item => item.id)
+    const from = visible.indexOf(sourceId)
+    const to = visible.indexOf(targetId)
+    if (from < 0 || to < 0) return
+    const reordered = [...visible]
+    reordered.splice(from, 1)
+    reordered.splice(to, 0, sourceId)
+    const original = items
+    const allIds = [...items]
+      .sort((a,b) => {
+        const av = Number(a.metadata?.manualOrder)
+        const bv = Number(b.metadata?.manualOrder)
+        const aHas = a.metadata?.manualOrder != null && Number.isFinite(av)
+        const bHas = b.metadata?.manualOrder != null && Number.isFinite(bv)
+        return aHas && bHas ? av-bv : aHas ? -1 : bHas ? 1 : 0
+      }).map(item => item.id)
+    const slots = allIds.map((id, index) => visible.includes(id) ? index : -1).filter(i => i >= 0)
+    reordered.forEach((id, index) => { allIds[slots[index]] = id })
+    const changed = allIds.map((id, index) => {
+      const item = items.find(entry => entry.id === id)!
+      return { ...item, metadata: { ...(item.metadata || {}), manualOrder: index } }
+    })
+    inventoryReorderBusy.current = true
+    setItems(changed)
+    setSortBy('manual')
+    setDraggedInventoryId(null)
+    setInventoryDropId(null)
+    try {
+      // Só atualiza o metadata; nunca modifica quantidade, peso ou equipamentos.
+      for (const item of changed) {
+        const before = original.find(entry => entry.id === item.id)!
+        if (before.metadata?.manualOrder === item.metadata?.manualOrder) continue
+        const { error: reorderError } = await supabase.from('inventory_items')
+          .update({ metadata: item.metadata })
+          .eq('id', item.id)
+          .eq('character_id', selectedCharacterId)
+        if (reorderError) throw reorderError
+      }
+      setNotice('Ordem do inventário salva.')
+    } catch (reorderError) {
+      setItems(original)
+      setError(`Não foi possível salvar a ordem: ${reorderError instanceof Error ? reorderError.message : String(reorderError)}. Recarregue o inventário antes de tentar novamente.`)
+    } finally {
+      inventoryReorderBusy.current = false
+    }
+  }
+
   const totalObjects = items.reduce(
     (sum, item) => sum + Number(item.quantity),
     0,
@@ -6676,8 +6822,7 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                       .map(item => ({
                         equipmentType: String(item.metadata?.equipmentType || 'none'),
                         armorClass: String(item.metadata?.armorClass || 'leve'),
-                        armorCoverage: isKisatsutaiSystem && item.metadata?.armorClass !== 'pesada'
-                          ? 'especial_bruto' : String(item.metadata?.armorCoverage || ''),
+                        armorCoverage: String(item.metadata?.armorCoverage || ''),
                         protectionTier: String(item.metadata?.protectionTier || 'basica'),
                         protectionMode: String(item.metadata?.protectionMode || 'resistencia'),
                       }))
@@ -6724,7 +6869,7 @@ const attribute =
     kind === 'Bloqueio' ? constitution :
     armorDexterity
 
-  const diceCount = 1 + Math.max(0, Math.floor(attribute))
+  const diceCount = 1 + Math.floor(attribute)
   const usesAgility = kind === 'Ataque ágil' || kind === 'Esquiva'
 
   const roll = rollAttributeDice(diceCount, usesAgility)
@@ -8089,19 +8234,19 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque bruto')}>
                               <span className="combat-action-icon">⚔</span>
                               <strong>Ataque Bruto</strong>
-                              <small>{1 + strength}D20 + Combate ({combat})</small>
+                              <small>{Math.floor(1 + strength) <= 0 ? `${2 - Math.floor(1 + strength)}D20 (desvantagem)` : `${Math.floor(1 + strength)}D20`} + Combate ({combat})</small>
                             </button>
 
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque ágil')}>
                               <span className="combat-action-icon">➶</span>
                               <strong>Ataque Ágil</strong>
-                              <small>{1 + agility}D20 + Combate ({combat})</small>
+                              <small>{Math.floor(1 + agility) <= 0 ? `${2 - Math.floor(1 + agility)}D20 (desvantagem)` : `${Math.floor(1 + agility)}D20`} + Combate ({combat})</small>
                             </button>
 
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
                               <span className="combat-action-icon">✦</span>
                               <strong>Ataque Especial</strong>
-                              <small>{1 + breathing}D20 + Habilidade ({ability})</small>
+                              <small>{Math.floor(1 + breathing) <= 0 ? `${2 - Math.floor(1 + breathing)}D20 (desvantagem)` : `${Math.floor(1 + breathing)}D20`} + Habilidade ({ability})</small>
                             </button>
                           </div>
                           <div className="combat-complementary-section">
@@ -8132,7 +8277,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 type="button"
                                 className="combat-action-card"
                                 onClick={() => {
-                                  const diceCount = 1 + Math.max(0, Math.floor(strength))
+                                  const diceCount = 1 + Math.floor(strength)
                                   const rolls = Array.from({ length: diceCount }, () => rollD20())
                                   const highest = Math.max(...rolls)
                                   const total = highest + vigor
@@ -8145,14 +8290,14 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               >
                                 <span className="combat-action-icon">⚔</span>
                                 <strong>Manobra de Luta</strong>
-                                <small>{1 + strength}D20 + Vigor ({vigor})</small>
+                                <small>{Math.floor(1 + strength) <= 0 ? `${2 - Math.floor(1 + strength)}D20 (desvantagem)` : `${Math.floor(1 + strength)}D20`} + Vigor ({vigor})</small>
                               </button>
 
                               <button
                                 type="button"
                                 className="combat-action-card"
                                 onClick={() => {
-                                  const diceCount = 1 + Math.max(0, Math.floor(defense))
+                                  const diceCount = 1 + Math.floor(defense)
                                   const rolls = Array.from({ length: diceCount }, () => rollD20())
                                   const highest = Math.max(...rolls)
                                   const total = highest + resistance
@@ -8165,14 +8310,14 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               >
                                 <span className="combat-action-icon">⛨</span>
                                 <strong>Resistência Física</strong>
-                                <small>{1 + defense}D20 + Resistência ({resistance})</small>
+                                <small>{Math.floor(1 + defense) <= 0 ? `${2 - Math.floor(1 + defense)}D20 (desvantagem)` : `${Math.floor(1 + defense)}D20`} + Resistência ({resistance})</small>
                               </button>
 
                               <button
                                 type="button"
                                 className="combat-action-card"
                                 onClick={() => {
-                                  const diceCount = 1 + Math.max(0, Math.floor(intellect))
+                                  const diceCount = 1 + Math.floor(intellect)
                                   const rolls = Array.from({ length: diceCount }, () => rollD20())
                                   const highest = Math.max(...rolls)
                                   const total = highest + mental
@@ -8185,7 +8330,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               >
                                 <span className="combat-action-icon">◈</span>
                                 <strong>Teste de Sanidade</strong>
-                                <small>{1 + intellect}D20 + Mental ({mental})</small>
+                                <small>{Math.floor(1 + intellect) <= 0 ? `${2 - Math.floor(1 + intellect)}D20 (desvantagem)` : `${Math.floor(1 + intellect)}D20`} + Mental ({mental})</small>
                               </button>
                             </div>
                           </div>
@@ -8193,11 +8338,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="combat-reactions-section" id={forEnemy ? 'inimigo-reacoes' : 'ficha-reacoes'}>
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.max(0, Math.floor(defense))}D20 + Constituição</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Constituição</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
-  {renderOverloaded && Math.max(0, Math.floor(agility)) === 0
-    ? `2D20 (desvantagem: menor) + Destreza de armadura (${armorDexterity})`
-    : `${Math.max(0, 1 + Math.floor(agility) - (renderOverloaded ? 1 : 0))}D20 + Destreza de armadura (${armorDexterity})`}
+  {(() => {
+    const diceCount = 1 + Math.floor(agility) - (renderOverloaded ? 1 : 0)
+    return `${diceCount <= 0 ? `${2 - diceCount}D20 (desvantagem)` : `${diceCount}D20`} + Destreza de armadura (${armorDexterity})`
+  })()}
 </small></button>
                               <button
                                 type="button"
@@ -8347,7 +8493,7 @@ counterAttackDT
           <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
         </div>
 
-        <section className="hb-sidebar-workspace" aria-label="Campanha atual">
+        <section className="hb-sidebar-workspace" aria-label="Campanha atual" style={{display:"flex",flexDirection:"column",height:"auto",minHeight:0,maxHeight:"none",overflow:"visible",flexShrink:0,position:"relative",zIndex:2,padding:"15px 13px 12px"}}>
           <div className="hb-sidebar-workspace-top">
             <span className="hb-sidebar-eyebrow">✦ ESPAÇO DE JOGO</span>
             <span className="hb-sidebar-role">{isMaster ? 'Mestre' : 'Jogador'}</span>
@@ -8392,6 +8538,9 @@ counterAttackDT
             </button>
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
+            </button>}
+            {isMaster && <button type="button" className={`nav-link ${activePage === 'master-chest' ? 'active' : ''}`} onClick={() => setActivePage('master-chest')} disabled={!selectedCampaignId} aria-current={activePage === 'master-chest' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">🗝</span><span className="hb-sidebar-nav-name">Baú do Mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
           </div>
           <div className="hb-sidebar-nav-group">
@@ -8453,7 +8602,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -8475,6 +8624,23 @@ counterAttackDT
         </header>
 
         <div className={`page-content page-${activePage}`}>
+          {activePage === 'master-chest' && isMaster && selectedCampaignId && (
+            <MasterChest
+              key={selectedCampaignId}
+              campaignId={selectedCampaignId}
+              characters={characters.map(character => ({ id: character.id, campaign_id: character.campaign_id, name: character.name, emoji: character.emoji }))}
+              currencyOptions={selectedCampaign?.currency_config?.currencies ?? []}
+              onDelivered={() => {
+                if (selectedCharacterId) {
+                  void supabase.from('inventory_items')
+                    .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
+                    .eq('character_id', selectedCharacterId)
+                    .order('created_at', { ascending: true })
+                    .then(({ data }) => { if (data) setItems((data as Item[]).filter(item => item.metadata?.cybernetic !== true || item.metadata?.cyberneticEquipped !== true)) })
+                }
+              }}
+            />
+          )}
           <style>{`
 /* HäxBag · Fichas — renovação visual completa, compartilhada por jogadores e inimigos */
 .page-content.page-sheets .sheet-page-panel,
@@ -8673,6 +8839,96 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 @media (max-width:750px){ .sheet-page-hero { padding:18px !important; align-items:flex-start; } .sheet-page-hero-icon { width:52px; height:52px; flex-basis:52px; font-size:25px; } .sheet-quick-nav { flex-wrap:nowrap; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:thin; } .sheet-quick-nav button { scroll-snap-align:start; } .sheet-summary-status { grid-template-columns:1fr; } .sheet-summary-grid { grid-template-columns:1fr; } .sheet-actions-premium { padding:17px; } .sheet-editor-expand { display:none; } }
 @media (max-width:560px){ .sheet-page-hero-leading { gap:12px; } .sheet-page-hero h2 { font-size:24px !important; } .sheet-page-hero-detail .sheet-page-back { width:100%; } .sheet-summary-header { grid-template-columns:1fr; gap:13px; padding:18px; } .sheet-summary-avatar { width:52px; height:52px; flex-basis:52px; font-size:24px; } .sheet-summary-progression { grid-column:auto; grid-row:auto; grid-template-columns:repeat(2,minmax(0,1fr)); } .sheet-summary-season { grid-column:auto; grid-row:auto; justify-self:start; } .sheet-summary-attributes { grid-template-columns:repeat(2,minmax(0,1fr)); } .sheet-section-heading p { line-height:1.45; } .sheet-summary-status-card { padding:15px !important; } .sheet-summary-card,.sheet-summary-notes { padding:15px; } .sheet-editor-fields { padding:13px; } .sheet-library-grid { grid-template-columns:1fr; } }
 @media (prefers-reduced-motion:reduce){.sheet-library-card,.sheet-quick-nav button,.sheet-actions-premium .combat-action-card {transition:none !important;} .sheet-library-card:hover,.sheet-actions-premium .combat-action-card:hover {transform:none !important;} }
+
+/* HÄXBAG v51 · Arquivo de personagens / biblioteca renovada */
+.page-sheets .sheet-roster-hero { min-height:198px; align-items:center; gap:28px; padding:28px 30px !important; border-radius:22px !important; }
+.page-sheets .sheet-roster-hero::after { right:-20px; top:-115px; width:300px; height:300px; opacity:.48; }
+.page-sheets .sheet-roster-hero .sheet-page-hero-leading { flex:1 1 380px; align-items:flex-start; gap:20px; }
+.page-sheets .sheet-roster-hero-emblem { width:76px; height:76px; flex-basis:76px; border-radius:22px; font-size:39px; background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--sheet-accent) 22%,transparent),transparent 65%),var(--season-surface-alt,rgba(255,255,255,.04)); box-shadow:inset 0 1px 0 rgba(255,255,255,.11),0 9px 25px rgba(0,0,0,.19); }
+.page-sheets .sheet-roster-hero-copy { min-width:0; }
+.page-sheets .sheet-roster-hero-copy .sheet-page-eyebrow { line-height:1.5; margin-bottom:12px; }
+.page-sheets .sheet-roster-hero-copy h2 { font-size:clamp(26px,3vw,38px) !important; }
+.page-sheets .sheet-roster-hero-copy p { max-width:550px; font-size:13px !important; }
+.page-sheets .sheet-roster-hero-meta { display:flex; flex-wrap:wrap; align-items:center; gap:13px; margin-top:17px; color:var(--sheet-dim); font-size:11px; }
+.page-sheets .sheet-roster-hero-meta span:first-child { color:var(--sheet-ink); border:1px solid var(--sheet-line); background:var(--season-surface-alt,rgba(255,255,255,.05)); padding:6px 10px; border-radius:20px; }
+.page-sheets .sheet-roster-hero-meta i { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:7px; background:var(--sheet-accent); box-shadow:0 0 8px var(--sheet-aura); vertical-align:middle; }
+.page-sheets .sheet-roster-hero .sheet-library-toolbar { position:relative; z-index:1; gap:8px; }
+.page-sheets .sheet-roster-hero .sheet-library-toolbar button { min-height:43px; padding:10px 15px; border-radius:12px; font-size:12px; }
+.page-sheets .sheet-roster-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0 0 22px; }
+.page-sheets .sheet-roster-stat { display:flex; gap:12px; align-items:center; min-width:0; min-height:98px; padding:17px 18px; border:1px solid var(--sheet-line); border-radius:16px; background:linear-gradient(155deg,var(--season-surface-alt,rgba(255,255,255,.05)),var(--season-surface,rgba(0,0,0,.15))); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); }
+.page-sheets .sheet-roster-stat-icon { display:grid; place-items:center; flex:0 0 42px; width:42px; height:42px; border:1px solid color-mix(in srgb,var(--sheet-accent) 22%,transparent); border-radius:12px; background:var(--sheet-aura); color:var(--sheet-accent); font-size:23px; }
+.page-sheets .sheet-roster-stat>div { min-width:0; display:grid; gap:2px; }
+.page-sheets .sheet-roster-stat small { color:var(--sheet-dim); font-size:9px; font-weight:850; letter-spacing:.085em; }
+.page-sheets .sheet-roster-stat strong { color:var(--sheet-ink); font-size:26px; font-weight:850; line-height:1.2; font-variant-numeric:tabular-nums; }
+.page-sheets .sheet-roster-stat div>span { color:var(--sheet-dim); font-size:10px; }
+.page-sheets .sheet-roster-browser { margin:6px 0 16px; padding:17px; border:1px solid var(--sheet-line); border-radius:18px; background:var(--season-surface-alt,rgba(255,255,255,.035)); }
+.page-sheets .sheet-roster-filterbar { display:grid; grid-template-columns:minmax(190px,1.55fr) repeat(3,minmax(125px,1fr)); gap:12px; align-items:end; }
+.page-sheets .sheet-roster-search,.page-sheets .sheet-roster-select { display:grid; gap:8px; min-width:0; color:var(--sheet-dim); font-size:11px; font-weight:750; }
+.page-sheets .sheet-roster-search-input { display:flex; align-items:center; gap:9px; min-height:43px; padding:0 12px; border:1px solid var(--sheet-line); border-radius:11px; background:var(--season-surface,#231e25); transition:border-color .2s,box-shadow .2s; }
+.page-sheets .sheet-roster-search-input:focus-within { border-color:var(--sheet-accent); box-shadow:0 0 0 3px var(--sheet-aura); }
+.page-sheets .sheet-roster-search-input>span { font-size:22px; line-height:1; color:var(--sheet-accent); }
+.page-sheets .sheet-roster-search-input input { min-width:0; width:100%; flex:1; padding:9px 0; border:0; outline:0; color:var(--sheet-ink); background:transparent; font:inherit; font-size:12px; }
+.page-sheets .sheet-roster-search-input input::placeholder { color:var(--sheet-dim); opacity:.75; }
+.page-sheets .sheet-roster-search-input button { flex:0 0 auto; border:0; background:none; color:var(--sheet-dim); cursor:pointer; padding:4px; }
+.page-sheets .sheet-roster-select select { width:100%; min-width:0; height:43px; padding:9px 11px; border:1px solid var(--sheet-line); border-radius:11px; background:var(--season-surface,#231e25); color:var(--sheet-ink); font:inherit; font-size:12px; cursor:pointer; }
+.page-sheets .sheet-roster-select select:focus-visible,.page-sheets .sheet-roster-search-input button:focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
+.page-sheets .sheet-roster-subbar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; padding-top:13px; margin-top:14px; border-top:1px solid var(--sheet-line); }
+.page-sheets .sheet-roster-subbar-start,.page-sheets .sheet-roster-subbar-end { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.page-sheets .sheet-roster-subbar-start>strong { font-size:13px; color:var(--sheet-ink); }
+.page-sheets .sheet-roster-subbar-start>strong>span { margin-left:4px; padding:3px 8px; color:var(--sheet-accent); border-radius:30px; background:var(--sheet-aura); font-size:11px; }
+.page-sheets .sheet-roster-favorites-filter,.page-sheets .sheet-roster-clear { background:transparent; border:1px solid transparent; border-radius:9px; padding:7px 10px; color:var(--sheet-dim); font:inherit; font-size:11px; cursor:pointer; }
+.page-sheets .sheet-roster-favorites-filter span { color:var(--sheet-accent); font-size:17px; vertical-align:-1px; }
+.page-sheets .sheet-roster-favorites-filter.is-active { color:var(--sheet-ink); border-color:var(--sheet-accent); background:var(--sheet-aura); }
+.page-sheets .sheet-roster-clear { color:var(--sheet-accent); }
+.page-sheets .sheet-roster-subbar-end>span { color:var(--sheet-dim); font-size:11px; }
+.page-sheets .sheet-roster-view-switch { display:inline-flex; padding:3px; border:1px solid var(--sheet-line); border-radius:10px; background:var(--season-surface,#231e25); }
+.page-sheets .sheet-roster-view-switch button { border:0; border-radius:7px; background:transparent; color:var(--sheet-dim); padding:7px 11px; font:inherit; font-size:11px; cursor:pointer; }
+.page-sheets .sheet-roster-view-switch button.is-active { color:var(--sheet-ink); background:var(--sheet-aura); box-shadow:0 1px 5px rgba(0,0,0,.14); }
+.page-sheets .sheet-roster-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr)); gap:14px; }
+.page-sheets .sheet-roster-card { position:relative; overflow:hidden; isolation:isolate; min-height:305px; padding:20px !important; border-radius:17px; transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }
+.page-sheets .sheet-roster-card::before { content:''; position:absolute; right:-85px; top:-95px; width:205px; height:205px; border:1px solid var(--sheet-line); border-radius:50%; box-shadow:0 0 0 26px color-mix(in srgb,var(--sheet-accent) 3%,transparent); pointer-events:none; opacity:.55; z-index:-1; }
+.page-sheets .sheet-roster-card-accent { position:absolute; left:0; top:0; width:100%; height:2px; background:linear-gradient(90deg,transparent,var(--sheet-accent),transparent); opacity:.6; }
+.page-sheets .sheet-roster-card.is-favorite .sheet-roster-card-accent { height:3px; opacity:1; }
+.page-sheets .sheet-roster-card.is-current { border-color:color-mix(in srgb,var(--sheet-accent) 50%,var(--sheet-line)); }
+.page-sheets .sheet-roster-card-top { align-items:flex-start; }
+.page-sheets .sheet-roster-card .sheet-library-avatar { width:62px; height:62px; flex-basis:62px; font-size:30px; background:linear-gradient(145deg,var(--sheet-aura),var(--season-surface,#211f24)); border-radius:17px; }
+.page-sheets .sheet-roster-card-top-actions { display:flex; gap:7px; align-items:center; }
+.page-sheets .sheet-roster-mine { padding:5px 7px; border:1px solid color-mix(in srgb,var(--sheet-accent) 34%,transparent); border-radius:20px; color:var(--sheet-accent); background:var(--sheet-aura); font-size:9px; font-weight:850; letter-spacing:.06em; }
+.page-sheets .sheet-roster-star { display:grid; place-items:center; width:34px; height:34px; padding:0; border:1px solid var(--sheet-line); border-radius:10px; background:var(--season-surface-alt,rgba(255,255,255,.04)); color:var(--sheet-dim); font-size:23px; line-height:1; cursor:pointer; }
+.page-sheets .sheet-roster-star.is-active { color:var(--sheet-accent); border-color:color-mix(in srgb,var(--sheet-accent) 42%,transparent); background:var(--sheet-aura); }
+.page-sheets .sheet-roster-card-info { flex:0 0 auto; padding:20px 0 16px; }
+.page-sheets .sheet-roster-card-info .sheet-page-eyebrow { margin:0 0 7px; }
+.page-sheets .sheet-roster-card-info h3 { margin:0 0 6px; font-size:22px; }
+.page-sheets .sheet-roster-card-info p { min-height:18px; }
+.page-sheets .sheet-roster-card-details { display:grid; gap:0; margin-top:auto; margin-bottom:15px; border:1px solid var(--sheet-line); border-radius:12px; background:var(--season-bg,rgba(0,0,0,.15)); overflow:hidden; }
+.page-sheets .sheet-roster-card-details>div { display:flex; gap:8px; align-items:center; justify-content:space-between; min-width:0; padding:10px 12px; }
+.page-sheets .sheet-roster-card-details>div+div { border-top:1px solid var(--sheet-line); }
+.page-sheets .sheet-roster-card-details span { flex:0 0 auto; color:var(--sheet-dim); font-size:9px; font-weight:850; letter-spacing:.06em; }
+.page-sheets .sheet-roster-card-details strong { min-width:0; max-width:62%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--sheet-ink); font-size:11px; font-weight:750; text-align:right; }
+.page-sheets .sheet-roster-card-footer { display:flex; gap:8px; align-items:center; }
+.page-sheets .sheet-roster-card .sheet-library-open { min-height:43px; flex:1; }
+.page-sheets .sheet-roster-card .sheet-library-delete-button { margin:0; min-height:43px; padding:9px 11px; }
+.page-sheets .sheet-roster-card .sheet-library-open:focus-visible,.page-sheets .sheet-roster-star:focus-visible,.page-sheets .sheet-roster-favorites-filter:focus-visible,.page-sheets .sheet-roster-view-switch button:focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
+.page-sheets .sheet-roster-grid.is-list { grid-template-columns:1fr; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card { min-height:0; display:grid; grid-template-columns:75px minmax(120px,1fr) minmax(160px,1.35fr) auto; align-items:center; gap:16px; padding:16px 19px !important; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-top { align-self:center; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-top-actions { position:absolute; right:16px; top:12px; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-top .sheet-roster-mine { display:none; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-info { padding:0; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-info h3 { font-size:17px; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-info p { font-size:11px; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-details { margin:0; }
+.page-sheets .sheet-roster-grid.is-list .sheet-roster-card-footer { width:150px; margin-right:34px; flex-direction:column; }
+.page-sheets .sheet-roster-grid.is-list .sheet-library-open,.page-sheets .sheet-roster-grid.is-list .sheet-library-delete-button { width:100%; }
+.page-sheets .sheet-roster-no-results,.page-sheets .sheet-roster-empty { display:grid; justify-items:center; text-align:center; gap:11px; padding:45px 18px; border:1px dashed var(--sheet-line); border-radius:18px; background:var(--season-surface-alt,rgba(255,255,255,.03)); }
+.page-sheets .sheet-roster-no-results>span,.page-sheets .sheet-roster-empty-icon { color:var(--sheet-accent); font-size:40px; line-height:1; }
+.page-sheets .sheet-roster-no-results h3,.page-sheets .sheet-roster-empty h3 { margin:0; font-size:18px; color:var(--sheet-ink); }
+.page-sheets .sheet-roster-no-results p,.page-sheets .sheet-roster-empty p { margin:0 0 8px; max-width:420px; font-size:13px; color:var(--sheet-dim); }
+@media(max-width:1120px) { .page-sheets .sheet-roster-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } .page-sheets .sheet-roster-filterbar { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:900px) { .page-sheets .sheet-roster-grid.is-list .sheet-roster-card { grid-template-columns:68px minmax(110px,1fr) minmax(130px,1fr); } .page-sheets .sheet-roster-grid.is-list .sheet-roster-card-footer { grid-column:2/-1; width:100%; margin:0; flex-direction:row; } .page-sheets .sheet-roster-grid.is-list .sheet-roster-card-footer button { width:auto; } }
+@media(max-width:640px) { .page-sheets .sheet-roster-hero { padding:20px !important; } .page-sheets .sheet-roster-hero-emblem { width:54px; height:54px; flex-basis:54px; font-size:29px; } .page-sheets .sheet-roster-hero .sheet-page-hero-leading { gap:12px; } .page-sheets .sheet-roster-hero .sheet-library-toolbar { width:100%; } .page-sheets .sheet-roster-overview { gap:9px; } .page-sheets .sheet-roster-stat { min-height:80px; padding:12px; gap:8px; } .page-sheets .sheet-roster-stat-icon { flex-basis:34px; width:34px; height:34px; font-size:18px; } .page-sheets .sheet-roster-stat strong { font-size:22px; } .page-sheets .sheet-roster-filterbar { grid-template-columns:1fr; } .page-sheets .sheet-roster-browser { padding:13px; } .page-sheets .sheet-roster-subbar { align-items:flex-start; } .page-sheets .sheet-roster-view-switch button>span { display:none; } .page-sheets .sheet-roster-grid.is-list .sheet-roster-card { display:flex; flex-direction:row; flex-wrap:wrap; gap:12px; } .page-sheets .sheet-roster-grid.is-list .sheet-roster-card-info { flex:1 1 140px; } .page-sheets .sheet-roster-grid.is-list .sheet-roster-card-details { width:100%; } .page-sheets .sheet-roster-grid.is-list .sheet-roster-card-footer { width:100%; flex-direction:row; } }
+@media(prefers-reduced-motion:reduce) { .page-sheets .sheet-roster-card { transition:none; } }
+
           `}</style>
     <style>{`
       .currency-wallet > .inventory-heading,
@@ -9961,7 +10217,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && (
           <section className="welcome-row">
 
 
@@ -10521,7 +10777,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
     <div className="inventory-extra-controls">
       <label className="search-box"><span>⌕</span><input value={enemyItemSearch} onChange={event=>setEnemyItemSearch(event.target.value)} placeholder="Buscar item..." aria-label="Buscar item"/><kbd>/</kbd></label>
       <button type="button" className={enemyFavoriteOnly?'category-tab selected':'category-tab'} onClick={()=>setEnemyFavoriteOnly(value=>!value)}>{enemyFavoriteOnly?'★ Favoritos':'☆ Favoritos'}</button>
-      <label className="inventory-sort-label"><span>Ordenar:</span><select value={enemySortBy} onChange={event=>setEnemySortBy(event.target.value)} aria-label="Ordenar itens"><option value="created">Adicionados</option><option value="name">Nome</option><option value="category">Categoria</option><option value="weight">Maior peso</option><option value="quantity">Maior quantidade</option></select></label>
+      <label className="inventory-sort-label"><span>Ordenar:</span><select value={enemySortBy} onChange={event=>setEnemySortBy(event.target.value)} aria-label="Ordenar itens"><option value="created">Adicionados</option>
+                        <option value="manual">Minha ordem</option><option value="name">Nome</option><option value="category">Categoria</option><option value="weight">Maior peso</option><option value="quantity">Maior quantidade</option></select></label>
     </div>
   </div>
   {(() => {
@@ -10655,9 +10912,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         <option value="leve">Leve</option><option value="media">Média</option>
                         <option value="pesada">Pesada</option>
                       </select></label>
-                      <label>Cobertura<select value={isKisatsutaiSystem ? 'especial_bruto' : String(enemyItemForm.armorCoverage||'cortante_perfurante')}
+                      <label>Cobertura<select value={String(enemyItemForm.armorCoverage||'cortante_perfurante')}
                         onChange={event => setEnemyItemForm(current => ({...current,armorCoverage:event.target.value}))}>
-                        {!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante / Perfurante</option>}
+                        <option value="cortante_perfurante">Cortante / Perfurante</option>
                         <option value="especial_bruto">Especial / Bruto</option>
                         {!isKisatsutaiSystem && <option value="todos">Todos</option>}
                       </select></label>
@@ -11124,17 +11381,30 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             <section className="inventory-section sheet-page-panel">
             
               {!sheetCharacterView ? <>
-                <div className="inventory-heading sheet-page-hero sheet-page-hero-library">
-                  <div className="sheet-page-hero-leading"><span className="sheet-page-hero-icon" aria-hidden="true">◈</span><div><span className="sheet-page-eyebrow">ARQUIVO DA CAMPANHA</span><h2>Fichas de personagens</h2><p>Crie personagens, consulte suas fichas e gerencie o grupo em um só lugar.</p></div></div>
+                <div className="inventory-heading sheet-page-hero sheet-page-hero-library sheet-roster-hero">
+                  <div className="sheet-page-hero-leading">
+                    <span className="sheet-page-hero-icon sheet-roster-hero-emblem" aria-hidden="true">◈</span>
+                    <div className="sheet-roster-hero-copy">
+                      <span className="sheet-page-eyebrow">◈ ARQUIVO DA CAMPANHA · {selectedCampaign?.name ?? 'Campanha'}</span>
+                      <h2>Fichas de personagens</h2>
+                      <p>Seu elenco em um só lugar. Encontre protagonistas, acompanhe suas funções e abra uma ficha em instantes.</p>
+                      <div className="sheet-roster-hero-meta"><span><i aria-hidden="true" />{activeSystem?.name ?? 'RPG'}</span><span>{characters.length} {characters.length === 1 ? 'personagem registrado' : 'personagens registrados'}</span></div>
+                    </div>
+                  </div>
                   <div className="sheet-library-toolbar">
-                    <span className="sheet-library-total">{characters.length} {characters.length === 1 ? 'personagem' : 'personagens'}</span>
                     {isMaster && <button type="button" className="secondary-button sheet-library-manage-button" onClick={() => { setShowCharacterManagement(value => !value); setShowCharacterForm(false) }} aria-pressed={showCharacterManagement}>
-                      {showCharacterManagement ? '✓ Concluir gerenciamento' : '⚙ Gerenciar personagens'}
+                      {showCharacterManagement ? '✓ Concluir gerenciamento' : '⚙ Gerenciar'}
                     </button>}
                     {!showCharacterManagement && <button type="button" className="primary-button sheet-library-create-button" onClick={() => setShowCharacterForm(value => !value)} aria-expanded={showCharacterForm}>
-                      {showCharacterForm ? 'Fechar criação' : '+ Novo personagem'}
+                      {showCharacterForm ? '✕ Fechar criação' : '+ Criar personagem'}
                     </button>}
                   </div>
+                </div>
+                <div className="sheet-roster-overview" aria-label="Resumo da campanha">
+                  <div className="sheet-roster-stat"><span className="sheet-roster-stat-icon" aria-hidden="true">♙</span><div><small>PERSONAGENS</small><strong>{characters.length}</strong><span>no arquivo</span></div></div>
+                  <div className="sheet-roster-stat"><span className="sheet-roster-stat-icon" aria-hidden="true">◉</span><div><small>COM JOGADOR</small><strong>{sheetCharactersWithPlayer}</strong><span>atribuídos</span></div></div>
+                  <div className="sheet-roster-stat"><span className="sheet-roster-stat-icon" aria-hidden="true">✦</span><div><small>MEUS PERSONAGENS</small><strong>{sheetMyCharacters}</strong><span>criados ou atribuídos</span></div></div>
+                  <div className="sheet-roster-stat"><span className="sheet-roster-stat-icon" aria-hidden="true">◇</span><div><small>ARQUÉTIPOS</small><strong>{sheetArchetypes.length}</strong><span>no grupo</span></div></div>
                 </div>
                 {showCharacterManagement && isMaster && <div className="sheet-library-admin-notice"><span aria-hidden="true">⚙</span><div><strong>Gerenciamento de personagens</strong><p>Exclua personagens usando os controles dos cartões. A gestão de acessos e permissões continua em Campanhas.</p></div><button type="button" className="secondary-button" onClick={() => setActivePage('campaigns')}>Acessos e permissões ↗</button></div>}
     {!showCharacterManagement && showCharacterForm && (
@@ -11277,24 +11547,99 @@ disabled={
         </button>
       </form>
     )}
-                {characters.length === 0 ? <div className="empty-state sheet-library-empty"><span aria-hidden="true">◈</span><h3>Nenhum personagem nesta campanha</h3><p>Crie seu primeiro personagem para começar uma ficha.</p>{!showCharacterForm && !showCharacterManagement && <button type="button" className="primary-button" onClick={() => setShowCharacterForm(true)}>+ Criar personagem</button>}</div> :
-                  <div className="sheet-library-grid">{characters.map(character => <article className="sheet-library-card" key={character.id}>
-                    <div className="sheet-library-top">
-                      <button
-                        type="button"
-                        className="sheet-library-avatar sheet-library-avatar-edit"
-                        onClick={() => openCharacterEmojiPicker(character)}
-                        title={`Alterar emoji de ${character.name}`}
-                        aria-label={`Alterar emoji de ${character.name}`}
-                      >
-                        {character.emoji || '⚔️'}
-                      </button>
-                      <span className="sheet-library-system">{activeSystem?.name || 'RPG'}</span>
+                {characters.length > 0 && <section className="sheet-roster-browser" aria-label="Explorar fichas de personagens">
+                  <div className="sheet-roster-filterbar">
+                    <div className="sheet-roster-search">
+                      <label htmlFor="sheet-character-search">Buscar no elenco</label>
+                      <div className="sheet-roster-search-input"><span aria-hidden="true">⌕</span>
+                        <input id="sheet-character-search" type="search" placeholder="Nome, arquétipo ou graduação..." autoComplete="off" value={sheetCharacterSearch} onChange={event => setSheetCharacterSearch(event.target.value)} />
+                        {sheetCharacterSearch && <button type="button" onClick={() => setSheetCharacterSearch('')} title="Limpar busca" aria-label="Limpar busca">✕</button>}
+                      </div>
                     </div>
-                    <div className="sheet-library-info"><span className="sheet-page-eyebrow">{systemFeatures.usesRanks ? 'PERSONAGEM' : `NÍVEL ${character.level}`}</span><h3>{character.name}</h3><p>{character.archetype || 'Arquétipo não definido'}</p>{systemFeatures.usesRanks && <span className="sheet-library-rank">✦ {characterRanks[character.id] || 'Graduação não definida'}</span>}</div>
-                    <button type="button" className="sheet-library-open" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha <span aria-hidden="true">↗</span></button>
-                    {isMaster && showCharacterManagement && <button type="button" className="secondary-button sheet-library-delete-button" disabled={deletingCharacterId !== null} onClick={() => void deleteCharacter(character)}>{deletingCharacterId === character.id ? 'Excluindo…' : 'Excluir personagem'}</button>}
-                  </article>)}</div>}
+                    <label className="sheet-roster-select">Arquétipo
+                      <select value={sheetCharacterArchetype} onChange={event => setSheetCharacterArchetype(event.target.value)}>
+                        <option value="all">Todos os arquétipos</option>
+                        {sheetArchetypes.map(name => <option key={name} value={name}>{name}</option>)}
+                      </select>
+                    </label>
+                    <label className="sheet-roster-select">Vínculo
+                      <select value={sheetCharacterOwnerFilter} onChange={event => setSheetCharacterOwnerFilter(event.target.value as 'all' | 'mine' | 'assigned' | 'unassigned')}>
+                        <option value="all">Todos os personagens</option>
+                        <option value="mine">Meus personagens</option>
+                        {isMaster && <option value="assigned">Com jogador atribuído</option>}
+                        {isMaster && <option value="unassigned">Sem jogador atribuído</option>}
+                      </select>
+                    </label>
+                    <label className="sheet-roster-select sheet-roster-sort">Ordenar por
+                      <select value={sheetCharacterSort} onChange={event => setSheetCharacterSort(event.target.value as 'name' | 'recent' | 'level' | 'favorites')}>
+                        <option value="name">Nome (A–Z)</option>
+                        <option value="recent">Mais recentes</option>
+                        {!systemFeatures.usesRanks && <option value="level">Maior nível</option>}
+                        <option value="favorites">Favoritos primeiro</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="sheet-roster-subbar">
+                    <div className="sheet-roster-subbar-start">
+                      <strong>Personagens <span>{sheetFilteredCharacters.length}</span></strong>
+                      <button type="button" className={`sheet-roster-favorites-filter${sheetOnlyFavorites ? ' is-active' : ''}`} aria-pressed={sheetOnlyFavorites} onClick={() => setSheetOnlyFavorites(value => !value)}><span aria-hidden="true">☆</span> Favoritos</button>
+                      {sheetHasActiveFilters && <button type="button" className="sheet-roster-clear" onClick={resetSheetFilters}>Limpar filtros <span aria-hidden="true">×</span></button>}
+                    </div>
+                    <div className="sheet-roster-subbar-end">
+                      <span>{sheetFilteredCharacters.length} de {characters.length}</span>
+                      <div className="sheet-roster-view-switch" role="group" aria-label="Modo de visualização">
+                        <button type="button" className={sheetCharacterLayout === 'grid' ? 'is-active' : ''} aria-pressed={sheetCharacterLayout === 'grid'} title="Visualizar em cartões" onClick={() => setSheetCharacterLayout('grid')}>▦ <span>Grade</span></button>
+                        <button type="button" className={sheetCharacterLayout === 'list' ? 'is-active' : ''} aria-pressed={sheetCharacterLayout === 'list'} title="Visualizar em lista" onClick={() => setSheetCharacterLayout('list')}>☷ <span>Lista</span></button>
+                      </div>
+                    </div>
+                  </div>
+                </section>}
+                {characters.length === 0 ? (
+                  <div className="empty-state sheet-library-empty sheet-roster-empty">
+                    <span className="sheet-roster-empty-icon" aria-hidden="true">♙</span>
+                    <h3>O elenco ainda está vazio</h3><p>Os personagens da campanha aparecerão aqui. Crie o primeiro e comece a contar a história.</p>
+                    {!showCharacterForm && !showCharacterManagement && <button type="button" className="primary-button" onClick={() => setShowCharacterForm(true)}>+ Criar primeiro personagem</button>}
+                  </div>
+                ) : sheetFilteredCharacters.length === 0 ? (
+                  <div className="sheet-roster-no-results" role="status">
+                    <span aria-hidden="true">⌕</span><h3>Nenhum personagem encontrado</h3>
+                    <p>Experimente outro termo ou remova os filtros para visualizar todo o elenco.</p>
+                    <button type="button" className="secondary-button" onClick={resetSheetFilters}>Limpar todos os filtros</button>
+                  </div>
+                ) : (
+                  <div className={`sheet-library-grid sheet-roster-grid${sheetCharacterLayout === 'list' ? ' is-list' : ''}`}>
+                    {sheetFilteredCharacters.map(character => {
+                      const isFavorite = sheetFavoriteSet.has(character.id)
+                      const isMine = sheetCharacterIsMine(character)
+                      const player = character.current_player_id ? campaignMembers.find(member => member.user_id === character.current_player_id) : undefined
+                      const characterRoleText = character.current_player_id ? (player?.display_name || (isMine ? 'Você' : 'Jogador atribuído')) : 'Sem jogador atribuído'
+                      const rank = characterRanks[character.id] || 'Não definida'
+                      return <article className={`sheet-library-card sheet-roster-card${isFavorite ? ' is-favorite' : ''}${selectedCharacterId === character.id ? ' is-current' : ''}`} key={character.id}>
+                        <div className="sheet-roster-card-accent" aria-hidden="true" />
+                        <div className="sheet-library-top sheet-roster-card-top">
+                          <button type="button" className="sheet-library-avatar sheet-library-avatar-edit" onClick={() => openCharacterEmojiPicker(character)} title={`Alterar emoji de ${character.name}`} aria-label={`Alterar emoji de ${character.name}`}>{character.emoji || '⚔️'}</button>
+                          <div className="sheet-roster-card-top-actions">
+                            {isMine && <span className="sheet-roster-mine" title="Criado por você ou atribuído a você">MEU</span>}
+                            <button type="button" className={`sheet-roster-star${isFavorite ? ' is-active' : ''}`} onClick={() => toggleSheetFavorite(character.id)} aria-pressed={isFavorite} title={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'} aria-label={`${isFavorite ? 'Remover' : 'Adicionar'} ${character.name} ${isFavorite ? 'dos' : 'aos'} favoritos`}>{isFavorite ? '★' : '☆'}</button>
+                          </div>
+                        </div>
+                        <div className="sheet-library-info sheet-roster-card-info">
+                          <span className="sheet-page-eyebrow">{systemFeatures.usesRanks ? 'PERSONAGEM' : `NÍVEL ${character.level}`}</span>
+                          <h3>{character.name}</h3>
+                          <p>{character.archetype?.trim() || 'Arquétipo não definido'}</p>
+                        </div>
+                        <div className="sheet-roster-card-details">
+                          <div><span>{systemFeatures.usesRanks ? 'GRADUAÇÃO' : 'PROGRESSÃO'}</span><strong>{systemFeatures.usesRanks ? rank : `Nível ${character.level}`}</strong></div>
+                          <div><span>JOGADOR</span><strong title={characterRoleText}>{characterRoleText}</strong></div>
+                        </div>
+                        <div className="sheet-roster-card-footer">
+                          <button type="button" className="sheet-library-open" onClick={() => { setSelectedCharacterId(character.id); setSheetCharacterView(true) }}>Abrir ficha <span aria-hidden="true">↗</span></button>
+                          {isMaster && showCharacterManagement && <button type="button" className="secondary-button sheet-library-delete-button" disabled={deletingCharacterId !== null} onClick={() => void deleteCharacter(character)}>{deletingCharacterId === character.id ? 'Excluindo…' : 'Excluir'}</button>}
+                        </div>
+                      </article>
+                    })}
+                  </div>
+                )}
               </> : <>
                 <div className="inventory-heading sheet-page-hero sheet-page-hero-detail"><div className="sheet-page-hero-leading"><span className="sheet-page-hero-icon" aria-hidden="true">{selectedCharacter?.emoji || '⚔️'}</span><div><span className="sheet-page-eyebrow">FICHA DE PERSONAGEM · {activeSystem?.name ?? 'RPG'}</span><h2>{selectedCharacter?.name ?? 'Personagem'}</h2><p>{selectedCampaign?.name} · Consulte e administre as informações do personagem.</p></div></div><button type="button" className="secondary-button sheet-page-back" onClick={() => setSheetCharacterView(false)}>← Voltar à lista</button></div>
                 <label className="sheet-season-selector" style={labelStyle}>Temporada<select value={selectedSeasonId} onChange={e => setSelectedSeasonId(e.target.value)} style={inputStyle}><option value="">Selecione uma temporada</option>{seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}</select></label>
@@ -11616,7 +11961,7 @@ disabled={
 
                       {newEquipmentType === 'armor' && <>
                         <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
-                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={isKisatsutaiSystem ? 'especial_bruto' : newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}>{!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante e perfurante</option>}<option value="especial_bruto">Especial e bruto</option></select></label>}
+                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
                         <div className="equipment-rules-preview">
   <strong>Regras da armadura</strong>
   <p>
@@ -11837,6 +12182,7 @@ disabled={
           <span>Ordenar:</span>
           <select value={sortBy} onChange={event => setSortBy(event.target.value)} aria-label="Ordenar itens">
             <option value="created">Adicionados</option>
+                        <option value="manual">Minha ordem</option>
             <option value="name">Nome</option>
             <option value="category">Categoria</option>
             <option value="weight">Maior peso</option>
@@ -11864,8 +12210,20 @@ disabled={
       </div>
     ) : (
       <div className="item-grid">
-        {filteredItems.map(item => (
-          <article className="item-card inventory-item-card" key={item.id} onClickCapture={event => {
+        {orderedInventoryItems.map(item => (
+          <article className={`item-card inventory-item-card ${inventoryDropId === item.id ? 'inventory-drop-target' : ''} ${draggedInventoryId === item.id ? 'inventory-dragging' : ''}`} key={item.id}
+          draggable
+          onDragStart={event => {
+    if ((event.target as HTMLElement).closest('button, input, select, textarea, a, [role="button"]')) { event.preventDefault(); return }
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', item.id)
+    setDraggedInventoryId(item.id)
+  }}
+  onDragEnd={() => { setDraggedInventoryId(null); setInventoryDropId(null) }}
+          onDragOver={event => { if (draggedInventoryId && draggedInventoryId !== item.id) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setInventoryDropId(item.id) } }}
+          onDragLeave={() => setInventoryDropId(current => current === item.id ? null : current)}
+          onDrop={event => { event.preventDefault(); const id = event.dataTransfer.getData('text/plain') || draggedInventoryId; if (id) void reorderInventoryItem(id, item.id) }}
+          onClickCapture={event => {
   const target = event.target as HTMLElement
   if (target.closest('button, input, select, textarea, a, [role=\"button\"]')) return
   setSelectedItemDetails(item)
@@ -12981,7 +13339,7 @@ style={{cursor:'pointer'}}>
 
                               {shopItemEquipmentType === 'armor' && <>
                                 <label style={labelStyle}>Tipo de armadura<select value={shopItemArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setShopItemArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, nextClass, shopItemWeaponClass); if (automaticWeight !== null) setShopItemWeight(String(automaticWeight)) }} style={inputStyle}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
-                                {shopItemArmorClass !== 'pesada' && <label style={labelStyle}>Tipos de dano protegidos<select value={isKisatsutaiSystem ? 'especial_bruto' : shopItemArmorCoverage} onChange={event => setShopItemArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')} style={inputStyle}>{!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante e perfurante</option>}<option value="especial_bruto">Especial e bruto</option></select></label>}
+                                {shopItemArmorClass !== 'pesada' && <label style={labelStyle}>Tipos de dano protegidos<select value={shopItemArmorCoverage} onChange={event => setShopItemArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')} style={inputStyle}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
                                 <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {shopItemArmorClass === 'leve' ? 2 : shopItemArmorClass === 'media' ? 4 : 6} kg</p><p>Proteção: {shopItemArmorClass === 'leve' ? '(Resistência ÷ 2) + 4' : shopItemArmorClass === 'media' ? 'Resistência + 6' : '(Resistência × 2) + 8'}</p><p>Destreza: {shopItemArmorClass === 'leve' ? 'Integral' : shopItemArmorClass === 'media' ? '½ dos pontos' : '0'}</p><p>Penalidades: {shopItemArmorClass === 'media' ? '−5 em Reflexo; metade do deslocamento' : shopItemArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade'}</p></div>
                               </>}
 
@@ -14457,7 +14815,7 @@ style={{cursor:'pointer'}}>
 
                       {newEquipmentType === 'armor' && <>
                         <label>Tipo de armadura<select value={newArmorClass} onChange={event => { const nextClass = event.target.value as 'leve' | 'media' | 'pesada'; setNewArmorClass(nextClass); const automaticWeight = getAutomaticItemWeight(newItemCategories, newEquipmentType, nextClass, newWeaponClass); if (automaticWeight !== null) setNewItemWeight(String(automaticWeight)) }}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>
-                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={isKisatsutaiSystem ? 'especial_bruto' : newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}>{!isKisatsutaiSystem && <option value="cortante_perfurante">Cortante e perfurante</option>}<option value="especial_bruto">Especial e bruto</option></select></label>}
+                        {newArmorClass !== 'pesada' && <label>Tipos de dano protegidos<select value={newArmorCoverage} onChange={event => setNewArmorCoverage(event.target.value as 'cortante_perfurante' | 'especial_bruto')}><option value="cortante_perfurante">Cortante e perfurante</option><option value="especial_bruto">Especial e bruto</option></select></label>}
                         <div className="equipment-rules-preview"><strong>Regras da armadura</strong><p>Carga: {newArmorClass === 'leve' ? 2 : newArmorClass === 'media' ? 4 : 6}</p><p>Resistência adicional: {newArmorClass === 'leve' ? '½ dos pontos de resistência + 4' : newArmorClass === 'media' ? '+6 pontos' : '2× os pontos de resistência + 8'}</p><p>Destreza de armadura: {newArmorClass === 'leve' ? 'Destreza integral' : newArmorClass === 'media' ? 'Metade do valor de destreza' : '0'}</p><p>Penalidades: {newArmorClass === 'media' ? '−5 em Reflexo; ½ do deslocamento' : newArmorClass === 'pesada' ? '−10 em Reflexo e Corrida; ¼ do deslocamento' : 'Sem penalidade; deslocamento normal'}</p></div>
                       </>}
 
@@ -14665,6 +15023,7 @@ style={{cursor:'pointer'}}>
                       <span>Ordenar:</span>
                       <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Ordenar itens">
                         <option value="created">Adicionados</option>
+                        <option value="manual">Minha ordem</option>
                         <option value="name">Nome</option>
                         <option value="category">Categoria</option>
                         <option value="weight">Maior peso</option>
@@ -14714,13 +15073,22 @@ style={{cursor:'pointer'}}>
                   </div>
                 ) : (
                   <div className="item-grid">
-                    {filteredItems.map((item) => (
+                    {orderedInventoryItems.map((item) => (
                       <article
-  className="item-card inventory-item-card"
+  className={`item-card inventory-item-card ${inventoryDropId === item.id ? 'inventory-drop-target' : ''} ${draggedInventoryId === item.id ? 'inventory-dragging' : ''}`}
   key={item.id}
-  onClick={() => {
-    setSelectedItemDetails(item)
-}}
+  draggable
+  onDragStart={event => {
+    if ((event.target as HTMLElement).closest('button, input, select, textarea, a, [role="button"]')) { event.preventDefault(); return }
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', item.id)
+    setDraggedInventoryId(item.id)
+  }}
+  onDragEnd={() => { setDraggedInventoryId(null); setInventoryDropId(null) }}
+  onDragOver={event => { if (draggedInventoryId && draggedInventoryId !== item.id) { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setInventoryDropId(item.id) } }}
+  onDragLeave={() => { if (inventoryDropId === item.id) setInventoryDropId(null) }}
+  onDrop={event => { event.preventDefault(); if (draggedInventoryId) void reorderInventoryItem(draggedInventoryId, item.id) }}
+  onClick={() => { if (!draggedInventoryId) setSelectedItemDetails(item) }}
   style={{ cursor: 'pointer' }}
 >
                         <div className="item-card-top">

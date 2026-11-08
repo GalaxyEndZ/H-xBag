@@ -135,7 +135,7 @@
 .app-shell .season-style-japanese .season-style-preview-glyph {
   top: 9px;
   left: 22px;
-  font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif;
   font-size: 38px;
 }
 .app-shell .season-style-japanese .season-style-preview-lines { left: 20px; bottom: 12px; }
@@ -171,7 +171,7 @@
 .app-shell.visual-style-japanese {
   --japan-rule: color-mix(in srgb, var(--season-primary) 32%, var(--season-line));
   --japan-soft: color-mix(in srgb, var(--season-primary) 9%, transparent);
-  --japan-serif: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif;
+  --japan-serif: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif;
 }
 .app-shell.visual-style-japanese .main-content {
   background-image:
@@ -254,7 +254,7 @@
 }
 .app-shell.visual-style-japanese .hb-sidebar-brand-spark { font-size: 0 !important; }
 .app-shell.visual-style-japanese .hb-sidebar-brand-spark::before {
-  content: '幻';
+  content: "幻";
   display: grid;
   place-items: center;
   width: 23px;
@@ -308,12 +308,12 @@
   box-shadow: 0 0 18px color-mix(in srgb, var(--season-primary) 29%, transparent), inset 0 0 12px color-mix(in srgb, var(--season-primary) 10%, transparent);
 }
 .app-shell .season-style-cyberpunk .season-style-preview-orb::after {
-  content: ''; position: absolute; inset: 9px;
+  content: ""; position: absolute; inset: 9px;
   border: 1px solid color-mix(in srgb, var(--season-secondary) 66%, var(--season-primary));
 }
 .app-shell .season-style-cyberpunk .season-style-preview-glyph {
   top: 14px; left: 19px;
-  font: 800 39px/1.25 Consolas, 'Courier New', monospace;
+  font: 800 39px/1.25 Consolas, "Courier New", monospace;
   text-shadow: 0 0 14px color-mix(in srgb, var(--season-primary) 58%, transparent);
 }
 .app-shell .season-style-cyberpunk .season-style-preview-lines { left: 17px; right: 88px; bottom: 15px; gap: 5px; }
@@ -457,7 +457,7 @@
 
 /* ===== CYBERPUNK • HUD / tecnologia / luminosidade ===== */
 .app-shell.visual-style-cyberpunk {
-  --cyber-font: 'Cascadia Code', 'Segoe UI', Consolas, monospace;
+  --cyber-font: "Cascadia Code", "Segoe UI", Consolas, monospace;
   --cyber-edge: color-mix(in srgb, var(--season-primary) 53%, var(--season-line));
   --cyber-glow: color-mix(in srgb, var(--season-primary) 27%, transparent);
   --cyber-wash: color-mix(in srgb, var(--season-primary) 8%, transparent);
@@ -629,7 +629,7 @@ body[data-hb-visual-style="japanese"] :is(
 body[data-hb-visual-style="japanese"] :is(
   .bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-details-modal,
   .item-modal-content, .modal-content
-) :is(h2,h3,h4) { font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif; }
+) :is(h2,h3,h4) { font-family: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif; }
 body[data-hb-visual-style="japanese"] :is(.bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-modal-content) :is(button, input:not([type="checkbox"]), textarea, select) {
   border-radius: 5px !important;
 }
@@ -649,7 +649,7 @@ body[data-hb-visual-style="cyberpunk"] :is(
   .bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-details-modal,
   .item-modal-content, .modal-content
 ) :is(h2,h3,h4) {
-  font-family: 'Cascadia Code', 'Segoe UI', Consolas, monospace;
+  font-family: "Cascadia Code", "Segoe UI", Consolas, monospace;
   letter-spacing: .025em;
 }
 body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .emoji-modal, .item-modal-content) :is(button, input:not([type="checkbox"]), textarea, select) {
@@ -701,7 +701,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
   --hb-art-veil: color-mix(in srgb, var(--season-primary) 7%, transparent);
   --hb-art-ambient: color-mix(in srgb, var(--season-primary) 11%, transparent);
   --hb-art-shadow: 0 16px 38px rgba(0,0,0,.17), inset 0 1px 0 rgba(255,255,255,.04);
-  --hb-art-serif: Georgia, 'Times New Roman', serif;
+  --hb-art-serif: Georgia, "Times New Roman", serif;
   --hb-art-radius: 17px;
   --hb-art-control-radius: 10px;
   --hb-art-title-spacing: -.017em;
@@ -709,8 +709,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
     linear-gradient(135deg, var(--season-surface), var(--season-bg));
 }
 .app-shell.visual-style-classic {
-  --hb-art-sigil: url('./style-art/eclipse.svg');
-  --hb-art-serif: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --hb-art-sigil: url("./style-art/eclipse.svg");
+  --hb-art-serif: "Cinzel", Georgia, "Times New Roman", serif;
   --hb-art-ink: color-mix(in srgb, var(--season-primary) 75%, #dfb87c);
   --hb-art-rule: color-mix(in srgb, var(--season-primary) 27%, #806a58);
   --hb-art-radius: 20px;
@@ -720,8 +720,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
     linear-gradient(130deg, var(--season-surface), var(--season-bg));
 }
 .app-shell.visual-style-japanese {
-  --hb-art-sigil: url('./style-art/kisatsutai.svg');
-  --hb-art-serif: 'Yu Mincho', 'Hiragino Mincho ProN', 'Noto Serif JP', Georgia, serif;
+  --hb-art-sigil: url("./style-art/kisatsutai.svg");
+  --hb-art-serif: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif;
   --hb-art-ink: color-mix(in srgb, var(--season-primary) 76%, #d48c83);
   --hb-art-rule: color-mix(in srgb, var(--season-primary) 38%, #99817a);
   --hb-art-radius: 9px;
@@ -732,8 +732,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
     linear-gradient(135deg, var(--season-surface), var(--season-bg));
 }
 .app-shell.visual-style-cyberpunk {
-  --hb-art-sigil: url('./style-art/cyberflower.svg');
-  --hb-art-serif: 'Cascadia Code', 'Segoe UI', Consolas, monospace;
+  --hb-art-sigil: url("./style-art/cyberflower.svg");
+  --hb-art-serif: "Cascadia Code", "Segoe UI", Consolas, monospace;
   --hb-art-ink: color-mix(in srgb, var(--season-primary) 73%, #56c5c4);
   --hb-art-rule: color-mix(in srgb, var(--season-primary) 46%, #4e9097);
   --hb-art-radius: 5px;
@@ -744,8 +744,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
     linear-gradient(133deg, var(--season-surface), var(--season-bg));
 }
 .app-shell.visual-style-ciclos {
-  --hb-art-sigil: url('./style-art/ciclos.svg');
-  --hb-art-serif: Georgia, 'Times New Roman', serif;
+  --hb-art-sigil: url("./style-art/ciclos.svg");
+  --hb-art-serif: Georgia, "Times New Roman", serif;
   --hb-art-ink: color-mix(in srgb, var(--season-primary) 72%, #d1a875);
   --hb-art-rule: color-mix(in srgb, var(--season-primary) 36%, #876f53);
   --hb-art-radius: 13px;
@@ -777,7 +777,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
   .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
   .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero
 )::before {
-  content: '' !important;
+  content: "" !important;
   display: block !important;
   position: absolute !important;
   top: 0 !important;
@@ -987,7 +987,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
 }
 .app-shell .season-visual-style-group .season-visual-group-heading { padding-bottom: 9px; }
 .app-shell .season-visual-style-group .season-visual-group-heading > strong {
-  font: 600 clamp(17px,2.1vw,24px)/1.3 Georgia,'Times New Roman',serif;
+  font: 600 clamp(17px,2.1vw,24px)/1.3 Georgia,"Times New Roman",serif;
   color: #f5ead9;
 }
 .app-shell .season-style-grid {
@@ -1020,7 +1020,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
 }
 .app-shell .season-style-card::before,
 .app-shell .season-style-card::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 18px;
   height: 18px;
@@ -1057,7 +1057,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
   gap: 10px;
   min-height: 14px;
   color: var(--card-art);
-  font: 750 9px/1.2 'Cascadia Code','Segoe UI',Consolas,sans-serif;
+  font: 750 9px/1.2 "Cascadia Code","Segoe UI",Consolas,sans-serif;
   letter-spacing: .18em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1077,7 +1077,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
   box-shadow: inset 0 0 0 3px rgba(0,0,0,.20),0 7px 18px rgba(0,0,0,.16);
 }
 .app-shell .season-style-preview::before {
-  content:'';
+  content:"";
   position:absolute;
   inset: 0;
   pointer-events:none;
@@ -1094,7 +1094,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
   mask-position: 100% 50%;
 }
 .app-shell .season-style-preview::after {
-  content:'';
+  content:"";
   position:absolute;
   inset: 9px;
   border: 1px solid color-mix(in srgb,var(--card-art) 29%,transparent);
@@ -1130,7 +1130,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
 .app-shell .season-style-preview-lines i:nth-child(3) { width: 45%; }
 .app-shell .season-style-card-info { min-width:0; display:grid;gap:7px;padding:2px 2px 3px;align-content:start; }
 .app-shell .season-style-card-info strong {
-  font: 650 clamp(17px,1.8vw,23px)/1.17 Georgia,'Times New Roman',serif;
+  font: 650 clamp(17px,1.8vw,23px)/1.17 Georgia,"Times New Roman",serif;
   color: #f4eada;
   letter-spacing: -.016em;
 }
@@ -1163,19 +1163,19 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
 /* Four distinct illustrations on the real selection cards. */
 .app-shell .season-style-classic {
   --card-art: color-mix(in srgb,var(--season-primary) 70%,#dcb474);
-  --card-art-image: url('./style-art/eclipse.svg');
+  --card-art-image: url("./style-art/eclipse.svg");
 }
 .app-shell .season-style-japanese {
   --card-art: color-mix(in srgb,var(--season-primary) 72%,#d67770);
-  --card-art-image: url('./style-art/kisatsutai.svg');
+  --card-art-image: url("./style-art/kisatsutai.svg");
 }
 .app-shell .season-style-cyberpunk {
   --card-art: color-mix(in srgb,var(--season-primary) 73%,#5cc9bd);
-  --card-art-image: url('./style-art/cyberflower.svg');
+  --card-art-image: url("./style-art/cyberflower.svg");
 }
 .app-shell .season-style-ciclos {
   --card-art: color-mix(in srgb,var(--season-primary) 72%,#d0a66b);
-  --card-art-image: url('./style-art/ciclos.svg');
+  --card-art-image: url("./style-art/ciclos.svg");
 }
 .app-shell .season-style-classic .season-style-preview {
   background: radial-gradient(circle at 78% 41%,rgba(204,151,92,.17),transparent 38%),
@@ -1198,7 +1198,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal, .enemy-hub-modal, .e
   clip-path: polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px);
 }
 .app-shell .season-style-cyberpunk .season-style-preview-glyph {
-  font-family: 'Cascadia Code',Consolas,monospace;
+  font-family: "Cascadia Code",Consolas,monospace;
 }
 .app-shell .season-style-ciclos .season-style-preview {
   background: radial-gradient(ellipse at 76% 42%,rgba(174,135,69,.18),transparent 47%),
@@ -1294,7 +1294,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
 .page-content .season-theme-panel::after { content:none !important; }
 .app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos)
 .page-content .season-theme-panel::before {
-  content:'';
+  content:"";
   display:block;
   position:absolute;
   top: 0;right:0;
@@ -1353,7 +1353,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
 }
 /* Marca d'água editorial, atrás da navegação e recortada dentro do menu. */
 .app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar::before {
-  content: '';
+  content: "";
   position: absolute;
   z-index: 0;
   top: 5px;
@@ -1377,7 +1377,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   border-bottom: 1px solid var(--hb-menu-line);
 }
 .app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-brand::after {
-  content: '';
+  content: "";
   position: absolute;
   pointer-events: none;
   left: 48px;
@@ -1472,7 +1472,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   overflow: hidden;
 }
 .app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-workspace::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 85px;
   height: 85px;
@@ -1520,12 +1520,12 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   align-items: center;
   gap: 9px;
   color: var(--hb-menu-bright);
-  font: 800 9px/1.3 'Segoe UI',Arial,sans-serif;
+  font: 800 9px/1.3 "Segoe UI",Arial,sans-serif;
   letter-spacing: .14em;
   opacity: .82;
 }
 .app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-cyberpunk,.visual-style-ciclos) .hb-sidebar-group-title::after {
-  content: '';
+  content: "";
   flex: 1;
   min-width: 12px;
   height: 1px;
@@ -1670,7 +1670,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   border-left-color: var(--hb-menu-bright) !important;
 }
 .app-shell.hb-polish.visual-style-classic .hb-sidebar-group-title::before {
-  content: '✧';
+  content: "✧";
   color: var(--hb-menu-bright);
   font-size: 12px;
   line-height: 1;
@@ -1699,7 +1699,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   border-radius: 5px;
 }
 .app-shell.hb-polish.visual-style-japanese .hb-sidebar-group-title::before {
-  content: '❀';
+  content: "❀";
   color: var(--hb-menu-bright);
   font-size: 13px;
   line-height: 1;
@@ -1730,7 +1730,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
 /* 04. CYBERFLOWER — HUD floral, circuitos e geometria tecnológica ------- */
 .app-shell.hb-polish.visual-style-cyberpunk {
   --hb-menu-radius: 4px;
-  --hb-menu-font: 'Cascadia Code','Segoe UI',Consolas,sans-serif;
+  --hb-menu-font: "Cascadia Code","Segoe UI",Consolas,sans-serif;
   --hb-menu-ambient: linear-gradient(90deg,color-mix(in srgb,var(--season-primary) 4%,transparent) 1px,transparent 1px) 0 0 / 31px 31px,
     linear-gradient(0deg,color-mix(in srgb,var(--season-primary) 4%,transparent) 1px,transparent 1px) 0 0 / 31px 31px,
     radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--season-primary) 15%,transparent),transparent 53%),
@@ -1749,7 +1749,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   font-family: var(--hb-menu-font);
 }
 .app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-group-title::before {
-  content: '[+';
+  content: "[+";
   font-family: var(--hb-menu-font);
   color: var(--hb-menu-bright);
   letter-spacing: -.1em;
@@ -1781,7 +1781,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
 /* 05. CICLOS — crônicas, heráldica e painel medieval ------------------- */
 .app-shell.hb-polish.visual-style-ciclos {
   --hb-menu-radius: 8px;
-  --hb-menu-font: Georgia,'Times New Roman',serif;
+  --hb-menu-font: Georgia,"Times New Roman",serif;
   --hb-menu-ambient: repeating-linear-gradient(0deg,transparent 0 8px,rgba(208,171,118,.014) 8px 9px),
     radial-gradient(ellipse at 90% 9%,color-mix(in srgb,var(--season-primary) 12%,transparent),transparent 43%),
     linear-gradient(180deg,var(--season-bg),var(--season-surface));
@@ -1797,7 +1797,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   background: linear-gradient(145deg,var(--hb-menu-wash),var(--season-surface) 73%);
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-group-title::before {
-  content: '⚜';
+  content: "⚜";
   color: var(--hb-menu-bright);
   font: 15px/1 Georgia,serif;
 }
@@ -1901,7 +1901,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,
   .overview-hero,.bestiary-hero
 )::before {
-  content: '' !important;
+  content: "" !important;
   top: 0 !important;
   right: 0 !important;
   bottom: auto !important;
@@ -1909,7 +1909,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   width: min(64%, 690px) !important;
   height: 100% !important;
   opacity: .80 !important;
-  background: url('./style-art/cyberflower-hero.svg') right center / cover no-repeat !important;
+  background: url("./style-art/cyberflower-hero.svg") right center / cover no-repeat !important;
   -webkit-mask: none !important;
   mask: none !important;
   box-shadow: none !important;
@@ -1926,7 +1926,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   border-color: color-mix(in srgb, var(--season-primary) 32%, #5cceea);
   background:
     linear-gradient(90deg, #0b101a 0%, rgba(11,16,26,.45) 35%, transparent 70%),
-    url('./style-art/cyberflower-hero.svg') right center / cover no-repeat,
+    url("./style-art/cyberflower-hero.svg") right center / cover no-repeat,
     linear-gradient(135deg, #10131e, #101d27) !important;
   box-shadow: inset 0 0 0 1px rgba(95,222,240,.17), 0 0 15px rgba(250,106,195,.09);
 }
@@ -1942,10 +1942,10 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   color: color-mix(in srgb,var(--season-text) 76%,#fba7de);
 }
 .app-shell .season-style-cyberpunk .season-style-card-info strong::after {
-  content: ' // FLORA SINTÉTICA';
+  content: " // FLORA SINTÉTICA";
   display: block;
   margin-top: 6px;
-  font: 650 9px/1.4 'Cascadia Code',Consolas,monospace;
+  font: 650 9px/1.4 "Cascadia Code",Consolas,monospace;
   letter-spacing: .14em;
   color: color-mix(in srgb, var(--season-primary) 45%, #82e3f2);
 }
@@ -1969,7 +1969,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   width: 244px;
   height: 240px;
   opacity: .20;
-  background: url('./style-art/cyberflower-crest.svg') center / contain no-repeat;
+  background: url("./style-art/cyberflower-crest.svg") center / contain no-repeat;
   -webkit-mask: none;
   mask: none;
 }
@@ -1992,7 +1992,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   background: linear-gradient(110deg,var(--cf-bloom-wash),var(--season-surface) 76%);
 }
 .app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity::after {
-  content: '';
+  content: "";
   position: absolute;
   z-index: 0;
   right: 1px;
@@ -2000,7 +2000,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   width: 78px;
   height: 78px;
   opacity: .38;
-  background: url('./style-art/cyberflower-crest.svg') center / contain no-repeat;
+  background: url("./style-art/cyberflower-crest.svg") center / contain no-repeat;
   pointer-events: none;
 }
 .app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-style-identity > * {
@@ -2013,7 +2013,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
   box-shadow: 0 0 10px var(--cf-bloom-wash);
 }
 .app-shell.hb-polish.visual-style-cyberpunk .hb-sidebar-group-title::before {
-  content: '✿';
+  content: "✿";
   color: var(--cf-bloom);
   font: 15px/1 Georgia,serif;
   text-shadow: 0 0 11px var(--cf-bloom-wash);
@@ -2141,7 +2141,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
 }
 .app-shell:is(.visual-style-classic,.visual-style-japanese,.visual-style-ciclos)
 .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::before {
-  content:'' !important;
+  content:"" !important;
   display:block !important;
   position:absolute !important;
   top:0 !important;
@@ -2176,7 +2176,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
   --ec-gold:color-mix(in srgb,var(--season-primary) 45%,#eab972);
   --ec-line:color-mix(in srgb,var(--ec-gold) 38%,var(--season-line));
   --ec-shine:color-mix(in srgb,var(--ec-gold) 12%,transparent);
-  --hb-decor-hero-art:url('./style-art/eclipse-hero.svg');
+  --hb-decor-hero-art:url("./style-art/eclipse-hero.svg");
   --hb-art-background:radial-gradient(ellipse at 93% 16%,var(--ec-shine),transparent 55%),linear-gradient(135deg,var(--season-surface),var(--season-bg));
   --hb-menu-line:var(--ec-line);
   --hb-menu-wash:var(--ec-shine);
@@ -2190,7 +2190,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
 .app-shell.hb-polish.visual-style-classic .hb-sidebar::before {
   top:-5px;right:-46px;width:242px;height:240px;
   opacity:.22;
-  background:url('./style-art/eclipse-crest.svg') center/contain no-repeat;
+  background:url("./style-art/eclipse-crest.svg") center/contain no-repeat;
   mask:none;-webkit-mask:none;
 }
 .app-shell.hb-polish.visual-style-classic .hb-sidebar-style-identity {
@@ -2199,8 +2199,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
   background:radial-gradient(ellipse at 82% 0%,var(--ec-shine),transparent 60%),var(--season-surface);
 }
 .app-shell.hb-polish.visual-style-classic .hb-sidebar-style-identity::after {
-  content:'';position:absolute;right:2px;top:-11px;width:80px;height:80px;opacity:.32;z-index:0;
-  pointer-events:none;background:url('./style-art/eclipse-crest.svg') center/contain no-repeat;
+  content:"";position:absolute;right:2px;top:-11px;width:80px;height:80px;opacity:.32;z-index:0;
+  pointer-events:none;background:url("./style-art/eclipse-crest.svg") center/contain no-repeat;
 }
 .app-shell.hb-polish.visual-style-classic .hb-sidebar-style-identity>*{position:relative;z-index:1;}
 .app-shell.hb-polish.visual-style-classic .hb-sidebar-nav .nav-link.active {
@@ -2222,7 +2222,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
   --ki-blossom:color-mix(in srgb,var(--season-primary) 48%,#e9858c);
   --ki-rule:color-mix(in srgb,var(--ki-blossom) 38%,var(--season-line));
   --ki-wash:color-mix(in srgb,var(--ki-blossom) 10%,transparent);
-  --hb-decor-hero-art:url('./style-art/kisatsutai-hero.svg');
+  --hb-decor-hero-art:url("./style-art/kisatsutai-hero.svg");
   --hb-art-background:linear-gradient(115deg,var(--ki-wash),transparent 50%),linear-gradient(140deg,var(--season-surface),var(--season-bg));
   --hb-menu-line:var(--ki-rule);
   --hb-menu-wash:var(--ki-wash);
@@ -2234,7 +2234,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
 }
 .app-shell.hb-polish.visual-style-japanese .hb-sidebar::before {
   top:-7px;right:-39px;width:215px;height:226px;opacity:.22;
-  background:url('./style-art/kisatsutai-crest.svg') center/contain no-repeat;
+  background:url("./style-art/kisatsutai-crest.svg") center/contain no-repeat;
   mask:none;-webkit-mask:none;
 }
 .app-shell.hb-polish.visual-style-japanese .hb-sidebar-style-identity {
@@ -2243,8 +2243,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
   background:linear-gradient(115deg,var(--ki-wash),var(--season-surface) 70%);
 }
 .app-shell.hb-polish.visual-style-japanese .hb-sidebar-style-identity::after {
-  content:'';position:absolute;right:2px;top:-10px;width:82px;height:82px;
-  background:url('./style-art/kisatsutai-crest.svg') center/contain no-repeat;opacity:.31;z-index:0;pointer-events:none;
+  content:"";position:absolute;right:2px;top:-10px;width:82px;height:82px;
+  background:url("./style-art/kisatsutai-crest.svg") center/contain no-repeat;opacity:.31;z-index:0;pointer-events:none;
 }
 .app-shell.hb-polish.visual-style-japanese .hb-sidebar-style-identity>*{position:relative;z-index:1;}
 .app-shell.hb-polish.visual-style-japanese .hb-sidebar-nav .nav-link.active {
@@ -2270,7 +2270,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
   --ci-gold:color-mix(in srgb,var(--season-primary) 44%,#d1ad72);
   --ci-rule:color-mix(in srgb,var(--ci-gold) 38%,var(--season-line));
   --ci-wash:color-mix(in srgb,var(--ci-gold) 10%,transparent);
-  --hb-decor-hero-art:url('./style-art/ciclos-hero.svg');
+  --hb-decor-hero-art:url("./style-art/ciclos-hero.svg");
   --hb-art-background:linear-gradient(125deg,var(--ci-wash),transparent 54%),linear-gradient(145deg,var(--season-surface),var(--season-bg));
   --hb-menu-line:var(--ci-rule);
   --hb-menu-wash:var(--ci-wash);
@@ -2282,7 +2282,7 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar::before {
   top:-8px;right:-49px;width:235px;height:233px;opacity:.22;
-  background:url('./style-art/ciclos-crest.svg') center/contain no-repeat;
+  background:url("./style-art/ciclos-crest.svg") center/contain no-repeat;
   mask:none;-webkit-mask:none;
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-style-identity {
@@ -2291,8 +2291,8 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
   background:linear-gradient(125deg,var(--ci-wash),var(--season-surface) 70%);
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-style-identity::after {
-  content:'';position:absolute;right:2px;top:-10px;width:80px;height:80px;opacity:.32;z-index:0;
-  pointer-events:none;background:url('./style-art/ciclos-crest.svg') center/contain no-repeat;
+  content:"";position:absolute;right:2px;top:-10px;width:80px;height:80px;opacity:.32;z-index:0;
+  pointer-events:none;background:url("./style-art/ciclos-crest.svg") center/contain no-repeat;
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-style-identity>*{position:relative;z-index:1;}
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-nav .nav-link.active {
@@ -2315,15 +2315,15 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
 
 /* Previews da Identidade Visual: mostram a arte real dos estilos. */
 .app-shell .season-style-classic .season-style-preview {
-  background:linear-gradient(90deg,#101014 0%,rgba(16,16,20,.6) 28%,transparent 70%),url('./style-art/eclipse-hero.svg') right center/cover no-repeat,linear-gradient(145deg,#101015,#2b2021) !important;
+  background:linear-gradient(90deg,#101014 0%,rgba(16,16,20,.6) 28%,transparent 70%),url("./style-art/eclipse-hero.svg") right center/cover no-repeat,linear-gradient(145deg,#101015,#2b2021) !important;
   border-color:color-mix(in srgb,var(--season-primary) 40%,#d8b278);
 }
 .app-shell .season-style-japanese .season-style-preview {
-  background:linear-gradient(90deg,#141015 0%,rgba(20,16,21,.56) 28%,transparent 70%),url('./style-art/kisatsutai-hero.svg') right center/cover no-repeat,linear-gradient(145deg,#101016,#321821) !important;
+  background:linear-gradient(90deg,#141015 0%,rgba(20,16,21,.56) 28%,transparent 70%),url("./style-art/kisatsutai-hero.svg") right center/cover no-repeat,linear-gradient(145deg,#101016,#321821) !important;
   border-color:color-mix(in srgb,var(--season-primary) 35%,#e07e8e);
 }
 .app-shell .season-style-ciclos .season-style-preview {
-  background:linear-gradient(90deg,#171511 0%,rgba(23,21,17,.55) 28%,transparent 70%),url('./style-art/ciclos-hero.svg') right center/cover no-repeat,linear-gradient(145deg,#131310,#34251b) !important;
+  background:linear-gradient(90deg,#171511 0%,rgba(23,21,17,.55) 28%,transparent 70%),url("./style-art/ciclos-hero.svg") right center/cover no-repeat,linear-gradient(145deg,#131310,#34251b) !important;
   border-color:color-mix(in srgb,var(--season-primary) 40%,#c6a571);
 }
 .app-shell :is(.season-style-classic,.season-style-japanese,.season-style-ciclos) .season-style-preview-orb {
@@ -2338,11 +2338,11 @@ body[data-hb-visual-style="cyberpunk"] :is(.bestiary-modal,.enemy-hub-modal,.emo
 .app-shell .season-style-classic .season-style-card-info strong::after,
 .app-shell .season-style-japanese .season-style-card-info strong::after,
 .app-shell .season-style-ciclos .season-style-card-info strong::after {
-  display:block;margin-top:6px;font:650 9px/1.4 'Cascadia Code',Consolas,monospace;letter-spacing:.14em;
+  display:block;margin-top:6px;font:650 9px/1.4 "Cascadia Code",Consolas,monospace;letter-spacing:.14em;
 }
-.app-shell .season-style-classic .season-style-card-info strong::after {content:' // CARTOGRAFIA ASTRAL';color:#dcb982;}
-.app-shell .season-style-japanese .season-style-card-info strong::after {content:' // FLORA DA LÂMINA';color:#e58d97;}
-.app-shell .season-style-ciclos .season-style-card-info strong::after {content:' // HERÁLDICA DAS ERAS';color:#d5ad7a;}
+.app-shell .season-style-classic .season-style-card-info strong::after {content:" // CARTOGRAFIA ASTRAL";color:#dcb982;}
+.app-shell .season-style-japanese .season-style-card-info strong::after {content:" // FLORA DA LÂMINA";color:#e58d97;}
+.app-shell .season-style-ciclos .season-style-card-info strong::after {content:" // HERÁLDICA DAS ERAS";color:#d5ad7a;}
 
 /* Controles do menu, sem afetar arraste, grade ou retratos do tabuleiro. */
 .app-shell.hb-polish:is(.visual-style-classic,.visual-style-japanese,.visual-style-ciclos) .hb-sidebar-workspace,
@@ -2419,23 +2419,23 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell .season-visual-style-group .season-style-card.active { box-shadow:0 0 0 1px var(--card-art-wash),0 12px 30px rgba(0,0,0,.23) !important; }
 /* Exibir a marca de cada estilo apenas no cartão correspondente, sem interferência da identidade da página. */
 .app-shell .season-visual-style-group .season-style-classic .season-style-preview {
- background:linear-gradient(90deg,#101014 0%,rgba(16,16,20,.6) 28%,transparent 70%),url('./style-art/eclipse-hero.svg') right center/cover no-repeat !important;
+ background:linear-gradient(90deg,#101014 0%,rgba(16,16,20,.6) 28%,transparent 70%),url("./style-art/eclipse-hero.svg") right center/cover no-repeat !important;
 }
 .app-shell .season-visual-style-group .season-style-japanese .season-style-preview {
- background:linear-gradient(90deg,#141015 0%,rgba(20,16,21,.56) 28%,transparent 70%),url('./style-art/kisatsutai-hero.svg') right center/cover no-repeat !important;
+ background:linear-gradient(90deg,#141015 0%,rgba(20,16,21,.56) 28%,transparent 70%),url("./style-art/kisatsutai-hero.svg") right center/cover no-repeat !important;
 }
 .app-shell .season-visual-style-group .season-style-cyberpunk .season-style-preview {
- background:linear-gradient(90deg,#0b101a 0%,rgba(11,16,26,.45) 35%,transparent 70%),url('./style-art/cyberflower-hero.svg') right center/cover no-repeat !important;
+ background:linear-gradient(90deg,#0b101a 0%,rgba(11,16,26,.45) 35%,transparent 70%),url("./style-art/cyberflower-hero.svg") right center/cover no-repeat !important;
 }
 .app-shell .season-visual-style-group .season-style-ciclos .season-style-preview {
- background:linear-gradient(90deg,#171511 0%,rgba(23,21,17,.55) 28%,transparent 70%),url('./style-art/ciclos-hero.svg') right center/cover no-repeat !important;
+ background:linear-gradient(90deg,#171511 0%,rgba(23,21,17,.55) 28%,transparent 70%),url("./style-art/ciclos-hero.svg") right center/cover no-repeat !important;
 }
 
 /* HäxBag v12 · Identidade de cada estilo na página Meu perfil */
-.app-shell.visual-style-classic .hb-profile-banner-art{background-image:url('./style-art/eclipse-hero.svg')}
-.app-shell.visual-style-japanese .hb-profile-banner-art{background-image:url('./style-art/kisatsutai-hero.svg')}
-.app-shell.visual-style-cyberpunk .hb-profile-banner-art{background-image:url('./style-art/cyberflower-hero.svg')}
-.app-shell.visual-style-ciclos .hb-profile-banner-art{background-image:url('./style-art/ciclos-hero.svg')}
+.app-shell.visual-style-classic .hb-profile-banner-art{background-image:url("./style-art/eclipse-hero.svg")}
+.app-shell.visual-style-japanese .hb-profile-banner-art{background-image:url("./style-art/kisatsutai-hero.svg")}
+.app-shell.visual-style-cyberpunk .hb-profile-banner-art{background-image:url("./style-art/cyberflower-hero.svg")}
+.app-shell.visual-style-ciclos .hb-profile-banner-art{background-image:url("./style-art/ciclos-hero.svg")}
 .app-shell.visual-style-classic .hb-profile-banner{border-top:2px solid var(--season-primary)}
 .app-shell.visual-style-japanese .hb-profile-banner{border-left:3px solid var(--season-primary);border-radius:11px}
 .app-shell.visual-style-japanese .hb-profile-avatar-xl,.app-shell.visual-style-japanese .hb-profile-info-tile,.app-shell.visual-style-japanese .hb-profile-side-card{border-radius:8px}
@@ -2446,4 +2446,312 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell.visual-style-cyberpunk .hb-profile-page-v12 :is(.hb-profile-avatar-option,.hb-profile-shortcuts button){border-radius:3px}
 .app-shell.visual-style-ciclos .hb-profile-banner{border:1px solid var(--cycles-rule);border-top:2px solid var(--cycles-ink)}
 .app-shell.visual-style-ciclos .hb-profile-avatar-xl,.app-shell.visual-style-ciclos .hb-profile-info-tile,.app-shell.visual-style-ciclos .hb-profile-side-card{border-color:var(--cycles-rule)}
-.app-shell.visual-style-ciclos .hb-profile-page-v12 :is(h1,h2,.hb-profile-info-tile strong){font-family:Georgia,'Times New Roman',serif}
+.app-shell.visual-style-ciclos .hb-profile-page-v12 :is(h1,h2,.hb-profile-info-tile strong){font-family:Georgia,"Times New Roman",serif}
+
+
+
+
+/* ======================================================================
+   HÄX · THE RUBY OBSERVATORY — V23
+   Same artwork slots as Eclipse / Kisatsutai / Cyberflower / Ciclos:
+   banner heroes, profile banner, sidebar crest, style gallery.
+   Original SVG illustration; no free-floating main-content decoration.
+   ====================================================================== */
+
+
+
+
+
+/* Exactly the same hero containers and positions used by the four other styles. */
+
+
+
+
+
+
+
+/* Crest always in the same sidebar locations as the other styles. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Profile art uses the same dedicated slot as every other style. */
+
+
+
+
+/* Preview uses the actual new hero art, with the same dimensions as other cards. */
+.app-shell .season-visual-style-group .season-style-hax {--card-art:color-mix(in srgb,var(--season-primary) 35%,#d0a68d)}
+.app-shell .season-visual-style-group .season-style-hax .season-style-preview {
+  background:linear-gradient(90deg,#120e15 0%,rgba(18,14,21,.63) 28%,transparent 71%),url("./style-art/hax-hero.svg") right center/cover no-repeat,linear-gradient(140deg,#17101a,#30202a) !important;
+  border:1px solid #77515a;border-radius:7px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.16);
+}
+
+.app-shell .season-style-hax .season-style-preview::before {content:none !important}
+.app-shell .season-style-hax .season-style-preview-orb {display:none !important}
+.app-shell .season-style-hax .season-style-preview-glyph {position:relative;z-index:2;color:#e4b6a6}
+.app-shell .season-style-hax .season-style-card-info strong {font-family:Georgia,"Times New Roman",serif}
+
+/* Assinatura temática no seletor, no mesmo lugar dos outros estilos. */
+.app-shell .season-style-hax .season-style-card-info strong::after {
+  content: " // VISÃO DAS SOMBRAS";
+  display: block;
+  margin-top: 6px;
+  font: 650 9px/1.4 "Cascadia Code", Consolas, monospace;
+  letter-spacing: .14em;
+  color: #d5a08f;
+}
+
+@media(max-width:800px){
+  
+}
+@media(max-width:540px){
+  
+  
+}
+@media(prefers-reduced-motion:reduce){}
+
+
+/* ============================================================================
+   HÄX / V29 · A VIGÍLIA — ACABAMENTO
+   Somente visual-style-hax: arquitetura gótica, cobre antigo, luz lunar.
+   Preserva os caminhos vetoriais v28 e os slots de arte dos demais estilos.
+   Não usa overlays nem interfere com eventos da interface.
+   ============================================================================ */
+
+/* HEROES — contraste no texto à esquerda, gravura preservada à direita. */
+
+
+
+
+
+/* SIDEBAR — a mesma arte/posição dos demais estilos, agora com relevo. */
+
+
+
+
+
+
+
+
+
+
+
+/* FICHAS, LOJAS E COLEÇÕES — material de pergaminho escuro gravado. */
+
+
+
+
+/* CONTROLES — sem trocar tamanhos e sem cobrir áreas clicáveis. */
+
+
+
+
+
+/* PERFIL V15 — inclui os slots reais, antes sem arte específica do Häx. */
+
+
+
+
+
+
+
+
+
+
+/* CATÁLOGO DE ESTILOS — acabamento correspondente à arte, sem repetir o SVG. */
+.app-shell .season-visual-style-group .season-style-hax .season-style-preview {
+  border-color:#9e737e;
+  border-top:2px solid #d1a796;
+  box-shadow:inset 0 0 0 1px rgba(235,189,176,.10),0 12px 26px rgba(0,0,0,.16);
+}
+.app-shell .season-visual-style-group .season-style-hax:hover:not(:disabled) .season-style-preview {
+  border-color:#dcab9d;
+}
+@media(max-width:540px){
+  
+  
+}
+@media(prefers-reduced-motion:reduce){
+  
+}
+
+/* HÄX — VIGÍLIA LUNAR | enso de tinta, lâmina rúnica, corvos */
+.app-shell.visual-style-hax {
+ --tyr-ink:color-mix(in srgb,var(--season-bg) 88%,#071518);
+ --tyr-slate:color-mix(in srgb,var(--season-surface) 84%,#152529);
+ --tyr-silver:color-mix(in srgb,var(--season-primary) 16%,#d8c9a8);
+ --tyr-line:color-mix(in srgb,var(--tyr-silver) 34%,var(--season-line));
+ --tyr-wash:color-mix(in srgb,var(--tyr-silver) 11%,transparent);
+ --hb-menu-line:var(--tyr-line);
+ --hb-menu-wash:var(--tyr-wash);
+ --hb-menu-bright:var(--tyr-silver);
+ --hb-decor-hero-art:url("./style-art/hax-hero.svg");
+ --hb-art-background:linear-gradient(125deg,var(--tyr-ink),var(--tyr-slate) 76%,var(--season-bg));
+}
+.app-shell.visual-style-hax .main-content:not(.hb-vtt-app-main){background-image:radial-gradient(ellipse at 93% 0%,var(--tyr-wash),transparent 45%)}
+.app-shell.visual-style-hax .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero){
+ position:relative;isolation:isolate;overflow:hidden!important;border:1px solid var(--tyr-line)!important;border-top:2px solid var(--tyr-silver)!important;border-radius:8px!important;
+ background:var(--hb-art-background)!important;box-shadow:0 12px 29px rgba(0,0,0,.16),inset 0 1px 0 var(--tyr-wash)!important;
+}
+.app-shell.visual-style-hax .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::before{
+ content:""!important;display:block!important;position:absolute!important;top:0!important;right:0!important;bottom:auto!important;left:auto!important;width:min(66%,690px)!important;height:100%!important;
+ opacity:.93!important;border:0!important;border-radius:0!important;background:url("./style-art/hax-hero.svg") right center/cover no-repeat!important;mask:none!important;-webkit-mask:none!important;box-shadow:none!important;transform:none!important;pointer-events:none!important;z-index:0!important;
+}
+.app-shell.visual-style-hax .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::after{content:none!important}
+.app-shell.visual-style-hax .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)>*{position:relative;z-index:1}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar{background:linear-gradient(165deg,var(--tyr-ink),var(--season-surface) 72%,var(--season-bg))!important;border-right:1px solid var(--tyr-line)!important}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar::before{content:"";position:absolute;right:-40px;top:-10px;width:230px;height:230px;background:url("./style-art/hax-crest.svg") center/contain no-repeat;opacity:.16;pointer-events:none}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar>*{position:relative;z-index:1}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-style-identity{position:relative;isolation:isolate;overflow:hidden;border:1px solid var(--tyr-line);border-top:2px solid var(--tyr-silver);border-radius:5px;background:linear-gradient(105deg,var(--tyr-wash),var(--tyr-slate))}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-style-identity::after{content:"";position:absolute;right:5px;top:-10px;width:84px;height:84px;background:url("./style-art/hax-crest.svg") center/contain no-repeat;opacity:.32;pointer-events:none}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-style-identity>*{position:relative;z-index:1}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav .nav-link{border-radius:5px}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav .nav-link.active{background:linear-gradient(90deg,var(--tyr-wash),transparent)!important;border:1px solid var(--tyr-line);border-left:3px solid var(--tyr-silver)}
+.app-shell.visual-style-hax :is(.page-content h1,.page-content h2,.hb-sidebar-brand-copy strong){font-family:Georgia,"Times New Roman",serif;letter-spacing:.02em}
+.app-shell.visual-style-hax .page-content :is(.sheet-card,.sheet-summary-card,.sheet-summary-status-card,.sheet-library-card,.sheet-inventory-section,.enemy-hub-card,.hb-beast-card,.hb-ms-pane,.shop-item-card,.campaign-card,.armor-equipped-card,.combat-action-card){border-color:var(--tyr-line)!important;border-radius:8px!important;background-image:linear-gradient(145deg,var(--tyr-wash),transparent 48%);box-shadow:inset 0 1px 0 var(--tyr-wash)}
+.app-shell.visual-style-hax .page-content :is(.sheet-card,.sheet-library-card,.hb-beast-card,.shop-item-card,.campaign-card):hover{border-color:var(--tyr-silver)!important;box-shadow:0 10px 22px rgba(0,0,0,.15)}
+.app-shell.visual-style-hax :is(.primary-button,.hb-sidebar-create,.hb-sidebar-invite-button){border:1px solid var(--tyr-line);border-radius:5px;background-image:linear-gradient(120deg,var(--tyr-wash),transparent)}
+.app-shell.visual-style-hax :is(button,input,textarea,select,a):focus-visible{outline:2px solid var(--tyr-silver);outline-offset:3px}
+.app-shell.visual-style-hax .hb-profile-page-v15 .hb-profile-identity-cover-art{background-image:url("./style-art/hax-hero.svg");opacity:.83}
+.app-shell.visual-style-hax .hb-profile-page-v15 .hb-profile-preview-art{background-image:url("./style-art/hax-hero.svg");opacity:.35}
+.app-shell.visual-style-hax .hb-profile-page-v15 .hb-profile-story::before{background-image:url("./style-art/hax-crest.svg");opacity:.12}
+.app-shell.visual-style-hax .hb-profile-page-v15 :is(.hb-profile-story,.hb-profile-card,.hb-profile-side-card,.hb-profile-info-tile,.hb-profile-preview-card){border-color:var(--tyr-line);border-radius:8px;background-image:linear-gradient(150deg,var(--tyr-wash),transparent 42%)}
+.app-shell .season-visual-style-group .season-style-tyr .season-style-preview{background:linear-gradient(90deg,#0a1318 0%,rgba(10,19,24,.72) 28%,transparent 73%),url("./style-art/hax-hero.svg") right center/cover no-repeat,linear-gradient(130deg,#101c21,#263c3d)!important;border:1px solid #72938b;border-top:2px solid #d8c9a8;border-radius:7px}
+.app-shell .season-style-tyr .season-style-preview::before{content:none!important}
+.app-shell .season-style-tyr .season-style-preview-orb{display:none!important}
+.app-shell .season-style-tyr .season-style-preview-glyph{position:relative;z-index:2;color:#c9dacf}
+.app-shell .season-style-tyr .season-style-card-info strong{font-family:Georgia,"Times New Roman",serif}
+.app-shell .season-visual-style-group .season-style-tyr .season-style-signature{letter-spacing:.13em;color:#d4c3a0}
+@media(max-width:800px){.app-shell.visual-style-hax .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::before{width:55%!important;opacity:.55!important}}
+@media(max-width:540px){.app-shell.visual-style-hax .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero)::before{width:38%!important;opacity:.28!important}}
+
+/* v44 — Häx: mantém a gravura decorativa dentro da identidade visual,
+   sem atravessar o seletor de campanha ou os links do menu. */
+.app-shell.hb-polish.visual-style-hax .hb-sidebar::before {
+  content: none !important;
+  background: none !important;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-style-identity {
+  isolation: isolate;
+  overflow: hidden;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-style-identity::after {
+  right: 0; top: 50%; transform: translateY(-50%);
+  width: 74px; height: 74px; opacity: .17;
+  background-size: contain; background-repeat: no-repeat;
+  pointer-events: none; z-index: 0;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace,
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav,
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav-group {
+  position: relative; isolation: isolate; z-index: 2;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace {
+  height: auto; min-height: 0; overflow: visible; flex-shrink: 0;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav .nav-link {
+  position: relative; z-index: 1;
+}
+
+/* v45 — Corrige o recorte do bloco "Espaço de jogo" na barra lateral.
+   O bloco deve crescer com seu conteúdo, sem esconder o seletor de campanha. */
+.app-shell.hb-polish.visual-style-hax .hb-sidebar {
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px;
+  height: auto !important;
+  max-height: none !important;
+  min-height: max-content !important;
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+  padding: 14px 12px !important;
+  box-sizing: border-box;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 30px;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace > label,
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-campaign-field,
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace > button {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 2;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace::before,
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-workspace::after {
+  content: none !important;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav {
+  position: relative;
+  flex: 0 0 auto;
+  margin-top: 12px !important;
+  clear: both;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-nav-group {
+  margin-top: 0;
+}
+.app-shell.hb-polish.visual-style-hax .hb-sidebar-style-identity::after {
+  content: none !important;
+}
+
+/* v46: isolamos a gravura do menu e evitamos que cubra a área de jogo. */
+.app-shell.visual-style-hax .hb-sidebar::before,
+.app-shell.visual-style-hax .hb-sidebar::after { content:none!important;display:none!important; }
+.app-shell.visual-style-hax .hb-sidebar-style-identity::after {
+  background-image:url("./style-art/hax-crest.svg")!important;
+  background-size:contain!important;
+  opacity:.13!important;
+  right:0!important;top:0!important;
+  width:72px!important;height:72px!important;
+  transform:none!important;
+}
+.app-shell.visual-style-hax .hb-sidebar-workspace {
+  position:relative!important;
+  height:auto!important;min-height:0!important;max-height:none!important;
+  overflow:visible!important;flex-shrink:0!important;
+  display:flex!important;flex-direction:column!important;
+  padding:15px 13px 12px!important;
+  margin:12px 0 0!important;
+  isolation:isolate!important;
+}
+.app-shell.visual-style-hax .hb-sidebar-workspace-top {
+  display:flex!important;align-items:center!important;
+  flex-wrap:wrap!important;justify-content:space-between!important;
+  margin-bottom:4px!important;gap:8px!important;
+}
+.app-shell.visual-style-hax .hb-sidebar-workspace label,
+.app-shell.visual-style-hax .hb-sidebar-campaign-field,
+.app-shell.visual-style-hax .hb-sidebar-create {
+  display:flex;position:relative!important;visibility:visible!important;
+  opacity:1!important;transform:none!important;
+}
+.app-shell.visual-style-hax .hb-sidebar-nav {position:relative!important;margin-top:20px!important;}
