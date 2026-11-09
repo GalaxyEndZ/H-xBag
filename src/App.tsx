@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import Auth from './Auth'
+import { ConditionsPanel, CharacterConditions } from './ConditionsPanel'
 import './App.css'
 import './themes/seasonThemes.css'
 import './themes/seasonThemes-enhanced.css'
@@ -25,8 +26,9 @@ const SKILL_GROUP_ALIAS: Record<string, string[]> = {
   'Linha de Frente': ['Linha de Frente'], Defensor: ['Defensores'], Defensores: ['Defensores'],
   Flanco: ['Flanco'], Especialista: ['Especialistas'], Especialistas: ['Especialistas'],
   Suporte: ['Suporte'], Gerais: ['Sociais', 'Conhecimentos Gerais', 'Naturais'],
-  'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
-  'qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  // A vaga livre usa o mesmo conjunto de perícias extras/de arquétipo do Intelecto.
+  'Qualquer Arquétipo': ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  'qualquer Arquétipo': ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
   'Suporte/Defensor': ['Suporte', 'Defensores'],
 }
 const KISATSUTAI_GROUP_NAMES = Object.keys(KISATSUTAI_SKILL_GROUPS)
@@ -77,8 +79,7 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   const distribution = (skills.distributionByPath?.[key] || {}) as Record<string, string>
   // Cada ponto de Intelecto dedicado a perícias extras concede um passo de +5.
   // Pode iniciar uma perícia geral em +5 ou melhorar uma já treinada até +15.
-  const generalGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais']
-  const intellectGroups = [...generalGroups, 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte']
+  const intellectGroups = resolveTrainingGroups('Qualquer Arquétipo')
   const intellectOptions = intellectGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
   const intellectSelections: string[] = Array.isArray(skills.intellectExtraAllocations) ? skills.intellectExtraAllocations.slice(0, intellectExtraLevels) : []
   const baseTrainings: Record<string, TrainingLevel> = {}
@@ -540,6 +541,7 @@ const categories = [
   'Equipamento',
   'Kits',
   'Consumíveis',
+  'Alimentos',
   'Tesouros',
   'Diversos',
 ]
@@ -555,9 +557,168 @@ const availableEmojis = [
   '🔑', '📜', '📕', '💎', '💰', '🪙',
   '💍', '👑', '🪶', '🪓', '🔨', '⛏️',
   '🔥', '❄️', '🌿', '💀', '🐉', '✨',
-  '🦑', '🐦‍⬛',
+  '🦑', '🐦‍⬛', '🧙', '🧝', '🧛', '🧚', '🥷', '🧑‍🎤', '🧑‍🚀', '🧑‍🔬', '👻', '👾', '🤖', '🦊', '🐻', '🐯', '🦁', '🐲', '🦅', '🦉', '🐍', '🦋', '🌙', '⭐', '🌟', '⚡', '🌊', '🌪️', '🌸', '🍀', '🌹', '🎭', '🎯', '🎲', '🏰', '🗝️', '🔮', '🪬', '🧿', '🪷', '💠', '❤️‍🔥', '🖤', '🤍', '💜', '💚', '💙', '🧡', '🩵', '🩶', '💫', '🛡️',
 ]
 
+
+
+// Descanso: rolagem auditável e aplicação opcional na ficha por RPC existente.
+type RestRecovery = { pv: number; ps: number; pr: number; fullPV: boolean; fullPR: boolean; foodItemId: string | null; kitItemId: string | null; kitType: string; requestId: string }
+function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
+  inventoryItems: Item[]
+  onApply: (recovery: RestRecovery) => Promise<void>
+  canApply: boolean
+  maxPR: number
+}) {
+  const [showDetails, setShowDetails] = useState(false)
+  const [rest, setRest] = useState('mediano')
+  const [bonus, setBonus] = useState('nenhum')
+  const [kit, setKit] = useState('nenhum')
+  const [kitTest, setKitTest] = useState('20')
+  const [foodItemId, setFoodItemId] = useState('')
+  const [kitItemId, setKitItemId] = useState('')
+  const [exhaustedDays, setExhaustedDays] = useState(0)
+  const [result, setResult] = useState('')
+  const [recovery, setRecovery] = useState<RestRecovery | null>(null)
+  const [applying, setApplying] = useState(false)
+  const [applied, setApplied] = useState(false)
+  const allowedBonus = rest === 'precario' ? ['nenhum', 'respirar'] : rest === 'mediano' || rest === 'completo' ? ['nenhum','refeicao','meditacao','respirar'] : ['nenhum']
+  const hasCategory = (item: Item, category: string) => item.category === category || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes(category))
+  const usable = (item: Item) => hasCategory(item, 'Consumíveis') && item.quantity > 0 && item.metadata?.scarcityExhausted !== true && Number(item.metadata?.scarcityCharge ?? 1) > 0
+  const foods = inventoryItems.filter(item => usable(item) && hasCategory(item, 'Alimentos'))
+  const bandages = inventoryItems.filter(item => usable(item) && /bandag(em|ens)/i.test(item.name))
+  const therapistKits = inventoryItems.filter(item => usable(item) && /kit de terapeuta|kit terap[eê]utic|incenso/i.test(item.name))
+  const availableKits = kit === 'bandagens' ? bandages : kit === 'incensos' ? therapistKits : []
+  const chosenFood = foods.find(item => item.id === foodItemId)
+  const chosenKit = availableKits.find(item => item.id === kitItemId)
+  const selectionError = (rest === 'nenhum' && kit !== 'nenhum') ? 'Sem descanso não permite utilizar kits.' : bonus === 'refeicao' && !chosenFood ? 'Selecione um alimento disponível no inventário.' : kit !== 'nenhum' && !chosenKit ? 'Selecione o kit disponível no inventário.' : ''
+  const roll = (count: number, faces: number) => Array.from({length: count}, () => 1 + Math.floor(Math.random() * faces)).reduce((a,b) => a+b,0)
+  const resetResult = () => {setResult('');setRecovery(null);setApplied(false)}
+  const perform = () => {
+    resetResult()
+    if (rest === 'nenhum') {
+      const days = exhaustedDays + 1
+      setExhaustedDays(days)
+      setResult(days >= 2 ? 'Segundo dia sem descanso: personagem inconsciente, Exausto e Vulnerável.' : 'Sem descanso: Exausto e Vulnerável até o próximo descanso.')
+      return
+    }
+    if (selectionError) {setResult(selectionError);return}
+    if (kit !== 'nenhum' && (!kitTest.trim() || !Number.isFinite(Number(kitTest)))) {
+      setResult('Informe um resultado numérico válido para o teste do kit.')
+      return
+    }
+    setExhaustedDays(0)
+    let pv = 0, ps = 0, pr = 0
+    if (rest === 'precario') { pv = roll(1,4); ps = roll(1,4) }
+    if (rest === 'mediano') { pv = roll(bonus === 'refeicao' ? 4 : 2,6); ps = roll(bonus === 'meditacao' ? 2 : 1,6) }
+    if (rest === 'completo') { pv = roll(bonus === 'refeicao' ? 8 : 4,6); ps = roll(bonus === 'meditacao' ? 4 : 2,6) }
+    if (rest === 'intensivo') { ps = roll(6,6) }
+    if (bonus === 'respirar') pr = Math.ceil(Math.max(0,maxPR) * (rest === 'precario' ? .25 : .5))
+    let extra = ''
+    if (kit === 'bandagens') { const passed = Number(kitTest) >= 20; pv += roll(passed ? 4 : 2,8); extra = ` Medicina DT 20: ${passed ? 'sucesso (+4d8 PV)' : 'falha (+2d8 PV)'}.` }
+    if (kit === 'incensos') { const passed = Number(kitTest) >= 20; ps += roll(passed ? 2 : 1,8); extra = ` Terapia DT 20: ${passed ? 'sucesso (+2d8 PS)' : 'falha (+1d8 PS)'}. Até 4 participantes.` }
+    const next: RestRecovery = {pv,ps,pr,fullPV:rest === 'intensivo',fullPR:rest === 'intensivo',foodItemId:bonus === 'refeicao' ? foodItemId : null,kitItemId:kit !== 'nenhum' ? kitItemId : null,kitType:kit,requestId:crypto.randomUUID()}
+    setRecovery(next)
+    setResult(rest === 'intensivo' ? `Após 3 dias: PV e PR totalmente restaurados; PS +${ps}.${extra}` : `Recuperação: PV +${pv}, PS +${ps}, PR +${pr}.${extra}`)
+  }
+  const restOptions = [
+    {id:'nenhum',icon:'🌑',name:'Sem descanso',time:'Sem recuperação',desc:'Exausto e Vulnerável; 2 dias seguidos: inconsciente'},
+    {id:'precario',icon:'🌙',name:'Precário',time:'Até 2 horas',desc:'1d4 PV · 1d4 PS'},
+    {id:'mediano',icon:'🛏️',name:'Mediano',time:'Até 4 horas',desc:'2d6 PV · 1d6 PS'},
+    {id:'completo',icon:'✨',name:'Completo',time:'Até 8 horas',desc:'4d6 PV · 2d6 PS'},
+    {id:'intensivo',icon:'💚',name:'Intensivo',time:'3 dias completos',desc:'PV e PR totais · 6d6 PS'},
+  ]
+  const bonusOptions = [
+    {id:'nenhum',icon:'➖',name:'Nenhum',desc:'Sem bônus adicional'},
+    {id:'refeicao',icon:'🍲',name:'Refeição',desc:'Dobra os dados de PV'},
+    {id:'meditacao',icon:'🧘',name:'Meditação',desc:'Dobra os dados de PS'},
+    {id:'respirar',icon:'🌬️',name:'Respirar',desc:'Recupera 25% ou 50% dos PR'},
+  ]
+  const kitOptions = [
+    {id:'nenhum',icon:'➖',name:'Nenhum',desc:'Sem tratamento adicional'},
+    {id:'bandagens',icon:'🩹',name:'Tratamentos Prolongados',desc:'Medicina DT 20 · +4d8 ou +2d8 PV'},
+    {id:'incensos',icon:'🪔',name:'Incensos Terapêuticos',desc:'Terapia DT 20 · +2d8 ou +1d8 PS'},
+  ]
+  const choiceStyle = (active:boolean, disabled=false): React.CSSProperties => ({
+    display:'grid',gridTemplateColumns:'24px minmax(0,1fr)',alignContent:'center',alignItems:'center',columnGap:7,rowGap:2,textAlign:'left',
+    border:active?'1px solid var(--accent, #6da6f6)':'1px solid var(--border, #5a5a5a55)',
+    borderRadius:9,padding:'7px 9px',background:active?'color-mix(in srgb, var(--accent, #6da6f6) 12%, transparent)':'var(--surface, transparent)',
+    opacity:disabled?.45:1,cursor:disabled?'not-allowed':'pointer',minWidth:0,width:'100%',color:'inherit',
+  })
+  const gridStyle:React.CSSProperties = {display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))',gap:6,marginTop:5}
+  const titleStyle:React.CSSProperties = {display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap',marginBottom:3}
+  const isUnconsumedItemBonus = bonus === 'refeicao' || kit !== 'nenhum'
+  const restLabel = restOptions.find(option => option.id === rest)
+  const bonusLabel = bonusOptions.find(option => option.id === bonus)
+  const kitLabel = kitOptions.find(option => option.id === kit)
+  const recoveryPreview = rest === 'nenhum' ? 'Exausto + Vulnerável' : rest === 'precario' ? '1d4 PV · 1d4 PS' : rest === 'mediano' ? `${bonus === 'refeicao' ? '4d6' : '2d6'} PV · ${bonus === 'meditacao' ? '2d6' : '1d6'} PS` : rest === 'completo' ? `${bonus === 'refeicao' ? '8d6' : '4d6'} PV · ${bonus === 'meditacao' ? '4d6' : '2d6'} PS` : 'PV + PR completos · 6d6 PS'
+  const prPreview = bonus === 'respirar' ? ` · +${rest === 'precario' ? '25%' : '50%'} PR` : ''
+  return <section className="combat-skill-test" style={{marginTop:6,display:'grid',gap:8,width:'100%',maxWidth:'none',minWidth:0,boxSizing:'border-box'}}>
+    <header style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+      <div style={{display:'grid',gap:3}}><strong style={{fontSize:'1.05rem'}}>🛏️ Descanso e Recuperação</strong><small>Escolha as opções, confira os recursos e role a recuperação.</small></div>
+      <span style={{fontSize:'.76rem',padding:'5px 9px',borderRadius:999,border:'1px solid var(--border, #5a5a5a55)'}}>🎲 {restLabel?.time}</span>
+    </header>
+    <div>
+      <div style={titleStyle}><strong>01 · Tipo de descanso</strong><small>{restLabel?.name} selecionado</small></div>
+      <div style={gridStyle}>{restOptions.map(option=><button type="button" key={option.id} style={choiceStyle(rest===option.id)} aria-pressed={rest===option.id} onClick={()=>{setRest(option.id);setBonus('nenhum');setFoodItemId('');setKit('nenhum');setKitItemId('');resetResult()}}>
+        <span style={{fontSize:'1rem',gridRow:'1 / span 2'}}>{option.icon}</span><strong style={{fontSize:'.88rem'}}>{option.name} <span style={{fontWeight:400,opacity:.7}}>· {option.time}</span></strong><small style={{gridColumn:2,lineHeight:1.25,opacity:.8}}>{option.desc}</small>
+      </button>)}</div>
+    </div>
+    <div>
+      <div style={titleStyle}><strong>02 · Bônus do descanso</strong><small>{foods.length} alimento(s) disponível(is)</small></div>
+      <div style={gridStyle}>{bonusOptions.map(option=>{const disabled=!allowedBonus.includes(option.id) || (option.id === 'refeicao' && foods.length === 0);return <button type="button" key={option.id} disabled={disabled} aria-pressed={bonus===option.id} style={choiceStyle(bonus===option.id,disabled)} onClick={()=>{setBonus(option.id);setFoodItemId('');resetResult()}}>
+        <span style={{fontSize:'1rem',gridRow:'1 / span 2'}}>{option.icon}</span><strong style={{fontSize:'.88rem'}}>{option.name}</strong><small style={{gridColumn:2,lineHeight:1.25,opacity:.8}}>{option.desc}</small>
+      </button>})}</div>
+    </div>
+    <div>
+      {bonus === 'refeicao' && <label className="combat-skill-test-field" style={{display:'grid',gap:6,marginTop:8}}><span>🍲 Alimento disponível</span><select value={foodItemId} onChange={e=>{setFoodItemId(e.target.value);resetResult()}}><option value="">Selecione um alimento...</option>{foods.map(item=><option key={item.id} value={item.id}>{item.name} · Escassez nível {String(item.metadata?.scarcityLevel ?? 1)}</option>)}</select></label>}
+    <div style={titleStyle}><strong>03 · Kit de tratamento</strong><small>{bandages.length + therapistKits.length} kit(s) disponível(is)</small></div>
+      <div style={gridStyle}>{kitOptions.filter(option=>option.id==='nenhum'||(rest !== 'nenhum' && (option.id==='bandagens'?bandages:therapistKits).length>0)).map(option=><button type="button" key={option.id} aria-pressed={kit===option.id} style={choiceStyle(kit===option.id)} onClick={()=>{setKit(option.id);setKitItemId('');resetResult()}}>
+        <span style={{fontSize:'1rem',gridRow:'1 / span 2'}}>{option.icon}</span><strong style={{fontSize:'.88rem'}}>{option.name}</strong><small style={{gridColumn:2,lineHeight:1.25,opacity:.8}}>{option.desc}</small>
+      </button>)}</div>
+      {kit!=='nenhum' && <label className="combat-skill-test-field" style={{display:'grid',gap:6,marginTop:8}}><span>🧰 Kit disponível</span><select value={kitItemId} onChange={e=>{setKitItemId(e.target.value);resetResult()}}><option value="">Selecione um kit...</option>{availableKits.map(item=><option key={item.id} value={item.id}>{item.name} · Escassez nível {String(item.metadata?.scarcityLevel ?? 1)}</option>)}</select></label>}
+      {kit!=='nenhum' && <label className="combat-skill-test-field" style={{display:'grid',gap:6,marginTop:8,maxWidth:280}}><span>Resultado do teste · INT + {kit==='bandagens'?'Medicina':'Terapia'} (DT 20)</span><input type="number" value={kitTest} onChange={e=>{setKitTest(e.target.value);resetResult()}} /></label>}
+    </div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'wrap',padding:'6px 9px',border:'1px solid var(--border, #5a5a5a55)',borderRadius:9}}>
+      <div style={{display:'grid',gap:2}}><strong style={{fontSize:'.87rem'}}>🎒 Recursos disponíveis</strong><small>🍲 {foods.length} alimentos · 🩹 {bandages.length} bandagens · 🪔 {therapistKits.length} kits terapêuticos</small></div>
+      <button type="button" aria-expanded={showDetails} onClick={()=>setShowDetails(value=>!value)}>{showDetails?'Ocultar regras':'Ver regras'}</button>
+    </div>
+    {showDetails && <div style={{padding:10,borderRadius:10,background:'var(--surface, #80808015)',display:'grid',gap:5,fontSize:'.82rem'}}>
+      <strong>📖 Regras rápidas</strong>
+      <span>🌑 Sem descanso: Exausto e Vulnerável; segundo dia consecutivo: inconsciente.</span>
+      <span>🍲 Refeição dobra os dados de PV; 🧘 Meditação dobra os dados de PS (descanso mediano ou completo).</span>
+      <span>🌬️ Respirar: recupera 25% dos PR no precário ou 50% no mediano/completo.</span>
+      <span>🩹 Bandagens: INT + Medicina DT 20, +4d8 PV no sucesso, +2d8 na falha.</span>
+      <span>🪔 Kit de Terapeuta: INT + Terapia DT 20, +2d8 PS no sucesso, +1d8 na falha; até 4 jogadores.</span>
+      <span>⚠️ O consumo por Escassez precisa ser confirmado antes de aplicar a recuperação.</span>
+    </div>}
+    <div style={{padding:9,borderRadius:9,border:'1px solid var(--border, #5a5a5a55)',display:'grid',gap:5}}>
+      <strong>📋 Resumo e recuperação</strong>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6,fontSize:'.82rem'}}>
+        {[`${restLabel?.icon} ${restLabel?.name}`,`${bonusLabel?.icon} ${bonusLabel?.name}`,`${kitLabel?.icon} ${kitLabel?.name}`].map(label=><span key={label} style={{padding:'5px 8px',borderRadius:7,background:'var(--surface, #80808015)'}}>{label}</span>)}
+      </div>
+      <div style={{fontSize:'.9rem'}}><strong>Recuperação prevista:</strong> {recoveryPreview}{prPreview}{kit !== 'nenhum' ? ` · ${kit === 'bandagens' ? '+4d8/+2d8 PV' : '+2d8/+1d8 PS'} (DT 20)` : ''}</div>
+      {chosenFood && <small>🍲 Alimento: {chosenFood.name}</small>}
+      {chosenKit && <small>🧰 Kit: {chosenKit.name}</small>}
+      {isUnconsumedItemBonus && <small>🎲 Ao aplicar, a Escassez será rolada e o consumo será salvo junto da recuperação.</small>}
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        <button type="button" disabled={Boolean(selectionError)} onClick={perform}>🎲 {rest === 'nenhum' ? 'Registrar sem descanso' : 'Rolar recuperação'}</button>
+        {recovery && <button type="button" disabled={!canApply || applying || applied} onClick={async()=>{setApplying(true);try{await onApply(recovery);setApplied(true)}catch(e){setResult(`Falha ao aplicar: ${e instanceof Error ? e.message : String(e)}`)}finally{setApplying(false)}}}>{applying?'Salvando...':applied?'✓ Aplicado':'💚 Aplicar na ficha'}</button>}
+      </div>
+      {selectionError && <small role="alert" style={{color:'var(--warning, #d9a64c)'}}>⚠️ {selectionError}</small>}
+      {result && <div role="status" style={{display:'grid',gap:7,padding:10,borderRadius:9,background:'var(--surface, #80808015)'}}>
+        <strong>🎲 Resultado do descanso</strong>
+        {recovery && <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:6}}>
+          {([['❤️','PV',recovery.fullPV?'Total':`+${recovery.pv}`],['🧠','PS',`+${recovery.ps}`],['💨','PR',recovery.fullPR?'Total':`+${recovery.pr}`]] as const).map(([emoji,name,value])=><div key={name} style={{padding:9,borderRadius:8,border:'1px solid var(--border, #5a5a5a55)',textAlign:'center',display:'grid',gap:3}}><small>{emoji} {name}</small><strong style={{fontSize:'1.2rem'}}>{value}</strong></div>)}
+        </div>}
+        <small>{result}</small>
+        {applied && <small>✓ Recuperação salva na ficha.</small>}
+      </div>}
+      {!canApply && <small>Para aplicar os pontos, selecione uma ficha que você possa editar.</small>}
+    </div>
+    <small>Condições de Exausto, Vulnerável e Inconsciente ainda exigem registro manual. A recuperação por rolagem não é persistida até clicar em Aplicar.</small>
+  </section>
+}
 
 function App() {                                                                                                                                                                                                                                                                                                                                                                                                                                                                
   const [session, setSession] = useState<Session | null>(null)
@@ -763,6 +924,10 @@ function App() {
   const [characterGrants, setCharacterGrants] = useState<CharacterGrant[]>([])
   const [visibilitySaving, setVisibilitySaving] = useState(false)
   const [items, setItems] = useState<Item[]>([])
+  const [transferItem, setTransferItem] = useState<Item | null>(null)
+  const [transferTargetId, setTransferTargetId] = useState('')
+  const [transferQuantity, setTransferQuantity] = useState(1)
+  const [transferSaving, setTransferSaving] = useState(false)
   const [currencyBalances, setCurrencyBalances] = useState<Record<string, number>>({})
   const [currencyAmount, setCurrencyAmount] = useState('')
   const [currencyDescription, setCurrencyDescription] = useState('')
@@ -1346,6 +1511,12 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [combatActionResult, setCombatActionResult] = useState<string>('')
   const [selectedSkillTest, setSelectedSkillTest] = useState<string>('')
   const [skillTestOpen, setSkillTestOpen] = useState(false)
+  const [restActionsOpen, setRestActionsOpen] = useState(false)
+  const [complexActionsOpen, setComplexActionsOpen] = useState(false)
+  const [complexSkill, setComplexSkill] = useState('')
+  const [complexResult, setComplexResult] = useState('')
+  const [complexUsed, setComplexUsed] = useState<Record<string, number>>({})
+  const [complexPending, setComplexPending] = useState<{skill: string; bonus: number} | null>(null)
   const [selectedSkillAttribute, setSelectedSkillAttribute] = useState<string>('strength')
   const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
   const [blockIncomingDamage, setBlockIncomingDamage] = useState('')
@@ -1370,7 +1541,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'conditions' | 'bestiary' | 'enemies' | 'profile'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -1488,8 +1659,8 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
 
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [search, setSearch] = useState('')
-  const [notice, setNotice] = useState('')
-  const [error, setError] = useState('')
+  const [, setNotice] = useState('')
+  const [, setError] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -4215,7 +4386,7 @@ async function handleCurrencyConversion() {
 
       if (!token) {
         throw new Error(
-          `A função do Supabase respondeu, mas não retornou um token válido. Resposta: ${JSON.stringify(data)}`,
+          `Não foi possível validar a resposta de autenticação. Resposta: ${JSON.stringify(data)}`,
         )
       }
 
@@ -4373,7 +4544,7 @@ async function deleteCampaign(campaign: Campaign) {
     if (updateError || !data) {
       const missingColumn = updateError?.code === '42703' || /visual_style_key/i.test(updateError?.message ?? '')
       setError(missingColumn
-        ? 'Para ativar os estilos, execute o arquivo SQL de estilos visuais no Supabase e tente novamente.'
+        ? 'Para ativar os estilos, instale a atualização de estilos visuais do HäxBag e tente novamente.'
         : `Não foi possível salvar o estilo: ${updateError?.message ?? 'resposta vazia'}`)
       return
     }
@@ -5468,7 +5639,7 @@ async function deleteCharacter(character: Character) {
 
     if (remaining) {
       throw new Error(
-        'A função SQL foi executada, mas o personagem ainda existe no banco. Verifique a função delete_character no Supabase.'
+        'Não foi possível confirmar a exclusão do personagem. Verifique as permissões e tente novamente.'
       )
     }
 
@@ -5833,7 +6004,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
 
       if (!data) {
         setError(
-          'O item não foi atualizado. Verifique as permissões no Supabase.',
+          'O item não foi atualizado. Verifique suas permissões e tente novamente.',
         )
         setLoading(false)
         return
@@ -5912,7 +6083,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
 
     if (!data) {
       setError(
-        'O emoji não foi alterado. Verifique as permissões de acesso no Supabase.',
+        'O emoji não foi alterado. Verifique suas permissões e tente novamente.',
       )
       return
     }
@@ -5950,7 +6121,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
       return
     }
     if (!data) {
-      setError('A quantidade não foi alterada. Verifique as permissões no Supabase.')
+      setError('A quantidade não foi alterada. Verifique suas permissões e tente novamente.')
       return
     }
 
@@ -5977,7 +6148,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
       return
     }
     if (!data) {
-      setError('O favorito não foi atualizado. Verifique as permissões no Supabase.')
+      setError('O favorito não foi atualizado. Verifique suas permissões e tente novamente.')
       return
     }
 
@@ -5985,7 +6156,44 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
     setNotice(!isFavorite ? `"${item.name}" adicionado aos favoritos.` : `"${item.name}" removido dos favoritos.`)
   }
 
-async function duplicateItem(item: Item) {
+async function sendItemToCharacter() {
+    if (!transferItem || !transferTargetId || transferSaving) return
+    const target = characters.find(character => character.id === transferTargetId && character.campaign_id === selectedCampaignId)
+    if (!target || target.id === transferItem.character_id) {
+      setError('Selecione outro personagem da mesma campanha.')
+      return
+    }
+    const amount = Math.floor(Number(transferQuantity))
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > transferItem.quantity) {
+      setError('A quantidade deve estar entre 1 e a quantidade disponível.')
+      return
+    }
+    setTransferSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      const { error: transferError } = await supabase.rpc('haxbag_transfer_inventory_item', {
+        p_item_id: transferItem.id,
+        p_target_character_id: target.id,
+        p_quantity: amount,
+      })
+      if (transferError) throw transferError
+      setItems(current => current.flatMap(entry => {
+        if (entry.id !== transferItem.id) return [entry]
+        if (amount >= entry.quantity) return []
+        return [{ ...entry, quantity: entry.quantity - amount }]
+      }))
+      setTransferItem(null)
+      setTransferTargetId('')
+      setNotice(`${amount} × ${transferItem.name} enviado para ${target.name}.`)
+    } catch (err) {
+      setError(`Não foi possível enviar o item: ${err instanceof Error ? err.message : String(err)}. Verifique se o SQL de transferência foi instalado.`)
+    } finally {
+      setTransferSaving(false)
+    }
+  }
+
+  async function duplicateItem(item: Item) {
   const isInstalledCybernetic =
     item.metadata?.cybernetic === true &&
     (
@@ -6034,6 +6242,11 @@ async function duplicateItem(item: Item) {
       return
     }
 
+    if (!data) {
+      setError('Não foi possível confirmar a duplicação do item. Verifique suas permissões e tente novamente.')
+      return
+    }
+
     setItems((current) => [...current, data as Item])
     setNotice(`Cópia de "${item.name}" criada.`)
   }
@@ -6062,7 +6275,7 @@ async function duplicateItem(item: Item) {
 
     if (!data?.length) {
       setError(
-        'Nenhum item foi removido. Verifique as permissões de acesso no Supabase.',
+        'Nenhum item foi removido. Verifique suas permissões e tente novamente.',
       )
       return
     }
@@ -7184,7 +7397,9 @@ const attribute =
 
   const dice = roll.rolls
   const highest = roll.result
-  const total = highest + bonus
+  const preparationBonus = kind.startsWith('Ataque') ? (complexPending?.bonus || 0) : 0
+  const total = highest + bonus + preparationBonus
+  if (kind.startsWith('Ataque') && complexPending) setComplexPending(null)
 
   const diceDescription = roll.hasDisadvantage
     ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem) → ${highest}`
@@ -7237,7 +7452,7 @@ setBlockDamageReduction(
       kind === 'Ataque especial' ? 'Habilidade' : 'Combate'
 
     setCombatActionResult(
-      `${kind}: ${diceDescription} + ${bonusName} (${bonus}) = ${total}.`
+      `${kind}: ${diceDescription} + ${bonusName} (${bonus})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
     )
   }
 
@@ -7388,6 +7603,7 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                         : 'Não definida'
                       const dexterityLoss = Math.max(0, dexterity - armorDexterity)
                       return (
+                        <>
                         <section
                           className="combat-armor-panel sheet-armor-standalone sheet-armor-premium"
                           id={forEnemy ? 'inimigo-armadura-protecao' : 'ficha-armadura-protecao'}
@@ -7740,6 +7956,18 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                               : 'As proteções físicas complementam a redução de dano.'} A proteção de sanidade é calculada separadamente.</span>
                           </div>
                         </section>
+                        {isKisatsutaiSystem && <section className="combat-armor-panel sheet-armor-standalone" style={{marginTop:16,padding:20}} id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
+                          <h3>📚 Perícias Extras e de Arquétipo</h3><p>Treinamentos registrados na ficha do personagem.</p>
+                          <div className="sheet-summary-values" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10}}>
+                            {Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
+                              const key = `${group}:${skill.name}`
+                              const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string,string>
+                              const level = trainings[key] as TrainingLevel | undefined
+                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [<div key={key} style={{padding:10,border:'1px solid var(--season-line)',borderRadius:10}}><span>✧ {skill.name}<small style={{display:'block'}}>{group}</small></span><strong>+{KISATSUTAI_TRAINING[level]}</strong></div>] : []
+                            }))}
+                          </div>
+                        </section>}
+                        </>
                       )
                     }
 
@@ -8439,6 +8667,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="sheet-summary-season">{forEnemy ? 'Campanha' : (seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada')}</div>
                         </header>
                         <div className="sheet-section-heading" id={forEnemy ? 'inimigo-status' : 'ficha-status'}><span className="sheet-section-symbol" aria-hidden="true">♥</span><div><span className="sheet-section-kicker">RECURSOS VITAIS</span><h3>Status</h3><p>Acompanhe seus recursos, aplique ajustes e registre danos.</p></div></div>
+                        {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
                         <div className="sheet-summary-status">{derived.map(([label,value], index) => {
                           const keys = ['pv', 'ps', 'pr'] as const
                           const key = keys[index]
@@ -8607,6 +8836,16 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <strong>Teste de Perícia</strong>
                               <small>{skillTestOpen ? 'Fechar teste' : 'Escolher perícia e atributo'}</small>
                             </button>}
+                            {isKisatsutaiSystem && <button type="button" className="combat-action-card" aria-expanded={complexActionsOpen} aria-controls="haxbag-complex-actions" onClick={() => setComplexActionsOpen(open => !open)}>
+                              <span className="combat-action-icon">🧠</span>
+                              <strong>Ações Complexas</strong>
+                              <small>{complexActionsOpen ? 'Fechar preparo' : 'Preparar bônus para a próxima ação'}</small>
+                            </button>}
+                            {isKisatsutaiSystem && !forEnemy && <button type="button" className="combat-action-card" aria-expanded={restActionsOpen} aria-controls="haxbag-rest-actions" onClick={() => setRestActionsOpen(open => !open)}>
+                              <span className="combat-action-icon">🛏️</span>
+                              <strong>Descanso</strong>
+                              <small>{restActionsOpen ? 'Fechar opções de descanso' : 'Recuperar PV, PS e PR'}</small>
+                            </button>}
                           </div>
                           {isKisatsutaiSystem && (() => {
                             const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
@@ -8657,6 +8896,119 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia treinada. Distribua treinamentos em Editar ficha para habilitar os testes.</small>}
                             </div>
                           })()}
+                          {isKisatsutaiSystem && complexActionsOpen && (() => {
+                            const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
+                            const skills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
+                              const key = `${group}:${skill.name}`
+                              const level = trainings[key] as TrainingLevel | undefined
+                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [{key, label: `${skill.name} · ${group}`, bonus: KISATSUTAI_TRAINING[level]}] : []
+                            }))
+                            const chosen = skills.find(skill => skill.key === complexSkill)
+                            const result = Number(complexResult)
+                            const complexBonus = result >= 40 ? 5 : result >= 35 ? 5 : result >= 30 ? 4 : result >= 25 ? 3 : result >= 20 ? 2 : result >= 15 ? 1 : 0
+                            const validResult = complexResult.trim() !== '' && Number.isFinite(result) && result >= 0
+                            const alreadyUsed = Boolean(chosen && complexUsed[chosen.key] > 0)
+                            const savedBonus = chosen ? complexUsed[`${chosen.key}:bonus`] : undefined
+                            const thresholds = [{label:'15–19',bonus:1},{label:'20–24',bonus:2},{label:'25–29',bonus:3},{label:'30–34',bonus:4},{label:'35+',bonus:5}]
+                            return <div id="haxbag-complex-actions" className="combat-skill-test hax-complex-panel">
+                              <style>{`
+                                .hax-complex-panel{width:100%;max-width:none;box-sizing:border-box;margin-top:12px;padding:20px;border-radius:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+                                .hax-complex-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+                                .hax-complex-head strong{font-size:1.15rem;letter-spacing:-.02em}
+                                .hax-complex-head small{display:block;opacity:.75;margin-top:5px;line-height:1.45}
+                                .hax-complex-pill{border:1px solid var(--border-color,rgba(150,170,190,.25));background:rgba(120,145,175,.06);border-radius:999px;padding:7px 12px;font-size:.78rem;white-space:normal}
+                                .hax-complex-fields{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(180px,.65fr);gap:12px;align-items:end}
+                                .hax-complex-fields label{min-width:0;display:grid;gap:8px;font-size:.84rem;font-weight:600}
+                                .hax-complex-fields select,.hax-complex-fields input{width:100%;min-width:0;box-sizing:border-box;height:44px;border-radius:10px;padding:0 12px;background:var(--input-bg,rgba(10,16,22,.5));color:inherit;border:1px solid var(--border-color,rgba(150,170,190,.28))}
+                                .hax-complex-fields select:focus,.hax-complex-fields input:focus{outline:2px solid var(--accent,#75a8ed);outline-offset:1px}
+                                .hax-complex-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+                                .hax-complex-tier{border:1px solid var(--border-color,rgba(150,170,190,.22));border-radius:12px;padding:12px 8px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:rgba(120,145,175,.04);min-height:66px}
+                                .hax-complex-tier strong{font-size:1.25rem;line-height:1.1}.hax-complex-tier small{opacity:.7;font-size:.76rem}
+                                .hax-complex-tier.active{border-color:var(--accent,#75a8ed);background:rgba(90,145,220,.18);box-shadow:inset 0 0 0 1px var(--accent,#75a8ed)}
+                                .hax-complex-status{border:1px solid var(--border-color,rgba(150,170,190,.25));border-radius:12px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:rgba(120,145,175,.035)}
+                                .hax-complex-status-text{display:flex;flex-direction:column;gap:5px;min-width:0}
+                                .hax-complex-status strong{font-size:.94rem}.hax-complex-status small{opacity:.78;line-height:1.45}
+                                .hax-complex-buttons{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+                                .hax-complex-buttons button{min-height:40px;padding:8px 14px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+                                .hax-complex-buttons button:disabled{opacity:.42;cursor:not-allowed;filter:none}
+                                .hax-complex-note{opacity:.75;font-size:.78rem;line-height:1.5}
+                                .hax-complex-empty{border:1px dashed var(--border-color,rgba(150,170,190,.35));border-radius:12px;padding:14px;display:flex;gap:11px;align-items:center;background:rgba(120,145,175,.035)}
+                                .hax-complex-empty span{font-size:1.3rem}.hax-complex-empty div{display:grid;gap:3px}.hax-complex-empty small{opacity:.7}
+                                .hax-complex-footer{padding-top:11px;border-top:1px solid var(--border-color,rgba(150,170,190,.17))}
+                                @media(max-width:680px){.hax-complex-fields{grid-template-columns:1fr}.hax-complex-panel{padding:14px;gap:12px}.hax-complex-scale{gap:5px}.hax-complex-tier{padding:10px 3px;min-height:58px}.hax-complex-tier strong{font-size:1.05rem}.hax-complex-buttons button{flex:1 1 145px}}
+                              `}</style>
+                              <div className="hax-complex-head">
+                                <div><strong>🧠 Ações Complexas</strong><small>Prepare um bônus para o próximo ataque usando uma perícia treinada.</small></div>
+                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · Ataque: 1 ação</span>
+                              </div>
+                              <div className="hax-complex-fields">
+                                <label><span>📚 Perícia de preparo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{skills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
+                                <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Ex.: 27" /></label>
+                              </div>
+                              <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
+                              <div className="hax-complex-status">
+                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>{alreadyUsed ? 'Perícia já utilizada: repita para restaurar o bônus original.' : 'Selecione uma perícia e informe o resultado do teste.'}</small></div>
+                                {complexPending && <span className="hax-complex-pill">🎯 Pendente: +{complexPending.bonus} · {complexPending.skill}</span>}
+                              </div>
+                              <div className="hax-complex-buttons">
+                                <button type="button" disabled={!chosen || !validResult || alreadyUsed} onClick={() => {if(!chosen)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexPending({skill:chosen.label,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para o próximo ataque. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
+                                <button type="button" disabled={!chosen || !alreadyUsed} onClick={() => {if(!chosen)return;const bonus = savedBonus ?? 0;setComplexPending({skill:chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} restaurado.`)}}>🔁 Repetir preparo</button>
+                                <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexPending(null);setComplexResult('')}}>↺ Reiniciar combate</button>
+                              </div>
+                              {skills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia disponível</strong><small>Treine uma Perícia Extra ou de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
+                              <small className="hax-complex-note hax-complex-footer">💡 Uma preparação por perícia a cada combate. Repetir custa outra ação e recupera o bônus original. O bônus pendente vale para o próximo ataque.</small>
+                            </div>
+                          })()}
+                          {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
+                            canApply={Boolean(canEditSelectedSheet && selectedCharacterId && selectedSeasonId)}
+                            maxPR={sharedResourceMaximums.pr}
+                            inventoryItems={items.filter(item=>item.character_id===selectedCharacterId)}
+                            onApply={async recovery => {
+                              const parsed = JSON.parse(sheetDraft) as Record<string, any>
+                              const status = parsed.status || {}
+                              const current = status.current || {}
+                              const max = sharedResourceMaximums
+                              const getValue = (key: 'pv'|'ps'|'pr') => {
+                                const value = Number(current[key] ?? max[key])
+                                const maximum = Number(max[key])
+                                if (!Number.isFinite(value) || !Number.isFinite(maximum) || maximum < 0) throw new Error(`Valores de ${key.toUpperCase()} inválidos na ficha.`)
+                                return {value,maximum}
+                              }
+                              const pv = getValue('pv'), ps = getValue('ps'), pr = getValue('pr')
+                              const next = {
+                                ...parsed,
+                                status: {...status, current: {
+                                  ...current,
+                                  pv: recovery.fullPV ? pv.maximum : Math.min(pv.maximum, pv.value + recovery.pv),
+                                  ps: Math.min(ps.maximum, ps.value + recovery.ps),
+                                  pr: recovery.fullPR ? pr.maximum : Math.min(pr.maximum, pr.value + recovery.pr),
+                                }},
+                              }
+                              // A RPC de condições já é usada pelo HäxBag para persistir PV/PS/PR.
+                              if (!sheet?.id) throw new Error('Salve a ficha antes de aplicar o descanso.')
+                              const {data,error} = await supabase.rpc('apply_rest_with_scarcity', {
+                                p_request_id: recovery.requestId,
+                                p_sheet_id: sheet.id,
+                                p_pv: next.status.current.pv,
+                                p_ps: next.status.current.ps,
+                                p_pr: next.status.current.pr,
+                                p_food_id: recovery.foodItemId,
+                                p_kit_id: recovery.kitItemId,
+                                p_kit_type: recovery.kitType,
+                              })
+                              if (error || !data || typeof data !== 'object') throw new Error(error?.message || 'O banco não confirmou a recuperação.')
+                              const response = data as {sheet_data?: Record<string, unknown>; consumed?: Array<{id:string;name:string;roll:number;die:number;level:number;exhausted:boolean}>}
+                              if (!response.sheet_data) throw new Error('O banco não retornou a ficha atualizada.')
+                              setSheet({...sheet,sheet_data:response.sheet_data})
+                              setSheetDraft(JSON.stringify({...parsed,status:response.sheet_data.status || next.status},null,2))
+                              const consumed = response.consumed || []
+                              if (consumed.length) {
+                                const {data: refreshed,error:refreshError} = await supabase.from('inventory_items').select('*').eq('character_id',selectedCharacterId)
+                                if (!refreshError && refreshed) setItems(current=>[...current.filter(item=>item.character_id!==selectedCharacterId),...(refreshed as Item[])])
+                              }
+                              setNotice(`Descanso aplicado. ${consumed.map(item=>`${item.name}: d${item.die}=${item.roll}${item.exhausted?' (esgotou)':''}`).join(' · ')}`)
+                            }}
+                          /></div>}
                           <div className="combat-complementary-section">
                             <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares {forEnemy ? 'do inimigo' : 'do personagem'}.</p></div>
                             <div className="combat-action-grid combat-complementary-grid">
@@ -8916,7 +9268,7 @@ counterAttackDT
                 setSelectedCampaignId(campaignId)
                 const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
                 if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-                else if (activePage !== 'profile' && activePage !== 'master-chest') setNotice('Campanha principal atualizada para este perfil.')
+                // A troca de campanha é silenciosa; erros continuam sendo exibidos.
               }}
               aria-label="Selecionar campanha ativa"
             >
@@ -8946,6 +9298,7 @@ counterAttackDT
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
+            {isMaster && <button type="button" className={`nav-link ${activePage === 'conditions' ? 'active' : ''}`} onClick={() => setActivePage('conditions')} disabled={!selectedCampaignId}><span className="hb-sidebar-nav-icon">🩸</span><span className="hb-sidebar-nav-name">Condições</span><span className="hb-sidebar-nav-flair">MESTRE</span></button>}
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-chest' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('master-chest') }} disabled={!selectedCampaignId} aria-current={activePage === 'master-chest' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">🗝</span><span className="hb-sidebar-nav-name">Baú do Mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
@@ -9012,7 +9365,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', conditions: 'Condições', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -9034,6 +9387,7 @@ counterAttackDT
         </header>
 
         <div className={`page-content page-${activePage}`}>
+          {activePage === 'conditions' && isMaster && selectedCampaignId && <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c=>c.campaign_id===selectedCampaignId)} master={isMaster} />}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <MasterChest
               key={selectedCampaignId}
@@ -10760,7 +11114,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
           <section className="welcome-row">
 
 
@@ -11881,7 +12235,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   {activityLoading ? (
     <p className="master-shield-empty">Carregando atividades...</p>
   ) : activityTableMissing ? (
-    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
+    <p className="master-shield-empty">O histórico estará disponível após a ativação do registro de atividades.</p>
   ) : campaignActivities.length > 0 ? (
   <>
     <ul className="campaign-activity-list">
@@ -12339,6 +12693,8 @@ disabled={
                       </div>
                     </div>
 
+                    
+
                     <label>
                       Nome do item
                       <input
@@ -12400,7 +12756,10 @@ disabled={
                           {categories.filter(category => category !== 'Todos').map(category => (
                             <label key={category} className={newItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
                               <input type="checkbox" checked={newItemCategories.includes(category)} onChange={event => {
-                                const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
+                                let next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
+                                // Alimentos são sempre consumíveis e seguem a escassez.
+                                if (category === 'Alimentos' && event.target.checked && !next.includes('Consumíveis')) next = [...next, 'Consumíveis']
+                                if (category === 'Consumíveis' && !event.target.checked) next = next.filter(value => value !== 'Alimentos')
                                 setNewItemCategories(next)
                                 if (next.length) setNewItemCategory(next[0])
                                 const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
@@ -13807,7 +14166,10 @@ style={{cursor:'pointer'}}>
                                   {categories.filter(category => category !== 'Todos').map(category => (
                                     <label key={category} className={shopItemCategories.includes(category) ? 'item-classification-option selected' : 'item-classification-option'}>
                                       <input type="checkbox" checked={shopItemCategories.includes(category)} onChange={event => {
-                                        const next = event.target.checked ? [...shopItemCategories, category] : shopItemCategories.filter(value => value !== category)
+                                        let next = event.target.checked ? [...shopItemCategories, category] : shopItemCategories.filter(value => value !== category)
+                                // Alimentos são sempre consumíveis e seguem a escassez.
+                                if (category === 'Alimentos' && event.target.checked && !next.includes('Consumíveis')) next = [...next, 'Consumíveis']
+                                if (category === 'Consumíveis' && !event.target.checked) next = next.filter(value => value !== 'Alimentos')
                                         setShopItemCategories(next)
                                         if (next.length) setShopItemCategory(next[0])
                                         const automaticWeight = getAutomaticItemWeight(next, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass)
@@ -14804,29 +15166,9 @@ style={{cursor:'pointer'}}>
           </section>}
 
 
-          {error && (
-            <div className="notice" role="alert">
-              <span>!</span> {error}
-              <button
-                onClick={() => setError('')}
-                aria-label="Fechar aviso"
-              >
-                ×
-              </button>
-            </div>
-          )}
+          
 
-          {notice && activePage !== 'customization' && activePage !== 'master-chest' && (
-            <div className="notice" role="status">
-              <span>✓</span> {notice}
-              <button
-                onClick={() => setNotice('')}
-                aria-label="Fechar aviso"
-              >
-                ×
-              </button>
-            </div>
-          )}
+          
 
           {/* O formulário de campanha fica somente na página Campanhas. */}
 
@@ -15152,6 +15494,8 @@ style={{cursor:'pointer'}}>
                     {showItemForm ? 'Cancelar' : '+ Adicionar item'}
                   </button>
                 </div>
+
+                
 
                 {showItemForm &&
                   (selectedCharacterId || editingItem) &&
@@ -15611,6 +15955,24 @@ style={{cursor:'pointer'}}>
                               : '📦'}
                           </button>
 
+                          {transferItem?.id === item.id && (
+                            <div className="item-transfer-panel" onClick={event => event.stopPropagation()} style={{ padding: 12, marginBottom: 12, border: '1px solid var(--border, #666)', borderRadius: 10, display: 'grid', gap: 8 }}>
+                              <strong>Enviar {item.name}</strong>
+                              <label>Personagem de destino</label>
+                              <select value={transferTargetId} onChange={event => setTransferTargetId(event.target.value)}>
+                                <option value="">Selecione um personagem...</option>
+                                {characters.filter(character => character.campaign_id === selectedCampaignId && character.id !== item.character_id).map(character => (
+                                  <option key={character.id} value={character.id}>{character.name}</option>
+                                ))}
+                              </select>
+                              <label>Quantidade (máximo: {item.quantity})</label>
+                              <input type="number" min={1} max={item.quantity} step={1} value={transferQuantity} onChange={event => setTransferQuantity(Number(event.target.value))} />
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button type="button" disabled={transferSaving || !transferTargetId || transferQuantity < 1 || transferQuantity > item.quantity} onClick={() => void sendItemToCharacter()}>{transferSaving ? 'Enviando...' : 'Confirmar envio'}</button>
+                                <button type="button" disabled={transferSaving} onClick={() => setTransferItem(null)}>Cancelar</button>
+                              </div>
+                            </div>
+                          )}
                           <div className="item-actions">
                             <button
                               type="button"
@@ -15621,6 +15983,23 @@ style={{cursor:'pointer'}}>
                               onClick={() => void toggleFavorite(item)}
                             >
                               {item.metadata?.favorite === true ? '★' : '☆'}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="item-menu"
+                              title="Enviar para outro personagem"
+                              aria-label={`Enviar ${item.name} para outro personagem`}
+                              disabled={loading}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setError('')
+                                setTransferItem(item)
+                                setTransferTargetId('')
+                                setTransferQuantity(1)
+                              }}
+                            >
+                              ↗
                             </button>
 
                             <button

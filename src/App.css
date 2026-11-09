@@ -14213,3 +14213,56 @@ button:disabled { opacity: .58; }
 .hb-news-image-hint{font-size:12px;opacity:.75;margin:0}
 .hb-overview .hb-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:850px){.hb-overview .hb-dashboard-grid{grid-template-columns:minmax(0,1fr)}}
+/* Condições — painel do mestre e indicadores de ficha */
+.hb-conditions-panel{display:grid;gap:18px;max-width:1100px}.hb-conditions-panel>header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.hb-conditions-panel h2,.hb-conditions-panel h3{margin:0 0 8px}.hb-conditions-panel p{margin:5px 0;opacity:.85}.hb-conditions-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:16px}.hb-condition-card{padding:20px;border:1px solid var(--season-line,rgba(150,150,150,.25));border-radius:16px;background:var(--season-surface-alt,rgba(120,120,120,.06));display:grid;gap:12px;min-width:0}.hb-condition-card label{display:grid;gap:5px;font-size:.9rem}.hb-condition-card input,.hb-condition-card select,.hb-condition-card textarea{width:100%;min-width:0;box-sizing:border-box;padding:10px;border-radius:9px;border:1px solid var(--season-line,rgba(150,150,150,.3));background:var(--season-surface,rgba(0,0,0,.15));color:inherit}.hb-conditions-active,.hb-condition-library{display:grid;gap:9px}.hb-conditions-active article,.hb-condition-library>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;border:1px solid var(--season-line,rgba(150,150,150,.2));flex-wrap:wrap}.hb-conditions-active article>div,.hb-condition-library>div{min-width:0}.hb-conditions-active small,.hb-condition-library small{display:block;opacity:.75;margin-top:4px}.hb-condition-error{color:#f29aa2}.hb-condition-indicator{margin-bottom:14px;padding:13px 16px;border:1px solid var(--season-line,rgba(150,150,150,.25));border-radius:13px;background:var(--season-surface-alt,rgba(120,120,120,.06));display:grid;gap:9px}.hb-condition-indicator>div{display:flex;gap:7px;flex-wrap:wrap}.hb-condition-tag{padding:6px 10px;border-radius:999px;border:1px solid var(--season-line,rgba(150,150,150,.3));font-size:.82rem}.hb-condition-tag.severity-grave{border-color:#c58d44}.hb-condition-tag.severity-critica{border-color:#d75e69;color:#e99ba4}
+
+/* Painel de condições — refinamento visual */
+.hb-conditions-panel{display:flex;flex-direction:column;gap:18px;width:100%;min-width:0}
+.hb-conditions-hero{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:4px 0 6px}
+.hb-conditions-hero h2{font-size:clamp(1.35rem,2vw,1.8rem);margin:4px 0 5px;letter-spacing:-.035em}
+.hb-conditions-hero p{margin:0;opacity:.7;font-size:.9rem}
+.hb-conditions-eyebrow{font-size:.68rem;font-weight:800;letter-spacing:.18em;opacity:.7}
+.hb-conditions-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hb-conditions-stats>div{padding:16px 18px;border:1px solid var(--border-color,rgba(155,170,185,.22));background:rgba(130,150,170,.055);border-radius:14px;display:flex;flex-direction:column;gap:8px}
+.hb-conditions-stats span{font-size:.78rem;opacity:.72}.hb-conditions-stats strong{font-size:1.8rem;line-height:1;font-variant-numeric:tabular-nums}
+.hb-conditions-panel .hb-conditions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.hb-conditions-panel .hb-condition-card{border-radius:16px;padding:18px;min-width:0}
+.hb-conditions-panel .hb-condition-card h3{margin:0 0 14px;font-size:1.03rem}
+.hb-conditions-panel .hb-condition-card form,.hb-conditions-panel form.hb-condition-card{gap:12px}
+.hb-conditions-panel .hb-condition-card label{font-size:.83rem}
+.hb-conditions-panel .hb-condition-card input,.hb-conditions-panel .hb-condition-card select,.hb-conditions-panel .hb-condition-card textarea{min-width:0;width:100%;box-sizing:border-box;border-radius:9px}
+.hb-conditions-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.hb-conditions-section-head h3{margin:0!important}.hb-conditions-section-head small{display:block;opacity:.65;margin-top:4px}
+.hb-conditions-section-head input{width:min(100%,300px)!important;min-height:39px}
+.hb-conditions-filter-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:.78rem;opacity:.85}
+.hb-conditions-filter-row label{display:flex;align-items:center;gap:8px}.hb-conditions-filter-row select{width:auto!important;min-width:130px}
+.hb-conditions-entry{border-left:3px solid rgba(150,160,175,.55)!important}
+.hb-conditions-entry.severity-grave{border-left-color:#e7a449!important}.hb-conditions-entry.severity-critica{border-left-color:#e66c73!important}
+.hb-conditions-severity{display:inline-flex;margin-left:8px;font-size:.68rem;font-weight:700;padding:3px 8px;border-radius:99px;background:rgba(150,160,175,.14)}
+.hb-conditions-severity.severity-grave{background:rgba(231,164,73,.14);color:#e7a449}
+.hb-conditions-severity.severity-critica{background:rgba(230,108,115,.14);color:#e66c73}
+.hb-conditions-empty{padding:25px;text-align:center;opacity:.7;border:1px dashed rgba(150,160,175,.25);border-radius:12px}
+.hb-conditions-count{font-size:.78rem;opacity:.65}
+@media(max-width:760px){.hb-conditions-panel .hb-conditions-grid{grid-template-columns:1fr}.hb-conditions-stats{gap:7px}.hb-conditions-stats>div{padding:12px}.hb-conditions-stats strong{font-size:1.4rem}.hb-conditions-stats span{font-size:.7rem}}
+
+.hb-condition-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hb-condition-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:18px;z-index:9999}
+.hb-condition-modal{width:min(100%,480px);max-height:90vh;overflow:auto;display:grid;gap:13px;background:var(--card-bg,#1b252d);color:inherit;border:1px solid var(--border-color,rgba(160,175,190,.3));border-radius:18px;padding:22px;box-shadow:0 20px 65px rgba(0,0,0,.4)}
+.hb-condition-modal label{display:grid;gap:6px;font-size:.86rem}
+.hb-condition-modal input,.hb-condition-modal select,.hb-condition-modal textarea{width:100%;box-sizing:border-box;border-radius:9px;padding:10px;background:var(--input-bg,#101820);color:inherit;border:1px solid var(--border-color,rgba(160,175,190,.3))}
+.hb-condition-modal .hb-condition-actions{justify-content:flex-end;margin-top:5px}
+
+/* Navegação por abas da página Condições */
+.hb-condition-tabs{display:flex;flex-wrap:wrap;gap:8px;padding:5px;border:1px solid var(--border-color,rgba(150,170,190,.2));border-radius:14px;background:rgba(120,145,175,.045)}
+.hb-condition-tabs button{border:1px solid transparent;border-radius:10px;padding:11px 16px;background:transparent;color:inherit;cursor:pointer;font-weight:650;transition:background .15s,border-color .15s}
+.hb-condition-tabs button:hover{background:rgba(120,145,175,.12)}
+.hb-condition-tabs button.is-active{background:rgba(95,145,215,.17);border-color:var(--accent,#75a8ed)}
+.hb-condition-tabs button span{font-size:.75rem;opacity:.7;margin-left:5px}
+.hb-conditions-panel .hb-conditions-single{grid-template-columns:minmax(0,1fr);max-width:760px;width:100%}
+.hb-conditions-panel .hb-conditions-single .hb-condition-card{display:grid;gap:12px}
+.hb-conditions-panel .hb-conditions-single .hb-condition-card[style*="none"]{display:none!important}
+.hb-conditions-panel .hb-conditions-single .hb-condition-card textarea{resize:vertical}
+@media(max-width:600px){.hb-condition-tabs button{flex:1 1 40%;padding:10px 7px}}
+
+.hb-condition-inline-error{padding:11px 14px;border:1px solid rgba(230,108,115,.38);border-radius:10px;background:rgba(230,108,115,.08);color:inherit;font-size:.85rem}
+.hb-conditions-entry .hb-condition-actions{justify-content:flex-end}
