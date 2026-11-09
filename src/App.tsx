@@ -7957,7 +7957,33 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                           </div>
                         </section>
                         {isKisatsutaiSystem && (() => {
-                          const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
+                          const skillsData = (read('skills', {}) || {}) as Record<string, any>
+                          const trainings = { ...(skillsData.extraTrainings || {}) } as Record<string, string>
+                          // Reconstitui também os treinamentos atribuídos na trilha e por Intelecto,
+                          // mesmo quando uma ficha antiga não tem extraTrainings sincronizado.
+                          const fullPath = getKisatsutaiFullPath(
+                            String(read('identity.primaryArchetype', '')),
+                            String(read('identity.secondaryArchetype', ''))
+                          )
+                          const pathName = Object.keys(KISATSUTAI_PATHS).find(name => fullPath.endsWith(` ${name}`)) || ''
+                          const path = KISATSUTAI_PATHS[pathName as keyof typeof KISATSUTAI_PATHS]
+                          const benefitEntry = path && Object.entries(path.benefits as Record<string, readonly string[]>).find(([title]) => title === fullPath)
+                          const requirements = (benefitEntry?.[1] || []).flatMap((line: string, row: number) => {
+                            const match = line.match(/^Treinamento (Avançado|Médio|Leve|Completo) em (\d+) Perícias? (?:de |Gerais$)(.*)$/i)
+                            if (!match) return []
+                            const level = ({ 'Avançado':'avancado', 'Médio':'medio', 'Leve':'leve', 'Completo':'completo' } as Record<string, TrainingLevel>)[match[1]]
+                            return Array.from({length: Number(match[2])}, (_, index) => ({ id: `${row}-${index}`, level }))
+                          })
+                          const distributionKey = `${pathName}:${fullPath.slice(0, -(pathName.length + 1))}`
+                          const distribution = (skillsData.distributionByPath?.[distributionKey] || {}) as Record<string, string>
+                          const baseTrainings: Record<string, TrainingLevel> = {}
+                          requirements.forEach(req => { if (distribution[req.id]) baseTrainings[distribution[req.id]] = req.level })
+                          const intellectSelections = (Array.isArray(skillsData.intellectExtraAllocations) ? skillsData.intellectExtraAllocations : []) as string[]
+                          for (const key of new Set([...Object.keys(baseTrainings), ...intellectSelections.filter(Boolean)])) {
+                            const base = baseTrainings[key] ? KISATSUTAI_TRAINING[baseTrainings[key]] : 0
+                            const points = base + intellectSelections.filter(selected => selected === key).length * 5
+                            if (points > 0) trainings[key] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
+                          }
                           const groups = Object.entries(KISATSUTAI_SKILL_GROUPS).map(([group, entries]) => ({
                             group,
                             skills: entries.flatMap(skill => {
@@ -7974,15 +8000,15 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                               <div className="hb-extra-skills-heading">
                                 <span className="hb-extra-skills-icon" aria-hidden="true">📚</span>
                                 <div>
-                                  <span className="hb-extra-skills-eyebrow">TREINAMENTOS ADICIONAIS</span>
+                                  <span className="hb-extra-skills-eyebrow">TODAS AS PERÍCIAS TREINADAS</span>
                                   <h3>Perícias Extras e de Arquétipo</h3>
-                                  <p>Especializações registradas na ficha {forEnemy ? 'do inimigo' : 'do personagem'}.</p>
+                                  <p>Todas as perícias treinadas, incluindo as de arquétipo e as extras, na ficha {forEnemy ? 'do inimigo' : 'do personagem'}.</p>
                                 </div>
                               </div>
                               <div className="hb-extra-skills-total"><strong>{total}</strong><span>{total === 1 ? 'perícia treinada' : 'perícias treinadas'}</span></div>
                             </header>
                             {total === 0
-                              ? <div className="hb-extra-skills-empty"><span aria-hidden="true">✧</span><strong>Nenhum treinamento adicional</strong><p>As perícias extras e de arquétipo aparecerão aqui quando forem registradas na ficha.</p></div>
+                              ? <div className="hb-extra-skills-empty"><span aria-hidden="true">✧</span><strong>Nenhuma perícia treinada</strong><p>As perícias extras e de arquétipo aparecerão aqui quando forem registradas na ficha.</p></div>
                               : <div className="hb-extra-skills-groups">{groups.map(({ group, skills }) =>
                                   <div className="hb-extra-skills-group" key={group}>
                                     <div className="hb-extra-skills-group-head"><h4>{group}</h4><span>{skills.length} {skills.length === 1 ? 'perícia' : 'perícias'}</span></div>
