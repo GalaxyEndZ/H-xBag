@@ -4,11 +4,6 @@ import { supabase } from './supabase'
 type CharacterOption = { id: string; name: string; emoji?: string | null }
 type Definition = { id: string; name: string; emoji: string; description: string; severity: string }
 type Active = { id: string; character_id: string; definition_id: string; duration_label: string | null; notes: string | null; name: string; emoji: string; description: string; severity: string }
-const defaultConditions = [
-  ['Exausto','🥱','Exaustão até o próximo descanso.','grave'],
-  ['Vulnerável','🛡️','Personagem vulnerável até a remoção da condição.','grave'],
-  ['Inconsciente','💤','Personagem inconsciente.','critica'],
-]
 export function ConditionsPanel({ campaignId, characters, master }: {campaignId:string;characters:CharacterOption[];master:boolean}) {
   const [definitions,setDefinitions]=useState<Definition[]>([])
   const [active,setActive]=useState<Active[]>([])
