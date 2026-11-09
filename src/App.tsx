@@ -7956,17 +7956,47 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                               : 'As proteções físicas complementam a redução de dano.'} A proteção de sanidade é calculada separadamente.</span>
                           </div>
                         </section>
-                        {isKisatsutaiSystem && <section className="combat-armor-panel sheet-armor-standalone" style={{marginTop:16,padding:20}} id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
-                          <h3>📚 Perícias Extras e de Arquétipo</h3><p>Treinamentos registrados na ficha do personagem.</p>
-                          <div className="sheet-summary-values" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10}}>
-                            {Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
+                        {isKisatsutaiSystem && (() => {
+                          const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
+                          const groups = Object.entries(KISATSUTAI_SKILL_GROUPS).map(([group, entries]) => ({
+                            group,
+                            skills: entries.flatMap(skill => {
                               const key = `${group}:${skill.name}`
-                              const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string,string>
                               const level = trainings[key] as TrainingLevel | undefined
-                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [<div key={key} style={{padding:10,border:'1px solid var(--season-line)',borderRadius:10}}><span>✧ {skill.name}<small style={{display:'block'}}>{group}</small></span><strong>+{KISATSUTAI_TRAINING[level]}</strong></div>] : []
-                            }))}
-                          </div>
-                        </section>}
+                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
+                                ? [{ key, name: skill.name, level, bonus: KISATSUTAI_TRAINING[level] }]
+                                : []
+                            }),
+                          })).filter(group => group.skills.length > 0)
+                          const total = groups.reduce((sum, group) => sum + group.skills.length, 0)
+                          return <section className="hb-extra-skills" id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
+                            <header className="hb-extra-skills-head">
+                              <div className="hb-extra-skills-heading">
+                                <span className="hb-extra-skills-icon" aria-hidden="true">📚</span>
+                                <div>
+                                  <span className="hb-extra-skills-eyebrow">TREINAMENTOS ADICIONAIS</span>
+                                  <h3>Perícias Extras e de Arquétipo</h3>
+                                  <p>Especializações registradas na ficha {forEnemy ? 'do inimigo' : 'do personagem'}.</p>
+                                </div>
+                              </div>
+                              <div className="hb-extra-skills-total"><strong>{total}</strong><span>{total === 1 ? 'perícia treinada' : 'perícias treinadas'}</span></div>
+                            </header>
+                            {total === 0
+                              ? <div className="hb-extra-skills-empty"><span aria-hidden="true">✧</span><strong>Nenhum treinamento adicional</strong><p>As perícias extras e de arquétipo aparecerão aqui quando forem registradas na ficha.</p></div>
+                              : <div className="hb-extra-skills-groups">{groups.map(({ group, skills }) =>
+                                  <div className="hb-extra-skills-group" key={group}>
+                                    <div className="hb-extra-skills-group-head"><h4>{group}</h4><span>{skills.length} {skills.length === 1 ? 'perícia' : 'perícias'}</span></div>
+                                    <div className="hb-extra-skills-list">{skills.map(skill =>
+                                      <article className="hb-extra-skill" key={skill.key}>
+                                        <span className="hb-extra-skill-symbol" aria-hidden="true">✧</span>
+                                        <div className="hb-extra-skill-info"><strong>{skill.name}</strong><small>Treinamento {skill.level}</small></div>
+                                        <span className="hb-extra-skill-bonus">+{skill.bonus}</span>
+                                      </article>
+                                    )}</div>
+                                  </div>
+                                )}</div>}
+                          </section>
+                        })()}
                         </>
                       )
                     }
@@ -9387,7 +9417,7 @@ counterAttackDT
         </header>
 
         <div className={`page-content page-${activePage}`}>
-          {activePage === 'conditions' && isMaster && selectedCampaignId && <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c=>c.campaign_id===selectedCampaignId)} master={isMaster} />}
+          {activePage === 'conditions' && isMaster && selectedCampaignId && <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c=>c.campaign_id===selectedCampaignId)} enemies={enemies.filter(e=>e.campaign_id===selectedCampaignId)} master={isMaster} />}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <MasterChest
               key={selectedCampaignId}
