@@ -7984,17 +7984,22 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                             const points = base + intellectSelections.filter(selected => selected === key).length * 5
                             if (points > 0) trainings[key] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
                           }
-                          const groups = Object.entries(KISATSUTAI_SKILL_GROUPS).map(([group, entries]) => ({
-                            group,
-                            skills: entries.flatMap(skill => {
-                              const key = `${group}:${skill.name}`
+                          const trainedSkills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([category, entries]) =>
+                            entries.flatMap(skill => {
+                              const key = `${category}:${skill.name}`
                               const level = trainings[key] as TrainingLevel | undefined
                               return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
-                                ? [{ key, name: skill.name, level, bonus: KISATSUTAI_TRAINING[level] }]
+                                ? [{ key, name: skill.name, category, level, bonus: KISATSUTAI_TRAINING[level] }]
                                 : []
-                            }),
+                            })
+                          )
+                          const trainingOrder: TrainingLevel[] = ['completo', 'avancado', 'medio', 'leve']
+                          const groups = trainingOrder.map(level => ({
+                            level,
+                            title: `Treinamento ${TRAINING_LABELS[level].toLowerCase()}`,
+                            skills: trainedSkills.filter(skill => skill.level === level).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
                           })).filter(group => group.skills.length > 0)
-                          const total = groups.reduce((sum, group) => sum + group.skills.length, 0)
+                          const total = trainedSkills.length
                           return <section className="hb-extra-skills" id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
                             <header className="hb-extra-skills-head">
                               <div className="hb-extra-skills-heading">
@@ -8009,13 +8014,13 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                             </header>
                             {total === 0
                               ? <div className="hb-extra-skills-empty"><span aria-hidden="true">✧</span><strong>Nenhuma perícia treinada</strong><p>As perícias extras e de arquétipo aparecerão aqui quando forem registradas na ficha.</p></div>
-                              : <div className="hb-extra-skills-groups">{groups.map(({ group, skills }) =>
-                                  <div className="hb-extra-skills-group" key={group}>
-                                    <div className="hb-extra-skills-group-head"><h4>{group}</h4><span>{skills.length} {skills.length === 1 ? 'perícia' : 'perícias'}</span></div>
+                              : <div className="hb-extra-skills-groups">{groups.map(({ level, title, skills }) =>
+                                  <div className={`hb-extra-skills-group hb-extra-skills-level-${level}`} key={level}>
+                                    <div className="hb-extra-skills-group-head"><h4>{title}</h4><span>{skills.length} {skills.length === 1 ? 'perícia' : 'perícias'}</span></div>
                                     <div className="hb-extra-skills-list">{skills.map(skill =>
                                       <article className="hb-extra-skill" key={skill.key}>
                                         <span className="hb-extra-skill-symbol" aria-hidden="true">✧</span>
-                                        <div className="hb-extra-skill-info"><strong>{skill.name}</strong><small>Treinamento {skill.level}</small></div>
+                                        <div className="hb-extra-skill-info"><strong>{skill.name}</strong><small>{skill.category}</small></div>
                                         <span className="hb-extra-skill-bonus">+{skill.bonus}</span>
                                       </article>
                                     )}</div>
