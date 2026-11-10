@@ -9232,7 +9232,7 @@ counterAttackDT
       <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
       <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
-          <span className="brand-mark"><img src="/favicon.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
+          <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
           <span className="hb-sidebar-brand-copy">
             <strong>Häx<span className="brand-light">Bag</span></strong>
             <small>SEU UNIVERSO DE RPG</small>

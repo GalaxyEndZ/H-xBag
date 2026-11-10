@@ -56,92 +56,64 @@ export default function Auth() {
 
   return (
     <main className="auth-page">
-      <section className="auth-card">
-        <div className="auth-brand">
-          <div className="auth-logo"><img src="/favicon.png" alt="Símbolo do HäxBag" className="hb-auth-symbol" /></div>
-          <h1>HäxBag</h1>
-          <p>Seu inventário, sua aventura.</p>
-        </div>
-
-        <div className="auth-heading">
-          <h2>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</h2>
-          <p>
-            {isSignUp
-              ? 'Prepare-se para sua próxima aventura.'
-              : 'Entre para acessar suas campanhas.'}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          {isSignUp && (
-            <label>
-              Nome de exibição
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Como quer ser chamado?"
-                minLength={2}
-                maxLength={60}
-                autoComplete="nickname"
-                required
-              />
+      <div className="auth-shell">
+        <section className="auth-showcase" aria-label="Bem-vindo ao HäxBag">
+          <div className="auth-showcase-brand">
+            <img src="/haxbag-symbol.png" alt="" />
+            <span>HäxBag</span>
+          </div>
+          <div className="auth-showcase-content">
+            <span className="auth-eyebrow">SEU UNIVERSO DE RPG</span>
+            <h1>Suas histórias.<br /><em>Um só lugar.</em></h1>
+            <p>Organize personagens, acompanhe campanhas e mantenha cada detalhe da sua aventura ao seu alcance.</p>
+            <div className="auth-showcase-features">
+              <span>✦ Personagens</span><span>✦ Campanhas</span><span>✦ Inventários</span>
+            </div>
+          </div>
+          <div className="auth-showcase-footer">UM ESPAÇO PARA CADA AVENTURA</div>
+        </section>
+        <section className="auth-panel">
+          <div className="auth-panel-top">
+            <img className="auth-panel-symbol" src="/haxbag-symbol.png" alt="Símbolo do HäxBag" />
+            <span>HäxBag</span>
+          </div>
+          <div className="auth-heading">
+            <span className="auth-eyebrow">{isSignUp ? 'COMECE SUA JORNADA' : 'BEM-VINDO DE VOLTA'}</span>
+            <h2>{isSignUp ? 'Crie sua conta' : 'Entre na sua conta'}</h2>
+            <p>{isSignUp ? 'Seu próximo capítulo começa aqui.' : 'Seu universo está esperando por você.'}</p>
+          </div>
+          <form onSubmit={handleSubmit} className="auth-form">
+            {isSignUp && (
+              <label>Nome de exibição
+                <input type="text" value={name} onChange={(event) => setName(event.target.value)}
+                  placeholder="Como quer ser chamado?" minLength={2} maxLength={60}
+                  autoComplete="nickname" required />
+              </label>
+            )}
+            <label>E-mail
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)}
+                placeholder="voce@exemplo.com" autoComplete="email" required />
             </label>
-          )}
-
-          <label>
-            E-mail
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="voce@exemplo.com"
-              autoComplete="email"
-              required
-            />
-          </label>
-
-          <label>
-            Senha
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo de 8 caracteres"
-              minLength={8}
-              autoComplete={isSignUp ? 'new-password' : 'current-password'}
-              required
-            />
-          </label>
-
-          <button type="submit" disabled={loading}>
-            {loading
-              ? 'Aguarde...'
-              : isSignUp
-                ? 'Criar conta'
-                : 'Entrar'}
-          </button>
-        </form>
-
-        {message && (
-          <p className="auth-message" role="status">
-            {message}
-          </p>
-        )}
-
-        <div className="auth-switch">
-          {isSignUp ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp)
-              setMessage('')
-            }}
-          >
-            {isSignUp ? 'Entrar' : 'Criar conta'}
-          </button>
-        </div>
-      </section>
+            <label>Senha
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mínimo de 8 caracteres" minLength={8}
+                autoComplete={isSignUp ? 'new-password' : 'current-password'} required />
+            </label>
+            <button className="auth-submit" type="submit" disabled={loading}>
+              {loading ? 'Aguarde...' : isSignUp ? 'Criar minha conta' : 'Entrar no HäxBag'}
+              {!loading && <span aria-hidden="true">→</span>}
+            </button>
+          </form>
+          {message && <p className="auth-message" role="status">{message}</p>}
+          <div className="auth-switch">
+            {isSignUp ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}
+            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage('') }}>
+              {isSignUp ? 'Entrar' : 'Criar conta'}
+            </button>
+          </div>
+          <p className="auth-panel-footer">HÄXBAG · SEU ESPAÇO DE AVENTURAS</p>
+        </section>
+      </div>
     </main>
   )
 }
