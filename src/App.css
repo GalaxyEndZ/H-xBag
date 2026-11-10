@@ -14297,3 +14297,34 @@ button:disabled { opacity: .58; }
 .hb-skill-summary-level-heading{margin-bottom:10px}.hb-skill-summary-level-heading span{color:var(--season-primary,#d6a37d);font-weight:800}.hb-skill-summary-level-heading small{opacity:.65}
 .hb-skill-summary-list{display:grid;gap:7px}.hb-skill-summary-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:9px;background:var(--season-surface,rgba(0,0,0,.16))}
 .hb-skill-summary-entry small{display:block;opacity:.7}.hb-skill-summary-entry b{color:var(--season-primary,#d6a37d)}.hb-skill-summary-empty{font-size:.8rem;opacity:.6;margin:0}
+
+/* Painel de perícias treinadas — escopo isolado para não afetar outras fichas. */
+.hb-trained-skills{width:100%;min-width:0;box-sizing:border-box;margin:18px 0;padding:clamp(16px,2vw,24px);border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:18px;background:var(--season-surface,rgba(20,22,27,.92));color:var(--season-text,inherit)}
+.hb-trained-skills *{box-sizing:border-box}
+.hb-trained-skills-intro{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.hb-trained-skills-icon,.hb-trained-skills-section-icon{display:grid;place-items:center;flex:none;width:44px;height:44px;border:1px solid var(--season-line,rgba(255,255,255,.16));border-radius:13px;background:var(--season-surface-alt,rgba(255,255,255,.05));color:var(--season-accent,#c58a6c);font-size:23px}
+.hb-trained-skills-intro>div:nth-child(2){flex:1;min-width:210px}
+.hb-trained-skills-eyebrow{display:block;font-size:10px;font-weight:800;letter-spacing:.14em;color:var(--season-accent,#c58a6c)}
+.hb-trained-skills-intro h3{margin:5px 0 6px;font-size:clamp(20px,2.5vw,26px);line-height:1.2}
+.hb-trained-skills-intro p,.hb-trained-skills-section-head p{margin:0;font-size:13px;line-height:1.5;color:var(--season-muted,#aaa)}
+.hb-trained-skills-total,.hb-trained-skills-count{white-space:nowrap;border:1px solid var(--season-line,rgba(255,255,255,.15));border-radius:999px;padding:7px 11px;font-size:12px;font-weight:750;color:var(--season-accent,#c58a6c)}
+.hb-trained-skills-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.hb-trained-skills-section{min-width:0;padding:16px;border:1px solid var(--season-line,rgba(255,255,255,.12));border-radius:15px;background:var(--season-surface-alt,rgba(255,255,255,.035))}
+.hb-trained-skills-section-head{display:flex;align-items:center;gap:10px;min-width:0;padding-bottom:14px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.1))}
+.hb-trained-skills-section-icon{width:36px;height:36px;font-size:18px}
+.hb-trained-skills-section-head>div{flex:1;min-width:0}
+.hb-trained-skills-section-head h4{font-size:16px;line-height:1.25;margin:0 0 4px}
+.hb-trained-skills-tiers{display:grid;gap:12px;margin-top:14px}
+.hb-trained-skills-tier{min-width:0;border:1px solid var(--season-line,rgba(255,255,255,.10));border-radius:12px;overflow:hidden;background:rgba(0,0,0,.08)}
+.hb-trained-skills-tier-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 12px;background:rgba(128,128,128,.045)}
+.hb-trained-skills-tier-head strong{font-size:13px}
+.hb-trained-skills-bonus,.hb-trained-skills-item-bonus{font-size:12px;font-weight:800;color:var(--season-accent,#c58a6c)}
+.hb-trained-skills-tier-count{margin-left:auto;font-size:11px;color:var(--season-muted,#aaa)}
+.hb-trained-skills-items{list-style:none;display:grid;gap:6px;padding:8px;margin:0}
+.hb-trained-skills-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;background:var(--season-surface,rgba(255,255,255,.04));min-width:0}
+.hb-trained-skills-item-info{display:grid;gap:3px;min-width:0}
+.hb-trained-skills-item-info strong{font-size:12px;overflow-wrap:anywhere}
+.hb-trained-skills-item-info small{font-size:11px;color:var(--season-muted,#aaa)}
+.hb-trained-skills-empty{margin:0;padding:11px 12px;font-size:12px;color:var(--season-muted,#aaa)}
+@media(max-width:900px){.hb-trained-skills-sections{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:480px){.hb-trained-skills{padding:13px}.hb-trained-skills-section{padding:11px}.hb-trained-skills-total{margin-left:0}}

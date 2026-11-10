@@ -59,6 +59,75 @@ function getKisatsutaiFullPath(primary: string, secondary: string): string {
   return path ? `${primary.trim()} ${path}` : ''
 }
 
+/** Exibição de treinamentos sem alterar os dados persistidos da ficha. */
+function TrainedSkillsSummary({ trainings, forEnemy }: { trainings: Record<string, string>; forEnemy: boolean }) {
+  const levels: TrainingLevel[] = ['completo', 'avancado', 'medio', 'leve']
+  const generalGroups = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
+  const sections = [
+    { id: 'extras', icon: '✧', title: 'Perícias Extras', subtitle: 'Sociais, conhecimentos gerais e naturais', accepts: (group: string) => generalGroups.has(group) },
+    { id: 'arquetipo', icon: '✦', title: 'Perícias de Arquétipo', subtitle: 'Treinamentos vinculados aos arquétipos', accepts: (group: string) => !generalGroups.has(group) },
+  ]
+  const allSkills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) =>
+    entries.flatMap(skill => {
+      const key = `${group}:${skill.name}`
+      const level = trainings[key] as TrainingLevel | undefined
+      return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
+        ? [{ key, group, name: skill.name, level }] : []
+    })
+  )
+  return (
+    <section className="hb-trained-skills" id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'} aria-labelledby={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>
+      <div className="hb-trained-skills-intro">
+        <div className="hb-trained-skills-icon" aria-hidden="true">✧</div>
+        <div>
+          <span className="hb-trained-skills-eyebrow">DESENVOLVIMENTO DO PERSONAGEM</span>
+          <h3 id={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>Perícias treinadas</h3>
+          <p>Treinamentos organizados por origem e nível. Os bônus refletem os dados atuais da ficha.</p>
+        </div>
+        <span className="hb-trained-skills-total">{allSkills.length} {allSkills.length === 1 ? 'perícia' : 'perícias'}</span>
+      </div>
+      <div className="hb-trained-skills-sections">
+        {sections.map(section => {
+          const skills = allSkills.filter(skill => section.accepts(skill.group))
+          return (
+            <article className="hb-trained-skills-section" key={section.id}>
+              <header className="hb-trained-skills-section-head">
+                <span className="hb-trained-skills-section-icon" aria-hidden="true">{section.icon}</span>
+                <div><h4>{section.title}</h4><p>{section.subtitle}</p></div>
+                <span className="hb-trained-skills-count">{skills.length}</span>
+              </header>
+              <div className="hb-trained-skills-tiers">
+                {levels.map(level => {
+                  const entries = skills.filter(skill => skill.level === level).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                  return (
+                    <div className="hb-trained-skills-tier" key={level}>
+                      <div className="hb-trained-skills-tier-head">
+                        <strong>{TRAINING_LABELS[level]}</strong>
+                        <span className="hb-trained-skills-bonus">+{KISATSUTAI_TRAINING[level]}</span>
+                        <span className="hb-trained-skills-tier-count">{entries.length} {entries.length === 1 ? 'perícia' : 'perícias'}</span>
+                      </div>
+                      {entries.length > 0 ? (
+                        <ul className="hb-trained-skills-items">
+                          {entries.map(skill => (
+                            <li key={skill.key} className="hb-trained-skills-item">
+                              <span className="hb-trained-skills-item-info"><strong>{skill.name}</strong><small>{skill.group}</small></span>
+                              <span className="hb-trained-skills-item-bonus">+{KISATSUTAI_TRAINING[level]}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="hb-trained-skills-empty">Nenhuma perícia neste nível.</p>}
+                    </div>
+                  )
+                })}
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtraLevels = 0, disabled = false }: {
   fullPath: string; skills: Record<string, any>; intellectExtraLevels?: number;
   onChange: (next: Record<string, any>) => void; disabled?: boolean
@@ -7960,35 +8029,12 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                               : 'As proteções físicas complementam a redução de dano.'} A proteção de sanidade é calculada separadamente.</span>
                           </div>
                         </section>
-                        {isKisatsutaiSystem && <section className="combat-armor-panel sheet-armor-standalone hb-skill-training-summary" style={{marginTop:16,padding:20}} id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
-                          <h3>📚 Perícias treinadas</h3>
-                          <p>Perícias extras e de arquétipo, organizadas separadamente por nível de treinamento.</p>
-                          {(() => {
-                            const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string,string>
-                            const levels: TrainingLevel[] = ['completo','avancado','medio','leve']
-                            const categories = [
-                              { id: 'extras', title: 'Perícias Extras', description: 'Sociais, Conhecimentos Gerais e Naturais', groups: ['Sociais', 'Conhecimentos Gerais', 'Naturais'] },
-                              { id: 'arquetipo', title: 'Perícias de Arquétipo', description: 'Treinamentos vinculados aos arquétipos', groups: Object.keys(KISATSUTAI_SKILL_GROUPS).filter(g => !['Sociais', 'Conhecimentos Gerais', 'Naturais'].includes(g)) },
-                            ]
-                            return <div className="hb-skill-summary-categories">{categories.map(category => {
-                              const skills = category.groups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).flatMap(skill => {
-                                const key = `${group}:${skill.name}`
-                                const level = trainings[key] as TrainingLevel | undefined
-                                return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [{ key, group, name: skill.name, level }] : []
-                              }))
-                              return <div className="hb-skill-summary-category" key={category.id}>
-                                <div className="hb-skill-summary-heading"><div><h4>{category.title}</h4><small>{category.description}</small></div><span>{skills.length} treinada(s)</span></div>
-                                <div className="hb-skill-summary-levels">{levels.map(level => {
-                                  const entries = skills.filter(skill => skill.level === level)
-                                  return <div className="hb-skill-summary-level" key={level}>
-                                    <div className="hb-skill-summary-level-heading"><strong>{TRAINING_LABELS[level]}</strong><span>+{KISATSUTAI_TRAINING[level]}</span><small>{entries.length}</small></div>
-                                    {entries.length ? <div className="hb-skill-summary-list">{entries.map(skill => <div key={skill.key} className="hb-skill-summary-entry"><span><strong>{skill.name}</strong><small>{skill.group}</small></span><b>+{KISATSUTAI_TRAINING[level]}</b></div>)}</div> : <p className="hb-skill-summary-empty">Nenhuma perícia neste nível.</p>}
-                                  </div>
-                                })}</div>
-                              </div>
-                            })}</div>
-                          })()}
-                        </section>}
+                        {isKisatsutaiSystem && (
+                          <TrainedSkillsSummary
+                            trainings={(read('skills.extraTrainings', {}) || {}) as Record<string, string>}
+                            forEnemy={forEnemy}
+                          />
+                        )}
                         {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
                         </>
                       )
