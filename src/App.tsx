@@ -64,8 +64,8 @@ function TrainedSkillsSummary({ trainings, forEnemy }: { trainings: Record<strin
   const levels: TrainingLevel[] = ['completo', 'avancado', 'medio', 'leve']
   const generalGroups = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
   const sections = [
-    { id: 'extras', icon: '✧', title: 'Perícias Extras', subtitle: 'Sociais, conhecimentos gerais e naturais', accepts: (group: string) => generalGroups.has(group) },
     { id: 'arquetipo', icon: '✦', title: 'Perícias de Arquétipo', subtitle: 'Treinamentos vinculados aos arquétipos', accepts: (group: string) => !generalGroups.has(group) },
+    { id: 'extras', icon: '✧', title: 'Perícias Extras', subtitle: 'Sociais, conhecimentos gerais e naturais', accepts: (group: string) => generalGroups.has(group) },
   ]
   const allSkills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) =>
     entries.flatMap(skill => {
