@@ -7,7 +7,6 @@ import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import Auth from './Auth'
-import { ConditionsPanel, CharacterConditions } from './ConditionsPanel'
 import './App.css'
 import './themes/seasonThemes.css'
 import './themes/seasonThemes-enhanced.css'
@@ -690,7 +689,7 @@ function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
       <span>🌬️ Respirar: recupera 25% dos PR no precário ou 50% no mediano/completo.</span>
       <span>🩹 Bandagens: INT + Medicina DT 20, +4d8 PV no sucesso, +2d8 na falha.</span>
       <span>🪔 Kit de Terapeuta: INT + Terapia DT 20, +2d8 PS no sucesso, +1d8 na falha; até 4 jogadores.</span>
-      <span>⚠️ O consumo por Escassez precisa ser confirmado antes de aplicar a recuperação.</span>
+      <span>⚠️ Consumo por Escassez ainda depende de uma operação transacional no Supabase.</span>
     </div>}
     <div style={{padding:9,borderRadius:9,border:'1px solid var(--border, #5a5a5a55)',display:'grid',gap:5}}>
       <strong>📋 Resumo e recuperação</strong>
@@ -700,7 +699,7 @@ function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
       <div style={{fontSize:'.9rem'}}><strong>Recuperação prevista:</strong> {recoveryPreview}{prPreview}{kit !== 'nenhum' ? ` · ${kit === 'bandagens' ? '+4d8/+2d8 PV' : '+2d8/+1d8 PS'} (DT 20)` : ''}</div>
       {chosenFood && <small>🍲 Alimento: {chosenFood.name}</small>}
       {chosenKit && <small>🧰 Kit: {chosenKit.name}</small>}
-      {isUnconsumedItemBonus && <small>🎲 Ao aplicar, a Escassez será rolada e o consumo será salvo junto da recuperação.</small>}
+      {isUnconsumedItemBonus && <small>🎲 Ao aplicar, o Supabase rolará a Escassez e salvará o consumo junto da recuperação.</small>}
       <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
         <button type="button" disabled={Boolean(selectionError)} onClick={perform}>🎲 {rest === 'nenhum' ? 'Registrar sem descanso' : 'Rolar recuperação'}</button>
         {recovery && <button type="button" disabled={!canApply || applying || applied} onClick={async()=>{setApplying(true);try{await onApply(recovery);setApplied(true)}catch(e){setResult(`Falha ao aplicar: ${e instanceof Error ? e.message : String(e)}`)}finally{setApplying(false)}}}>{applying?'Salvando...':applied?'✓ Aplicado':'💚 Aplicar na ficha'}</button>}
@@ -1541,7 +1540,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'conditions' | 'bestiary' | 'enemies' | 'profile'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -1659,8 +1658,8 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
 
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [search, setSearch] = useState('')
-  const [, setNotice] = useState('')
-  const [, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -4386,7 +4385,7 @@ async function handleCurrencyConversion() {
 
       if (!token) {
         throw new Error(
-          `Não foi possível validar a resposta de autenticação. Resposta: ${JSON.stringify(data)}`,
+          `A função do Supabase respondeu, mas não retornou um token válido. Resposta: ${JSON.stringify(data)}`,
         )
       }
 
@@ -4544,7 +4543,7 @@ async function deleteCampaign(campaign: Campaign) {
     if (updateError || !data) {
       const missingColumn = updateError?.code === '42703' || /visual_style_key/i.test(updateError?.message ?? '')
       setError(missingColumn
-        ? 'Para ativar os estilos, instale a atualização de estilos visuais do HäxBag e tente novamente.'
+        ? 'Para ativar os estilos, execute o arquivo SQL de estilos visuais no Supabase e tente novamente.'
         : `Não foi possível salvar o estilo: ${updateError?.message ?? 'resposta vazia'}`)
       return
     }
@@ -5639,7 +5638,7 @@ async function deleteCharacter(character: Character) {
 
     if (remaining) {
       throw new Error(
-        'Não foi possível confirmar a exclusão do personagem. Verifique as permissões e tente novamente.'
+        'A função SQL foi executada, mas o personagem ainda existe no banco. Verifique a função delete_character no Supabase.'
       )
     }
 
@@ -6004,7 +6003,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
 
       if (!data) {
         setError(
-          'O item não foi atualizado. Verifique suas permissões e tente novamente.',
+          'O item não foi atualizado. Verifique as permissões no Supabase.',
         )
         setLoading(false)
         return
@@ -6083,7 +6082,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
 
     if (!data) {
       setError(
-        'O emoji não foi alterado. Verifique suas permissões e tente novamente.',
+        'O emoji não foi alterado. Verifique as permissões de acesso no Supabase.',
       )
       return
     }
@@ -6121,7 +6120,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
       return
     }
     if (!data) {
-      setError('A quantidade não foi alterada. Verifique suas permissões e tente novamente.')
+      setError('A quantidade não foi alterada. Verifique as permissões no Supabase.')
       return
     }
 
@@ -6148,7 +6147,7 @@ cyberneticData: isCyberFlowerSystem && itemEquipmentTypeForSave === 'cybernetic'
       return
     }
     if (!data) {
-      setError('O favorito não foi atualizado. Verifique suas permissões e tente novamente.')
+      setError('O favorito não foi atualizado. Verifique as permissões no Supabase.')
       return
     }
 
@@ -6243,7 +6242,7 @@ async function sendItemToCharacter() {
     }
 
     if (!data) {
-      setError('Não foi possível confirmar a duplicação do item. Verifique suas permissões e tente novamente.')
+      setError('O Supabase não confirmou a duplicação do item. Verifique as permissões de inserção e leitura do inventário.')
       return
     }
 
@@ -6275,7 +6274,7 @@ async function sendItemToCharacter() {
 
     if (!data?.length) {
       setError(
-        'Nenhum item foi removido. Verifique suas permissões e tente novamente.',
+        'Nenhum item foi removido. Verifique as permissões de acesso no Supabase.',
       )
       return
     }
@@ -7956,78 +7955,17 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                               : 'As proteções físicas complementam a redução de dano.'} A proteção de sanidade é calculada separadamente.</span>
                           </div>
                         </section>
-                        {isKisatsutaiSystem && (() => {
-                          const skillsData = (read('skills', {}) || {}) as Record<string, any>
-                          const trainings = { ...(skillsData.extraTrainings || {}) } as Record<string, string>
-                          // Reconstitui também os treinamentos atribuídos na trilha e por Intelecto,
-                          // mesmo quando uma ficha antiga não tem extraTrainings sincronizado.
-                          const fullPath = getKisatsutaiFullPath(
-                            String(read('identity.primaryArchetype', '')),
-                            String(read('identity.secondaryArchetype', ''))
-                          )
-                          const pathName = Object.keys(KISATSUTAI_PATHS).find(name => fullPath.endsWith(` ${name}`)) || ''
-                          const path = KISATSUTAI_PATHS[pathName as keyof typeof KISATSUTAI_PATHS]
-                          const benefitEntry = path && Object.entries(path.benefits as Record<string, readonly string[]>).find(([title]) => title === fullPath)
-                          const requirements = (benefitEntry?.[1] || []).flatMap((line: string, row: number) => {
-                            const match = line.match(/^Treinamento (Avançado|Médio|Leve|Completo) em (\d+) Perícias? (?:de |Gerais$)(.*)$/i)
-                            if (!match) return []
-                            const level = ({ 'Avançado':'avancado', 'Médio':'medio', 'Leve':'leve', 'Completo':'completo' } as Record<string, TrainingLevel>)[match[1]]
-                            return Array.from({length: Number(match[2])}, (_, index) => ({ id: `${row}-${index}`, level }))
-                          })
-                          const distributionKey = `${pathName}:${fullPath.slice(0, -(pathName.length + 1))}`
-                          const distribution = (skillsData.distributionByPath?.[distributionKey] || {}) as Record<string, string>
-                          const baseTrainings: Record<string, TrainingLevel> = {}
-                          requirements.forEach(req => { if (distribution[req.id]) baseTrainings[distribution[req.id]] = req.level })
-                          const intellectSelections = (Array.isArray(skillsData.intellectExtraAllocations) ? skillsData.intellectExtraAllocations : []) as string[]
-                          for (const key of new Set([...Object.keys(baseTrainings), ...intellectSelections.filter(Boolean)])) {
-                            const base = baseTrainings[key] ? KISATSUTAI_TRAINING[baseTrainings[key]] : 0
-                            const points = base + intellectSelections.filter(selected => selected === key).length * 5
-                            if (points > 0) trainings[key] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
-                          }
-                          const trainedSkills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([category, entries]) =>
-                            entries.flatMap(skill => {
-                              const key = `${category}:${skill.name}`
+                        {isKisatsutaiSystem && <section className="combat-armor-panel sheet-armor-standalone" style={{marginTop:16,padding:20}} id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
+                          <h3>📚 Perícias Extras e de Arquétipo</h3><p>Treinamentos registrados na ficha do personagem.</p>
+                          <div className="sheet-summary-values" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10}}>
+                            {Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
+                              const key = `${group}:${skill.name}`
+                              const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string,string>
                               const level = trainings[key] as TrainingLevel | undefined
-                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
-                                ? [{ key, name: skill.name, category, level, bonus: KISATSUTAI_TRAINING[level] }]
-                                : []
-                            })
-                          )
-                          const trainingOrder: TrainingLevel[] = ['completo', 'avancado', 'medio', 'leve']
-                          const groups = trainingOrder.map(level => ({
-                            level,
-                            title: `Treinamento ${TRAINING_LABELS[level].toLowerCase()}`,
-                            skills: trainedSkills.filter(skill => skill.level === level).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
-                          })).filter(group => group.skills.length > 0)
-                          const total = trainedSkills.length
-                          return <section className="hb-extra-skills" id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
-                            <header className="hb-extra-skills-head">
-                              <div className="hb-extra-skills-heading">
-                                <span className="hb-extra-skills-icon" aria-hidden="true">📚</span>
-                                <div>
-                                  <span className="hb-extra-skills-eyebrow">TODAS AS PERÍCIAS TREINADAS</span>
-                                  <h3>Perícias Extras e de Arquétipo</h3>
-                                  <p>Todas as perícias treinadas, incluindo as de arquétipo e as extras, na ficha {forEnemy ? 'do inimigo' : 'do personagem'}.</p>
-                                </div>
-                              </div>
-                              <div className="hb-extra-skills-total"><strong>{total}</strong><span>{total === 1 ? 'perícia treinada' : 'perícias treinadas'}</span></div>
-                            </header>
-                            {total === 0
-                              ? <div className="hb-extra-skills-empty"><span aria-hidden="true">✧</span><strong>Nenhuma perícia treinada</strong><p>As perícias extras e de arquétipo aparecerão aqui quando forem registradas na ficha.</p></div>
-                              : <div className="hb-extra-skills-groups">{groups.map(({ level, title, skills }) =>
-                                  <div className={`hb-extra-skills-group hb-extra-skills-level-${level}`} key={level}>
-                                    <div className="hb-extra-skills-group-head"><h4>{title}</h4><span>{skills.length} {skills.length === 1 ? 'perícia' : 'perícias'}</span></div>
-                                    <div className="hb-extra-skills-list">{skills.map(skill =>
-                                      <article className="hb-extra-skill" key={skill.key}>
-                                        <span className="hb-extra-skill-symbol" aria-hidden="true">✧</span>
-                                        <div className="hb-extra-skill-info"><strong>{skill.name}</strong><small>{skill.category}</small></div>
-                                        <span className="hb-extra-skill-bonus">+{skill.bonus}</span>
-                                      </article>
-                                    )}</div>
-                                  </div>
-                                )}</div>}
-                          </section>
-                        })()}
+                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [<div key={key} style={{padding:10,border:'1px solid var(--season-line)',borderRadius:10}}><span>✧ {skill.name}<small style={{display:'block'}}>{group}</small></span><strong>+{KISATSUTAI_TRAINING[level]}</strong></div>] : []
+                            }))}
+                          </div>
+                        </section>}
                         </>
                       )
                     }
@@ -8728,7 +8666,6 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="sheet-summary-season">{forEnemy ? 'Campanha' : (seasons.find(entry => entry.id === selectedSeasonId)?.name || 'Temporada')}</div>
                         </header>
                         <div className="sheet-section-heading" id={forEnemy ? 'inimigo-status' : 'ficha-status'}><span className="sheet-section-symbol" aria-hidden="true">♥</span><div><span className="sheet-section-kicker">RECURSOS VITAIS</span><h3>Status</h3><p>Acompanhe seus recursos, aplique ajustes e registre danos.</p></div></div>
-                        {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
                         <div className="sheet-summary-status">{derived.map(([label,value], index) => {
                           const keys = ['pv', 'ps', 'pr'] as const
                           const key = keys[index]
@@ -9295,7 +9232,7 @@ counterAttackDT
       <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
       <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
-          <span className="brand-mark">H</span>
+          <span className="brand-mark"><img src="/favicon.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
           <span className="hb-sidebar-brand-copy">
             <strong>Häx<span className="brand-light">Bag</span></strong>
             <small>SEU UNIVERSO DE RPG</small>
@@ -9329,7 +9266,7 @@ counterAttackDT
                 setSelectedCampaignId(campaignId)
                 const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
                 if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-                // A troca de campanha é silenciosa; erros continuam sendo exibidos.
+                else if (activePage !== 'profile' && activePage !== 'master-chest') setNotice('Campanha principal atualizada para este perfil.')
               }}
               aria-label="Selecionar campanha ativa"
             >
@@ -9359,7 +9296,6 @@ counterAttackDT
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
-            {isMaster && <button type="button" className={`nav-link ${activePage === 'conditions' ? 'active' : ''}`} onClick={() => setActivePage('conditions')} disabled={!selectedCampaignId}><span className="hb-sidebar-nav-icon">🩸</span><span className="hb-sidebar-nav-name">Condições</span><span className="hb-sidebar-nav-flair">MESTRE</span></button>}
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-chest' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('master-chest') }} disabled={!selectedCampaignId} aria-current={activePage === 'master-chest' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">🗝</span><span className="hb-sidebar-nav-name">Baú do Mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
@@ -9426,7 +9362,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', conditions: 'Condições', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -9448,7 +9384,6 @@ counterAttackDT
         </header>
 
         <div className={`page-content page-${activePage}`}>
-          {activePage === 'conditions' && isMaster && selectedCampaignId && <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c=>c.campaign_id===selectedCampaignId)} enemies={enemies.filter(e=>e.campaign_id===selectedCampaignId)} master={isMaster} />}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <MasterChest
               key={selectedCampaignId}
@@ -11175,7 +11110,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && (
           <section className="welcome-row">
 
 
@@ -12296,7 +12231,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   {activityLoading ? (
     <p className="master-shield-empty">Carregando atividades...</p>
   ) : activityTableMissing ? (
-    <p className="master-shield-empty">O histórico estará disponível após a ativação do registro de atividades.</p>
+    <p className="master-shield-empty">O histórico ficará disponível assim que a tabela de atividades for criada no Supabase.</p>
   ) : campaignActivities.length > 0 ? (
   <>
     <ul className="campaign-activity-list">
@@ -12754,7 +12689,12 @@ disabled={
                       </div>
                     </div>
 
-                    
+                    {error && (
+                      <div className="notice" role="alert" style={{ marginBottom: 12 }}>
+                        <span>!</span> {error}
+                        <button type="button" onClick={() => setError('')} aria-label="Fechar erro">×</button>
+                      </div>
+                    )}
 
                     <label>
                       Nome do item
@@ -15227,9 +15167,29 @@ style={{cursor:'pointer'}}>
           </section>}
 
 
-          
+          {error && (
+            <div className="notice" role="alert">
+              <span>!</span> {error}
+              <button
+                onClick={() => setError('')}
+                aria-label="Fechar aviso"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
-          
+          {notice && activePage !== 'customization' && activePage !== 'master-chest' && (
+            <div className="notice" role="status">
+              <span>✓</span> {notice}
+              <button
+                onClick={() => setNotice('')}
+                aria-label="Fechar aviso"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {/* O formulário de campanha fica somente na página Campanhas. */}
 
@@ -15556,7 +15516,12 @@ style={{cursor:'pointer'}}>
                   </button>
                 </div>
 
-                
+                {error && (
+                  <div className="notice" role="alert" style={{ margin: '12px 0' }}>
+                    <span>!</span> {error}
+                    <button type="button" onClick={() => setError('')} aria-label="Fechar erro">×</button>
+                  </div>
+                )}
 
                 {showItemForm &&
                   (selectedCharacterId || editingItem) &&
