@@ -11163,7 +11163,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
           <section className="welcome-row">
 
 
