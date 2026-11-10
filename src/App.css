@@ -14217,3 +14217,12 @@ button:disabled { opacity: .58; }
 /* Símbolo HäxBag */
 .brand-mark:has(.hb-brand-symbol) { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; overflow: visible; }
 .hb-brand-symbol { display: block; width: 100%; height: 100%; object-fit: contain; }
+
+/* Perfil: acesso rápido às funções sociais */
+.hb-profile-action-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0 20px}
+.hb-profile-action-strip button{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;padding:16px;border:1px solid color-mix(in srgb,var(--season-primary,#c99770) 22%,transparent);border-radius:15px;background:color-mix(in srgb,var(--season-surface,#171b1e) 94%,transparent);color:var(--season-text,#fff);cursor:pointer;transition:transform .15s,border-color .15s}
+.hb-profile-action-strip button:hover{transform:translateY(-2px);border-color:var(--season-primary,#c99770)}
+.hb-profile-action-strip button>span:first-child{display:grid;place-items:center;width:42px;height:42px;flex-shrink:0;border-radius:12px;background:color-mix(in srgb,var(--season-primary,#c99770) 14%,transparent);color:var(--season-primary,#c99770);font-size:23px}
+.hb-profile-action-strip button>span:last-child{display:grid;gap:4px;min-width:0}.hb-profile-action-strip strong{font-size:13px}.hb-profile-action-strip small{font-size:11px;color:var(--season-muted,#aaa);line-height:1.4}
+#hb-social-hub{scroll-margin-top:24px}
+@media(max-width:760px){.hb-profile-action-strip{grid-template-columns:1fr;gap:8px}.hb-profile-action-strip button{padding:12px}}

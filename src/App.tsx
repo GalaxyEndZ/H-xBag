@@ -18,6 +18,7 @@ import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSU
 import HaxTable from './components/HaxTable'
 import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
+import FriendsPanel from './components/FriendsPanel'
 
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
 const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
@@ -10847,6 +10848,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <i />
                 <span className="hb-profile-section-end">EM NÚMEROS</span>
               </div>
+              <div className="hb-profile-action-strip" aria-label="Ações do perfil">
+                <button type="button" onClick={() => setProfileEditing(true)}><span aria-hidden="true">✎</span><span><strong>Personalizar perfil</strong><small>Nome, avatar e apresentação</small></span></button>
+                <button type="button" onClick={() => document.getElementById('hb-social-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
+                <button type="button" onClick={() => document.getElementById('hb-social-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">✉</span><span><strong>Convites</strong><small>Campanhas compartilhadas</small></span></button>
+              </div>
               <div className="hb-profile-overview-grid">
                 <article className="hb-profile-info-tile">
                   <span className="hb-profile-tile-icon" aria-hidden="true">⚑</span>
@@ -11008,6 +11014,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
             </section>
           )}
+          {activePage === 'profile' && <div id="hb-social-hub"><FriendsPanel campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
     <header className="hb-hero hb-overview-hero">
