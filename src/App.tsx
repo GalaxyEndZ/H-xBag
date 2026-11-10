@@ -19,6 +19,7 @@ import HaxTable from './components/HaxTable'
 import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
+import { ConditionsPanel, CharacterConditions } from './ConditionsPanel'
 
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
 const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
@@ -1542,7 +1543,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile' | 'conditions'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
 
@@ -7959,17 +7960,36 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                               : 'As proteções físicas complementam a redução de dano.'} A proteção de sanidade é calculada separadamente.</span>
                           </div>
                         </section>
-                        {isKisatsutaiSystem && <section className="combat-armor-panel sheet-armor-standalone" style={{marginTop:16,padding:20}} id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
-                          <h3>📚 Perícias Extras e de Arquétipo</h3><p>Treinamentos registrados na ficha do personagem.</p>
-                          <div className="sheet-summary-values" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10}}>
-                            {Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
-                              const key = `${group}:${skill.name}`
-                              const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string,string>
-                              const level = trainings[key] as TrainingLevel | undefined
-                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [<div key={key} style={{padding:10,border:'1px solid var(--season-line)',borderRadius:10}}><span>✧ {skill.name}<small style={{display:'block'}}>{group}</small></span><strong>+{KISATSUTAI_TRAINING[level]}</strong></div>] : []
-                            }))}
-                          </div>
+                        {isKisatsutaiSystem && <section className="combat-armor-panel sheet-armor-standalone hb-skill-training-summary" style={{marginTop:16,padding:20}} id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'}>
+                          <h3>📚 Perícias treinadas</h3>
+                          <p>Perícias extras e de arquétipo, organizadas separadamente por nível de treinamento.</p>
+                          {(() => {
+                            const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string,string>
+                            const levels: TrainingLevel[] = ['completo','avancado','medio','leve']
+                            const categories = [
+                              { id: 'extras', title: 'Perícias Extras', description: 'Sociais, Conhecimentos Gerais e Naturais', groups: ['Sociais', 'Conhecimentos Gerais', 'Naturais'] },
+                              { id: 'arquetipo', title: 'Perícias de Arquétipo', description: 'Treinamentos vinculados aos arquétipos', groups: Object.keys(KISATSUTAI_SKILL_GROUPS).filter(g => !['Sociais', 'Conhecimentos Gerais', 'Naturais'].includes(g)) },
+                            ]
+                            return <div className="hb-skill-summary-categories">{categories.map(category => {
+                              const skills = category.groups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).flatMap(skill => {
+                                const key = `${group}:${skill.name}`
+                                const level = trainings[key] as TrainingLevel | undefined
+                                return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [{ key, group, name: skill.name, level }] : []
+                              }))
+                              return <div className="hb-skill-summary-category" key={category.id}>
+                                <div className="hb-skill-summary-heading"><div><h4>{category.title}</h4><small>{category.description}</small></div><span>{skills.length} treinada(s)</span></div>
+                                <div className="hb-skill-summary-levels">{levels.map(level => {
+                                  const entries = skills.filter(skill => skill.level === level)
+                                  return <div className="hb-skill-summary-level" key={level}>
+                                    <div className="hb-skill-summary-level-heading"><strong>{TRAINING_LABELS[level]}</strong><span>+{KISATSUTAI_TRAINING[level]}</span><small>{entries.length}</small></div>
+                                    {entries.length ? <div className="hb-skill-summary-list">{entries.map(skill => <div key={skill.key} className="hb-skill-summary-entry"><span><strong>{skill.name}</strong><small>{skill.group}</small></span><b>+{KISATSUTAI_TRAINING[level]}</b></div>)}</div> : <p className="hb-skill-summary-empty">Nenhuma perícia neste nível.</p>}
+                                  </div>
+                                })}</div>
+                              </div>
+                            })}</div>
+                          })()}
                         </section>}
+                        {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
                         </>
                       )
                     }
@@ -9312,6 +9332,9 @@ counterAttackDT
             {isMaster && <button type="button" className={`nav-link ${activePage === 'enemies' ? 'active' : ''}`} onClick={() => setActivePage('enemies')} disabled={!selectedCampaignId} aria-current={activePage === 'enemies' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">⚔</span><span className="hb-sidebar-nav-name">Inimigos</span><span className="nav-count">{enemies.length}</span>
             </button>}
+            {isMaster && <button type="button" className={`nav-link ${activePage === 'conditions' ? 'active' : ''}`} onClick={() => setActivePage('conditions')} disabled={!selectedCampaignId} aria-current={activePage === 'conditions' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">✦</span><span className="hb-sidebar-nav-name">Condições</span><span className="hb-sidebar-nav-flair">MESTRE</span>
+            </button>}
           </div>
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">MUNDO DA CAMPANHA</span>
@@ -9366,7 +9389,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -10804,6 +10827,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             </section>
           )}
 
+          {activePage === 'conditions' && isMaster && selectedCampaignId && (
+            <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} />
+          )}
           {activePage === 'profile' && (
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15" aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
