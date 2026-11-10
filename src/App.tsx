@@ -1215,6 +1215,7 @@ const resetCreatureFilters = () => {
   const [creatingSeason, setCreatingSeason] = useState(false)
   const creatingSeasonRef = useRef(false)
   const [profileNameDraft, setProfileNameDraft] = useState('')
+  const [profileUsernameDraft, setProfileUsernameDraft] = useState('')
   const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
   const [profileBioDraft, setProfileBioDraft] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
@@ -6485,6 +6486,7 @@ async function sendItemToCharacter() {
     session?.user.user_metadata?.display_name ||
     session?.user.email?.split('@')[0] ||
     'Aventureiro'
+  const accountUsername = typeof session?.user.user_metadata?.username === 'string' ? String(session.user.user_metadata.username) : ''
   const rawAccountAvatar = session?.user.user_metadata?.profile_avatar
   const accountAvatar = typeof rawAccountAvatar === 'string' &&
     profileAvatarOptions.some(emoji => emoji === rawAccountAvatar) ? rawAccountAvatar : ''
@@ -6493,10 +6495,11 @@ async function sendItemToCharacter() {
   const accountCreatedAt = session?.user.created_at
     ? new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : 'Data indisponível'
-  const profileHasChanges = profileNameDraft.trim() !== String(displayName).trim() ||
+  const profileHasChanges = profileUsernameDraft.trim().toLowerCase() !== accountUsername.toLowerCase() || profileNameDraft.trim() !== String(displayName).trim() ||
     profileAvatarDraft !== accountAvatar || profileBioDraft.trim() !== accountBio.trim()
   const openProfilePage = () => {
     setProfileNameDraft(String(displayName))
+    setProfileUsernameDraft(accountUsername)
     setProfileAvatarDraft(accountAvatar)
     setProfileBioDraft(accountBio)
     setProfileEditing(false)
@@ -10828,6 +10831,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div className="hb-profile-identity-copy">
                     <span className="hb-profile-identity-kicker"><span aria-hidden="true">✦</span> IDENTIDADE DO AVENTUREIRO</span>
                     <h1 id="hb-profile-title">{displayName}</h1>
+                    <p className="hb-profile-username">{accountUsername ? `@${accountUsername}` : 'Escolha seu @usuário em Editar perfil'}</p>
                     <p>{accountBio.trim() || 'Toda aventura merece uma história. Personalize a sua apresentação e deixe sua marca no HäxBag.'}</p>
                     <div className="hb-profile-identity-badges">
                       <span><i aria-hidden="true" className="hb-profile-status-light" /> Conta ativa</span>
@@ -10879,10 +10883,15 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <form className="hb-profile-card hb-profile-edit-card" onSubmit={async event => {
                   event.preventDefault()
                   if (profileSaving || !profileHasChanges) return
-                  const nextName = profileNameDraft.trim()
+                  const nextName = profileNameDraft.trim().replace(/\s+/g, ' ')
+                  const nextUsername = profileUsernameDraft.trim().toLowerCase().replace(/^@/, '')
                   const nextBio = profileBioDraft.trim()
                   if (!nextName || nextName.length > 60) {
                     setError('O nome de exibição deve ter entre 1 e 60 caracteres.')
+                    return
+                  }
+                  if (!/^[a-z0-9_]{3,24}$/.test(nextUsername)) {
+                    setError('Nome de usuário: 3 a 24 caracteres, somente letras, números e _.')
                     return
                   }
                   if (nextBio.length > 180) {
@@ -10892,24 +10901,31 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   setProfileSaving(true)
                   setError('')
                   try {
+                    if (nextUsername !== accountUsername.toLowerCase()) {
+                      const { data: available, error: checkError } = await supabase.rpc('is_username_available', { candidate: nextUsername, exclude_user: session.user.id })
+                      if (checkError) throw checkError
+                      if (!available) { setError('Esse nome de usuário já está em uso.'); return }
+                    }
                     const { error: authError } = await supabase.auth.updateUser({
-                      data: { display_name: nextName, profile_avatar: profileAvatarDraft, profile_bio: nextBio },
+                      data: { display_name: nextName, username: nextUsername, profile_avatar: profileAvatarDraft, profile_bio: nextBio },
                     })
                     if (authError) throw authError
                     if (nextName !== String(displayName).trim()) {
                       const { error: profileError } = await supabase.from('profiles')
-                        .update({ display_name: nextName }).eq('id', session.user.id)
+                        .update({ display_name: nextName, username: nextUsername }).eq('id', session.user.id)
                       if (profileError) {
                         setNotice('Perfil salvo na conta. Não foi possível sincronizar o nome com os membros: ' + profileError.message)
                       } else {
                         setNotice('Perfil atualizado com sucesso.')
                       }
                     } else {
+                      const { error: profileError } = await supabase.from('profiles').update({ username: nextUsername }).eq('id', session.user.id)
+                      if (profileError) throw profileError
                       setNotice('Perfil atualizado com sucesso.')
                     }
                     setProfileEditing(false)
                   } catch (err) {
-                    setError('Erro ao salvar seu perfil: ' + (err instanceof Error ? err.message : String(err)))
+                    setError(/nome.*uso|display.name|duplicate|unique/i.test(err instanceof Error ? err.message : String(err)) ? 'Esse nome já está em uso. Escolha outro.' : 'Erro ao salvar seu perfil: ' + (err instanceof Error ? err.message : String(err)))
                   } finally {
                     setProfileSaving(false)
                   }
@@ -10935,7 +10951,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <label className="hb-profile-field">Nome de exibição
                     <input maxLength={60} required value={profileNameDraft} onChange={event => setProfileNameDraft(event.target.value)}
                       autoComplete="nickname" placeholder="Como os outros jogadores verão seu nome" />
-                    <small>Este nome também identifica você nas campanhas. {profileNameDraft.length}/60</small>
+                    <small>Pode se repetir. É como os outros jogadores verão você nas campanhas. {profileNameDraft.length}/60</small>
+                  </label>
+                  <label className="hb-profile-field">Nome de usuário
+                    <input maxLength={24} required value={profileUsernameDraft} onChange={event => setProfileUsernameDraft(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} autoComplete="username" placeholder="seu_usuario" />
+                    <small>Seu identificador exclusivo: @seu_usuario. Usado para encontrar amigos.</small>
                   </label>
                   <label className="hb-profile-field">Sobre você <span className="hb-profile-optional">Opcional</span>
                     <textarea rows={4} maxLength={180} value={profileBioDraft} onChange={event => setProfileBioDraft(event.target.value)}
@@ -10947,7 +10967,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <span className={`hb-profile-save-status ${profileHasChanges ? 'has-changes' : 'is-saved'}`} aria-live="polite">{profileHasChanges ? '● Alterações não salvas' : '✓ Perfil atualizado'}</span>
                     <div className="hb-profile-form-actions">
                       <button type="button" className="secondary-button" disabled={profileSaving || !profileHasChanges}
-                        onClick={() => { setProfileNameDraft(String(displayName)); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio) }}>Descartar</button>
+                        onClick={() => { setProfileNameDraft(String(displayName)); setProfileUsernameDraft(accountUsername); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio) }}>Descartar</button>
                       <button type="submit" className="primary-button" disabled={profileSaving || !profileHasChanges}>
                         {profileSaving ? 'Salvando…' : 'Salvar alterações'}
                       </button>

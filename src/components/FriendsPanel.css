@@ -15,3 +15,27 @@
 .hb-friends-tab-content{min-height:150px}.hb-friends-panel-v2 .hb-friends-box{background:color-mix(in srgb,var(--season-surface,#171b1e) 88%,#000 12%)}
 .hb-friends-panel-v2 .hb-friends-person:hover,.hb-friends-panel-v2 .hb-friends-invite:hover{background:#ffffff05}
 @media(max-width:600px){.hb-friends-stats{gap:6px}.hb-friends-stats>span{padding:10px;font-size:10px}.hb-friends-stats strong{font-size:20px}.hb-friends-tabs button{padding:9px 10px;font-size:11px}}
+
+/* V3 — central social com identidade editorial e foco na legibilidade */
+.hb-friends-panel-v2{position:relative;overflow:hidden;isolation:isolate;border-radius:24px;box-shadow:0 18px 60px #0000001b;background:linear-gradient(155deg,color-mix(in srgb,var(--season-primary,#c99770) 7%,var(--season-surface,#171b1e)),var(--season-surface,#171b1e) 45%)}
+.hb-friends-panel-v2::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,transparent,var(--season-primary,#c99770),transparent);opacity:.8;pointer-events:none}
+.hb-friends-panel-v2 .hb-friends-heading h2{font-size:clamp(23px,2.6vw,30px);letter-spacing:-.035em}
+.hb-friends-panel-v2 .hb-friends-heading p{max-width:520px;line-height:1.65}
+.hb-social-intro{display:flex;align-items:center;gap:14px;padding:15px 18px;margin:4px 0 18px;border:1px solid color-mix(in srgb,var(--season-primary,#c99770) 24%,transparent);border-radius:15px;background:color-mix(in srgb,var(--season-primary,#c99770) 8%,transparent)}
+.hb-social-intro-icon{width:42px;height:42px;flex:none;display:grid;place-items:center;font-size:24px;border-radius:12px;color:var(--season-primary,#c99770);background:color-mix(in srgb,var(--season-primary,#c99770) 13%,transparent)}
+.hb-social-intro>div{display:grid;gap:4px}.hb-social-intro strong{font-size:13px}.hb-social-intro>div>span{font-size:12px;line-height:1.5;color:var(--season-muted,#aaa)}
+.hb-friends-panel-v2 .hb-friends-stats>span{border-radius:15px;padding:17px 19px;background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary,#c99770) 7%,transparent),transparent);border-color:color-mix(in srgb,var(--season-primary,#c99770) 16%,#8883)}
+.hb-friends-panel-v2 .hb-friends-stats strong{font-size:clamp(23px,3vw,31px);letter-spacing:-.04em}
+.hb-friends-panel-v2 .hb-friends-box{padding:clamp(16px,2vw,23px);border-radius:17px;border-color:color-mix(in srgb,var(--season-primary,#c99770) 12%,#8883)}
+.hb-friends-panel-v2 .hb-friends-box h3{font-size:16px;letter-spacing:-.02em}
+.hb-friends-panel-v2 .hb-friends-person,.hb-friends-panel-v2 .hb-friends-invite{padding:13px 8px;margin:0 -8px;border-radius:10px;transition:background .15s ease}
+.hb-friends-panel-v2 .hb-friends-avatar{width:40px;height:40px;flex:none;border-radius:13px;border:1px solid color-mix(in srgb,var(--season-primary,#c99770) 25%,transparent)}
+.hb-friends-panel-v2 .hb-friends-person button:not(:disabled):hover,.hb-friends-panel-v2 .hb-friends-invite button:not(:disabled):hover{background:color-mix(in srgb,var(--season-primary,#c99770) 30%,transparent)}
+.hb-friends-panel-v2 button:focus-visible,.hb-friends-panel-v2 input:focus-visible{outline:2px solid var(--season-primary,#c99770);outline-offset:3px}
+.hb-social-search{display:flex;align-items:center;gap:9px;border:1px solid #8885;border-radius:12px;background:#080c0d88;padding:0 12px;transition:border-color .15s}
+.hb-social-search:focus-within{border-color:var(--season-primary,#c99770)}.hb-social-search>span{font-size:22px;color:var(--season-muted,#aaa)}
+.hb-friends-panel-v2 .hb-social-search input{flex:1;min-width:0;border:0;background:transparent;padding:13px 0;outline:none}.hb-friends-panel-v2 .hb-social-search input:focus-visible{outline:none}
+.hb-social-search button{border:0;background:transparent;color:var(--season-muted,#aaa);cursor:pointer;font-size:20px;padding:3px 7px}
+.hb-friends-panel-v2 .hb-friends-empty{padding:17px 14px;border:1px dashed #8884;border-radius:12px;line-height:1.7;background:#0001}
+.hb-friends-panel-v2 .hb-friends-tabs button{transition:background .15s,border-color .15s}.hb-friends-panel-v2 .hb-friends-tabs button:hover{background:color-mix(in srgb,var(--season-primary,#c99770) 9%,transparent)}
+@media(max-width:600px){.hb-social-intro{padding:12px}.hb-friends-panel-v2 .hb-friends-stats>span{padding:12px}.hb-friends-panel-v2 .hb-friends-person button{flex-shrink:0}}

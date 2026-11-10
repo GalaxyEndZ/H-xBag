@@ -6,6 +6,7 @@ import './Auth.css'
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false)
   const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,15 +20,31 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
+        const cleanName = name.trim().replace(/\s+/g, ' ')
+        if (cleanName.length < 2 || cleanName.length > 60) {
+          setMessage('Escolha um nome entre 2 e 60 caracteres.')
+          return
+        }
+        const cleanUsername = username.trim().toLowerCase().replace(/^@/, '')
+        if (!/^[a-z0-9_]{3,24}$/.test(cleanUsername)) {
+          setMessage('O nome de usuário deve ter de 3 a 24 caracteres: letras, números ou _.')
+          return
+        }
+        const { data: available, error: checkError } = await supabase.rpc('is_username_available', { candidate: cleanUsername })
+        if (checkError) throw checkError
+        if (!available) { setMessage('Esse nome de usuário já está em uso.'); return }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { display_name: name.trim() },
+            data: { display_name: cleanName, username: cleanUsername },
           },
         })
 
-        if (error) throw error
+        if (error) {
+          if (/nome.*uso|display.name|duplicate|unique/i.test(error.message)) throw new Error('Esse nome de usuário já está em uso. Escolha outro.')
+          throw error
+        }
 
         if (data.session) {
           setMessage('Conta criada! Você já pode acessar a HäxBag.')
@@ -99,6 +116,7 @@ export default function Auth() {
           </div>
           <form onSubmit={handleSubmit} className="auth-form">
             {isSignUp && <label>Nome de exibição<input type="text" value={name} onChange={event => setName(event.target.value)} placeholder="Como quer ser chamado?" minLength={2} maxLength={60} autoComplete="nickname" required /></label>}
+            {isSignUp && <label>Nome de usuário<input type="text" value={username} onChange={event => setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="ex.: aventureiro_01" minLength={3} maxLength={24} autoComplete="username" required /><small>Único na plataforma · 3–24 caracteres · letras, números e _</small></label>}
             <label>E-mail<input type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="seuemail@exemplo.com" autoComplete="email" required /></label>
             <label>Senha<div className="auth-password-field"><input type={showPassword ? 'text' : 'password'} value={password} onChange={event => setPassword(event.target.value)} placeholder={isSignUp ? 'Mínimo de 8 caracteres' : 'Digite sua senha'} minLength={8} autoComplete={isSignUp ? 'new-password' : 'current-password'} required /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>{showPassword ? 'Ocultar' : 'Mostrar'}</button></div></label>
             {!isSignUp && <div className="auth-forgot"><button type="button" disabled={loading} onClick={handleResetPassword}>Esqueceu sua senha?</button></div>}
