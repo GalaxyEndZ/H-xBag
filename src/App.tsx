@@ -974,6 +974,9 @@ function App() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [sheetCharacterSearch, setSheetCharacterSearch] = useState('')
   const [sheetCharacterArchetype, setSheetCharacterArchetype] = useState('all')
+  const [sheetSeasonFilter, setSheetSeasonFilter] = useState('all')
+  const [sheetTeamFilter, setSheetTeamFilter] = useState('all')
+  const [sheetSeasonRoster, setSheetSeasonRoster] = useState<Record<string, Record<string, {participating:boolean;party:boolean;team:string}>>>({})
   const [sheetCharacterOwnerFilter, setSheetCharacterOwnerFilter] = useState<'all' | 'mine' | 'assigned' | 'unassigned'>('all')
   const [sheetCharacterSort, setSheetCharacterSort] = useState<'name' | 'recent' | 'level' | 'favorites'>('name')
   const [sheetCharacterLayout, setSheetCharacterLayout] = useState<'grid' | 'list'>('grid')
@@ -1645,11 +1648,48 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     (character.current_player_id ? character.current_player_id === session.user.id : character.user_id === session.user.id))
   const sheetCharactersWithPlayer = characters.filter(character => Boolean(character.current_player_id)).length
   const sheetMyCharacters = characters.filter(sheetCharacterIsMine).length
+  // Carrega participação e equipe de cada ficha por temporada, sem modificar o JSON salvo.
+  useEffect(() => {
+    if (!selectedCampaignId || !seasons.length || !characters.length) { setSheetSeasonRoster({}); return }
+    let cancelled = false
+    const load = async () => {
+      const ids = characters.map(character => character.id)
+      const {data, error: rosterError} = await supabase.from('character_sheets')
+        .select('character_id,season_id,sheet_data').in('season_id', seasons.map(season => season.id))
+        .in('character_id', ids)
+      if (cancelled || rosterError) return
+      const next: Record<string, Record<string, {participating:boolean;party:boolean;team:string}>> = {}
+      for (const row of data ?? []) {
+        const raw = (row.sheet_data ?? {}) as Record<string, any>
+        const team = String(raw.teamName ?? raw.team ?? raw.equipe ?? raw.identity?.team ?? '').trim()
+        if (!next[row.season_id]) next[row.season_id] = {}
+        next[row.season_id][row.character_id] = {
+          participating: raw.seasonParticipation === true,
+          party: raw.partyParticipation === true,
+          team,
+        }
+      }
+      setSheetSeasonRoster(next)
+    }
+    void load()
+    return () => {cancelled = true}
+  }, [selectedCampaignId, seasons, characters])
+  const sheetTeams = Array.from(new Set(Object.entries(sheetSeasonRoster)
+    .filter(([season]) => sheetSeasonFilter === 'all' || season === sheetSeasonFilter)
+    .flatMap(([, roster]) => Object.values(roster).map(entry => entry.team).filter(Boolean))))
+    .sort((a,b) => a.localeCompare(b, 'pt-BR'))
   const sheetFilteredCharacters = characters.filter(character => {
     const text = [character.name, character.archetype, systemFeatures.usesRanks ? characterRanks[character.id] : character.level]
       .map(value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')).join(' ')
     const query = sheetCharacterSearch.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
     if (query && !text.includes(query)) return false
+    if (sheetSeasonFilter !== 'all' && !sheetSeasonRoster[sheetSeasonFilter]?.[character.id]?.participating) return false
+    if (sheetTeamFilter !== 'all') {
+      const records = Object.entries(sheetSeasonRoster).filter(([season]) => sheetSeasonFilter === 'all' || season === sheetSeasonFilter).map(([, roster]) => roster[character.id]).filter(Boolean)
+      if (sheetTeamFilter === 'party' && !records.some(entry => entry.participating && entry.party)) return false
+      if (sheetTeamFilter === 'outside' && !records.some(entry => entry.participating && !entry.party)) return false
+      if (sheetTeamFilter.startsWith('team:') && !records.some(entry => entry.participating && entry.team === sheetTeamFilter.slice(5))) return false
+    }
     if (sheetCharacterArchetype !== 'all' && (character.archetype?.trim() || '') !== sheetCharacterArchetype) return false
     if (sheetCharacterOwnerFilter === 'mine' && !sheetCharacterIsMine(character)) return false
     if (sheetCharacterOwnerFilter === 'assigned' && !character.current_player_id) return false
@@ -1672,10 +1712,11 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
   })
   const sheetHasActiveFilters = Boolean(sheetCharacterSearch.trim() || sheetCharacterArchetype !== 'all' ||
-    sheetCharacterOwnerFilter !== 'all' || sheetOnlyFavorites)
+    sheetCharacterOwnerFilter !== 'all' || sheetOnlyFavorites || sheetSeasonFilter !== 'all' || sheetTeamFilter !== 'all')
   const resetSheetFilters = () => {
     setSheetCharacterSearch(''); setSheetCharacterArchetype('all')
     setSheetCharacterOwnerFilter('all'); setSheetOnlyFavorites(false)
+    setSheetSeasonFilter('all'); setSheetTeamFilter('all')
   }
   const toggleSheetFavorite = (id: string) => {
     setSheetFavoriteCollections(current => {
@@ -12552,6 +12593,20 @@ disabled={
                       <select value={sheetCharacterArchetype} onChange={event => setSheetCharacterArchetype(event.target.value)}>
                         <option value="all">Todos os arquétipos</option>
                         {sheetArchetypes.map(name => <option key={name} value={name}>{name}</option>)}
+                      </select>
+                    </label>
+                    <label className="sheet-roster-select">Temporada
+                      <select value={sheetSeasonFilter} onChange={event => {setSheetSeasonFilter(event.target.value);setSheetTeamFilter('all')}}>
+                        <option value="all">Todas as temporadas</option>
+                        {seasons.map(season => <option key={season.id} value={season.id}>{season.name}</option>)}
+                      </select>
+                    </label>
+                    <label className="sheet-roster-select">Equipe
+                      <select value={sheetTeamFilter} onChange={event => setSheetTeamFilter(event.target.value)}>
+                        <option value="all">Todas as equipes</option>
+                        <option value="party">Na equipe / Party</option>
+                        <option value="outside">Fora da equipe / Party</option>
+                        {sheetTeams.map(team => <option key={team} value={`team:${team}`}>{team}</option>)}
                       </select>
                     </label>
                     <label className="sheet-roster-select">Vínculo
