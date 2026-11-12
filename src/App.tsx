@@ -8204,16 +8204,17 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                         id={forEnemy ? 'inimigo-edicao' : 'ficha-edicao'}
                         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
                       >
-                      {!forEnemy && isMaster && selectedCharacter && (
+                      {!forEnemy && selectedCharacter && (
                   <section className="sheet-current-player-panel" aria-labelledby="sheet-current-player-heading">
                     <div className="sheet-current-player-info">
                       <span className="sheet-current-player-icon" aria-hidden="true">♙</span>
                       <div>
-                        <span className="sheet-page-eyebrow">GERENCIAMENTO DO MESTRE</span>
-                        <h3 id="sheet-current-player-heading">Jogador atual</h3>
-                        <p>Escolha quem controla este personagem. A atribuição também é usada na Party do Escudo do Mestre.</p>
+                        <span className="sheet-page-eyebrow">PERSONAGEM</span>
+                        <h3 id="sheet-current-player-heading">Jogador atribuído</h3>
+                        <p>{isMaster ? "Escolha quem controla este personagem. A atribuição também é usada na Party do Escudo do Mestre." : "Jogador responsável por este personagem."}</p>
                       </div>
                     </div>
+                    {isMaster ? (
                     <label className="sheet-current-player-field" htmlFor="sheet-character-current-player">
                       <span>Jogador atribuído</span>
                       <select
@@ -8223,11 +8224,22 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                         disabled={visibilitySaving}
                       >
                         <option value="">Sem jogador atribuído</option>
-                        {campaignMembers.filter(member => member.role !== 'master').map(member => (
-                          <option key={member.user_id} value={member.user_id}>{member.display_name}</option>
+                        {campaignMembers.map(member => (
+                          <option key={member.user_id} value={member.user_id}>{member.display_name}{member.role === 'master' ? ' (Mestre)' : ''}{member.user_id === user?.id ? ' · Você' : ''}</option>
                         ))}
                       </select>
+                      {user?.id && campaignMembers.some(member => member.user_id === user.id) && selectedCharacter.current_player_id !== user.id && (
+                        <button type="button" className="btn btn-secondary" disabled={visibilitySaving} onClick={() => void changeCharacterPlayer(user.id)}>
+                          ♙ Atribuir a mim
+                        </button>
+                      )}
                     </label>
+                    ) : (
+                      <div className="sheet-current-player-field">
+                        <span>Jogador atribuído</span>
+                        <strong>{campaignMembers.find(member => member.user_id === (selectedCharacter.current_player_id || selectedCharacter.user_id))?.display_name || (selectedCharacter.current_player_id === user?.id || (!selectedCharacter.current_player_id && selectedCharacter.user_id === user?.id) ? 'Você' : 'Jogador não encontrado')}</strong>
+                      </div>
+                    )}
                   </section>
                 )}
                       {(() => {
