@@ -8140,12 +8140,13 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                         {(() => {
                           const team = String(read('identity.team', '') || read('identity.teamName', '')).trim()
                           return <div className="hb-sheet-team-indicator" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                            <span>🛡️ Equipe: <strong>{team || 'Não definida'}</strong></span>
-                            {isMaster && <label style={{display:'flex',alignItems:'center',gap:6}}>
-                              <span>Editar equipe</span>
-                              <input aria-label="Nome da equipe" list="hax-sheet-teams" value={team} placeholder="Nome da equipe" onChange={event => write('identity.team', event.target.value)} style={{maxWidth:190}} />
+                            <div className="hb-team-identity"><span className="hb-team-crest" aria-hidden="true">🛡️</span><div><span className="hb-team-eyebrow">EQUIPE ATUAL</span><strong>{team || 'Sem equipe'}</strong></div></div>
+                            {isMaster && <div className="hb-team-controls">
+                              <label className="hb-team-field"><span>Nome da equipe</span><input aria-label="Nome da equipe" list="hax-sheet-teams" value={team} placeholder="Criar ou selecionar equipe" onChange={event => write('identity.team', event.target.value)} /></label>
                               <datalist id="hax-sheet-teams">{sheetTeams.map(name => <option key={name} value={name} />)}</datalist>
-                            </label>}
+                              <label className="hb-team-field"><span>Equipes existentes</span><select aria-label="Selecionar equipe existente" value={sheetTeams.includes(team) ? team : ''} onChange={event => write('identity.team', event.target.value)}><option value="">Selecionar equipe</option>{sheetTeams.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+                              {team && <button type="button" className="hb-team-clear" onClick={() => write('identity.team', '')}>Remover da equipe</button>}
+                            </div>}
                           </div>
                         })()}
                         </>
@@ -11865,7 +11866,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             </div>
           </div>
         </div>
-        <nav className="sheet-quick-nav" aria-label="Navegação da ficha do inimigo">
+        <nav className="sheet-quick-nav hb-sheet-nav-v2" aria-label="Navegação da ficha do inimigo"><span className="hb-nav-caption">SEÇÕES DA FICHA</span>
           {(enemyEditingSheet ? [
             ['✎', 'Edição', 'inimigo-edicao'], ['⚔', 'Ações', 'inimigo-acoes'], ['◈', 'Reações', 'inimigo-reacoes'],
             ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
@@ -12868,7 +12869,7 @@ disabled={
   </div>
 )}
                   </div>
-                  <nav className="sheet-quick-nav" aria-label="Navegação da ficha">
+                  <nav className="sheet-quick-nav hb-sheet-nav-v2" aria-label="Navegação da ficha"><span className="hb-nav-caption">SEÇÕES DA FICHA</span>
                     {(editingSheet ? [
                       ['✎', 'Edição', 'ficha-edicao'], ['⚔', 'Ações', 'ficha-acoes'], ['◈', 'Reações', 'ficha-reacoes'],
                       ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
