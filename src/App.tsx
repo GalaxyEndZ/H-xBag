@@ -20,6 +20,7 @@ import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import { ConditionsPanel, CharacterConditions } from './ConditionsPanel'
+import { useCharacterConditionModifiers, conditionModifier } from './conditionEngine'
 
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
 const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
@@ -989,6 +990,8 @@ function App() {
     } catch { return {} }
   })
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
+  const conditionModifiers = useCharacterConditionModifiers(selectedCampaignId, selectedCharacterId)
+
   const [characterNameDraft, setCharacterNameDraft] = useState('')
   const [characterNameSaving, setCharacterNameSaving] = useState(false)
   const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(null)
@@ -7513,12 +7516,16 @@ const attribute =
   const dice = roll.rolls
   const highest = roll.result
   const preparationBonus = kind.startsWith('Ataque') ? (complexPending?.bonus || 0) : 0
-  const total = highest + bonus + preparationBonus
+  const conditionBonus = conditionModifier(conditionModifiers, 'status', kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : 'defense')
+  const combatConditionBonus = conditionModifier(conditionModifiers, 'combat_points', kind.startsWith('Ataque') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge')
+  const total = highest + bonus + preparationBonus + conditionBonus + combatConditionBonus
   if (kind.startsWith('Ataque') && complexPending) setComplexPending(null)
 
-  const diceDescription = roll.hasDisadvantage
+  const diceDescriptionBase = roll.hasDisadvantage
     ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem) → ${highest}`
     : `${roll.effectiveDiceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
+  const conditionTotal = conditionBonus + combatConditionBonus
+  const diceDescription = `${diceDescriptionBase}${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}`
   if (kind === 'Bloqueio') {
     const critical = highest >= criticalValue
     const success = validTarget && total >= target
@@ -8994,12 +9001,15 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <button type="button" disabled={!selected} onClick={() => {
                                   if (!selected) return
                                   const roll = rollAttributeDice(testDiceCount, testAttribute.key === 'agility')
-                                  const total = roll.result + selected.bonus
+                                  const attributeConditionBonus = conditionModifier(conditionModifiers, 'status', testAttribute.key)
+                                  const skillConditionBonus = conditionModifier(conditionModifiers, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key) + conditionModifier(conditionModifiers, 'main_skill', selected.name)
+                                  const conditionTotal = attributeConditionBonus + skillConditionBonus
+                                  const total = roll.result + selected.bonus + conditionTotal
                                   const diceDescription = roll.hasDisadvantage
                                     ? `${roll.rolls.length}D20 [${roll.rolls.join(', ')}] (desvantagem: ${roll.result})`
                                     : `${roll.effectiveDiceCount}D20 [${roll.rolls.join(', ')}] (maior: ${roll.result})`
                                   setBlockDamageReduction(null)
-                                  setCombatActionResult(`Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus}) = ${total}.`)
+                                  setCombatActionResult(`Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus})${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''} = ${total}.`)
                                 }}>🎲 Rolar teste</button>
                               </div>
                               <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Treinamento: {selected ? `+${selected.bonus}` : 'selecione uma perícia'}</small>
