@@ -14392,3 +14392,9 @@ button:disabled { opacity: .58; }
 .hb-condition-library-item .hb-condition-actions{display:flex;gap:8px;flex-wrap:wrap}
 .hb-condition-library-item .hb-condition-actions button{min-height:36px}
 @media(max-width:650px){.hb-conditions-library-tools{align-items:stretch}.hb-conditions-library-tools label{flex:1}.hb-conditions-library-tools>span{width:100%}}
+
+/* Ordenação visual das condições */
+.hb-condition-library-item[draggable="true"],.hb-conditions-entry[draggable="true"]{cursor:grab;user-select:none;-webkit-user-select:none}
+.hb-condition-library-item[draggable="true"] button,.hb-conditions-entry[draggable="true"] button{cursor:pointer;user-select:auto}
+.hb-condition-library-item.hb-condition-drop-target,.hb-conditions-entry.hb-condition-drop-target{outline:2px solid var(--season-primary,#d9a873)!important;outline-offset:2px;background:color-mix(in srgb,var(--season-primary,#d9a873) 12%,var(--cond-soft))!important}
+.hb-condition-library-item.hb-condition-dragging,.hb-conditions-entry.hb-condition-dragging{opacity:.35!important}
