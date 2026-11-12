@@ -6,6 +6,23 @@ type CharacterOption = { id: string; name: string; emoji?: string | null }
 type ConditionEffect = {type:'modifier'|'dice'|'restriction'|'resource'|'periodic_damage'|'round_counter'|'apply_condition'|'remove_condition';target?:string;key?:string;value?:number;condition_id?:string;dice?:string;duration?:string}
 type Definition = { id: string; name: string; emoji: string; description: string; severity: string; effects?:ConditionEffect[] }
 type Active = { id: string; character_id: string; definition_id: string; duration_label: string | null; notes: string | null; name: string; emoji: string; description: string; severity: string }
+
+// Rótulos em português; os identificadores internos são mantidos para não quebrar efeitos salvos.
+const CONDITION_KEYS: Record<string, {value:string;label:string}[]> = {
+  status: [
+    {value:'strength',label:'Força (FOR)'}, {value:'agility',label:'Agilidade (AGI)'},
+    {value:'defense',label:'Defesa (DEF)'}, {value:'resistance',label:'Resistência (RES)'},
+    {value:'intelligence',label:'Intelecto (INT)'}, {value:'*',label:'Todos os atributos'},
+  ],
+  combat_points: [
+    {value:'attack',label:'Ataque'}, {value:'block',label:'Bloqueio'},
+    {value:'dodge',label:'Esquiva'}, {value:'counterattack',label:'Contra-ataque'},
+    {value:'*',label:'Todos os testes de combate'},
+  ],
+  resource: [{value:'pv',label:'Pontos de Vida (PV)'},{value:'ps',label:'Pontos de Sanidade (PS)'},{value:'pr',label:'Pontos de Recurso (PR)'}],
+}
+const labelForConditionKey = (key:string) => Object.values(CONDITION_KEYS).flat().find(option=>option.value===key.toLowerCase())?.label || (key==='*'?'Todos':key)
+
 export function ConditionsPanel({ campaignId, characters, enemies, master }: {campaignId:string;characters:CharacterOption[];enemies:EnemyOption[];master:boolean}) {
   const [definitions,setDefinitions]=useState<Definition[]>([])
   const [active,setActive]=useState<Active[]>([])
@@ -102,7 +119,21 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
           <label>Categoria<select value={effect.type==='resource'?'resource':effect.target||'status'} onChange={e=>update(index,{target:e.target.value})} disabled={effect.type==='resource'}>
             {effect.type==='resource'?<option value="resource">Recurso máximo</option>:<><option value="status">Atributo / status</option><option value="main_skill">Perícia principal</option><option value="extra_skill">Perícia extra</option><option value="archetype_skill">Perícia de arquétipo</option><option value="combat_points">Ataque / bloqueio / esquiva</option></>}
           </select></label>
-          <label>Identificador<input value={effect.key||''} onChange={e=>update(index,{key:e.target.value})} placeholder={effect.type==='resource'?'pv, ps ou pr':effect.type==='dice'?'strength, agility, attack, dodge, *':'strength, agility, defense, nome da perícia, *'}/></label>
+          <label>{effect.type==='resource'?'Recurso afetado':(effect.target==='main_skill'||effect.target==='extra_skill'||effect.target==='archetype_skill')?'Perícia afetada':'Atributo ou ação afetada'}
+            {(() => {
+              const category = effect.type==='resource'?'resource':effect.target||'status'
+              const choices = CONDITION_KEYS[category]
+              if (!choices) return <input value={effect.key||''} onChange={e=>update(index,{key:e.target.value})} placeholder="Nome da perícia ou * para todas" aria-label="Nome da perícia afetada" />
+              const current = effect.key||''
+              const isCustom = Boolean(current && !choices.some(option=>option.value===current))
+              return <><select value={isCustom?'__custom__':current} onChange={e=>update(index,{key:e.target.value==='__custom__'?'':e.target.value})}>
+                <option value="">Selecione...</option>
+                {choices.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+                <option value="__custom__">Outro identificador...</option>
+              </select>
+              {isCustom&&<input value={current} onChange={e=>update(index,{key:e.target.value})} aria-label="Identificador personalizado" placeholder="Identificador personalizado" />}</>
+            })()}
+          </label>
           <label>{effect.type==='dice'?'Dados adicionais (+ vantagem / - desvantagem)':effect.type==='resource'?'Alteração do máximo (+/-)':'Modificador (+/-)'}<input type="number" step="1" value={effect.value??0} onChange={e=>update(index,{value:Number(e.target.value)})}/></label>
         </>}
         {effect.type==='restriction'&&<label>Ação/reação bloqueada<select value={effect.key||'dodge'} onChange={e=>update(index,{key:e.target.value})}><option value="dodge">Esquiva</option><option value="counterattack">Contra-ataque</option><option value="block">Bloqueio</option><option value="attack">Ataques</option><option value="movement">Movimento</option></select></label>}
@@ -197,7 +228,7 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
  }
  const labels:Record<string,string>={status:'Status',main_skill:'Perícia principal',extra_skill:'Perícia extra',archetype_skill:'Perícia de arquétipo',combat_points:'Pontos de combate'}
  return <div className="hb-condition-indicator"><strong>🩸 Condições {active.length>0?`(${active.length})`:''}</strong><div>{active.length===0?<small>Nenhuma condição ativa</small>:[...active].sort((a,b)=>(displayOrder[a.id]??999999)-(displayOrder[b.id]??999999)).map(a=><span key={a.id} className={`hb-condition-tag severity-${a.severity}`} title={[a.description,a.duration_label,a.notes].filter(Boolean).join(' · ')}>{a.emoji} {a.name}{a.duration_label?` · ${a.duration_label}`:''}</span>)}</div>
- {modifiers.size>0&&<div className="hb-condition-modifiers" aria-label="Modificadores cumulativos ativos"><strong>Modificadores ativos</strong>{[...modifiers.entries()].filter(([,value])=>value!==0).map(([key,value])=>{const [target,...rest]=key.split(':');return <span key={key} className="hb-condition-tag">{labels[target]||target}{rest.join(':')?` · ${rest.join(':')}`:''}: {value>0?'+':''}{value}</span>})}</div>}
+ {modifiers.size>0&&<div className="hb-condition-modifiers" aria-label="Modificadores cumulativos ativos"><strong>Modificadores ativos</strong>{[...modifiers.entries()].filter(([,value])=>value!==0).map(([key,value])=>{const [target,...rest]=key.split(':');return <span key={key} className="hb-condition-tag">{labels[target]||target}{rest.join(':')?` · ${labelForConditionKey(rest.join(':'))}`:''}: {value>0?'+':''}{value}</span>})}</div>}
  {active.length>0&&<div className="hb-condition-rule-hints"><strong>Regras adicionais configuradas</strong>{active.flatMap(a=>{const d=definitions.find(item=>item.id===a.definition_id);return (d?.effects||[]).filter(e=>['dice','restriction','resource','periodic_damage','round_counter'].includes(e.type)).map((e,i)=><span key={`${a.id}:${i}`} className="hb-condition-rule-hint">{a.emoji} {a.name}: {e.type==='dice'?`${(e.value||0)>0?'+':''}${e.value||0} dado(s) · ${e.target||'status'} / ${e.key||'*'}`:e.type==='restriction'?`Bloqueia ${e.key||'ação'}`:e.type==='resource'?`${(e.value||0)>0?'+':''}${e.value||0} ${e.key||'recurso'} máximo`:e.type==='periodic_damage'?`${e.dice||'dano'} por rodada (${e.key||'pv'}; acionamento manual)`:`${e.value||3} rodadas (controle do mestre)`}</span>)})}</div>}
  {error&&<small role="status">{error}</small>}
  </div>
