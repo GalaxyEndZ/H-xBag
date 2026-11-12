@@ -14398,3 +14398,9 @@ button:disabled { opacity: .58; }
 .hb-condition-library-item[draggable="true"] button,.hb-conditions-entry[draggable="true"] button{cursor:pointer;user-select:auto}
 .hb-condition-library-item.hb-condition-drop-target,.hb-conditions-entry.hb-condition-drop-target{outline:2px solid var(--season-primary,#d9a873)!important;outline-offset:2px;background:color-mix(in srgb,var(--season-primary,#d9a873) 12%,var(--cond-soft))!important}
 .hb-condition-library-item.hb-condition-dragging,.hb-conditions-entry.hb-condition-dragging{opacity:.35!important}
+
+/* Catálogo de kits de arquétipo */
+.archetype-kit-preset{display:grid;gap:9px;padding:16px;border:1px solid var(--border-color,rgba(160,160,180,.25));border-radius:14px;background:rgba(130,130,160,.07)}
+.archetype-kit-preset p{margin:0;opacity:.78;font-size:.85rem;line-height:1.5}
+.archetype-kit-preset select{width:100%;min-width:0;padding:10px;border-radius:9px}
+.archetype-kit-preset small{opacity:.75}

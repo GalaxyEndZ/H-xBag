@@ -1,3 +1,4 @@
+import { ARCHETYPE_KITS } from './archetypeKits'
 import {
   getRegisteredSystems,
   getSystemByName,
@@ -1739,6 +1740,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [characterFamilyTier, setCharacterFamilyTier] = useState('5')
   const [characterLevel, setCharacterLevel] = useState('1')
 
+  const [selectedArchetypeKit, setSelectedArchetypeKit] = useState('')
   const [newItemName, setNewItemName] = useState('')
   const [newItemDescription, setNewItemDescription] = useState('')
   const [newItemRarity, setNewItemRarity] = useState('comum')
@@ -6059,6 +6061,9 @@ const weight = newItemCategories.includes('Consumíveis')
       metadata: {
   ...(editingItem?.metadata ?? {}),
   icon: newItemEmoji,
+  archetypeKit: ARCHETYPE_KITS.find(kit => kit.name === newItemName.trim())?.name ?? null,
+  archetypeKitUses: ARCHETYPE_KITS.find(kit => kit.name === newItemName.trim())?.uses ?? null,
+  archetypeKitArchetype: ARCHETYPE_KITS.find(kit => kit.name === newItemName.trim())?.archetype ?? null,
   rarity: newItemRarity,
   categories: newItemCategories.length ? newItemCategories : [newItemCategory],
   equipmentType: isCyberFlowerSystem ? itemEquipmentTypeForSave : (
@@ -12872,7 +12877,36 @@ disabled={
                       </div>
                     )}
 
-                    <label>
+<section className="archetype-kit-preset">
+                      <strong>🧰 Kits de Arquétipo</strong>
+                      <p>Escolha um modelo para preencher nome, descrição, peso e categoria. Os efeitos especiais permanecem descritos para controle do mestre.</p>
+                      <select value={selectedArchetypeKit} onChange={event => {
+                        const name = event.target.value
+                        setSelectedArchetypeKit(name)
+                        const kit = ARCHETYPE_KITS.find(entry => entry.name === name)
+                        if (!kit) return
+                        setNewItemName(kit.name)
+                        setNewItemDescription(kit.description)
+                        setNewItemCategories(kit.mode === 'consumivel' ? ['Kits', 'Consumíveis'] : ['Kits', 'Equipamento'])
+                        setNewItemCategory('Kits')
+                        setNewEquipmentType('none')
+                        setNewItemWeight(String(kit.weight))
+                        setNewItemEmoji('🧰')
+                        setNewItemQuantity('1')
+                        setNewScarcityLevel('1')
+                        setNewScarcityExhausted(false)
+                      }}>
+                        <option value="">Selecionar um kit...</option>
+                        {['Yōgosha', 'Saizensen', 'Sokumen', 'Gijutsu', 'Senmon'].map(archetype => (
+                          <optgroup key={archetype} label={archetype}>
+                            {ARCHETYPE_KITS.filter(kit => kit.archetype === archetype).map(kit => <option key={kit.name} value={kit.name}>{kit.name} · {kit.weight} kg</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {selectedArchetypeKit && <small>Consumíveis: 3 usos previstos nas regras. O sistema atual de escassez continua independente desses usos.</small>}
+                    </section>
+
+                                        <label>
                       Nome do item
                       <input
                         value={newItemName}
@@ -15728,7 +15762,36 @@ style={{cursor:'pointer'}}>
                       <span>{editingItem ? '✎' : '✧'}</span>
                     </div>
 
-                    <label>
+<section className="archetype-kit-preset">
+                      <strong>🧰 Kits de Arquétipo</strong>
+                      <p>Escolha um modelo para preencher nome, descrição, peso e categoria. Os efeitos especiais permanecem descritos para controle do mestre.</p>
+                      <select value={selectedArchetypeKit} onChange={event => {
+                        const name = event.target.value
+                        setSelectedArchetypeKit(name)
+                        const kit = ARCHETYPE_KITS.find(entry => entry.name === name)
+                        if (!kit) return
+                        setNewItemName(kit.name)
+                        setNewItemDescription(kit.description)
+                        setNewItemCategories(kit.mode === 'consumivel' ? ['Kits', 'Consumíveis'] : ['Kits', 'Equipamento'])
+                        setNewItemCategory('Kits')
+                        setNewEquipmentType('none')
+                        setNewItemWeight(String(kit.weight))
+                        setNewItemEmoji('🧰')
+                        setNewItemQuantity('1')
+                        setNewScarcityLevel('1')
+                        setNewScarcityExhausted(false)
+                      }}>
+                        <option value="">Selecionar um kit...</option>
+                        {['Yōgosha', 'Saizensen', 'Sokumen', 'Gijutsu', 'Senmon'].map(archetype => (
+                          <optgroup key={archetype} label={archetype}>
+                            {ARCHETYPE_KITS.filter(kit => kit.archetype === archetype).map(kit => <option key={kit.name} value={kit.name}>{kit.name} · {kit.weight} kg</option>)}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {selectedArchetypeKit && <small>Consumíveis: 3 usos previstos nas regras. O sistema atual de escassez continua independente desses usos.</small>}
+                    </section>
+
+                                        <label>
                       Nome do item
                       <input
                         value={newItemName}
