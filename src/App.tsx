@@ -20,7 +20,7 @@ import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import { ConditionsPanel, CharacterConditions } from './ConditionsPanel'
-import { useCharacterConditionModifiers, conditionModifier } from './conditionEngine'
+import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier } from './conditionEngine'
 
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
 const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
@@ -991,6 +991,7 @@ function App() {
   })
   const [selectedCharacterId, setSelectedCharacterId] = useState('')
   const conditionModifiers = useCharacterConditionModifiers(selectedCampaignId, selectedCharacterId)
+  const conditionRules = useCharacterConditionRules(selectedCampaignId, selectedCharacterId)
 
   const [characterNameDraft, setCharacterNameDraft] = useState('')
   const [characterNameSaving, setCharacterNameSaving] = useState(false)
@@ -7490,6 +7491,12 @@ const performCombatRoll = (
   kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Bloqueio' | 'Esquiva',
   dodgeDt?: string
 ) => {
+  const blockedAction = kind === 'Esquiva' ? 'dodge' : kind === 'Bloqueio' ? 'block' : kind.startsWith('Ataque') ? 'attack' : ''
+  if (blockedAction && conditionRules.restrictions.includes(blockedAction)) {
+    setCombatActionResult(`${kind} indisponível devido a uma condição ativa.`)
+    setBlockDamageReduction(null)
+    return
+  }
   const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
   const validTarget = target !== null && Number.isFinite(target) && target >= 0
 
@@ -7508,7 +7515,10 @@ const attribute =
     kind === 'Bloqueio' ? constitution :
     armorDexterity
 
-  const diceCount = 1 + Math.floor(attribute)
+  const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : 'defense'
+  const diceGroup = kind.startsWith('Ataque') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
+  const diceBonus = conditionModifier(conditionRules.dice, 'status', diceKey) + conditionModifier(conditionRules.dice, 'combat_points', diceGroup)
+  const diceCount = 1 + Math.floor(attribute) + diceBonus
   const usesAgility = kind === 'Ataque ágil' || kind === 'Esquiva'
 
   const roll = rollAttributeDice(diceCount, usesAgility)
@@ -9000,7 +9010,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 </select></label>
                                 <button type="button" disabled={!selected} onClick={() => {
                                   if (!selected) return
-                                  const roll = rollAttributeDice(testDiceCount, testAttribute.key === 'agility')
+                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key) + conditionModifier(conditionRules.dice, 'main_skill', selected.name)
+                                  const roll = rollAttributeDice(testDiceCount + conditionDiceBonus, testAttribute.key === 'agility')
                                   const attributeConditionBonus = conditionModifier(conditionModifiers, 'status', testAttribute.key)
                                   const skillConditionBonus = conditionModifier(conditionModifiers, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key) + conditionModifier(conditionModifiers, 'main_skill', selected.name)
                                   const conditionTotal = attributeConditionBonus + skillConditionBonus

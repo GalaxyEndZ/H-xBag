@@ -14359,3 +14359,6 @@ button:disabled { opacity: .58; }
 .hb-condition-library-item[draggable="true"],.hb-conditions-entry[draggable="true"]{cursor:grab;transition:opacity .15s ease,transform .15s ease,outline-color .15s ease}
 .hb-condition-library-item[draggable="true"]:active,.hb-conditions-entry[draggable="true"]:active{cursor:grabbing}
 .hb-condition-dragging{opacity:.45;outline:2px dashed var(--accent,#9b7bff);outline-offset:3px;transform:scale(.985)}
+
+/* Regras adicionais das condições */
+.hb-condition-rule-hints{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}.hb-condition-rule-hints>strong{width:100%;font-size:.82rem;opacity:.9}.hb-condition-rule-hint{padding:7px 10px;border:1px solid var(--border-color,rgba(150,150,150,.24));border-radius:10px;background:rgba(130,130,130,.07);font-size:.79rem;line-height:1.4}.hb-condition-effect-row>small{grid-column:1/-1;opacity:.75}
