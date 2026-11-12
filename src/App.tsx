@@ -3764,6 +3764,7 @@ async function purchaseShopItem(
   setError('')
   setNotice('')
 
+  let purchaseConfirmed = false
   try {
     const { data, error: purchaseError } = await supabase.rpc(
       'purchase_campaign_shop_item',
@@ -3774,7 +3775,17 @@ async function purchaseShopItem(
       },
     )
 
-    if (purchaseError) throw purchaseError
+    if (purchaseError) {
+      const detail = [purchaseError.message, purchaseError.details, purchaseError.hint, purchaseError.code ? `Código ${purchaseError.code}` : ''].filter(Boolean).join(' · ')
+      throw new Error(detail || 'A função de compra do Supabase retornou um erro sem descrição.')
+    }
+    purchaseConfirmed = true
+    const result = (data ?? {}) as {
+      item_name?: string
+      quantity?: number
+      total_price?: number
+    }
+    setNotice(`${result.quantity ?? quantity}x ${result.item_name ?? item.name} comprado com sucesso!`)
 
     // Atualiza o inventário do personagem
     const { data: inventoryData, error: inventoryError } = await supabase
@@ -3783,9 +3794,9 @@ async function purchaseShopItem(
       .eq('character_id', shopPurchaseCharacterId)
       .order('created_at', { ascending: true })
 
-    if (inventoryError) throw inventoryError
+    if (inventoryError) console.error('Compra confirmada, mas falhou atualização do inventário:', inventoryError)
 
-    setItems(current => [
+    if (!inventoryError) setItems(current => [
       ...current.filter(entry => entry.character_id !== shopPurchaseCharacterId),
       ...((inventoryData ?? []) as Item[]),
     ])
@@ -3796,9 +3807,9 @@ async function purchaseShopItem(
       { p_character_id: shopPurchaseCharacterId },
     )
 
-    if (balanceError) throw balanceError
+    if (balanceError) console.error('Compra confirmada, mas falhou atualização do saldo:', balanceError)
 
-    setCurrencyBalances(
+    if (!balanceError) setCurrencyBalances(
       balanceData && typeof balanceData === 'object'
         ? balanceData as Record<string, number>
         : {},
@@ -3811,7 +3822,7 @@ async function purchaseShopItem(
       .eq('id', item.id)
       .maybeSingle()
 
-    if (stockError) throw stockError
+    if (stockError) console.error('Compra confirmada, mas falhou atualização do estoque:', stockError)
 
     if (updatedItem) {
       setShopItems(current =>
@@ -3823,15 +3834,6 @@ async function purchaseShopItem(
       )
     }
 
-    const result = data as {
-      item_name?: string
-      quantity?: number
-      total_price?: number
-    }
-
-    setNotice(
-      `${result.quantity ?? quantity}x ${result.item_name ?? item.name} comprado com sucesso!`,
-    )
     const purchasedCharacter = characters.find(character => character.id === shopPurchaseCharacterId)
     void recordCampaignActivity({
       activityType: 'shop_purchase',
@@ -3845,9 +3847,17 @@ async function purchaseShopItem(
   [item.id]: '1',
 }))
   } catch (err) {
-    setError(`Não foi possível concluir a compra: ${
-      err instanceof Error ? err.message : String(err)
-    }`)
+    const detail = err instanceof Error
+      ? err.message
+      : err && typeof err === 'object'
+        ? [String((err as { message?: unknown }).message ?? ''), String((err as { details?: unknown }).details ?? ''), String((err as { hint?: unknown }).hint ?? ''), String((err as { code?: unknown }).code ?? '')].filter(Boolean).join(' · ') || JSON.stringify(err)
+        : String(err)
+    console.error('Falha na compra da loja:', err)
+    if (purchaseConfirmed) {
+      setNotice('Compra realizada no banco, mas houve falha ao atualizar a tela. Recarregue a página antes de tentar comprar novamente.')
+    } else {
+      setError(`Não foi possível concluir a compra: ${detail}`)
+    }
   } finally {
     setShopPurchaseLoading(null)
   }
