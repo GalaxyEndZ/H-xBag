@@ -7520,7 +7520,7 @@ const attribute =
   const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
   const diceGroup = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
   const diceBonus = conditionModifier(conditionRules.dice, 'status', diceKey) + conditionModifier(conditionRules.dice, 'combat_points', diceGroup)
-  const diceCount = 1 + Math.floor(attribute) + diceBonus
+  const diceCount = (kind === 'Tiro' ? 1 + Math.floor(intellect) : kind === 'Disparo' ? 1 + Math.floor(agility) : 1 + Math.floor(attribute)) + diceBonus
   const usesAgility = kind === 'Ataque ágil' || kind === 'Disparo' || kind === 'Esquiva'
 
   const roll = rollAttributeDice(diceCount, usesAgility)
@@ -8957,7 +8957,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <small>{Math.floor(1 + agility) <= 0 ? `${2 - Math.floor(1 + agility)}D20 (desvantagem)` : `${Math.floor(1 + agility)}D20`} + Combate ({combat})</small>
                             </button>
 
-                            {isKisatsutaiSystem && <><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">🎯</span><strong>Tiro</strong><small>Intelecto ({intellect}) + Habilidade ({ability})</small></button><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">🏹</span><strong>Disparo</strong><small>Agilidade ({agility}) + Habilidade ({ability})</small></button></>}
+                            {isKisatsutaiSystem && <><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">🎯</span><strong>Tiro</strong><small>({Math.max(1, 1 + Math.floor(intellect))}d20, maior resultado) + Habilidade ({ability})</small></button><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">🏹</span><strong>Disparo</strong><small>({Math.max(1, 1 + Math.floor(agility))}d20, maior resultado) + Habilidade ({ability})</small></button></>}
 
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
                               <span className="combat-action-icon">✦</span>
@@ -9043,8 +9043,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             const archetypeSkills = skills.filter(skill => !['Sociais', 'Conhecimentos Gerais', 'Naturais'].includes(skill.key.split(':')[0]))
                             const chosen = archetypeSkills.find(skill => skill.key === complexSkill)
                             const result = Number(complexResult)
-                            const complexBonus = result >= 40 ? 5 : result >= 35 ? 5 : result >= 30 ? 4 : result >= 25 ? 3 : result >= 20 ? 2 : result >= 15 ? 1 : 0
-                            const validResult = complexResult.trim() !== '' && Number.isFinite(result) && result >= 0
+                            const complexBonus = result >= 35 ? 5 : result >= 30 ? 4 : result >= 25 ? 3 : result >= 20 ? 2 : result >= 15 ? 1 : 0
+                            const validResult = complexResult.trim() !== '' && Number.isFinite(result) && Number.isInteger(result) && result >= 0
                             const alreadyUsed = Boolean(chosen && complexUsed[chosen.key] > 0)
                             const savedBonus = chosen ? complexUsed[`${chosen.key}:bonus`] : undefined
                             const thresholds = [{label:'15–19',bonus:1},{label:'20–24',bonus:2},{label:'25–29',bonus:3},{label:'30–34',bonus:4},{label:'35+',bonus:5}]
@@ -9055,6 +9055,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 .hax-complex-head strong{font-size:1.15rem;letter-spacing:-.02em}
                                 .hax-complex-head small{display:block;opacity:.75;margin-top:5px;line-height:1.45}
                                 .hax-complex-pill{border:1px solid var(--border-color,rgba(150,170,190,.25));background:rgba(120,145,175,.06);border-radius:999px;padding:7px 12px;font-size:.78rem;white-space:normal}
+                                .hax-complex-progress{height:8px;border-radius:999px;background:rgba(120,145,175,.15);overflow:hidden}.hax-complex-progress span{display:block;height:100%;background:var(--accent,#75a8ed);border-radius:inherit;transition:width .2s ease}
                                 .hax-complex-fields{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(180px,.65fr);gap:12px;align-items:end}
                                 .hax-complex-fields label{min-width:0;display:grid;gap:8px;font-size:.84rem;font-weight:600}
                                 .hax-complex-fields select,.hax-complex-fields input{width:100%;min-width:0;box-sizing:border-box;height:44px;border-radius:10px;padding:0 12px;background:var(--input-bg,rgba(10,16,22,.5));color:inherit;border:1px solid var(--border-color,rgba(150,170,190,.28))}
@@ -9077,26 +9078,27 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               `}</style>
                               <div className="hax-complex-head">
                                 <div><strong>🧠 Ações Complexas</strong><small>Escolha atributo, perícia de arquétipo e perícia principal beneficiada. Máximo de 3 preparações por cena.</small></div>
-                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · Ataque: 1 ação</span>
+                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/3 nesta cena</span>
                               </div>
+                              <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={3}><span style={{width:`${complexSceneCount / 3 * 100}%`}} /></div>
                               <div className="hax-complex-fields">
-                                <label><span>🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Resistência</option></select></label>
-                                <label><span>🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
-                                <label><span>📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
+                                <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Resistência</option></select></label>
+                                <label><span>2 · 📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
+                                <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Ex.: 27" /></label>
                               </div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
                               <div className="hax-complex-status">
-                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>{alreadyUsed ? 'Perícia já utilizada: repita para restaurar o bônus original.' : 'Selecione uma perícia e informe o resultado do teste.'}</small></div>
+                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>{alreadyUsed ? 'Perícia já utilizada: repita para restaurar o bônus original.' : 'Selecione as três opções e informe o resultado do teste (mínimo 15 para receber bônus).'}</small></div>
                                 {complexPending && <span className="hax-complex-pill">🎯 Pendente: +{complexPending.bonus} · {complexPending.skill}</span>}
                               </div>
                               <div className="hax-complex-buttons">
-                                <button type="button" disabled={!chosen || !validResult || alreadyUsed || !complexMainSkill || complexSceneCount >= 3} onClick={() => {if(!chosen)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para o próximo ataque. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
-                                <button type="button" disabled={!chosen || !alreadyUsed || complexSceneCount >= 3} onClick={() => {if(!chosen)return;const bonus = savedBonus ?? 0;setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill||chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} restaurado.`)}}>🔁 Repetir preparo</button>
-                                <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexSceneCount(0);setComplexPending(null);setComplexResult('')}}>↺ Reiniciar combate</button>
+                                <button type="button" disabled={!chosen || !validResult || complexBonus === 0 || alreadyUsed || !complexMainSkill || complexSceneCount >= 3} onClick={() => {if(!chosen)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para a próxima ação de ${complexMainSkill}. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
+                                <button type="button" disabled={!chosen || !alreadyUsed || !complexMainSkill || complexSceneCount >= 3} onClick={() => {if(!chosen)return;const bonus = savedBonus ?? 0;setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill||chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} para ${complexMainSkill || chosen.label} restaurado.`)}}>🔁 Repetir preparo</button>
+                                <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexSceneCount(0);setComplexPending(null);setComplexResult('')}}>↺ Nova cena</button>
                               </div>
                               {skills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia disponível</strong><small>Treine uma Perícia Geral ou de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
-                              <small className="hax-complex-note hax-complex-footer">💡 Limite de 3 preparações por cena, incluindo repetições. Reinicie somente ao começar uma nova cena. O bônus pendente vale para o próximo ataque.</small>
+                              <small className="hax-complex-note hax-complex-footer">💡 Limite de 3 preparações por cena, incluindo repetições. Reinicie somente ao começar uma nova cena. O bônus pendente é aplicado à próxima ação compatível com a perícia principal escolhida.</small>
                             </div>
                           })()}
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
