@@ -254,9 +254,9 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
   }
   const filteredDefinitions=sortBySavedOrder(definitions,'definition').filter(d=>(librarySeverity==='todas'||d.severity===librarySeverity)&&`${d.name} ${d.description} ${d.severity}`.toLocaleLowerCase().includes(libraryFilter.toLocaleLowerCase()))
   const allActive=[...sortBySavedOrder(active,'character').map(a=>({...a,targetType:'character' as const})),...sortBySavedOrder(enemyActive,'enemy').map(a=>({...a,targetType:'enemy' as const}))]
-  const visibleActive=allActive.filter(a=>(severityFilter==='todas'||a.severity===severityFilter)&&(characterFilter==='todos'||`${a.targetType}:${a.character_id}`===characterFilter)&&`${a.name} ${targetName(a)}`.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))
   const targets=[...characters.map(c=>({...c,targetType:'character' as const})),...enemies.map(e=>({...e,targetType:'enemy' as const}))]
   const targetName=(a:{character_id:string;targetType:'character'|'enemy'})=>targets.find(t=>t.id===a.character_id&&t.targetType===a.targetType)?.name||'Alvo removido'
+  const visibleActive=allActive.filter(a=>(severityFilter==='todas'||a.severity===severityFilter)&&(characterFilter==='todos'||`${a.targetType}:${a.character_id}`===characterFilter)&&`${a.name} ${targetName(a)}`.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))
   const rollPeriodic=(assignment:Active)=>{
     const definition=definitions.find(d=>d.id===assignment.definition_id)
     const effects=(definition?.effects||[]).filter(e=>e.type==='periodic_damage')
