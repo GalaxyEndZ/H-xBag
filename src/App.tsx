@@ -8225,11 +8225,11 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                       >
                         <option value="">Sem jogador atribuído</option>
                         {campaignMembers.map(member => (
-                          <option key={member.user_id} value={member.user_id}>{member.display_name}{member.role === 'master' ? ' (Mestre)' : ''}{member.user_id === user?.id ? ' · Você' : ''}</option>
+                          <option key={member.user_id} value={member.user_id}>{member.display_name}{member.role === 'master' ? ' (Mestre)' : ''}{member.user_id === session?.session!.user.id ? ' · Você' : ''}</option>
                         ))}
                       </select>
-                      {user?.id && campaignMembers.some(member => member.user_id === user.id) && selectedCharacter.current_player_id !== user.id && (
-                        <button type="button" className="btn btn-secondary" disabled={visibilitySaving} onClick={() => void changeCharacterPlayer(user.id)}>
+                      {session?.session!.user.id && campaignMembers.some(member => member.user_id === session!.user.id) && selectedCharacter.current_player_id !== session!.user.id && (
+                        <button type="button" className="btn btn-secondary" disabled={visibilitySaving} onClick={() => void changeCharacterPlayer(session!.user.id)}>
                           ♙ Atribuir a mim
                         </button>
                       )}
@@ -8237,7 +8237,7 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                     ) : (
                       <div className="sheet-current-player-field">
                         <span>Jogador atribuído</span>
-                        <strong>{campaignMembers.find(member => member.user_id === (selectedCharacter.current_player_id || selectedCharacter.user_id))?.display_name || (selectedCharacter.current_player_id === user?.id || (!selectedCharacter.current_player_id && selectedCharacter.user_id === user?.id) ? 'Você' : 'Jogador não encontrado')}</strong>
+                        <strong>{campaignMembers.find(member => member.user_id === (selectedCharacter.current_player_id || selectedCharacter.user_id))?.display_name || (selectedCharacter.current_player_id === session?.session!.user.id || (!selectedCharacter.current_player_id && selectedCharacter.user_id === session?.session!.user.id) ? 'Você' : 'Jogador não encontrado')}</strong>
                       </div>
                     )}
                   </section>
