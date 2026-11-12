@@ -15421,7 +15421,7 @@ style={{cursor:'pointer'}}>
           </section>}
 
 
-          {error && (
+          {error && activePage !== 'conditions' && (
             <div className="notice" role="alert">
               <span>!</span> {error}
               <button
@@ -15433,7 +15433,7 @@ style={{cursor:'pointer'}}>
             </div>
           )}
 
-          {notice && activePage !== 'customization' && activePage !== 'master-chest' && (
+          {notice && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && (
             <div className="notice" role="status">
               <span>✓</span> {notice}
               <button
