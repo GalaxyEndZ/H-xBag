@@ -7487,7 +7487,8 @@ const performCombatRoll = (
   kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Bloqueio' | 'Esquiva',
   dodgeDt?: string
 ) => {
-  const dt = counterAttackDT
+  const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
+  const validTarget = target !== null && Number.isFinite(target) && target >= 0
 
   const constitution =
     Number(read('attributes.constitution', 0)) || resistance + vigor
@@ -7520,18 +7521,18 @@ const attribute =
     : `${roll.effectiveDiceCount}D20 = [${dice.join(', ')}] (maior: ${highest})`
   if (kind === 'Bloqueio') {
     const critical = highest >= criticalValue
-
-    const outcome = critical
-      ? 'Crítico: nega 100% do dano.'
-      : total >= dt
-        ? 'Sucesso: nega 50% do dano.'
-        : 'Falha: nega 25% do dano.'
+    const success = validTarget && total >= target
+    const reduction = !validTarget ? null : critical ? 1 : success ? 0.5 : 0
+    const outcome = !validTarget
+      ? 'Informe a DT do inimigo para determinar o resultado do bloqueio.'
+      : critical
+        ? `Crítico contra DT ${target}: nega 100% do dano.`
+        : success
+          ? `Sucesso contra DT ${target}: nega 50% do dano.`
+          : `Falha contra DT ${target}: não reduz o dano.`
 
     setBlockIncomingDamage('')
-setBlockDamageReduction(
-  critical ? 1 : total >= dt ? 0.5 : 0.25
-)
-
+    setBlockDamageReduction(reduction)
     setCombatActionResult(
       `Bloqueio: ${diceDescription} + Constituição (${bonus}) = ${total}. ${outcome}`
     )
