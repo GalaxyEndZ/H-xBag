@@ -68,8 +68,11 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     const scoped=kind==='definition'?source:source.filter(item=>(item as Active).character_id===(target as Active).character_id)
     if(!scoped.some(item=>item.id===sourceId))return
     const ids=scoped.map(item=>item.id)
-    ids.splice(ids.indexOf(sourceId),1)
-    ids.splice(ids.indexOf(destinationId),0,sourceId)
+    // Troca direta: a condição arrastada ocupa o lugar da outra, e vice-versa.
+    // As demais condições permanecem exatamente nas posições anteriores.
+    const sourceIndex=ids.indexOf(sourceId)
+    const destinationIndex=ids.indexOf(destinationId)
+    ;[ids[sourceIndex],ids[destinationIndex]]=[ids[destinationIndex],ids[sourceIndex]]
     const previous={...orderMap}
     setOrderMap(current=>{
       const updated={...current}
