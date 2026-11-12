@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
 export type ConditionModifiers = Record<string, number>
-type Effect = { type?: string; target?: string; key?: string; value?: number }
+type Effect = { type?: string; target?: string; key?: string; value?: number; unit?: 'flat' | 'percent' }
 type Assignment = { definition_id: string }
 type DefinitionEffects = { id: string; effects: Effect[] }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
 
 export function conditionModifier(modifiers: ConditionModifiers, target: string, key: string): number {
-  return (modifiers[`${target}:${normalize(key)}`] || 0) + (modifiers[`${target}:*`] || 0)
+  const fixed = (modifiers[`${target}:${normalize(key)}`] || 0) + (modifiers[`${target}:*`] || 0)
+  return fixed
 }
 
 export function calculateConditionModifiers(assignments: Assignment[], definitions: DefinitionEffects[]): ConditionModifiers {
@@ -18,7 +19,7 @@ export function calculateConditionModifiers(assignments: Assignment[], definitio
   for (const assignment of assignments) {
     for (const effect of byId.get(assignment.definition_id) || []) {
       if (effect.type !== 'modifier' || !effect.target || !Number.isFinite(effect.value)) continue
-      const key = `${effect.target}:${normalize(effect.key || '*')}`
+      const key = `${effect.unit === 'percent' ? 'percent:' : ''}${effect.target}:${normalize(effect.key || '*')}`
       totals[key] = (totals[key] || 0) + Number(effect.value)
     }
   }
@@ -102,4 +103,11 @@ export function useCharacterConditionRules(campaignId: string, characterId: stri
     return () => { live = false; window.clearInterval(timer) }
   }, [campaignId, characterId, scope])
   return state?.scope === scope ? state.rules : { dice: {}, resources: {}, restrictions: [], periodic: [], counters: [] }
+}
+
+/** Aplica pontos e porcentagens sobre o valor-base, arredondando ao inteiro mais próximo. */
+export function applyConditionModifier(base: number, modifiers: ConditionModifiers, target: string, key: string): number {
+  const fixed = conditionModifier(modifiers, target, key)
+  const percent = conditionModifier(modifiers, `percent:${target}`, key)
+  return Math.round((base + fixed) * (1 + percent / 100))
 }

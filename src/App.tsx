@@ -20,7 +20,8 @@ import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
-import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier } from './conditionEngine'
+import { ARCHETYPE_KITS } from './archetypeKits'
+import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier } from './conditionEngine'
 
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
 const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
@@ -61,7 +62,14 @@ function getKisatsutaiFullPath(primary: string, secondary: string): string {
 }
 
 /** Exibição de treinamentos sem alterar os dados persistidos da ficha. */
-function TrainedSkillsSummary({ trainings, forEnemy }: { trainings: Record<string, string>; forEnemy: boolean }) {
+function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [] }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[] }) {
+  const kitBonuses = ARCHETYPE_KITS.filter(kit => kitNames.some(name => name.toLocaleLowerCase('pt-BR') === kit.name.toLocaleLowerCase('pt-BR')))
+  const getKitBonus = (skillName: string) => kitBonuses.flatMap(kit => {
+    const match = kit.description.match(/\+(\d+)\s+em\s+([^.;]+)/i)
+    if (!match) return []
+    const listed = match[2].split(/,|\s+e\s+/i).map(x => x.trim().toLocaleLowerCase('pt-BR'))
+    return listed.includes(skillName.toLocaleLowerCase('pt-BR')) ? [{name: kit.name, bonus: Number(match[1])}] : []
+  })
   const levels: TrainingLevel[] = ['completo', 'avancado', 'medio', 'leve']
   const generalGroups = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
   const sections = [
@@ -113,6 +121,7 @@ function TrainedSkillsSummary({ trainings, forEnemy }: { trainings: Record<strin
                             <li key={skill.key} className="hb-trained-skills-item">
                               <span className="hb-trained-skills-item-info"><strong>{skill.name}</strong><small>{skill.group}</small></span>
                               <span className="hb-trained-skills-item-bonus">+{KISATSUTAI_TRAINING[level]}</span>
+                              {getKitBonus(skill.name).map(kit => <span key={kit.name} className="hb-trained-skills-item-bonus" title={kit.name}>🧰 Kit: +{kit.bonus}</span>)}
                             </li>
                           ))}
                         </ul>
@@ -3738,6 +3747,14 @@ async function purchaseShopItem(
     return
   }
 
+  if (!characters.some(character => character.id === shopPurchaseCharacterId && character.user_id === session?.user.id)) {
+    setError('Selecione um personagem da sua conta para comprar.')
+    return
+  }
+  if (item.purchase_blocked) {
+    setError('Este produto está bloqueado para compra.')
+    return
+  }
   if (item.quantity !== null && item.quantity < quantity) {
     setError('Não há estoque suficiente deste produto.')
     return
@@ -3768,7 +3785,10 @@ async function purchaseShopItem(
 
     if (inventoryError) throw inventoryError
 
-    setItems((inventoryData ?? []) as Item[])
+    setItems(current => [
+      ...current.filter(entry => entry.character_id !== shopPurchaseCharacterId),
+      ...((inventoryData ?? []) as Item[]),
+    ])
 
     // Atualiza a carteira
     const { data: balanceData, error: balanceError } = await supabase.rpc(
@@ -7328,8 +7348,8 @@ useEffect(() => {
                         usesFamilyTiers ? getSystemAttributeBonus(familyTierKey, attribute) : 0,
                       )
                     const agility = Math.floor(effectiveAttribute('attributes.agility', 'agility'))
-                    const movementActions = 1 + Math.floor(agility / 2)
-                    const extraActions = agility % 2
+                    const movementActions = Math.max(0, applyConditionModifier(1 + Math.floor(agility / 2), conditionModifiers, 'actions', 'movement'))
+                    const extraActions = Math.max(0, applyConditionModifier(agility % 2, conditionModifiers, 'actions', 'extra'))
                     const dexterity = Math.min(maxSkillLevel, num('skills.dexterity'))
                     const intellectChoiceConfig = skillPointConfig?.intellectChoice
                     const skillChoicePath = intellectChoiceConfig?.choicePath ?? 'skills.intelligenceChoices'
@@ -7495,6 +7515,14 @@ const performCombatRoll = (
   dodgeDt?: string
 ) => {
   const blockedAction = kind === 'Esquiva' ? 'dodge' : kind === 'Bloqueio' ? 'block' : (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : ''
+  const limitedByCondition = conditionRules.restrictions.includes('all_actions') ||
+    (blockedAction === 'attack' && conditionRules.restrictions.includes('no_attacks')) ||
+    ((blockedAction === 'block' || blockedAction === 'dodge') && conditionRules.restrictions.includes('no_reactions'))
+  if (limitedByCondition) {
+    setCombatActionResult(`${kind} indisponível: condição ativa limita as ações.`)
+    setBlockDamageReduction(null)
+    return
+  }
   if (blockedAction && conditionRules.restrictions.includes(blockedAction)) {
     setCombatActionResult(`${kind} indisponível devido a uma condição ativa.`)
     setBlockDamageReduction(null)
@@ -8094,11 +8122,22 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                           <TrainedSkillsSummary
                             trainings={(read('skills.extraTrainings', {}) || {}) as Record<string, string>}
                             forEnemy={forEnemy}
+                            kitNames={forEnemy ? [] : items.filter(item => item.character_id === selectedCharacterId).map(item => item.name)}
                           />
                         )}
                         {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
                         {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
-                        {(() => {const team=forEnemy?String(read('identity.team','')||read('identity.teamName','')).trim():String(sheetSeasonRoster[selectedSeasonId]?.[selectedCharacterId]?.team||read('identity.team','')).trim();return <div className="hb-sheet-team-indicator">🛡️ Equipe: <strong>{team||'Não definida'}</strong></div>})()}
+                        {(() => {
+                          const team = String(read('identity.team', '') || read('identity.teamName', '')).trim()
+                          return <div className="hb-sheet-team-indicator" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                            <span>🛡️ Equipe: <strong>{team || 'Não definida'}</strong></span>
+                            {isMaster && <label style={{display:'flex',alignItems:'center',gap:6}}>
+                              <span>Editar equipe</span>
+                              <input aria-label="Nome da equipe" list="hax-sheet-teams" value={team} placeholder="Nome da equipe" onChange={event => write('identity.team', event.target.value)} style={{maxWidth:190}} />
+                              <datalist id="hax-sheet-teams">{sheetTeams.map(name => <option key={name} value={name} />)}</datalist>
+                            </label>}
+                          </div>
+                        })()}
                         </>
                       )
                     }
@@ -9047,10 +9086,21 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             const validResult = complexResult.trim() !== '' && Number.isFinite(result) && Number.isInteger(result) && result >= 0
                             const alreadyUsed = Boolean(chosen && complexUsed[chosen.key] > 0)
                             const savedBonus = chosen ? complexUsed[`${chosen.key}:bonus`] : undefined
+                            const remainingPreparations = Math.max(0, 3 - complexSceneCount)
+                            const canPrepare = Boolean(chosen && complexMainSkill && validResult && complexBonus > 0 && !alreadyUsed && remainingPreparations > 0)
+                            const canRepeat = Boolean(chosen && complexMainSkill && alreadyUsed && remainingPreparations > 0)
+                            const actionHint = remainingPreparations === 0 ? 'Limite da cena atingido. Inicie uma nova cena para continuar.' : !chosen ? 'Escolha uma perícia de arquétipo treinada.' : !complexMainSkill ? 'Escolha a perícia principal que receberá o bônus.' : !validResult ? 'Informe um resultado inteiro e não negativo.' : complexBonus === 0 ? 'O resultado precisa ser pelo menos 15 para gerar bônus.' : alreadyUsed ? 'Esta perícia já foi preparada nesta cena. Use Repetir preparo.' : 'Tudo pronto para preparar a ação.'
                             const thresholds = [{label:'15–19',bonus:1},{label:'20–24',bonus:2},{label:'25–29',bonus:3},{label:'30–34',bonus:4},{label:'35+',bonus:5}]
                             return <div id="haxbag-complex-actions" className="combat-skill-test hax-complex-panel">
                               <style>{`
                                 .hax-complex-panel{width:100%;max-width:none;box-sizing:border-box;margin-top:12px;padding:20px;border-radius:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+                                .hax-complex-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+                                .hax-complex-stat{display:flex;flex-direction:column;gap:4px;padding:13px;border-radius:12px;background:rgba(120,145,175,.065);border:1px solid var(--border-color,rgba(150,170,190,.17))}
+                                .hax-complex-stat small{font-size:.73rem;opacity:.73}.hax-complex-stat strong{font-size:1.18rem;font-variant-numeric:tabular-nums}
+                                .hax-complex-guide{display:flex;gap:9px;align-items:center;padding:12px 14px;border-radius:11px;border:1px dashed var(--border-color,rgba(150,170,190,.3));font-size:.84rem;line-height:1.5}
+                                .hax-complex-guide.ready{border-style:solid;border-color:var(--accent,#75a8ed);background:rgba(90,145,220,.09)}
+                                .hax-complex-result-preview{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.85rem}
+                                .hax-complex-result-preview span{border-radius:8px;padding:7px 10px;background:rgba(120,145,175,.09)}
                                 .hax-complex-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
                                 .hax-complex-head strong{font-size:1.15rem;letter-spacing:-.02em}
                                 .hax-complex-head small{display:block;opacity:.75;margin-top:5px;line-height:1.45}
@@ -9074,11 +9124,16 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 .hax-complex-empty{border:1px dashed var(--border-color,rgba(150,170,190,.35));border-radius:12px;padding:14px;display:flex;gap:11px;align-items:center;background:rgba(120,145,175,.035)}
                                 .hax-complex-empty span{font-size:1.3rem}.hax-complex-empty div{display:grid;gap:3px}.hax-complex-empty small{opacity:.7}
                                 .hax-complex-footer{padding-top:11px;border-top:1px solid var(--border-color,rgba(150,170,190,.17))}
-                                @media(max-width:680px){.hax-complex-fields{grid-template-columns:1fr}.hax-complex-panel{padding:14px;gap:12px}.hax-complex-scale{gap:5px}.hax-complex-tier{padding:10px 3px;min-height:58px}.hax-complex-tier strong{font-size:1.05rem}.hax-complex-buttons button{flex:1 1 145px}}
+                                @media(max-width:680px){.hax-complex-overview{grid-template-columns:repeat(3,minmax(0,1fr))}.hax-complex-stat{padding:9px}.hax-complex-stat strong{font-size:1rem}.hax-complex-fields{grid-template-columns:1fr}.hax-complex-panel{padding:14px;gap:12px}.hax-complex-scale{gap:5px}.hax-complex-tier{padding:10px 3px;min-height:58px}.hax-complex-tier strong{font-size:1.05rem}.hax-complex-buttons button{flex:1 1 145px}}
                               `}</style>
                               <div className="hax-complex-head">
                                 <div><strong>🧠 Ações Complexas</strong><small>Escolha atributo, perícia de arquétipo e perícia principal beneficiada. Máximo de 3 preparações por cena.</small></div>
                                 <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/3 nesta cena</span>
+                              </div>
+                              <div className="hax-complex-overview">
+                                <div className="hax-complex-stat"><small>Preparações usadas</small><strong>{complexSceneCount} / 3</strong></div>
+                                <div className="hax-complex-stat"><small>Restantes</small><strong>{remainingPreparations}</strong></div>
+                                <div className="hax-complex-stat"><small>Bônus atual</small><strong>{validResult && complexBonus > 0 ? `+${complexBonus}` : '—'}</strong></div>
                               </div>
                               <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={3}><span style={{width:`${complexSceneCount / 3 * 100}%`}} /></div>
                               <div className="hax-complex-fields">
@@ -9087,17 +9142,19 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Ex.: 27" /></label>
                               </div>
+                              <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {complexMainSkill || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
                               <div className="hax-complex-status">
                                 <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>{alreadyUsed ? 'Perícia já utilizada: repita para restaurar o bônus original.' : 'Selecione as três opções e informe o resultado do teste (mínimo 15 para receber bônus).'}</small></div>
                                 {complexPending && <span className="hax-complex-pill">🎯 Pendente: +{complexPending.bonus} · {complexPending.skill}</span>}
                               </div>
+                              <div className={`hax-complex-guide${canPrepare || canRepeat ? ' ready' : ''}`} role="status">{canPrepare || canRepeat ? '✓' : 'ℹ️'} {actionHint}</div>
                               <div className="hax-complex-buttons">
-                                <button type="button" disabled={!chosen || !validResult || complexBonus === 0 || alreadyUsed || !complexMainSkill || complexSceneCount >= 3} onClick={() => {if(!chosen)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para a próxima ação de ${complexMainSkill}. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
-                                <button type="button" disabled={!chosen || !alreadyUsed || !complexMainSkill || complexSceneCount >= 3} onClick={() => {if(!chosen)return;const bonus = savedBonus ?? 0;setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill||chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} para ${complexMainSkill || chosen.label} restaurado.`)}}>🔁 Repetir preparo</button>
+                                <button type="button" disabled={!canPrepare} onClick={() => {if(!chosen || !canPrepare)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para a próxima ação de ${complexMainSkill}. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
+                                <button type="button" disabled={!canRepeat} onClick={() => {if(!chosen || !canRepeat)return;const bonus = savedBonus ?? 0;setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill||chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} para ${complexMainSkill || chosen.label} restaurado.`)}}>🔁 Repetir preparo</button>
                                 <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexSceneCount(0);setComplexPending(null);setComplexResult('')}}>↺ Nova cena</button>
                               </div>
-                              {skills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia disponível</strong><small>Treine uma Perícia Geral ou de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
+                              {archetypeSkills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia de arquétipo disponível</strong><small>Treine uma Perícia de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
                               <small className="hax-complex-note hax-complex-footer">💡 Limite de 3 preparações por cena, incluindo repetições. Reinicie somente ao começar uma nova cena. O bônus pendente é aplicado à próxima ação compatível com a perícia principal escolhida.</small>
                             </div>
                           })()}
