@@ -14362,3 +14362,22 @@ button:disabled { opacity: .58; }
 
 /* Regras adicionais das condições */
 .hb-condition-rule-hints{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}.hb-condition-rule-hints>strong{width:100%;font-size:.82rem;opacity:.9}.hb-condition-rule-hint{padding:7px 10px;border:1px solid var(--border-color,rgba(150,150,150,.24));border-radius:10px;background:rgba(130,130,130,.07);font-size:.79rem;line-height:1.4}.hb-condition-effect-row>small{grid-column:1/-1;opacity:.75}
+
+/* HäxBag — editor de efeitos de condições, revisão de legibilidade */
+.hb-condition-effect-editor{display:grid;gap:14px;min-width:0}
+.hb-condition-effect-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.hb-condition-effect-heading>div{display:grid;gap:5px}
+.hb-condition-effect-heading small{line-height:1.55;opacity:.75}
+.hb-condition-effect-empty{display:grid;gap:5px;padding:20px;border:1px dashed var(--border-color,rgba(180,180,180,.28));border-radius:14px;text-align:center}
+.hb-condition-effect-empty small{opacity:.75}
+.hb-condition-effect-row{display:grid;gap:13px;padding:18px;border-radius:16px;border:1px solid var(--border-color,rgba(180,180,180,.22));background:rgba(120,120,120,.055);min-width:0}
+.hb-condition-effect-row-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.hb-condition-effect-row-header strong{display:flex;align-items:center;gap:9px}
+.hb-condition-effect-index{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:9px;background:rgba(190,145,90,.16);font-size:12px}
+.hb-condition-effect-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+.hb-condition-effect-fields label{display:grid;gap:7px;min-width:0}
+.hb-condition-effect-fields input,.hb-condition-effect-fields select{width:100%;min-width:0;box-sizing:border-box}
+.hb-condition-effect-help{opacity:.76;line-height:1.5}
+.hb-condition-effect-validation{margin:0;padding:11px 14px;border-radius:11px;border:1px solid rgba(215,150,65,.4);background:rgba(215,150,65,.08)}
+.hb-condition-effect-add{justify-self:start}
+@media(max-width:700px){.hb-condition-effect-fields{grid-template-columns:minmax(0,1fr)}.hb-condition-effect-row{padding:13px}.hb-condition-effect-row-header .secondary-button{padding:8px 10px}}
