@@ -14381,3 +14381,14 @@ button:disabled { opacity: .58; }
 .hb-condition-effect-validation{margin:0;padding:11px 14px;border-radius:11px;border:1px solid rgba(215,150,65,.4);background:rgba(215,150,65,.08)}
 .hb-condition-effect-add{justify-self:start}
 @media(max-width:700px){.hb-condition-effect-fields{grid-template-columns:minmax(0,1fr)}.hb-condition-effect-row{padding:13px}.hb-condition-effect-row-header .secondary-button{padding:8px 10px}}
+
+/* Central de condições — ferramentas de organização */
+.hb-conditions-library-tools{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:12px 0 18px}
+.hb-conditions-library-tools label{display:grid;gap:6px;min-width:160px;font-size:.85rem}
+.hb-conditions-library-tools select{min-height:40px}
+.hb-conditions-library-tools>span{color:var(--muted,#a3a9b3);font-size:.85rem;margin-right:auto}
+.hb-conditions-filter-empty{width:100%;padding:24px 18px;text-align:center;border:1px dashed rgba(180,185,195,.3);border-radius:14px;color:var(--muted,#a3a9b3);display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.hb-conditions-clear{margin-left:auto}
+.hb-condition-library-item .hb-condition-actions{display:flex;gap:8px;flex-wrap:wrap}
+.hb-condition-library-item .hb-condition-actions button{min-height:36px}
+@media(max-width:650px){.hb-conditions-library-tools{align-items:stretch}.hb-conditions-library-tools label{flex:1}.hb-conditions-library-tools>span{width:100%}}
