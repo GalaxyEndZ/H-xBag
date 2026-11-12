@@ -1,4 +1,3 @@
-import { ARCHETYPE_KITS } from './archetypeKits'
 import {
   getRegisteredSystems,
   getSystemByName,
@@ -20,7 +19,7 @@ import HaxTable from './components/HaxTable'
 import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
-import { ConditionsPanel, CharacterConditions } from './ConditionsPanel'
+import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier } from './conditionEngine'
 
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
@@ -29,7 +28,7 @@ const SKILL_GROUP_ALIAS: Record<string, string[]> = {
   'Linha de Frente': ['Linha de Frente'], Defensor: ['Defensores'], Defensores: ['Defensores'],
   Flanco: ['Flanco'], Especialista: ['Especialistas'], Especialistas: ['Especialistas'],
   Suporte: ['Suporte'], Gerais: ['Sociais', 'Conhecimentos Gerais', 'Naturais'],
-  // A vaga livre usa o mesmo conjunto de perícias extras/de arquétipo do Intelecto.
+  // A vaga livre usa o mesmo conjunto de perícias gerais/de arquétipo do Intelecto.
   'Qualquer Arquétipo': ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
   'qualquer Arquétipo': ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
   'Suporte/Defensor': ['Suporte', 'Defensores'],
@@ -67,7 +66,7 @@ function TrainedSkillsSummary({ trainings, forEnemy }: { trainings: Record<strin
   const generalGroups = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
   const sections = [
     { id: 'arquetipo', icon: '✦', title: 'Perícias de Arquétipo', subtitle: 'Treinamentos vinculados aos arquétipos', accepts: (group: string) => !generalGroups.has(group) },
-    { id: 'extras', icon: '✧', title: 'Perícias Extras', subtitle: 'Sociais, conhecimentos gerais e naturais', accepts: (group: string) => generalGroups.has(group) },
+    { id: 'extras', icon: '✧', title: 'Perícias Gerais', subtitle: 'Sociais, conhecimentos gerais e naturais', accepts: (group: string) => generalGroups.has(group) },
   ]
   const allSkills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) =>
     entries.flatMap(skill => {
@@ -149,7 +148,7 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   // Mantém a chave de persistência anterior para preservar distribuições existentes.
   const key = `${pathName}:${fullPath.slice(0, -(pathName.length + 1))}`
   const distribution = (skills.distributionByPath?.[key] || {}) as Record<string, string>
-  // Cada ponto de Intelecto dedicado a perícias extras concede um passo de +5.
+  // Cada ponto de Intelecto dedicado a perícias gerais concede um passo de +5.
   // Pode iniciar uma perícia geral em +5 ou melhorar uma já treinada até +15.
   const intellectGroups = resolveTrainingGroups('Qualquer Arquétipo')
   const intellectOptions = intellectGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
@@ -196,14 +195,14 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
     }
     onChange({ ...skills, distributionByPath: all, extraTrainings: updated })
   }
-  if (!fullPath || !path) return <div className="kisatsutai-distribution"><strong>Distribuição de perícias extras e de arquétipo</strong><p className="kisatsutai-editor-note">Defina os arquétipos primário e secundário na Identidade para calcular automaticamente a trilha e as vagas de treinamento.</p></div>
+  if (!fullPath || !path) return <div className="kisatsutai-distribution"><strong>Distribuição de perícias gerais e de arquétipo</strong><p className="kisatsutai-editor-note">Defina os arquétipos primário e secundário na Identidade para calcular automaticamente a trilha e as vagas de treinamento.</p></div>
   if (!benefitEntry) return <p className="kisatsutai-editor-note">A trilha {fullPath} não possui benefícios de treinamento cadastrados.</p>
   const sections = [
     { id: 'arquetipo', title: 'Pontos de perícias de arquétipo', description: 'Treinamentos das perícias dos arquétipos previstos na trilha.', slots: requirements.filter(req => req.category !== 'Gerais') },
-    { id: 'extras', title: 'Pontos de perícias extras', description: 'Treinamentos exclusivos das perícias gerais: Sociais, Conhecimentos Gerais e Naturais.', slots: requirements.filter(req => req.category === 'Gerais') },
+    { id: 'extras', title: 'Pontos de perícias gerais', description: 'Treinamentos exclusivos das perícias gerais: Sociais, Conhecimentos Gerais e Naturais.', slots: requirements.filter(req => req.category === 'Gerais') },
   ]
   return <div className="kisatsutai-distribution sheet-distribution-panel">
-    <div className="kisatsutai-distribution-title"><span className="kisatsutai-distribution-symbol">✦</span><div><small>DESENVOLVIMENTO · {fullPath.toUpperCase()}</small><strong>Distribuição de perícias extras e de arquétipo</strong><p>Os dois tipos de pontos são independentes e definidos pela trilha {fullPath}.</p></div></div>
+    <div className="kisatsutai-distribution-title"><span className="kisatsutai-distribution-symbol">✦</span><div><small>DESENVOLVIMENTO · {fullPath.toUpperCase()}</small><strong>Distribuição de perícias gerais e de arquétipo</strong><p>Os dois tipos de pontos são independentes e definidos pela trilha {fullPath}.</p></div></div>
     {sections.map(section => {
       const used = section.slots.filter(req => !!distribution[req.id]).length
       const levels = (['avancado', 'medio', 'leve', 'completo'] as const).filter(level => section.slots.some(req => req.level === level))
@@ -230,7 +229,7 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
           const options = Array.from(uniqueOptions.values())
           return <label key={req.id} className="kisatsutai-distribution-row"><span><strong>{req.category === 'qualquer Arquétipo' ? 'Qualquer Arquétipo' : req.category}</strong><small>{distribution[req.id] ? 'Distribuída' : 'Disponível'}</small></span><select disabled={disabled} value={distribution[req.id] || ''} onChange={e => change(req.id, e.target.value)}><option value="">Selecionar perícia...</option>{options.map(option => <option key={option.key} value={option.key}>{option.name} · {option.group}</option>)}</select></label>
         })}</div></div>)}
-        {section.slots.length > 0 && used === section.slots.length && <p className="kisatsutai-distribution-complete">Distribuição de {section.id === 'extras' ? 'perícias extras' : 'perícias de arquétipo'} concluída!</p>}
+        {section.slots.length > 0 && used === section.slots.length && <p className="kisatsutai-distribution-complete">Distribuição de {section.id === 'extras' ? 'perícias gerais' : 'perícias de arquétipo'} concluída!</p>}
       </section>
     })}
     <section className="kisatsutai-distribution-section">
@@ -1595,6 +1594,9 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [complexSkill, setComplexSkill] = useState('')
   const [complexResult, setComplexResult] = useState('')
   const [complexUsed, setComplexUsed] = useState<Record<string, number>>({})
+  const [complexSceneCount, setComplexSceneCount] = useState(0)
+  const [complexAttribute, setComplexAttribute] = useState('intelligence')
+  const [complexMainSkill, setComplexMainSkill] = useState('')
   const [complexPending, setComplexPending] = useState<{skill: string; bonus: number} | null>(null)
   const [selectedSkillAttribute, setSelectedSkillAttribute] = useState<string>('strength')
   const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
@@ -1740,7 +1742,6 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [characterFamilyTier, setCharacterFamilyTier] = useState('5')
   const [characterLevel, setCharacterLevel] = useState('1')
 
-  const [selectedArchetypeKit, setSelectedArchetypeKit] = useState('')
   const [newItemName, setNewItemName] = useState('')
   const [newItemDescription, setNewItemDescription] = useState('')
   const [newItemRarity, setNewItemRarity] = useState('comum')
@@ -6061,9 +6062,6 @@ const weight = newItemCategories.includes('Consumíveis')
       metadata: {
   ...(editingItem?.metadata ?? {}),
   icon: newItemEmoji,
-  archetypeKit: ARCHETYPE_KITS.find(kit => kit.name === newItemName.trim())?.name ?? null,
-  archetypeKitUses: ARCHETYPE_KITS.find(kit => kit.name === newItemName.trim())?.uses ?? null,
-  archetypeKitArchetype: ARCHETYPE_KITS.find(kit => kit.name === newItemName.trim())?.archetype ?? null,
   rarity: newItemRarity,
   categories: newItemCategories.length ? newItemCategories : [newItemCategory],
   equipmentType: isCyberFlowerSystem ? itemEquipmentTypeForSave : (
@@ -7493,10 +7491,10 @@ const rollAttributeDice = (diceCount: number, usesAgility = false) => {
 }
 
 const performCombatRoll = (
-  kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Bloqueio' | 'Esquiva',
+  kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Tiro' | 'Disparo' | 'Bloqueio' | 'Esquiva',
   dodgeDt?: string
 ) => {
-  const blockedAction = kind === 'Esquiva' ? 'dodge' : kind === 'Bloqueio' ? 'block' : kind.startsWith('Ataque') ? 'attack' : ''
+  const blockedAction = kind === 'Esquiva' ? 'dodge' : kind === 'Bloqueio' ? 'block' : (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : ''
   if (blockedAction && conditionRules.restrictions.includes(blockedAction)) {
     setCombatActionResult(`${kind} indisponível devido a uma condição ativa.`)
     setBlockDamageReduction(null)
@@ -7505,36 +7503,35 @@ const performCombatRoll = (
   const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
   const validTarget = target !== null && Number.isFinite(target) && target >= 0
 
-  const constitution =
-    Number(read('attributes.constitution', 0)) || resistance + vigor
-
 const attribute =
   kind === 'Ataque bruto' ? strength :
   kind === 'Ataque ágil' || kind === 'Esquiva' ? agility :
   kind === 'Ataque especial' ? breathing :
+  kind === 'Tiro' ? intellect :
+  kind === 'Disparo' ? agility :
   defense
 
   const bonus =
     kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
-    kind === 'Ataque especial' ? ability :
-    kind === 'Bloqueio' ? constitution :
+    (kind === 'Ataque especial' || kind === 'Tiro' || kind === 'Disparo') ? ability :
+    kind === 'Bloqueio' ? vigor + resistance :
     armorDexterity
 
-  const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : 'defense'
-  const diceGroup = kind.startsWith('Ataque') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
+  const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
+  const diceGroup = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
   const diceBonus = conditionModifier(conditionRules.dice, 'status', diceKey) + conditionModifier(conditionRules.dice, 'combat_points', diceGroup)
   const diceCount = 1 + Math.floor(attribute) + diceBonus
-  const usesAgility = kind === 'Ataque ágil' || kind === 'Esquiva'
+  const usesAgility = kind === 'Ataque ágil' || kind === 'Disparo' || kind === 'Esquiva'
 
   const roll = rollAttributeDice(diceCount, usesAgility)
 
   const dice = roll.rolls
   const highest = roll.result
-  const preparationBonus = kind.startsWith('Ataque') ? (complexPending?.bonus || 0) : 0
-  const conditionBonus = conditionModifier(conditionModifiers, 'status', kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : 'defense')
-  const combatConditionBonus = conditionModifier(conditionModifiers, 'combat_points', kind.startsWith('Ataque') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge')
+  const preparationBonus = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') && (complexPending?.skill === ((kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate')) ? (complexPending?.bonus || 0) : 0
+  const conditionBonus = conditionModifier(conditionModifiers, 'status', kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense')
+  const combatConditionBonus = conditionModifier(conditionModifiers, 'combat_points', (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge')
   const total = highest + bonus + preparationBonus + conditionBonus + combatConditionBonus
-  if (kind.startsWith('Ataque') && complexPending) setComplexPending(null)
+  if ((kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') && complexPending && preparationBonus) setComplexPending(null)
 
   const diceDescriptionBase = roll.hasDisadvantage
     ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem) → ${highest}`
@@ -7543,20 +7540,20 @@ const attribute =
   const diceDescription = `${diceDescriptionBase}${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}`
   if (kind === 'Bloqueio') {
     const critical = highest >= criticalValue
-    const success = validTarget && total >= target
-    const reduction = !validTarget ? null : critical ? 1 : success ? 0.5 : 0
+    const success = validTarget && total > target
+    const reduction = !validTarget ? null : critical ? 1 : success ? 0.5 : 0.25
     const outcome = !validTarget
       ? 'Informe a DT do inimigo para determinar o resultado do bloqueio.'
       : critical
         ? `Crítico contra DT ${target}: nega 100% do dano.`
         : success
           ? `Sucesso contra DT ${target}: nega 50% do dano.`
-          : `Falha contra DT ${target}: não reduz o dano.`
+          : `Falha contra DT ${target}: nega 25% do dano.`
 
     setBlockIncomingDamage('')
     setBlockDamageReduction(reduction)
     setCombatActionResult(
-      `Bloqueio: ${diceDescription} + Constituição (${bonus}) = ${total}. ${outcome}`
+      `Bloqueio: ${diceDescription} + Vigor + Resistência (${bonus}) = ${total}. ${outcome}`
     )
   } else if (kind === 'Esquiva') {
     const target =
@@ -7570,13 +7567,13 @@ const attribute =
       target >= 0
 
     const outcome = validTarget
-      ? total >= target!
+      ? total > target!
         ? `Sucesso contra DT ${target}: nega 100% do dano.`
         : `Falha contra DT ${target}: não evita o dano.`
       : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
 
     setBlockDamageReduction(
-  validTarget && total >= target! ? 1 : 0
+  validTarget && total > target! ? 1 : 0
 )
 
     setCombatActionResult(
@@ -7586,7 +7583,7 @@ const attribute =
     setBlockDamageReduction(null)
 
     const bonusName =
-      kind === 'Ataque especial' ? 'Habilidade' : 'Combate'
+      (kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate'
 
     setCombatActionResult(
       `${kind}: ${diceDescription} + ${bonusName} (${bonus})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
@@ -8100,6 +8097,8 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                           />
                         )}
                         {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
+                        {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
+                        {(() => {const team=forEnemy?String(read('identity.team','')||read('identity.teamName','')).trim():String(sheetSeasonRoster[selectedSeasonId]?.[selectedCharacterId]?.team||read('identity.team','')).trim();return <div className="hb-sheet-team-indicator">🛡️ Equipe: <strong>{team||'Não definida'}</strong></div>})()}
                         </>
                       )
                     }
@@ -8758,7 +8757,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     )}
   </>
 )}
-                      {isKisatsutaiSystem && panel('6. Perícias extras, arquétipo ou extras', <div className="kisatsutai-extra-skills">
+                      {isKisatsutaiSystem && panel('6. Perícias gerais, arquétipo ou extras', <div className="kisatsutai-extra-skills">
                         <KisatsutaiSkillDistribution fullPath={getKisatsutaiFullPath(String(read('identity.primaryArchetype', '')), String(read('identity.secondaryArchetype', '')))} skills={read('skills', {})} onChange={next => write('skills', next)} intellectExtraLevels={extraLevels} disabled={!renderCanEdit} />
                         <details className="kisatsutai-skill-group"><summary>Consultar lista de perícias e descrições</summary>
                           {Object.entries(KISATSUTAI_SKILL_GROUPS).map(([group, groupSkills]) => <details key={group} className="kisatsutai-skill-group"><summary>{group} <small>({groupSkills.length} perícias)</small></summary><div className="kisatsutai-skill-grid">{groupSkills.map(skill => <div key={skill.name} className="kisatsutai-skill-entry"><span><strong>{skill.name}</strong><small>{skill.description}</small></span></div>)}</div></details>)}
@@ -8958,6 +8957,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <small>{Math.floor(1 + agility) <= 0 ? `${2 - Math.floor(1 + agility)}D20 (desvantagem)` : `${Math.floor(1 + agility)}D20`} + Combate ({combat})</small>
                             </button>
 
+                            {isKisatsutaiSystem && <><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">🎯</span><strong>Tiro</strong><small>Intelecto ({intellect}) + Habilidade ({ability})</small></button><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">🏹</span><strong>Disparo</strong><small>Agilidade ({agility}) + Habilidade ({ability})</small></button></>}
+
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
                               <span className="combat-action-icon">✦</span>
                               <strong>Ataque Especial</strong>
@@ -9039,7 +9040,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               const level = trainings[key] as TrainingLevel | undefined
                               return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [{key, label: `${skill.name} · ${group}`, bonus: KISATSUTAI_TRAINING[level]}] : []
                             }))
-                            const chosen = skills.find(skill => skill.key === complexSkill)
+                            const archetypeSkills = skills.filter(skill => !['Sociais', 'Conhecimentos Gerais', 'Naturais'].includes(skill.key.split(':')[0]))
+                            const chosen = archetypeSkills.find(skill => skill.key === complexSkill)
                             const result = Number(complexResult)
                             const complexBonus = result >= 40 ? 5 : result >= 35 ? 5 : result >= 30 ? 4 : result >= 25 ? 3 : result >= 20 ? 2 : result >= 15 ? 1 : 0
                             const validResult = complexResult.trim() !== '' && Number.isFinite(result) && result >= 0
@@ -9074,11 +9076,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 @media(max-width:680px){.hax-complex-fields{grid-template-columns:1fr}.hax-complex-panel{padding:14px;gap:12px}.hax-complex-scale{gap:5px}.hax-complex-tier{padding:10px 3px;min-height:58px}.hax-complex-tier strong{font-size:1.05rem}.hax-complex-buttons button{flex:1 1 145px}}
                               `}</style>
                               <div className="hax-complex-head">
-                                <div><strong>🧠 Ações Complexas</strong><small>Prepare um bônus para o próximo ataque usando uma perícia treinada.</small></div>
+                                <div><strong>🧠 Ações Complexas</strong><small>Escolha atributo, perícia de arquétipo e perícia principal beneficiada. Máximo de 3 preparações por cena.</small></div>
                                 <span className="hax-complex-pill">⏳ Preparo: 1 ação · Ataque: 1 ação</span>
                               </div>
                               <div className="hax-complex-fields">
-                                <label><span>📚 Perícia de preparo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{skills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
+                                <label><span>🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Resistência</option></select></label>
+                                <label><span>🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
+                                <label><span>📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Ex.: 27" /></label>
                               </div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
@@ -9087,12 +9091,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 {complexPending && <span className="hax-complex-pill">🎯 Pendente: +{complexPending.bonus} · {complexPending.skill}</span>}
                               </div>
                               <div className="hax-complex-buttons">
-                                <button type="button" disabled={!chosen || !validResult || alreadyUsed} onClick={() => {if(!chosen)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexPending({skill:chosen.label,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para o próximo ataque. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
-                                <button type="button" disabled={!chosen || !alreadyUsed} onClick={() => {if(!chosen)return;const bonus = savedBonus ?? 0;setComplexPending({skill:chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} restaurado.`)}}>🔁 Repetir preparo</button>
-                                <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexPending(null);setComplexResult('')}}>↺ Reiniciar combate</button>
+                                <button type="button" disabled={!chosen || !validResult || alreadyUsed || !complexMainSkill || complexSceneCount >= 3} onClick={() => {if(!chosen)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para o próximo ataque. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
+                                <button type="button" disabled={!chosen || !alreadyUsed || complexSceneCount >= 3} onClick={() => {if(!chosen)return;const bonus = savedBonus ?? 0;setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill||chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} restaurado.`)}}>🔁 Repetir preparo</button>
+                                <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexSceneCount(0);setComplexPending(null);setComplexResult('')}}>↺ Reiniciar combate</button>
                               </div>
-                              {skills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia disponível</strong><small>Treine uma Perícia Extra ou de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
-                              <small className="hax-complex-note hax-complex-footer">💡 Uma preparação por perícia a cada combate. Repetir custa outra ação e recupera o bônus original. O bônus pendente vale para o próximo ataque.</small>
+                              {skills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia disponível</strong><small>Treine uma Perícia Geral ou de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
+                              <small className="hax-complex-note hax-complex-footer">💡 Limite de 3 preparações por cena, incluindo repetições. Reinicie somente ao começar uma nova cena. O bônus pendente vale para o próximo ataque.</small>
                             </div>
                           })()}
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
@@ -9231,7 +9235,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="combat-reactions-section" id={forEnemy ? 'inimigo-reacoes' : 'ficha-reacoes'}>
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Constituição</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Vigor + Resistência</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
   {(() => {
     const diceCount = 1 + Math.floor(agility) - (renderOverloaded ? 1 : 0)
@@ -9341,7 +9345,7 @@ const dt = counterAttackDT
                           <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza de armadura. Habilidades podem conceder D20 adicionais.</span></p>
 <p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
 <p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
-<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso: nega ½ do dano; crítico (20 natural): dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza de armadura. Se alcançar a DT, nega 100% do dano.</span></p><p>
+<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso (resultado maior que DT): nega ½ do dano; crítico: dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza de armadura. Se alcançar a DT, nega 100% do dano.</span></p><p>
   <strong>Contra-ataque</strong>
   <span>
     O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
@@ -12877,36 +12881,7 @@ disabled={
                       </div>
                     )}
 
-<section className="archetype-kit-preset">
-                      <strong>🧰 Kits de Arquétipo</strong>
-                      <p>Escolha um modelo para preencher nome, descrição, peso e categoria. Os efeitos especiais permanecem descritos para controle do mestre.</p>
-                      <select value={selectedArchetypeKit} onChange={event => {
-                        const name = event.target.value
-                        setSelectedArchetypeKit(name)
-                        const kit = ARCHETYPE_KITS.find(entry => entry.name === name)
-                        if (!kit) return
-                        setNewItemName(kit.name)
-                        setNewItemDescription(kit.description)
-                        setNewItemCategories(kit.mode === 'consumivel' ? ['Kits', 'Consumíveis'] : ['Kits', 'Equipamento'])
-                        setNewItemCategory('Kits')
-                        setNewEquipmentType('none')
-                        setNewItemWeight(String(kit.weight))
-                        setNewItemEmoji('🧰')
-                        setNewItemQuantity('1')
-                        setNewScarcityLevel('1')
-                        setNewScarcityExhausted(false)
-                      }}>
-                        <option value="">Selecionar um kit...</option>
-                        {['Yōgosha', 'Saizensen', 'Sokumen', 'Gijutsu', 'Senmon'].map(archetype => (
-                          <optgroup key={archetype} label={archetype}>
-                            {ARCHETYPE_KITS.filter(kit => kit.archetype === archetype).map(kit => <option key={kit.name} value={kit.name}>{kit.name} · {kit.weight} kg</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                      {selectedArchetypeKit && <small>Consumíveis: 3 usos previstos nas regras. O sistema atual de escassez continua independente desses usos.</small>}
-                    </section>
-
-                                        <label>
+                    <label>
                       Nome do item
                       <input
                         value={newItemName}
@@ -15762,36 +15737,7 @@ style={{cursor:'pointer'}}>
                       <span>{editingItem ? '✎' : '✧'}</span>
                     </div>
 
-<section className="archetype-kit-preset">
-                      <strong>🧰 Kits de Arquétipo</strong>
-                      <p>Escolha um modelo para preencher nome, descrição, peso e categoria. Os efeitos especiais permanecem descritos para controle do mestre.</p>
-                      <select value={selectedArchetypeKit} onChange={event => {
-                        const name = event.target.value
-                        setSelectedArchetypeKit(name)
-                        const kit = ARCHETYPE_KITS.find(entry => entry.name === name)
-                        if (!kit) return
-                        setNewItemName(kit.name)
-                        setNewItemDescription(kit.description)
-                        setNewItemCategories(kit.mode === 'consumivel' ? ['Kits', 'Consumíveis'] : ['Kits', 'Equipamento'])
-                        setNewItemCategory('Kits')
-                        setNewEquipmentType('none')
-                        setNewItemWeight(String(kit.weight))
-                        setNewItemEmoji('🧰')
-                        setNewItemQuantity('1')
-                        setNewScarcityLevel('1')
-                        setNewScarcityExhausted(false)
-                      }}>
-                        <option value="">Selecionar um kit...</option>
-                        {['Yōgosha', 'Saizensen', 'Sokumen', 'Gijutsu', 'Senmon'].map(archetype => (
-                          <optgroup key={archetype} label={archetype}>
-                            {ARCHETYPE_KITS.filter(kit => kit.archetype === archetype).map(kit => <option key={kit.name} value={kit.name}>{kit.name} · {kit.weight} kg</option>)}
-                          </optgroup>
-                        ))}
-                      </select>
-                      {selectedArchetypeKit && <small>Consumíveis: 3 usos previstos nas regras. O sistema atual de escassez continua independente desses usos.</small>}
-                    </section>
-
-                                        <label>
+                    <label>
                       Nome do item
                       <input
                         value={newItemName}

@@ -14399,8 +14399,9 @@ button:disabled { opacity: .58; }
 .hb-condition-library-item.hb-condition-drop-target,.hb-conditions-entry.hb-condition-drop-target{outline:2px solid var(--season-primary,#d9a873)!important;outline-offset:2px;background:color-mix(in srgb,var(--season-primary,#d9a873) 12%,var(--cond-soft))!important}
 .hb-condition-library-item.hb-condition-dragging,.hb-conditions-entry.hb-condition-dragging{opacity:.35!important}
 
-/* Catálogo de kits de arquétipo */
-.archetype-kit-preset{display:grid;gap:9px;padding:16px;border:1px solid var(--border-color,rgba(160,160,180,.25));border-radius:14px;background:rgba(130,130,160,.07)}
-.archetype-kit-preset p{margin:0;opacity:.78;font-size:.85rem;line-height:1.5}
-.archetype-kit-preset select{width:100%;min-width:0;padding:10px;border-radius:9px}
-.archetype-kit-preset small{opacity:.75}
+/* Natureza das condições */
+.hb-condition-polarity{display:inline-flex;align-items:center;gap:5px;width:max-content;border-radius:999px;padding:4px 9px;font-size:.73rem;font-weight:750;border:1px solid rgba(160,160,170,.25)}
+.hb-condition-polarity.good{color:#86ddb0;background:rgba(60,170,110,.1);border-color:rgba(70,170,110,.25)}
+.hb-condition-polarity.bad{color:#eaa0a0;background:rgba(190,65,70,.09);border-color:rgba(190,65,70,.24)}
+
+.hb-sheet-team-indicator{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 14px;border-radius:12px;background:rgba(120,145,175,.07);border:1px solid var(--border-color,rgba(140,155,175,.2));font-size:.85rem}

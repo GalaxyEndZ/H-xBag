@@ -64,7 +64,7 @@ export function calculateConditionRules(assignments: Assignment[], definitions: 
       const effect = raw as Effect & { dice?: string }
       const key = normalize(effect.key || '*')
       const value = Number(effect.value)
-      if (effect.type === 'dice' && Number.isFinite(value)) {
+      if (effect.type === 'dice' && ['status', 'combat_points'].includes(effect.target || '') && Number.isFinite(value)) {
         const index = `${effect.target || 'status'}:${key}`
         result.dice[index] = (result.dice[index] || 0) + value
       } else if (effect.type === 'resource' && ['pv', 'ps', 'pr'].includes(key) && Number.isFinite(value)) {
