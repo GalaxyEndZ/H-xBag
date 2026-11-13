@@ -16087,3 +16087,308 @@ button:disabled { opacity: .58; }
 .app-shell .sheet-summary-status-card .hb-status-sigil-pr .hb-sigil-wash{fill-opacity:.095}
 .app-shell .sheet-summary-status-card .hb-status-sigil-pr .hb-sigil-stroke{opacity:.88}
 .app-shell .sheet-summary-status-card .hb-status-sigil-pr .hb-sigil-core{fill-opacity:.28}
+
+
+/* Refino visual da área de condições dentro da ficha. */
+.app-shell .hb-sheet-conditions-section .hb-condition-indicator--sheet {
+  display:grid;
+  gap:16px;
+  padding:18px;
+  border:1px solid color-mix(in srgb,var(--hb-sheet-line) 90%,rgba(255,255,255,.06));
+  border-radius:22px;
+  background:
+    radial-gradient(circle at top right,var(--hb-sheet-glow),transparent 42%),
+    linear-gradient(145deg,color-mix(in srgb,var(--season-surface-alt,#292332) 86%,rgba(255,255,255,.025)),color-mix(in srgb,var(--season-surface,#17151e) 92%,rgba(0,0,0,.12)));
+  box-shadow:0 18px 42px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding-bottom:14px;
+  border-bottom:1px solid color-mix(in srgb,var(--hb-sheet-line) 76%,transparent);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-header > div {display:grid; gap:5px; min-width:0}
+.app-shell .hb-sheet-conditions-section .hb-condition-header > div > strong {font-size:16px; line-height:1.15; letter-spacing:-.02em}
+.app-shell .hb-sheet-conditions-section .hb-condition-header > div > small {font-size:12px; color:var(--hb-sheet-muted); line-height:1.5}
+.app-shell .hb-sheet-conditions-section .hb-condition-count-pill {
+  flex:0 0 auto;
+  min-height:34px;
+  padding:7px 12px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--season-primary,#bca9d8) 38%,rgba(255,255,255,.08));
+  background:color-mix(in srgb,var(--season-primary,#bca9d8) 12%,rgba(255,255,255,.02));
+  color:var(--hb-sheet-ink);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-empty-state {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:18px;
+  border:1px dashed color-mix(in srgb,var(--hb-sheet-line) 85%,transparent);
+  border-radius:18px;
+  background:color-mix(in srgb,var(--season-surface-alt,#292332) 52%,transparent);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-empty-state > span {
+  width:42px; height:42px; display:grid; place-items:center; border-radius:14px;
+  background:var(--hb-sheet-glow); color:var(--season-primary,#bca9d8); font-size:18px; flex:0 0 42px;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-empty-state > div {display:grid; gap:3px}
+.app-shell .hb-sheet-conditions-section .hb-condition-empty-state strong {font-size:14px; line-height:1.2}
+.app-shell .hb-sheet-conditions-section .hb-condition-empty-state small {font-size:12px; color:var(--hb-sheet-muted); line-height:1.45}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-grid,
+.app-shell .hb-sheet-conditions-section .hb-condition-token-grid,
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-grid {display:grid; gap:10px}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-grid {grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.app-shell .hb-sheet-conditions-section .hb-condition-token-grid {grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-grid {grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip {
+  display:grid;
+  gap:8px;
+  min-width:0;
+  padding:13px 14px;
+  border-radius:18px;
+  border:1px solid color-mix(in srgb,var(--hb-sheet-line) 90%,transparent);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--season-surface,#17151e) 72%,rgba(255,255,255,.02)),color-mix(in srgb,var(--season-surface-alt,#292332) 66%,rgba(255,255,255,.03)));
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-top {display:flex; align-items:center; justify-content:space-between; gap:10px}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-name {font-size:13px; font-weight:800; line-height:1.35; overflow-wrap:anywhere}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip > small {font-size:11px; color:var(--hb-sheet-muted); line-height:1.45}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-severity {
+  flex:0 0 auto;
+  padding:4px 8px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--hb-sheet-line) 85%,transparent);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-severity.severity-grave {border-color:rgba(207,162,90,.55); color:#f2d29a; background:rgba(207,162,90,.12)}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-severity.severity-critica {border-color:rgba(222,99,124,.55); color:#ffb7c5; background:rgba(222,99,124,.14)}
+.app-shell .hb-sheet-conditions-section .hb-condition-subpanel {
+  display:grid;
+  gap:12px;
+  padding:15px;
+  border-radius:18px;
+  border:1px solid color-mix(in srgb,var(--hb-sheet-line) 82%,transparent);
+  background:color-mix(in srgb,var(--season-surface-alt,#292332) 42%,transparent);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-subpanel-head {display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap}
+.app-shell .hb-sheet-conditions-section .hb-condition-subpanel-head strong {font-size:13px; letter-spacing:-.01em}
+.app-shell .hb-sheet-conditions-section .hb-condition-subpanel-head small {font-size:11px; color:var(--hb-sheet-muted)}
+.app-shell .hb-sheet-conditions-section .hb-condition-token {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  min-width:0; padding:11px 12px; border-radius:14px;
+  border:1px solid color-mix(in srgb,var(--hb-sheet-line) 82%,transparent);
+  background:linear-gradient(145deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-token em {font-style:normal; font-size:12px; color:var(--hb-sheet-muted); overflow-wrap:anywhere}
+.app-shell .hb-sheet-conditions-section .hb-condition-token strong {font-size:13px; font-weight:850; color:var(--hb-sheet-ink); white-space:nowrap}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card {
+  display:grid; gap:6px; min-width:0; padding:12px 13px; border-radius:15px;
+  border:1px solid color-mix(in srgb,var(--hb-sheet-line) 80%,transparent);
+  background:linear-gradient(145deg,rgba(255,255,255,.015),rgba(255,255,255,.03));
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card > span {font-size:12px; color:var(--hb-sheet-muted); overflow-wrap:anywhere}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card > strong {font-size:13px; line-height:1.5; overflow-wrap:anywhere}
+.app-shell .hb-sheet-conditions-section .hb-condition-inline-error {display:block; font-size:12px; color:#f2a3ac}
+@media (max-width: 720px){
+  .app-shell .hb-sheet-conditions-section .hb-condition-header,
+  .app-shell .hb-sheet-conditions-section .hb-condition-subpanel-head,
+  .app-shell .hb-sheet-conditions-section .hb-condition-token,
+  .app-shell .hb-sheet-conditions-section .hb-condition-chip-top {align-items:flex-start}
+  .app-shell .hb-sheet-conditions-section .hb-condition-token {flex-direction:column}
+}
+
+
+
+/* V19 — Segurança de layout: o atalho de topo pertence ao cabeçalho,
+   nunca mais sobrepõe convites, widgets ou ações flutuantes da página. */
+.hb-polish .topbar-right .hb-back-to-top--topbar {
+  position:static;
+  z-index:auto;
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  min-height:35px;
+  margin:0;
+  padding:7px 12px;
+  border-radius:10px;
+  box-shadow:none;
+  background:color-mix(in srgb,var(--season-primary,#d0a77d) 9%,var(--season-surface-alt,#241c27));
+  color:var(--season-text,#f5edf4);
+  white-space:nowrap;
+}
+.hb-polish .topbar-right .hb-back-to-top--topbar:hover {
+  border-color:var(--season-primary,#d0a77d);
+  background:color-mix(in srgb,var(--season-primary,#d0a77d) 17%,var(--season-surface-alt,#241c27));
+}
+@media(max-width:900px){
+  .hb-polish .topbar-right .hb-back-to-top--topbar{min-height:34px;min-width:34px;padding:7px 9px}
+  .hb-polish .topbar-right .hb-back-to-top--topbar > span{display:none}
+}
+
+/* V19 — Condições da ficha: natureza (boa/ruim) e gravidade independentes. */
+.app-shell .hb-sheet-conditions-section .hb-condition-summary-badges {
+  display:flex;
+  gap:7px;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-summary-badges > span {
+  display:inline-flex;
+  align-items:center;
+  min-height:30px;
+  padding:6px 10px;
+  border:1px solid var(--hb-sheet-line);
+  border-radius:999px;
+  background:color-mix(in srgb,var(--season-surface-alt,#292332) 70%,transparent);
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-summary-badges .hb-condition-summary-positive {
+  color:#a7ecd3;border-color:rgba(91,205,157,.28);background:rgba(91,205,157,.09);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-summary-badges .hb-condition-summary-negative {
+  color:#ffb7bd;border-color:rgba(230,116,135,.28);background:rgba(230,116,135,.09);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip {
+  --hb-condition-tone:var(--season-primary,#b9a3d8);
+  position:relative;
+  overflow:hidden;
+  border-left:3px solid var(--hb-condition-tone);
+  padding:14px 15px;
+  transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip:hover{
+  transform:translateY(-1px);
+  box-shadow:0 11px 28px rgba(0,0,0,.14);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-good {
+  --hb-condition-tone:#6ddcb2;
+  background:linear-gradient(115deg,rgba(72,168,126,.085),color-mix(in srgb,var(--season-surface,#17151e) 83%,transparent));
+  border-color:rgba(109,220,178,.20);
+  border-left-color:var(--hb-condition-tone);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-bad {
+  --hb-condition-tone:#ef8f9c;
+  background:linear-gradient(115deg,rgba(173,64,87,.085),color-mix(in srgb,var(--season-surface,#17151e) 83%,transparent));
+  border-color:rgba(239,143,156,.20);
+  border-left-color:var(--hb-condition-tone);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-name{display:flex;align-items:center;gap:10px}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-avatar{
+  display:grid;
+  place-items:center;
+  width:35px;
+  height:35px;
+  flex:0 0 35px;
+  border:1px solid color-mix(in srgb,var(--hb-condition-tone) 30%,transparent);
+  border-radius:11px;
+  background:color-mix(in srgb,var(--hb-condition-tone) 10%,transparent);
+  color:var(--hb-condition-tone);
+  font-size:16px;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-top {align-items:center}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-meta {
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-top:9px;
+  border-top:1px solid color-mix(in srgb,var(--hb-sheet-line) 65%,transparent);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-meta small{
+  flex:1 1 auto;
+  min-width:0;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-polarity-label{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:3px 8px;
+  border:1px solid var(--hb-sheet-line);
+  border-radius:99px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-polarity-label.polarity-good {
+  color:#a4f2d1;
+  border-color:rgba(91,205,157,.32);
+  background:rgba(91,205,157,.09);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-polarity-label.polarity-bad {
+  color:#f8b1be;
+  border-color:rgba(230,116,135,.32);
+  background:rgba(230,116,135,.09);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-polarity-label.polarity-neutral{color:var(--hb-sheet-muted)}
+/* A gravidade não depende da polaridade: normal, grave e crítica. */
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-severity.severity-normal{
+  color:#c2d8ee;
+  border-color:rgba(139,181,218,.32);
+  background:rgba(139,181,218,.085);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-severity.severity-grave{
+  color:#ffd68e;
+  border-color:rgba(235,175,81,.4);
+  background:rgba(235,175,81,.14);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip-severity.severity-critica{
+  color:#ffb2c1;
+  border-color:rgba(255,96,126,.48);
+  background:rgba(255,96,126,.16);
+  box-shadow:inset 0 0 10px rgba(255,96,126,.06);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-token{gap:9px}
+.app-shell .hb-sheet-conditions-section .hb-condition-token-icon{
+  display:grid;
+  place-items:center;
+  flex:0 0 25px;
+  width:25px;
+  height:25px;
+  border-radius:8px;
+  font-size:14px;
+  font-weight:900;
+  background:rgba(255,255,255,.04);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-token em{flex:1;min-width:0}
+.app-shell .hb-sheet-conditions-section .hb-condition-token.is-positive .hb-condition-token-icon,
+.app-shell .hb-sheet-conditions-section .hb-condition-token.is-positive > strong{color:#9ceac8}
+.app-shell .hb-sheet-conditions-section .hb-condition-token.is-negative .hb-condition-token-icon,
+.app-shell .hb-sheet-conditions-section .hb-condition-token.is-negative > strong{color:#ffadb9}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card{border-left:3px solid var(--hb-sheet-line)}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card.polarity-good{border-left-color:#6ddcb2}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card.polarity-bad{border-left-color:#ef8f9c}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-identity{display:flex;align-items:center;gap:7px}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-identity > span {
+  display:grid;
+  place-items:center;
+  width:25px;height:25px;
+  flex:0 0 25px;
+  border-radius:8px;
+  border:1px solid var(--hb-sheet-line);
+  background:color-mix(in srgb,var(--season-primary,#b9a3d8) 10%,transparent);
+  color:var(--season-primary,#b9a3d8);
+  font-size:14px;
+}
+@media(max-width:680px){
+  .app-shell .hb-sheet-conditions-section .hb-condition-header{flex-wrap:wrap}
+  .app-shell .hb-sheet-conditions-section .hb-condition-summary-badges{justify-content:flex-start}
+  .app-shell .hb-sheet-conditions-section .hb-condition-chip-grid,
+  .app-shell .hb-sheet-conditions-section .hb-condition-token-grid,
+  .app-shell .hb-sheet-conditions-section .hb-condition-rule-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .hb-sheet-conditions-section .hb-condition-chip{transition:none}
+  .app-shell .hb-sheet-conditions-section .hb-condition-chip:hover{transform:none}
+}

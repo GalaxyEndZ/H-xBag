@@ -334,6 +334,36 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     {master&&editingAssignment&&<div className="hb-condition-modal-backdrop" role="presentation"><form className="hb-condition-modal" role="dialog" aria-modal="true" onSubmit={e=>{e.preventDefault();const [kind,id]=editingAssignment.split(':');void execute(async()=>{const r=kind==='enemy'?await supabase.rpc('hax_update_active_enemy_condition',{p_campaign_id:campaignId,p_assignment_id:id,p_duration_label:editDuration.trim()||null,p_notes:editNotes.trim()||null}):await supabase.rpc('hax_update_active_condition',{p_campaign_id:campaignId,p_assignment_id:id,p_duration_label:editDuration.trim()||null,p_notes:editNotes.trim()||null});if(!r.error)setEditingAssignment(null);return r})}}><div className="hb-conditions-section-head"><h3>✏️ Editar condição aplicada</h3><button type="button" className="secondary-button" onClick={()=>setEditingAssignment(null)}>✕</button></div><label>Duração<input maxLength={120} value={editDuration} onChange={e=>setEditDuration(e.target.value)} placeholder="Ex.: 3 turnos"/></label><label>Observações<textarea rows={3} maxLength={500} value={editNotes} onChange={e=>setEditNotes(e.target.value)}/></label><div className="hb-condition-actions"><button type="button" className="secondary-button" onClick={()=>setEditingAssignment(null)}>Cancelar</button><button className="primary-button" disabled={busy}>Salvar alterações</button></div></form></div>}
   </section>
 }
+type ConditionPolarity = 'good' | 'bad' | 'neutral'
+const getConditionPolarity = (definition:Definition|undefined):ConditionPolarity => definition?.polarity==='boa'?'good':definition?.polarity==='ruim'?'bad':'neutral'
+const conditionPolarityName:Record<ConditionPolarity,string>={good:'Benéfica',bad:'Prejudicial',neutral:'Não definida'}
+const conditionPolarityIcon:Record<ConditionPolarity,string>={good:'✦',bad:'◆',neutral:'◈'}
+const conditionSeverityName:Record<string,string>={normal:'Normal',grave:'Grave',critica:'Crítica'}
+const conditionSeverityIcon:Record<string,string>={normal:'●',grave:'▲',critica:'✹'}
+const conditionRuleIcon:Record<string,string>={dice:'⚄',restriction:'⛨',resource:'◉',periodic_damage:'⚔',round_counter:'⌛'}
+const conditionTargetLabels:Record<string,string>={status:'Status',main_skill:'Perícia principal',extra_skill:'Perícia geral',archetype_skill:'Perícia de arquétipo',combat_points:'Pontos de combate',resource:'Recurso'}
+function formatConditionTargetKey(raw:string){
+  const value=raw.trim()
+  if(!value.includes(':')) return labelForConditionKey(value)
+  const split=value.split(':')
+  const group=split.shift()||''
+  const skill=split.join(':')
+  const actualGroup=Object.keys(KISATSUTAI_SKILL_GROUPS).find(k=>k.toLocaleLowerCase('pt-BR')===group.toLocaleLowerCase('pt-BR'))
+  return `${actualGroup||group.charAt(0).toLocaleUpperCase('pt-BR')+group.slice(1)} · ${skill.charAt(0).toLocaleUpperCase('pt-BR')+skill.slice(1)}`
+}
+
+function describeConditionRule(effect:ConditionEffect){
+  if(effect.type==='dice'){
+    const alvo=conditionTargetLabels[effect.target||'status']||effect.target||'Status'
+    return `${(effect.value||0)>0?'+':''}${effect.value||0} dado(s) em ${alvo}${effect.key?` · ${formatConditionTargetKey(effect.key)}`:''}`
+  }
+  if(effect.type==='restriction') return `Bloqueia ${formatConditionTargetKey(effect.key||'ação')}`
+  if(effect.type==='resource') return `${(effect.value||0)>0?'+':''}${effect.value||0}${effect.unit==='percent'?'%':' pontos'} em ${formatConditionTargetKey(effect.key||'recurso')} máximo`
+  if(effect.type==='periodic_damage') return `${effect.dice||'dano'} por rodada em ${String(effect.key||'pv').toUpperCase()} (acionamento manual)`
+  if(effect.type==='round_counter') return `${effect.value||3} rodada(s) com controle manual`
+  return ''
+}
+
 export function CharacterConditions({campaignId,characterId}:{campaignId:string;characterId:string}){
  const [active,setActive]=useState<Active[]>([])
  const [definitions,setDefinitions]=useState<Definition[]>([])
@@ -362,26 +392,78 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
      modifiers.set(key,(modifiers.get(key)||0)+(effect.value||0))
    }
  }
- const labels:Record<string,string>={status:'Status',main_skill:'Perícia principal',extra_skill:'Perícia extra',archetype_skill:'Perícia de arquétipo',combat_points:'Pontos de combate'}
- return <div className="hb-condition-indicator"><strong>🩸 Condições {active.length>0?`(${active.length})`:''}</strong><div>{active.length===0?<small>Nenhuma condição ativa</small>:[...active].sort((a,b)=>(displayOrder[a.id]??999999)-(displayOrder[b.id]??999999)).map(a=><span key={a.id} className={`hb-condition-tag severity-${a.severity}`} title={[a.description,a.duration_label,a.notes].filter(Boolean).join(' · ')}>{a.emoji} {a.name}{a.duration_label?` · ${a.duration_label}`:''}</span>)}</div>
- {modifiers.size>0&&<div className="hb-condition-modifiers" aria-label="Modificadores cumulativos ativos"><strong>Modificadores ativos</strong>{[...modifiers.entries()].filter(([,value])=>value!==0).map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className="hb-condition-tag">{labels[target]||target}{rest.join(':')?` · ${labelForConditionKey(rest.join(':'))}`:''}: {value>0?'+':''}{value}{isPercent?'%':''}</span>})}</div>}
- {active.length>0&&<div className="hb-condition-rule-hints"><strong>Regras adicionais configuradas</strong>{active.flatMap(a=>{const d=definitions.find(item=>item.id===a.definition_id);return (d?.effects||[]).filter(e=>['dice','restriction','resource','periodic_damage','round_counter'].includes(e.type)).map((e,i)=><span key={`${a.id}:${i}`} className="hb-condition-rule-hint">{a.emoji} {a.name}: {e.type==='dice'?`${(e.value||0)>0?'+':''}${e.value||0} dado(s) · ${e.target||'status'} / ${e.key||'*'}`:e.type==='restriction'?`Bloqueia ${e.key||'ação'}`:e.type==='resource'?`${(e.value||0)>0?'+':''}${e.value||0}${e.unit==='percent'?'%':' pontos'} em ${e.key||'recurso'} máximo`:e.type==='periodic_damage'?`${e.dice||'dano'} por rodada (${e.key||'pv'}; acionamento manual)`:`${e.value||3} rodadas (controle do mestre)`}</span>)})}</div>}
- {error&&<small role="status">{error}</small>}
+ const sortedActive=[...active].sort((a,b)=>(displayOrder[a.id]??999999)-(displayOrder[b.id]??999999))
+ const visibleModifiers=[...modifiers.entries()].filter(([,value])=>value!==0)
+ const goodCount=sortedActive.filter(a=>getConditionPolarity(definitions.find(d=>d.id===a.definition_id))==='good').length
+ const badCount=sortedActive.filter(a=>getConditionPolarity(definitions.find(d=>d.id===a.definition_id))==='bad').length
+ const ruleHints=sortedActive.flatMap(a=>{
+   const d=definitions.find(item=>item.id===a.definition_id)
+   return (d?.effects||[])
+     .filter(e=>['dice','restriction','resource','periodic_damage','round_counter'].includes(e.type))
+     .map((e,i)=>({id:`${a.id}:${i}`,emoji:a.emoji,name:a.name,text:describeConditionRule(e),type:e.type,polarity:getConditionPolarity(d)}))
+ }).filter(entry=>entry.text)
+ return <div className="hb-condition-indicator hb-condition-indicator--sheet">
+   <div className="hb-condition-header">
+     <div>
+       <strong>🩸 Condições</strong>
+       <small>Efeitos ativos que estão alterando a ficha neste momento.</small>
+     </div>
+     <div className="hb-condition-summary-badges">
+       {goodCount>0&&<span className="hb-condition-summary-positive" title={`${goodCount} condição(ões) benéfica(s)`}>✦ {goodCount} boa{goodCount===1?'':'s'}</span>}
+       {badCount>0&&<span className="hb-condition-summary-negative" title={`${badCount} condição(ões) prejudicial(is)`}>◆ {badCount} {badCount===1?'ruim':'ruins'}</span>}
+       <span className="hb-condition-count-pill">{active.length} ativa{active.length===1?'':'s'}</span>
+     </div>
+   </div>
+   {sortedActive.length===0
+     ? <div className="hb-condition-empty-state"><span aria-hidden="true">✦</span><div><strong>Nenhuma condição ativa</strong><small>Quando houver condições aplicadas, elas aparecerão aqui com seus modificadores e regras extras.</small></div></div>
+     : <div className="hb-condition-chip-grid">{sortedActive.map(a=>{
+       const polarity=getConditionPolarity(definitions.find(d=>d.id===a.definition_id))
+       return <article key={a.id} className={`hb-condition-chip severity-${a.severity} polarity-${polarity}`} title={[a.description,a.duration_label,a.notes].filter(Boolean).join(' · ')}>
+         <div className="hb-condition-chip-top"><span className="hb-condition-chip-name"><span className="hb-condition-chip-avatar" aria-hidden="true">{a.emoji||conditionPolarityIcon[polarity]}</span>{a.name}</span><span className={`hb-condition-chip-severity severity-${a.severity}`}>{conditionSeverityIcon[a.severity]||'●'} {conditionSeverityName[a.severity]||'Normal'}</span></div>
+         <div className="hb-condition-chip-meta"><span className={`hb-condition-polarity-label polarity-${polarity}`}>{conditionPolarityIcon[polarity]} {conditionPolarityName[polarity]}</span><small>⌛ {a.duration_label||'Indeterminada'}{a.notes?` · ${a.notes}`:''}</small></div>
+       </article>
+     })}</div>}
+   {visibleModifiers.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--mods" aria-label="Modificadores cumulativos ativos">
+     <div className="hb-condition-subpanel-head"><strong>Modificadores ativos</strong><small>{visibleModifiers.length} ajuste(s) cumulativo(s)</small></div>
+     <div className="hb-condition-token-grid">{visibleModifiers.map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className={`hb-condition-token ${value>0?'is-positive':'is-negative'}`}><span className="hb-condition-token-icon" aria-hidden="true">{value>0?'↗':'↘'}</span><em>{conditionTargetLabels[target]||target}{rest.join(':')?` · ${formatConditionTargetKey(rest.join(':'))}`:''}</em><strong>{value>0?'+':''}{value}{isPercent?'%':''}</strong></span>})}</div>
+   </div>}
+   {ruleHints.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--rules">
+     <div className="hb-condition-subpanel-head"><strong>Regras adicionais configuradas</strong><small>Restrições, recursos e efeitos especiais da condição.</small></div>
+     <div className="hb-condition-rule-grid">{ruleHints.map(entry=><div key={entry.id} className={`hb-condition-rule-card polarity-${entry.polarity}`}><span className="hb-condition-rule-identity"><span aria-hidden="true">{conditionRuleIcon[entry.type]||'✧'}</span>{entry.emoji} {entry.name}</span><strong>{entry.text}</strong></div>)}</div>
+   </div>}
+   {error&&<small role="status" className="hb-condition-inline-error">{error}</small>}
  </div>
 }
 
 /** Condições ativas de um inimigo, visíveis somente na ficha do mestre. */
 export function EnemyConditions({campaignId,enemyId}:{campaignId:string;enemyId:string}){
   const [active,setActive]=useState<Active[]>([])
+  const [definitions,setDefinitions]=useState<Definition[]>([])
   useEffect(()=>{
     let live=true
     const load=async()=>{
-      const result=await supabase.rpc('hax_list_enemy_conditions',{p_campaign_id:campaignId,p_enemy_id:enemyId})
-      if(live&&!result.error)setActive((result.data||[]) as Active[])
+      const [result,library]=await Promise.all([
+        supabase.rpc('hax_list_enemy_conditions',{p_campaign_id:campaignId,p_enemy_id:enemyId}),
+        supabase.rpc('hax_list_condition_definitions',{p_campaign_id:campaignId})
+      ])
+      if(!live)return
+      if(!result.error)setActive((result.data||[]) as Active[])
+      if(!library.error)setDefinitions((library.data||[]) as Definition[])
     }
     void load()
     const timer=window.setInterval(()=>void load(),15000)
     return()=>{live=false;window.clearInterval(timer)}
   },[campaignId,enemyId])
-  return <div className="hb-condition-indicator"><strong>🩸 Condições do inimigo ({active.length})</strong><div>{active.length===0?<small>Nenhuma condição ativa</small>:active.map(condition=><span key={condition.id} className={`hb-condition-tag severity-${condition.severity}`} title={condition.description}>{condition.emoji} {condition.name}{condition.duration_label?` · ${condition.duration_label}`:''}</span>)}</div></div>
+  return <div className="hb-condition-indicator hb-condition-indicator--sheet hb-condition-indicator--enemy">
+    <div className="hb-condition-header"><div><strong>🩸 Condições do inimigo</strong><small>Visão rápida dos estados que estão afetando o alvo.</small></div><span className="hb-condition-count-pill">{active.length} ativa{active.length===1?'':'s'}</span></div>
+    {active.length===0
+      ? <div className="hb-condition-empty-state"><span aria-hidden="true">✦</span><div><strong>Nenhuma condição ativa</strong><small>O inimigo ainda não possui efeitos aplicados.</small></div></div>
+      : <div className="hb-condition-chip-grid">{active.map(condition=>{
+        const polarity=getConditionPolarity(definitions.find(d=>d.id===condition.definition_id))
+        return <article key={condition.id} className={`hb-condition-chip severity-${condition.severity} polarity-${polarity}`} title={condition.description}>
+          <div className="hb-condition-chip-top"><span className="hb-condition-chip-name"><span className="hb-condition-chip-avatar" aria-hidden="true">{condition.emoji||conditionPolarityIcon[polarity]}</span>{condition.name}</span><span className={`hb-condition-chip-severity severity-${condition.severity}`}>{conditionSeverityIcon[condition.severity]||'●'} {conditionSeverityName[condition.severity]||'Normal'}</span></div>
+          <div className="hb-condition-chip-meta"><span className={`hb-condition-polarity-label polarity-${polarity}`}>{conditionPolarityIcon[polarity]} {conditionPolarityName[polarity]}</span><small>⌛ {condition.duration_label||'Indeterminada'}</small></div>
+        </article>
+      })}</div>}
+  </div>
 }

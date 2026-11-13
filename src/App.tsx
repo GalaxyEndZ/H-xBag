@@ -10232,8 +10232,6 @@ counterAttackDT
           </section>
         </div>
       )}
-      {showScrollTop && !quickOpen && <button className="hb-back-to-top" type="button" title="Voltar ao topo" aria-label="Voltar ao topo da página"
-        onClick={() => window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'})}>↑ <span>Topo</span></button>}
       <main className={`main-content ${activePage === 'player-table' ? 'hb-vtt-app-main' : ''}`} id="inicio">
         <header className="topbar">
           <div className="breadcrumb hb-topbar-trail">
@@ -10244,6 +10242,8 @@ counterAttackDT
           </div>
 
           <div className="topbar-right">
+            {showScrollTop && !quickOpen && <button className="hb-back-to-top hb-back-to-top--topbar" type="button" title="Voltar ao início da página" aria-label="Voltar ao início da página"
+              onClick={() => window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'})}>↑ <span>Topo</span></button>}
             <button type="button" className="hb-quick-topbar" onClick={() => openQuick('search')}
               aria-label="Buscar páginas, personagens e campanhas (Ctrl K)" title="Busca global (Ctrl K)">
               <span aria-hidden="true">⌕</span><span>Busca global</span><kbd>Ctrl K</kbd>
