@@ -1306,6 +1306,9 @@ const resetCreatureFilters = () => {
   const [profileBioDraft, setProfileBioDraft] = useState('')
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
+  const [profileCharacterQuery, setProfileCharacterQuery] = useState('')
+  const [profileCampaignQuery, setProfileCampaignQuery] = useState('')
+  const [profileFeaturedCharacterId, setProfileFeaturedCharacterId] = useState<string | null>(null)
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
   const [sheet, setSheet] = useState<CharacterSheet | null>(null)
@@ -11142,28 +11145,52 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </article>
               </div>
 
-              <section className="hb-profile-collections" aria-label="Minha jornada nas campanhas">
-                <div className="hb-profile-collection-heading"><div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Personagens que você criou ou que foram atribuídos a você.</p></div><span className="hb-profile-collection-count">{characters.filter(character => character.user_id === session.user.id || character.current_player_id === session.user.id).length} personagens</span></div>
-                <div className="hb-profile-character-grid">
-                  {characters.filter(character => character.user_id === session.user.id || character.current_player_id === session.user.id).length ?
-                    characters.filter(character => character.user_id === session.user.id || character.current_player_id === session.user.id).map(character => (
-                      <article className="hb-profile-character-card" key={character.id}>
-                        <span className="hb-profile-character-avatar" aria-hidden="true">{character.emoji || '⚔️'}</span>
-                        <div className="hb-profile-character-info"><strong>{character.name}</strong><span>{campaigns.find(campaign => campaign.id === character.campaign_id)?.name || 'Campanha não disponível'}</span><small>{character.archetype || 'Arquétipo não definido'}</small></div>
-                        <span className="hb-profile-character-role">{character.current_player_id === session.user.id ? 'Jogador' : 'Criador'}</span>
-                      </article>
-                    )) : <p className="hb-profile-empty-collection">Seus personagens aparecerão aqui quando forem criados ou atribuídos à sua conta.</p>}
-                </div>
-                <div className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Uma visão das campanhas das quais você participa.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
-                <div className="hb-profile-campaign-grid">
-                  {campaigns.length ? campaigns.map(campaign => (
-                    <article key={campaign.id} className="hb-profile-campaign-card">
-                      <span className="hb-profile-campaign-emblem" aria-hidden="true">✧</span>
-                      <div><strong>{campaign.name}</strong><small>{campaign.system_name || 'Campanha de RPG'}</small></div>
-                      <span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? 'Mestre' : 'Jogador'}</span>
-                    </article>
-                  )) : <p className="hb-profile-empty-collection">Você ainda não participa de nenhuma campanha.</p>}
-                </div>
+              <section className="hb-profile-collections hb-profile-collections-v2" aria-label="Minha jornada nas campanhas">
+                {(() => {
+                  const assigned = characters.filter(character => character.current_player_id === session.user.id)
+                  const featured = assigned.find(character => character.id === profileFeaturedCharacterId) ?? assigned[0]
+                  const visibleCharacters = assigned.filter(character => {
+                    const campaignName = campaigns.find(campaign => campaign.id === character.campaign_id)?.name ?? ''
+                    return `${character.name} ${character.archetype ?? ''} ${campaignName}`.toLocaleLowerCase('pt-BR').includes(profileCharacterQuery.trim().toLocaleLowerCase('pt-BR'))
+                  })
+                  const visibleCampaigns = campaigns.filter(campaign => `${campaign.name} ${campaign.system_name ?? ''}`.toLocaleLowerCase('pt-BR').includes(profileCampaignQuery.trim().toLocaleLowerCase('pt-BR')))
+                  return <>
+                    {featured && <div className="hb-profile-featured-character">
+                      <div className="hb-profile-featured-art" aria-hidden="true">{featured.emoji || '⚔️'}</div>
+                      <div className="hb-profile-featured-copy">
+                        <span className="hb-kicker">✦ PERSONAGEM EM DESTAQUE</span>
+                        <h2>{featured.name}</h2>
+                        <p>{featured.archetype || 'Arquétipo não definido'} · {campaigns.find(campaign => campaign.id === featured.campaign_id)?.name || 'Campanha não disponível'}</p>
+                        <small>Um dos personagens em que você está atribuído como jogador.</small>
+                      </div>
+                    </div>}
+                    <div className="hb-profile-collection-heading">
+                      <div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Somente personagens em que você está atribuído como jogador.</p></div>
+                      <span className="hb-profile-collection-count">{assigned.length} personagens</span>
+                    </div>
+                    <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar personagem</span><input type="search" value={profileCharacterQuery} onChange={event => setProfileCharacterQuery(event.target.value)} placeholder="Nome, arquétipo ou campanha…" /></label></div>
+                    <div className="hb-profile-character-grid">
+                      {visibleCharacters.length ? visibleCharacters.map(character => (
+                        <article className={`hb-profile-character-card ${featured?.id === character.id ? 'hb-profile-character-card-featured' : ''}`} key={character.id}>
+                          <span className="hb-profile-character-avatar" aria-hidden="true">{character.emoji || '⚔️'}</span>
+                          <div className="hb-profile-character-info"><strong>{character.name}</strong><span>{campaigns.find(campaign => campaign.id === character.campaign_id)?.name || 'Campanha não disponível'}</span><small>{character.archetype || 'Arquétipo não definido'}</small></div>
+                          <div className="hb-profile-character-actions"><span className="hb-profile-character-role">Jogador</span><button type="button" className="hb-profile-feature-button" aria-pressed={featured?.id === character.id} onClick={() => setProfileFeaturedCharacterId(character.id)}>{featured?.id === character.id ? '★ Em destaque' : '☆ Destacar'}</button></div>
+                        </article>
+                      )) : <p className="hb-profile-empty-collection">{assigned.length ? 'Nenhum personagem corresponde à busca.' : 'Os personagens aparecerão aqui quando você for atribuído como jogador.'}</p>}
+                    </div>
+                    <div className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Campanhas em que você participa, como mestre ou jogador.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
+                    <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar campanha</span><input type="search" value={profileCampaignQuery} onChange={event => setProfileCampaignQuery(event.target.value)} placeholder="Nome ou sistema de RPG…" /></label></div>
+                    <div className="hb-profile-campaign-grid">
+                      {visibleCampaigns.length ? visibleCampaigns.map(campaign => (
+                        <article key={campaign.id} className="hb-profile-campaign-card">
+                          <span className="hb-profile-campaign-emblem" aria-hidden="true">✧</span>
+                          <div><strong>{campaign.name}</strong><small>{campaign.system_name || 'Campanha de RPG'}</small></div>
+                          <span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? 'Mestre' : 'Jogador'}</span>
+                        </article>
+                      )) : <p className="hb-profile-empty-collection">{campaigns.length ? 'Nenhuma campanha corresponde à busca.' : 'Você ainda não participa de nenhuma campanha.'}</p>}
+                    </div>
+                  </>
+                })()}
               </section>
 
               <div className="hb-profile-layout" id="hb-profile-editor-region">
