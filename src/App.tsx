@@ -62,7 +62,7 @@ function getKisatsutaiFullPath(primary: string, secondary: string): string {
 }
 
 /** Exibição de treinamentos sem alterar os dados persistidos da ficha. */
-function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [] }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[] }) {
+function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = {}, pending = null }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[]; modifiers?: Record<string, number>; pending?: {skill:string;bonus:number}|null }) {
   const kitBonuses = ARCHETYPE_KITS.filter(kit => kitNames.some(name => name.toLocaleLowerCase('pt-BR') === kit.name.toLocaleLowerCase('pt-BR')))
   const getKitBonus = (skillName: string) => kitBonuses.flatMap(kit => {
     const match = kit.description.match(/\+(\d+)\s+em\s+([^.;]+)/i)
@@ -120,7 +120,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [] }: { training
                           {entries.map(skill => (
                             <li key={skill.key} className="hb-trained-skills-item">
                               <span className="hb-trained-skills-item-info"><strong>{skill.name}</strong><small>{skill.group}</small></span>
-                              <span className="hb-trained-skills-item-bonus">+{KISATSUTAI_TRAINING[level]}</span>
+                              {(() => {const base=KISATSUTAI_TRAINING[level];const target=section.id==='arquetipo'?'archetype_skill':'extra_skill';const modified=applyConditionModifier(applyConditionModifier(base,modifiers,target,skill.key),modifiers,target,skill.name);const effective=applyConditionModifier(modified,modifiers,'main_skill',skill.name)+(pending?.skill===skill.name?pending.bonus:0);return <><span className="hb-trained-skills-item-bonus">{effective>=0?'+':''}{effective}</span>{effective!==base&&<small className="hb-trained-skills-condition-delta">✦ Condições / preparo: {effective-base>0?'+':''}{effective-base}</small>}</>})()}
                               {getKitBonus(skill.name).map(kit => <span key={kit.name} className="hb-trained-skills-item-bonus" title={kit.name}>🧰 Kit: +{kit.bonus}</span>)}
                             </li>
                           ))}
@@ -7785,6 +7785,8 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                       const dexterityLoss = Math.max(0, dexterity - armorDexterity)
                       return (
                         <>
+                        {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
+                        {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
                         <section
                           className="combat-armor-panel sheet-armor-standalone sheet-armor-premium"
                           id={forEnemy ? 'inimigo-armadura-protecao' : 'ficha-armadura-protecao'}
@@ -8142,10 +8144,10 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                             trainings={(read('skills.extraTrainings', {}) || {}) as Record<string, string>}
                             forEnemy={forEnemy}
                             kitNames={forEnemy ? [] : items.filter(item => item.character_id === selectedCharacterId).map(item => item.name)}
+                            modifiers={forEnemy ? {} : conditionModifiers}
+                            pending={forEnemy ? null : complexPending}
                           />
                         )}
-                        {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
-                        {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
                         {(() => {
                           const team = String(read('identity.team', '') || read('identity.teamName', '')).trim()
                           return <div className="hb-sheet-team-indicator" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
@@ -9094,7 +9096,9 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const trainedSkillBonus = applyConditionModifier(selected.bonus, conditionModifiers, skillGroup, selected.key)
                                   const skillConditionBonus = applyConditionModifier(trainedSkillBonus, conditionModifiers, 'main_skill', selected.name) - selected.bonus
                                   const conditionTotal = attributeConditionBonus + skillConditionBonus
-                                  const total = roll.result + selected.bonus + conditionTotal
+                                  const preparationBonus = complexPending?.skill===selected.name ? complexPending.bonus : 0
+                                  const total = roll.result + selected.bonus + conditionTotal + preparationBonus
+                                  if(preparationBonus)setComplexPending(null)
                                   const diceDescription = roll.hasDisadvantage
                                     ? `${roll.rolls.length}D20 [${roll.rolls.join(', ')}] (desvantagem: ${roll.result})`
                                     : `${roll.effectiveDiceCount}D20 [${roll.rolls.join(', ')}] (maior: ${roll.result})`
@@ -9174,7 +9178,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Resistência</option></select></label>
                                 <label><span>2 · 📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
-                                <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Ex.: 27" /></label>
+                                <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
+                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=applyConditionModifier(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
                               </div>
                               <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {complexMainSkill || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
@@ -9338,7 +9343,10 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <button
                                 type="button"
                                 className="combat-action-card"
+                                disabled={conditionRules.restrictions.some(key=>['counterattack','no_reactions','all_actions'].includes(key))}
+                                title={conditionRules.restrictions.some(key=>['counterattack','no_reactions','all_actions'].includes(key))?'Contra-ataque bloqueado por uma condição ativa':undefined}
                                 onClick={() => {
+                                  if(conditionRules.restrictions.some(key=>['counterattack','no_reactions','all_actions'].includes(key))){setCombatActionResult('Contra-ataque bloqueado por condição ativa.');return}
                                   const actionConfig = activeSystem?.data?.combatActions?.['Contra-ataque']
 
                                   if (!actionConfig) {
