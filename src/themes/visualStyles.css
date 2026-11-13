@@ -5813,3 +5813,297 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell .season-style-grid { gap: 14px; }
 .app-shell .season-style-card-check { box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
 .app-shell .season-style-card.active .season-style-preview { border-color: color-mix(in srgb, var(--season-primary) 48%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--season-primary) 14%, transparent); }
+
+
+/* ===================================================================
+   HÄXBAG V24 · GRAVURAS VETORIAIS DOS OITO ESTILOS RECENTES
+   Brasões e capas SVG individuais, como nos seis estilos originais.
+   Imagens são puramente ornamentais. A paleta da temporada permanece ativa.
+   =================================================================== */
+.app-shell.hb-polish.visual-style-vigilia_lunar {
+  --hb-new-hero: url('./style-art/vigilia_lunar-hero.svg');
+  --hb-new-crest: url('./style-art/vigilia_lunar-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-vigilia_lunar {
+  --hb-preview-art: url('./style-art/vigilia_lunar-hero.svg');
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida {
+  --hb-new-hero: url('./style-art/floresta_esquecida-hero.svg');
+  --hb-new-crest: url('./style-art/floresta_esquecida-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida {
+  --hb-preview-art: url('./style-art/floresta_esquecida-hero.svg');
+}
+.app-shell.hb-polish.visual-style-inverno_eterno {
+  --hb-new-hero: url('./style-art/inverno_eterno-hero.svg');
+  --hb-new-crest: url('./style-art/inverno_eterno-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-inverno_eterno {
+  --hb-preview-art: url('./style-art/inverno_eterno-hero.svg');
+}
+.app-shell.hb-polish.visual-style-arcano {
+  --hb-new-hero: url('./style-art/arcano-hero.svg');
+  --hb-new-crest: url('./style-art/arcano-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-arcano {
+  --hb-preview-art: url('./style-art/arcano-hero.svg');
+}
+.app-shell.hb-polish.visual-style-catedral_onix {
+  --hb-new-hero: url('./style-art/catedral_onix-hero.svg');
+  --hb-new-crest: url('./style-art/catedral_onix-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-catedral_onix {
+  --hb-preview-art: url('./style-art/catedral_onix-hero.svg');
+}
+.app-shell.hb-polish.visual-style-mare_abissal {
+  --hb-new-hero: url('./style-art/mare_abissal-hero.svg');
+  --hb-new-crest: url('./style-art/mare_abissal-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-mare_abissal {
+  --hb-preview-art: url('./style-art/mare_abissal-hero.svg');
+}
+.app-shell.hb-polish.visual-style-jardim_espectral {
+  --hb-new-hero: url('./style-art/jardim_espectral-hero.svg');
+  --hb-new-crest: url('./style-art/jardim_espectral-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-jardim_espectral {
+  --hb-preview-art: url('./style-art/jardim_espectral-hero.svg');
+}
+.app-shell.hb-polish.visual-style-relicario_solar {
+  --hb-new-hero: url('./style-art/relicario_solar-hero.svg');
+  --hb-new-crest: url('./style-art/relicario_solar-crest.svg');
+  --sb-crest: var(--hb-new-crest);
+  --roster-crest: var(--hb-new-crest);
+  --hb-art-sigil: var(--hb-new-crest);
+  --hb-theme-ink: color-mix(in srgb, var(--season-primary) 46%, #eef2f7);
+  --hb-theme-edge: color-mix(in srgb, var(--season-primary) 35%, var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb, var(--season-primary) 20%, var(--season-line));
+  --hb-theme-wash: color-mix(in srgb, var(--season-primary) 11%, transparent);
+  --hb-theme-deep: color-mix(in srgb, var(--season-secondary) 6%, var(--season-bg));
+  --roster-ink: var(--hb-theme-ink);
+  --roster-rule: var(--hb-theme-edge);
+  --roster-wash: var(--hb-theme-wash);
+}
+.app-shell .season-visual-style-group .season-style-relicario_solar {
+  --hb-preview-art: url('./style-art/relicario_solar-hero.svg');
+}
+
+/* Galeria de estilos: a arte SVG agora substitui o glifo genérico. */
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--season-bg) 94%, transparent) 0%, color-mix(in srgb, var(--season-bg) 72%, transparent) 30%, transparent 85%),
+    var(--hb-preview-art) right center / cover no-repeat,
+    radial-gradient(circle at 82% 20%, color-mix(in srgb, var(--season-primary) 14%, transparent), transparent 64%),
+    linear-gradient(138deg, var(--season-bg), var(--season-surface-alt)) !important;
+  border-color: color-mix(in srgb, var(--season-primary) 30%, var(--season-line)) !important;
+}
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview :is(
+  .season-style-preview-orb,.season-style-preview-glyph,.season-style-preview-lines
+) { opacity:0; }
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview-caption {
+  color: var(--season-text); text-shadow: 0 2px 8px var(--season-bg);
+}
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar).active .season-style-preview {
+  border-color: var(--season-primary) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--season-primary) 22%, transparent), inset 0 -30px 55px rgba(0,0,0,.2);
+}
+
+/* Identidade vetorial na barra lateral: emblema e gravação discretos. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-identity {
+  position:relative; isolation:isolate; overflow:hidden;
+  border-color:var(--hb-theme-edge);
+  border-top: 2px solid var(--hb-theme-ink);
+  background:linear-gradient(125deg,var(--hb-theme-wash),var(--season-surface) 80%);
+  box-shadow: 0 12px 27px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.035);
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-identity::before {
+  content:"";position:absolute;right:0;top:0;width:90px;height:100%;
+  pointer-events:none;opacity:.14;background:var(--hb-new-crest) right center / contain no-repeat;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-identity > * {position:relative;z-index:1;}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-emblem {
+  flex:0 0 48px;width:48px;height:48px;
+  font-size:0; background:var(--hb-new-crest) center / 44px 44px no-repeat,
+    radial-gradient(circle,var(--hb-theme-wash),var(--season-bg));
+  border-color:var(--hb-theme-edge);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045);
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-nav .nav-link.active {
+  border-left-color:var(--hb-theme-ink) !important;
+}
+
+/* Gravuras nas áreas hero: sem cobrir títulos ou controles. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,
+  .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,
+  .overview-hero,.bestiary-hero,.mc-hero
+) {
+  background:
+    linear-gradient(90deg, var(--season-surface) 0%,
+      color-mix(in srgb, var(--season-surface) 92%, transparent) 40%,
+      color-mix(in srgb, var(--season-surface) 58%, transparent) 84%,
+      color-mix(in srgb, var(--season-surface) 38%, transparent) 100%),
+    var(--hb-new-hero) right center / auto 100% no-repeat,
+    radial-gradient(ellipse at 92% 12%, var(--hb-theme-wash), transparent 54%),
+    linear-gradient(145deg, var(--season-surface), var(--hb-theme-deep)) !important;
+  border-color:var(--hb-theme-edge) !important;
+  box-shadow:inset 0 1px 0 var(--hb-theme-wash),0 16px 32px rgba(0,0,0,.15) !important;
+}
+/* As artes nos títulos do baú não substituem o brasão do próprio componente. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .mc-hero-art {position:relative;z-index:1;}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(
+  .sheet-card,.sheet-summary-card,.sheet-summary-status-card,
+  .sheet-inventory-section,.enemy-hub-card,.hb-beast-card,
+  .hb-ms-pane,.shop-item-card,.campaign-card,.armor-equipped-card,
+  .combat-action-card,.season-theme-panel
+) {
+  border-color:var(--hb-theme-edge-soft) !important;
+  box-shadow:inset 0 1px 0 var(--hb-theme-wash);
+}
+
+/* Brasão ornamental também acompanha as fichas na grade e no modo lista. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card {
+  border:1px solid var(--roster-rule) !important;
+  background:
+    radial-gradient(ellipse at 95% 0%, var(--roster-wash), transparent 62%),
+    linear-gradient(150deg, var(--season-surface-alt),var(--season-surface)) !important;
+  box-shadow:inset 0 1px 0 var(--roster-wash),0 12px 28px rgba(0,0,0,.12) !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card::before {
+  content:"" !important;position:absolute !important;
+  top:4px !important;right:5px !important;left:auto !important;bottom:auto !important;
+  width:160px !important;height:160px !important;
+  border:0 !important;border-radius:0 !important;box-shadow:none !important;
+  background:var(--roster-crest) center / contain no-repeat !important;
+  opacity:.13 !important;pointer-events:none !important;z-index:0 !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-grid.is-list .sheet-roster-card::before {opacity:.065 !important;}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card:hover {border-color:var(--roster-ink) !important;}
+
+/* Cartão de identidade na página Customização, com a mesma capa SVG. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-customization-hero-preview {
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--season-surface) 38%,transparent),color-mix(in srgb,var(--season-bg) 72%,transparent)),
+    var(--hb-new-hero) center / cover no-repeat,
+    radial-gradient(circle at 50% 28%,var(--hb-theme-wash),transparent 70%),
+    var(--season-surface) !important;
+  border-color:var(--hb-theme-edge);
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-customization-preview-symbol {
+  font-size:0 !important;display:block;
+  width:min(170px,50%);height:145px;
+  background:var(--hb-new-crest) center / contain no-repeat;
+  filter:drop-shadow(0 8px 18px rgba(0,0,0,.2));
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-customization-preview-rays {opacity:.13;}
+
+/* Estados de teclado e acessibilidade. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) :is(.hb-sidebar-nav .nav-link,.season-style-card,.sheet-library-open):focus-visible {
+  outline:2px solid var(--hb-theme-ink);outline-offset:3px;
+}
+@media (max-width:720px) {
+ .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,
+  .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+ ) {background-size:auto,auto 92%,auto,auto !important;background-position:center,right center,center,center !important;}
+ .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card::before {opacity:.07 !important;}
+}
+
+/* SILVAM ARGENTEA — prata vegetal, luar e neblina fria. */
+.app-shell.hb-polish.visual-style-floresta_esquecida {
+  --hb-theme-ink: color-mix(in srgb,#e2e9f0 79%,var(--season-primary));
+  --hb-theme-edge: color-mix(in srgb,#9eafb7 38%,var(--season-line));
+  --hb-theme-edge-soft: color-mix(in srgb,#dce6ec 18%,var(--season-line));
+  --hb-theme-wash:rgba(205,219,230,.085);
+  --hb-theme-deep:color-mix(in srgb,var(--season-bg) 92%,#0c1917);
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .main-content {
+  background-image:
+    radial-gradient(circle at 92% 4%,rgba(214,226,235,.10),transparent 27%),
+    radial-gradient(circle at 3% 94%,rgba(160,187,183,.06),transparent 33%) !important;
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview {
+  background:
+    linear-gradient(90deg,rgba(9,17,24,.97) 0%,rgba(16,27,32,.77) 32%,transparent 85%),
+    url('./style-art/floresta_esquecida-hero.svg') right center / cover no-repeat,
+    linear-gradient(145deg,#121c26,#25313b) !important;
+  border-color:rgba(197,216,226,.35) !important;
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview-caption {color:#e2edf5;}
