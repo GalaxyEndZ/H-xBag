@@ -43,27 +43,42 @@
   gap: 12px;
 }
 .app-shell .season-style-card {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 24px;
   gap: 11px 12px;
   min-width: 0;
-  padding: 11px;
+  padding: 12px;
   border: 1px solid color-mix(in srgb, var(--season-primary) 22%, var(--season-line));
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--season-surface) 85%, var(--season-bg));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--season-primary) 8%, transparent), transparent 32%),
+    linear-gradient(160deg, color-mix(in srgb, var(--season-surface) 92%, var(--season-bg)), color-mix(in srgb, var(--season-bg) 94%, black));
   color: #f4eff5;
   text-align: left;
   cursor: pointer;
-  transition: border-color .18s, background-color .18s, transform .18s;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.03);
+  transition: border-color .18s, background-color .18s, transform .18s, box-shadow .18s;
+}
+.app-shell .season-style-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, transparent 0 70%, color-mix(in srgb, var(--season-primary) 5%, transparent) 100%);
 }
 .app-shell .season-style-card:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: var(--season-primary);
+  box-shadow: 0 18px 38px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.05);
 }
 .app-shell .season-style-card.active {
   border-color: var(--season-primary);
-  background: color-mix(in srgb, var(--season-primary) 11%, var(--season-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--season-primary) 18%, transparent);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--season-primary) 12%, transparent), transparent 34%),
+    linear-gradient(160deg, color-mix(in srgb, var(--season-primary) 10%, var(--season-surface)), color-mix(in srgb, var(--season-surface) 95%, var(--season-bg)));
+  box-shadow: 0 18px 38px rgba(0,0,0,.18), inset 0 0 0 1px color-mix(in srgb, var(--season-primary) 18%, transparent);
 }
 .app-shell .season-style-card:focus-visible {
   outline: 2px solid var(--season-primary);
@@ -75,10 +90,10 @@
   position: relative;
   display: block;
   grid-column: 1 / -1;
-  height: 92px;
+  height: 108px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--season-primary) 23%, transparent);
-  border-radius: 8px;
+  border-radius: 12px;
   background:
     radial-gradient(circle at 78% 38%, color-mix(in srgb, var(--season-primary) 15%, transparent), transparent 45%),
     linear-gradient(140deg, var(--season-bg), var(--season-surface-alt));
@@ -141,8 +156,8 @@
 .app-shell .season-style-japanese .season-style-preview-lines { left: 20px; bottom: 12px; }
 .app-shell .season-style-japanese .season-style-preview-lines i { height: 1px; border-radius: 0; }
 .app-shell .season-style-card-info { display: grid; gap: 5px; min-width: 0; }
-.app-shell .season-style-card-info strong { font-size: 13px; }
-.app-shell .season-style-card-info small { color: #bbb4c3; font-size: 10px; line-height: 1.6; }
+.app-shell .season-style-card-info strong { font-size: 14px; letter-spacing: -.01em; }
+.app-shell .season-style-card-info small { color: #c7c0cf; font-size: 10px; line-height: 1.65; }
 .app-shell .season-style-card-check {
   display: grid;
   align-self: start;
@@ -1222,7 +1237,7 @@ body[data-hb-visual-style="classic"] :is(.modal-content,.bestiary-modal,.enemy-h
 }
 body[data-hb-visual-style="japanese"] :is(.modal-content,.bestiary-modal,.enemy-hub-modal,.sheet-item-modal) {
   border-left: 3px solid color-mix(in srgb,var(--season-primary) 60%,#d67b6d);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 body[data-hb-visual-style="cyberpunk"] :is(.modal-content,.bestiary-modal,.enemy-hub-modal,.sheet-item-modal) {
   border-left: 3px solid color-mix(in srgb,var(--season-primary) 67%,#63c6c9);
@@ -1787,13 +1802,13 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
     linear-gradient(180deg,var(--season-bg),var(--season-surface));
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-brand .brand-mark {
-  border-radius: 8px;
+  border-radius: 12px;
   border: 2px double var(--hb-menu-bright);
   font-family: var(--hb-menu-font);
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-style-identity {
   border: 2px double var(--hb-menu-line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: linear-gradient(145deg,var(--hb-menu-wash),var(--season-surface) 73%);
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-group-title::before {
@@ -1804,7 +1819,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-workspace {
   border-top: 2px solid var(--hb-menu-bright);
   border-bottom: 2px solid var(--hb-menu-line);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-workspace::before {
   border-radius: 0;
@@ -1821,7 +1836,7 @@ body[data-hb-visual-style="ciclos"] :is(.modal-content,.bestiary-modal,.enemy-hu
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-sidebar-invite {
   border: 2px double var(--hb-menu-line);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 .app-shell.hb-polish.visual-style-ciclos .hb-topbar-style-badge { border: 2px double var(--hb-menu-line); border-radius: 7px; }
 
@@ -5564,17 +5579,26 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 
 .app-shell .season-style-floresta_esquecida .season-style-preview {
   background:
-    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--season-primary) 15%, transparent), transparent 27%),
-    linear-gradient(135deg, color-mix(in srgb, var(--season-bg) 80%, #06150b), color-mix(in srgb, var(--season-surface-alt) 88%, #081108));
+    radial-gradient(circle at 84% 20%, color-mix(in srgb, var(--season-primary) 24%, rgba(255,255,255,.16)), transparent 38%),
+    repeating-linear-gradient(115deg, transparent 0 22px, color-mix(in srgb, rgba(231,236,242,.22) 80%, transparent) 23px 24px, transparent 25px 48px),
+    linear-gradient(140deg, color-mix(in srgb, var(--season-bg) 80%, #08110d), color-mix(in srgb, var(--season-surface-alt) 86%, #10151a));
 }
 .app-shell .season-style-floresta_esquecida .season-style-preview-orb {
-  top: 16px;
-  right: 26px;
-  width: 46px;
-  height: 46px;
+  top: 12px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
   border-radius: 60% 40% 58% 42% / 44% 58% 42% 56%;
+  border-color: color-mix(in srgb, rgba(228,232,238,.8) 70%, var(--season-primary));
+  background: radial-gradient(circle at 38% 34%, rgba(236,240,245,.28), color-mix(in srgb, var(--season-primary) 15%, transparent) 62%, transparent 72%);
 }
-.app-shell .season-style-floresta_esquecida .season-style-preview-lines i { border-radius: 2px; }
+.app-shell .season-style-floresta_esquecida .season-style-preview-glyph {
+  text-shadow: 0 0 18px color-mix(in srgb, rgba(226,232,240,.3) 70%, transparent);
+}
+.app-shell .season-style-floresta_esquecida .season-style-preview-lines i {
+  border-radius: 2px;
+  background: color-mix(in srgb, rgba(225,231,238,.24) 65%, var(--season-primary));
+}
 
 .app-shell .season-style-inverno_eterno .season-style-preview {
   background:
@@ -5624,19 +5648,37 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 }
 
 .app-shell.visual-style-floresta_esquecida {
-  --forest-rule: color-mix(in srgb, var(--season-primary) 28%, var(--season-line));
+  --forest-rule: color-mix(in srgb, rgba(223,229,236,.55) 35%, var(--season-primary) 40%, var(--season-line));
 }
 .app-shell.visual-style-floresta_esquecida .main-content {
   background-image:
-    radial-gradient(circle at 12% 14%, color-mix(in srgb, var(--season-primary) 9%, transparent), transparent 20%),
-    linear-gradient(180deg, transparent, color-mix(in srgb, var(--season-primary) 4%, transparent));
+    radial-gradient(circle at 16% 12%, color-mix(in srgb, rgba(229,234,240,.12) 70%, transparent), transparent 18%),
+    radial-gradient(circle at 82% 6%, color-mix(in srgb, var(--season-primary) 9%, rgba(230,235,241,.08)), transparent 24%),
+    linear-gradient(180deg, transparent, color-mix(in srgb, rgba(219,226,233,.06) 60%, transparent));
 }
 .app-shell.visual-style-floresta_esquecida :is(.sidebar, .topbar) { border-color: var(--forest-rule); }
 .app-shell.visual-style-floresta_esquecida .page-content :is(.card, .panel, .sheet-card, .campaign-card, .season-theme-panel) {
   border-radius: 18px !important;
+  border-color: color-mix(in srgb, rgba(225,230,236,.2) 50%, var(--season-line));
+  box-shadow: 0 12px 28px rgba(0,0,0,.12), inset 0 1px 0 rgba(240,244,248,.04), inset 0 0 0 1px color-mix(in srgb, rgba(229,234,240,.08) 70%, transparent);
 }
 .app-shell.visual-style-floresta_esquecida .page-content :is(.sheet-card-title, .inventory-heading, .sheet-section-heading) {
   border-bottom-style: dashed;
+  border-bottom-color: color-mix(in srgb, rgba(224,230,236,.28) 70%, var(--forest-rule));
+}
+.app-shell.visual-style-floresta_esquecida .page-content h1,
+.app-shell.visual-style-floresta_esquecida .page-content h2,
+.app-shell.visual-style-floresta_esquecida .page-content h3 {
+  letter-spacing: .01em;
+  text-shadow: 0 0 18px color-mix(in srgb, rgba(228,233,240,.08) 70%, transparent);
+}
+.app-shell.visual-style-floresta_esquecida .page-content :is(.season-theme-panel, .sheet-page-hero, .character-banner) {
+  background-image:
+    radial-gradient(circle at 86% 18%, color-mix(in srgb, rgba(230,235,241,.12) 72%, transparent), transparent 24%),
+    linear-gradient(140deg, color-mix(in srgb, var(--season-surface) 92%, #0c1110), color-mix(in srgb, var(--season-bg) 96%, #070b09));
+}
+.app-shell.visual-style-floresta_esquecida :is(.primary-button, .secondary-button, .nav-link, .campaign-select) {
+  border-color: color-mix(in srgb, rgba(224,230,236,.14) 70%, var(--season-line));
 }
 
 .app-shell.visual-style-inverno_eterno {
@@ -5765,3 +5807,9 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell.visual-style-relicario_solar .page-content :is(h1,h2,h3){letter-spacing:.025em}
 .app-shell.visual-style-relicario_solar .page-content :is(.card,.panel,.sheet-card,.campaign-card,.season-theme-panel,.enemy-hub-card){border-radius:5px !important;border-color:color-mix(in srgb,var(--season-primary) 30%,var(--season-line));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary) 7%,transparent)}
 .app-shell.visual-style-relicario_solar :is(.primary-button,.secondary-button,.nav-link,.campaign-select){border-radius:6px !important}
+
+
+/* Refino adicional na galeria de estilos */
+.app-shell .season-style-grid { gap: 14px; }
+.app-shell .season-style-card-check { box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+.app-shell .season-style-card.active .season-style-preview { border-color: color-mix(in srgb, var(--season-primary) 48%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--season-primary) 14%, transparent); }
