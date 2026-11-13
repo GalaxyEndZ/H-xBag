@@ -15643,3 +15643,34 @@ button:disabled { opacity: .58; }
 .hb-polish .hb-quick-notes-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .hb-polish .hb-quick-notes-actions button:first-child{color:var(--hq-accent);border-color:color-mix(in srgb,var(--hq-accent) 35%,transparent)}
 .hb-polish .hb-quick-notes-actions button:not(:disabled):hover{background:color-mix(in srgb,var(--hq-accent) 13%,transparent)}
+
+
+.hb-trained-skills-items{gap:10px}
+.hb-trained-skills-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px 14px;border:1px solid rgba(255,255,255,.05);border-radius:12px;background:linear-gradient(180deg,color-mix(in srgb,var(--season-surface,rgba(255,255,255,.04)) 92%,transparent),color-mix(in srgb,var(--season-surface-alt,rgba(255,255,255,.03)) 85%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}
+.hb-trained-skills-item-info{display:grid;gap:4px;min-width:0}
+.hb-trained-skills-item-info strong{font-size:1rem;line-height:1.2}
+.hb-trained-skills-item-info small{font-size:.8rem;letter-spacing:.02em}
+.hb-trained-skills-item-metrics{display:grid;justify-items:end;gap:6px;min-width:0}
+.hb-trained-skills-item-total{display:grid;justify-items:end;gap:1px}
+.hb-trained-skills-item-total small{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--season-muted,#a9afbb)}
+.hb-trained-skills-item-bonus{font-size:1.08rem;font-weight:900;line-height:1;color:var(--season-accent,#c58a6c)}
+.hb-trained-skills-item-breakdown{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.hb-trained-skills-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;border:1px solid var(--season-line,rgba(255,255,255,.12));background:rgba(255,255,255,.04);font-size:.72rem;line-height:1.1;font-weight:700;color:var(--season-text,#f4efe9);white-space:nowrap}
+.hb-trained-skills-chip.is-base{color:var(--season-muted,#c2bfb9)}
+.hb-trained-skills-chip.is-condition{background:color-mix(in srgb,var(--season-primary,#7ca7ff) 12%,transparent);color:#bcd7ff}
+.hb-trained-skills-chip.is-prep{background:color-mix(in srgb,var(--season-secondary,#c58a6c) 14%,transparent);color:#ffd8aa}
+.hb-trained-skills-chip.is-kit{background:color-mix(in srgb,var(--season-accent,#67d9b6) 14%,transparent);color:#aef5db}
+.hb-trained-skills-chip.is-neutral{color:var(--season-muted,#a9afbb)}
+.hb-trained-skills-tier-head{align-items:center}
+.hb-trained-skills-tier-head strong{font-size:.98rem}
+.hb-trained-skills-tier-head .hb-trained-skills-bonus{padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.hb-trained-skills-condition-delta{display:none}
+.sheet-status-description{margin:4px 0 8px;font-size:.82rem;line-height:1.45;color:var(--season-muted,#b8bcc5);max-width:32ch;min-height:3.3em}
+.sheet-summary-status-card .sheet-status-full-label{display:inline-flex;align-items:center;gap:6px}
+@media (max-width: 720px){
+  .hb-trained-skills-item{grid-template-columns:minmax(0,1fr)}
+  .hb-trained-skills-item-metrics{justify-items:start}
+  .hb-trained-skills-item-total{justify-items:start}
+  .hb-trained-skills-item-breakdown{justify-content:flex-start}
+  .sheet-status-description{max-width:none;min-height:0}
+}

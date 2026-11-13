@@ -232,9 +232,36 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
                         <ul className="hb-trained-skills-items">
                           {entries.map(skill => (
                             <li key={skill.key} className="hb-trained-skills-item">
-                              <span className="hb-trained-skills-item-info"><strong>{skill.name}</strong><small>{skill.group}</small></span>
-                              {(() => {const base=KISATSUTAI_TRAINING[level];const target=section.id==='arquetipo'?'archetype_skill':'extra_skill';const modified=applyConditionModifier(applyConditionModifier(base,modifiers,target,skill.key),modifiers,target,skill.name);const effective=applyConditionModifier(modified,modifiers,'main_skill',skill.name)+(pending?.skill===skill.name?pending.bonus:0);return <><span className="hb-trained-skills-item-bonus">{effective>=0?'+':''}{effective}</span>{effective!==base&&<small className="hb-trained-skills-condition-delta">✦ Condições / preparo: {effective-base>0?'+':''}{effective-base}</small>}</>})()}
-                              {getKitBonus(skill.name).map(kit => <span key={kit.name} className="hb-trained-skills-item-bonus" title={kit.name}>🧰 Kit: +{kit.bonus}</span>)}
+                              {(() => {
+                                const base = KISATSUTAI_TRAINING[level]
+                                const target = section.id === 'arquetipo' ? 'archetype_skill' : 'extra_skill'
+                                const conditioned = applyConditionModifier(applyConditionModifier(base, modifiers, target, skill.key), modifiers, target, skill.name)
+                                const pendingBonus = pending?.skill === skill.name ? pending.bonus : 0
+                                const kitEntries = getKitBonus(skill.name)
+                                const kitBonus = kitEntries.reduce((sum, kit) => sum + kit.bonus, 0)
+                                const conditionDelta = conditioned - base
+                                const total = conditioned + pendingBonus + kitBonus
+                                const hasDetail = conditionDelta !== 0 || pendingBonus !== 0 || kitEntries.length > 0
+                                return <>
+                                  <span className="hb-trained-skills-item-info">
+                                    <strong>{skill.name}</strong>
+                                    <small>{skill.group}</small>
+                                  </span>
+                                  <span className="hb-trained-skills-item-metrics">
+                                    <span className="hb-trained-skills-item-total">
+                                      <small>Total</small>
+                                      <strong className="hb-trained-skills-item-bonus">{total >= 0 ? '+' : ''}{total}</strong>
+                                    </span>
+                                    <span className="hb-trained-skills-item-breakdown">
+                                      <span className="hb-trained-skills-chip is-base" title="Treinamento base">Base {base >= 0 ? '+' : ''}{base}</span>
+                                      {conditionDelta !== 0 && <span className="hb-trained-skills-chip is-condition" title="Efeito de condições ativas">Condições {conditionDelta > 0 ? '+' : ''}{conditionDelta}</span>}
+                                      {pendingBonus !== 0 && <span className="hb-trained-skills-chip is-prep" title="Bônus de ações complexas">Preparo {pendingBonus > 0 ? '+' : ''}{pendingBonus}</span>}
+                                      {kitEntries.map(kit => <span key={kit.name} className="hb-trained-skills-chip is-kit" title={kit.name}>Kit {kit.bonus > 0 ? '+' : ''}{kit.bonus}</span>)}
+                                      {!hasDetail && <span className="hb-trained-skills-chip is-neutral">Sem modificadores</span>}
+                                    </span>
+                                  </span>
+                                </>
+                              })()}
                             </li>
                           ))}
                         </ul>
@@ -9247,6 +9274,15 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           return <article key={label} className={`sheet-summary-status-card sheet-status-${key} ${percent<=25?'is-resource-critical':percent<=50?'is-resource-warning':'is-resource-stable'}`} style={{position:'relative',overflow:'hidden'}}>
                             <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span><span className="hb-resource-condition">{percent<=0?'Esgotado':percent<=25?'Crítico':percent<=50?'Atenção':'Estável'}</span></div>
                             <span className="sheet-status-full-label">{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
+                            <p className="sheet-status-description">
+                              {key === 'pv'
+                                ? 'Representa a integridade física, a resistência aos ferimentos e o quanto seu corpo ainda aguenta em combate.'
+                                : key === 'ps'
+                                  ? 'Mede o equilíbrio mental, a lucidez e a capacidade de suportar medo, trauma e pressão psicológica.'
+                                  : forEnemy && isKisatsutaiSystem
+                                    ? 'Mostra o fluxo de sangue especial usado para sustentar técnicas, poderes e ações do inimigo.'
+                                    : 'Mostra o fôlego, o controle da respiração e a reserva necessária para sustentar técnicas, reações e esforços intensos.'}
+                            </p>
                             <strong style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
                             <div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
                             {extraPV > 0 && <><div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'0 0 6px'}}><div style={{height:'100%',width:`${extraPercent}%`,borderRadius:99,background:'linear-gradient(90deg,#f6b84a,#ff7b45)',boxShadow:'0 0 12px rgba(246,184,74,.3)',transition:'width .2s ease'}}/></div><small style={{display:'block',color:'#ffc875',marginBottom:6}}>＋{extraPV} PV excedentes · barra extra</small></>}
