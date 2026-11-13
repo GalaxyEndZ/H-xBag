@@ -11072,7 +11072,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} />
           )}
           {activePage === 'profile' && (
-            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15" aria-labelledby="hb-profile-title">
+            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16" aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
                 <div className="hb-profile-identity-cover">
                   <span className="hb-profile-identity-cover-art" aria-hidden="true" />
@@ -11098,7 +11098,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div className="hb-profile-identity-copy">
                     <span className="hb-profile-identity-kicker"><span aria-hidden="true">✦</span> IDENTIDADE DO AVENTUREIRO</span>
                     <h1 id="hb-profile-title">{displayName}</h1>
-                    <p className="hb-profile-username">{accountUsername ? `@${accountUsername}` : 'Escolha seu @usuário em Editar perfil'}</p>
+                    <div className="hb-profile-handle-row"><p className="hb-profile-username">{accountUsername ? `@${accountUsername}` : 'Escolha seu @usuário em Editar perfil'}</p>{accountUsername && <button type="button" className="hb-profile-copy-handle" title="Copiar nome de usuário" aria-label="Copiar nome de usuário" onClick={() => { void navigator.clipboard.writeText(`@${accountUsername}`).then(() => setNotice('Nome de usuário copiado!')).catch(() => setError('Não foi possível copiar o nome de usuário.')) }}>⧉ Copiar</button>}</div>
                     <p>{accountBio.trim() || 'Toda aventura merece uma história. Personalize a sua apresentação e deixe sua marca no HäxBag.'}</p>
                     <div className="hb-profile-identity-badges">
                       <span><i aria-hidden="true" className="hb-profile-status-light" /> Conta ativa</span>
@@ -11113,7 +11113,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </div>
               </header>
 
-              <div className="hb-profile-section-heading" aria-hidden="true">
+              <nav className="hb-profile-quick-nav" aria-label="Navegação do perfil">
+                <a href="#hb-profile-journey"><span aria-hidden="true">◈</span> Visão geral</a>
+                <a href="#hb-profile-characters"><span aria-hidden="true">♙</span> Personagens</a>
+                <a href="#hb-profile-campaigns"><span aria-hidden="true">⚑</span> Campanhas</a>
+                <a href="#hb-profile-editor-region"><span aria-hidden="true">✎</span> Dados do perfil</a>
+                <a href="#hb-social-hub"><span aria-hidden="true">♧</span> Amigos</a>
+              </nav>
+              <div id="hb-profile-journey" className="hb-profile-section-heading" aria-hidden="true">
                 <span className="hb-profile-section-emblem">✧</span>
                 <span>MINHA JORNADA</span>
                 <i />
@@ -11164,11 +11171,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         <small>Um dos personagens em que você está atribuído como jogador.</small>
                       </div>
                     </div>}
-                    <div className="hb-profile-collection-heading">
+                    <div id="hb-profile-characters" className="hb-profile-collection-heading">
                       <div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Somente personagens em que você está atribuído como jogador.</p></div>
                       <span className="hb-profile-collection-count">{assigned.length} personagens</span>
                     </div>
-                    <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar personagem</span><input type="search" value={profileCharacterQuery} onChange={event => setProfileCharacterQuery(event.target.value)} placeholder="Nome, arquétipo ou campanha…" /></label></div>
+                    <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar personagem</span><input type="search" value={profileCharacterQuery} onChange={event => setProfileCharacterQuery(event.target.value)} placeholder="Nome, arquétipo ou campanha…" /></label>{profileCharacterQuery && <button type="button" className="hb-profile-clear-search" onClick={() => setProfileCharacterQuery('')}>Limpar busca</button>}<span className="hb-profile-result-count" aria-live="polite">{visibleCharacters.length} de {assigned.length} personagens</span></div>
                     <div className="hb-profile-character-grid">
                       {visibleCharacters.length ? visibleCharacters.map(character => (
                         <article className={`hb-profile-character-card ${featured?.id === character.id ? 'hb-profile-character-card-featured' : ''}`} key={character.id}>
@@ -11178,7 +11185,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         </article>
                       )) : <p className="hb-profile-empty-collection">{assigned.length ? 'Nenhum personagem corresponde à busca.' : 'Os personagens aparecerão aqui quando você for atribuído como jogador.'}</p>}
                     </div>
-                    <div className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Campanhas em que você participa, como mestre ou jogador.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
+                    <div id="hb-profile-campaigns" className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Campanhas em que você participa, como mestre ou jogador.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
                     <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar campanha</span><input type="search" value={profileCampaignQuery} onChange={event => setProfileCampaignQuery(event.target.value)} placeholder="Nome ou sistema de RPG…" /></label></div>
                     <div className="hb-profile-campaign-grid">
                       {visibleCampaigns.length ? visibleCampaigns.map(campaign => (
