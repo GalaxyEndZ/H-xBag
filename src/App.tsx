@@ -9271,8 +9271,31 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           const percent = value > 0 ? Math.min(current / value * 100, 100) : 0
                           const extraPV = key === 'pv' ? Math.max(0, current - value) : 0
                           const extraPercent = value > 0 ? Math.min(extraPV / value * 100, 100) : 0
+                          const statusMeta = key === 'pv'
+                            ? percent <= 0
+                              ? { state: 'Caído', availability: 'Corpo esgotado', tone: 'critical' }
+                              : percent <= 25
+                                ? { state: 'À Beira da Morte', availability: 'Corpo em colapso', tone: 'critical' }
+                                : percent <= 50
+                                  ? { state: 'Ferido', availability: 'Vitalidade reduzida', tone: 'warning' }
+                                  : { state: 'Estável', availability: 'Vitalidade preservada', tone: 'stable' }
+                            : key === 'ps'
+                              ? percent <= 0
+                                ? { state: 'Em Ruína', availability: 'Mente colapsada', tone: 'critical' }
+                                : percent <= 25
+                                  ? { state: 'À Beira do Colapso', availability: 'Sanidade frágil', tone: 'critical' }
+                                  : percent <= 50
+                                    ? { state: 'Instável', availability: 'Lucidez comprometida', tone: 'warning' }
+                                    : { state: 'Lúcido', availability: 'Mente centrada', tone: 'stable' }
+                              : percent <= 0
+                                ? { state: forEnemy && isKisatsutaiSystem ? 'Sem Fluxo' : 'Sem Fôlego', availability: forEnemy && isKisatsutaiSystem ? 'Reserva esgotada' : 'Respiração esgotada', tone: 'critical' }
+                                : percent <= 25
+                                  ? { state: forEnemy && isKisatsutaiSystem ? 'Oscilando' : 'Ofegante', availability: forEnemy && isKisatsutaiSystem ? 'Fluxo instável' : 'Fôlego no limite', tone: 'critical' }
+                                  : percent <= 50
+                                    ? { state: forEnemy && isKisatsutaiSystem ? 'Instável' : 'Cansado', availability: forEnemy && isKisatsutaiSystem ? 'Reserva pressionada' : 'Ritmo em queda', tone: 'warning' }
+                                    : { state: forEnemy && isKisatsutaiSystem ? 'Fluxo Ativo' : 'Ritmo Firme', availability: forEnemy && isKisatsutaiSystem ? 'Reserva estável' : 'Respiração controlada', tone: 'stable' }
                           return <article key={label} className={`sheet-summary-status-card sheet-status-${key} ${percent<=25?'is-resource-critical':percent<=50?'is-resource-warning':'is-resource-stable'}`} style={{position:'relative',overflow:'hidden'}}>
-                            <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span><span className="hb-resource-condition">{percent<=0?'Esgotado':percent<=25?'Crítico':percent<=50?'Atenção':'Estável'}</span></div>
+                            <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span><span className="hb-resource-condition">{statusMeta.state}</span></div>
                             <span className="sheet-status-full-label">{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
                             <p className="sheet-status-description">
                               {key === 'pv'
@@ -9283,11 +9306,11 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                     ? 'Mostra o fluxo de sangue especial usado para sustentar técnicas, poderes e ações do inimigo.'
                                     : 'Mostra o fôlego, o controle da respiração e a reserva necessária para sustentar técnicas, reações e esforços intensos.'}
                             </p>
-                            <strong style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
+                            <strong className="sheet-status-current-value" style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
                             <div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
                             {extraPV > 0 && <><div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'0 0 6px'}}><div style={{height:'100%',width:`${extraPercent}%`,borderRadius:99,background:'linear-gradient(90deg,#f6b84a,#ff7b45)',boxShadow:'0 0 12px rgba(246,184,74,.3)',transition:'width .2s ease'}}/></div><small style={{display:'block',color:'#ffc875',marginBottom:6}}>＋{extraPV} PV excedentes · barra extra</small></>}
-                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
-                              <small style={{opacity:.7}}>{Math.round(percent)}% disponível</small>
+                            <div className="sheet-status-availability-row" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                              <small className="sheet-status-availability" style={{opacity:.7}}>{Math.round(percent)}% disponível · {statusMeta.availability}</small>
                               {renderCanEdit && <div style={{display:'flex',gap:6}}>
                                 <button type="button" aria-label={`Diminuir ${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}`} disabled={current <= 0} onClick={()=>adjust(-1)} style={{width:32,height:30,borderRadius:9,border:'1px solid rgba(255,255,255,.16)',background:'rgba(255,255,255,.07)',color:'inherit',fontSize:19,cursor:current<=0?'not-allowed':'pointer',opacity: current <= 0 ? 0.4 : 1}}>−</button>
                                 <button type="button" aria-label={`Aumentar ${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}`} disabled={key !== 'pv' && current >= value} onClick={()=>adjust(1)} style={{width:32,height:30,borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontSize:19,cursor:key !== 'pv' && current>=value?'not-allowed':'pointer',opacity: key !== 'pv' && current >= value ? 0.4 : 1}}>+</button>
