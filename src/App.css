@@ -16036,7 +16036,7 @@ button:disabled { opacity: .58; }
 /* =======================================================================
    HÄXBAG V16 · Selos ornamentais da tríade
    Arte vetorial decorativa: PV (coração vital), PS (olho astral),
-   PR (pulmões e vento), Sangue (gota ritual). Não ocupa espaço na grade.
+   PR (espiral do sopro e vento), Sangue (gota ritual). Não ocupa espaço na grade.
    ======================================================================= */
 .app-shell .sheet-summary-status-card::after{content:none !important;display:none !important}
 .app-shell .sheet-summary-status-card > .hb-status-art{
@@ -16082,3 +16082,8 @@ button:disabled { opacity: .58; }
 @media print{
   .app-shell .sheet-summary-status-card > .hb-status-art{opacity:.16;filter:none}
 }
+
+/* V17 · Sopro Vital: leitura mais suave do novo sigilo de respiração. */
+.app-shell .sheet-summary-status-card .hb-status-sigil-pr .hb-sigil-wash{fill-opacity:.095}
+.app-shell .sheet-summary-status-card .hb-status-sigil-pr .hb-sigil-stroke{opacity:.88}
+.app-shell .sheet-summary-status-card .hb-status-sigil-pr .hb-sigil-core{fill-opacity:.28}

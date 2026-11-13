@@ -130,12 +130,15 @@ function SheetStatusSigil({ kind }: { kind: 'pv' | 'ps' | 'pr' | 'blood' }) {
       )}
       {kind === 'pr' && (
         <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-          <path className="hb-sigil-stroke" d="M98 43v35c-15 3-23 10-29 22-6 14-5 29-8 41-2 8-9 12-16 7-9-7-10-27-8-42 4-24 16-43 34-55m31-8v35c15 3 23 10 29 22 6 14 5 29 8 41 2 8 9 12 16 7 9-7 10-27 8-42-4-24-16-43-34-55" strokeWidth="2.1" />
-          <path className="hb-sigil-wash" d="M84 80c-18 7-28 19-32 39-2 11-2 21-7 23-6 2-8-10-8-24 0-20 8-37 20-49 9-8 16-12 27-16v27Zm32 0c18 7 28 19 32 39 2 11 2 21 7 23 6 2 8-10 8-24 0-20-8-37-20-49-9-8-16-12-27-16v27Z" fill="currentColor" stroke="none" />
-          <path className="hb-sigil-fine" d="M100 39v69m0 0c-8 8-15 20-16 33m16-33c8 8 15 20 16 33" strokeWidth="1.6" />
-          <path className="hb-sigil-branch" d="M27 121c-7-15-6-33 2-47m-2 47c-1 19 4 27 13 32m133-32c7-15 6-33-2-47m2 47c1 19-4 27-13 32" strokeWidth="1.25" />
-          <path className="hb-sigil-fine" d="M32 64c16-17 29-24 47-27m89 27c-16-17-29-24-47-27M66 161c21 10 47 10 68 0" strokeWidth="1.35" />
-          <path d="M70 144c7 5 14 7 21 8m39-8c-7 5-14 7-21 8" strokeWidth="1.8" />
+          {/* Sopro Vital: correntes de vento em espiral, sem representação anatômica. */}
+          <path className="hb-sigil-wash" d="M42 117c19 25 43 38 69 35 27-3 44-18 50-43-13 17-31 27-53 27-24 0-45-9-66-19Z" fill="currentColor" stroke="none" />
+          <path className="hb-sigil-stroke" d="M38 92c18-22 39-35 63-35 29 0 51 14 57 36 5 20-8 39-28 43-17 4-33-3-38-16-5-10 1-21 11-23 9-2 17 3 17 11" strokeWidth="2.65" />
+          <path className="hb-sigil-stroke" d="M48 119c15 20 35 32 60 32 24 0 43-12 54-31" strokeWidth="2.2" />
+          <path className="hb-sigil-fine" d="M45 107c13-8 28-11 43-8M63 73c15-9 30-12 45-8M68 137c13 8 28 11 43 9M135 70c12 7 20 17 25 29" strokeWidth="1.45" />
+          <path className="hb-sigil-branch" d="M38 75c7-9 16-16 27-21m-27 21-8-1 3 8m131 27c5 10 6 21 1 31m0 0 8-3-3 8M63 153c11 6 24 10 37 10" strokeWidth="1.3" />
+          <path className="hb-sigil-fine" d="M101 35v17m-7-9 7-10 7 10M36 134l-10 6 11 5M162 83l11-3-5-10" strokeWidth="1.2" />
+          <path className="hb-sigil-core" d="M102 87l8 10-8 10-8-10 8-10Z" fill="currentColor" strokeWidth="1.1" />
+          <circle cx="102" cy="97" r="3.1" fill="currentColor" stroke="none" />
         </g>
       )}
       {kind === 'blood' && (
