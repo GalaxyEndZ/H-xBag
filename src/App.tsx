@@ -23,6 +23,22 @@ import { ConditionsPanel, CharacterConditions, EnemyConditions } from './Conditi
 import { ARCHETYPE_KITS } from './archetypeKits'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier } from './conditionEngine'
 
+/** Ferramentas pessoais da sessão: armazenadas apenas neste navegador, por conta/campanha/temporada. */
+type MasterShieldDesk = { key: string; round: number; turn: string; notes: string }
+const EMPTY_MASTER_SHIELD_DESK: MasterShieldDesk = { key: '', round: 1, turn: '', notes: '' }
+function readMasterShieldDesk(key: string): MasterShieldDesk {
+  if (!key) return EMPTY_MASTER_SHIELD_DESK
+  try {
+    const item = JSON.parse(window.localStorage.getItem(`haxbag:shield-desk:v10:${key}`) || '{}') as Partial<MasterShieldDesk>
+    return {
+      key,
+      round: Number.isInteger(item.round) && Number(item.round) > 0 && Number(item.round) < 100000 ? Number(item.round) : 1,
+      turn: typeof item.turn === 'string' ? item.turn : '',
+      notes: typeof item.notes === 'string' ? item.notes.slice(0, 5000) : '',
+    }
+  } catch { return { ...EMPTY_MASTER_SHIELD_DESK, key } }
+}
+
 type TrainingLevel = keyof typeof KISATSUTAI_TRAINING
 const TRAINING_LABELS: Record<TrainingLevel, string> = { completo: 'Completo', avancado: 'Avançado', medio: 'Médio', leve: 'Leve' }
 const SKILL_GROUP_ALIAS: Record<string, string[]> = {
@@ -1282,6 +1298,9 @@ const resetCreatureFilters = () => {
   const [, setMasterShieldGrantRows] = useState<Array<{ character_id: string; user_id: string }>>([])
   const [masterShieldLoading, setMasterShieldLoading] = useState(false)
   const [masterShieldRefreshKey, setMasterShieldRefreshKey] = useState(0)
+  const [masterShieldSearch, setMasterShieldSearch] = useState('')
+  const [masterShieldPartyFilter, setMasterShieldPartyFilter] = useState<'all' | 'low-pv'>('all')
+  const [masterShieldDesk, setMasterShieldDesk] = useState<MasterShieldDesk>(EMPTY_MASTER_SHIELD_DESK)
   const [seasonNameDraft, setSeasonNameDraft] = useState('')
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
@@ -2134,6 +2153,22 @@ useEffect(() => {
       .subscribe()
     return () => { cancelled = true; void supabase.removeChannel(channel) }
   }, [selectedCampaignId, masterShieldSeasonId, characters, masterShieldRefreshKey])
+
+  const shieldDeskKey = session?.user.id && selectedCampaignId && masterShieldSeasonId
+    ? `${session.user.id}:${selectedCampaignId}:${masterShieldSeasonId}` : ''
+  useEffect(() => {
+    setMasterShieldDesk(readMasterShieldDesk(shieldDeskKey))
+    setMasterShieldSearch('')
+    setMasterShieldPartyFilter('all')
+  }, [shieldDeskKey])
+  function updateMasterShieldDesk(patch: Partial<Pick<MasterShieldDesk, 'round' | 'turn' | 'notes'>>) {
+    if (!shieldDeskKey) return
+    const original = masterShieldDesk.key === shieldDeskKey ? masterShieldDesk : readMasterShieldDesk(shieldDeskKey)
+    const updated: MasterShieldDesk = { ...original, ...patch }
+    setMasterShieldDesk(updated)
+    try { window.localStorage.setItem(`haxbag:shield-desk:v10:${shieldDeskKey}`, JSON.stringify(updated)) }
+    catch { /* A área continua utilizável quando o armazenamento local estiver bloqueado. */ }
+  }
 
   useEffect(() => {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
@@ -6686,6 +6721,56 @@ async function sendItemToCharacter() {
     return a.name.localeCompare(b.name, 'pt-BR') || a.kind.localeCompare(b.kind)
   })
 
+  const masterShieldReadyTurns = masterShieldInitiativeEntries.filter(entry => entry.initiative !== null)
+  const activeShieldDesk = masterShieldDesk.key === shieldDeskKey ? masterShieldDesk : EMPTY_MASTER_SHIELD_DESK
+  const activeShieldTurnIndex = masterShieldReadyTurns.findIndex(entry => `${entry.kind}:${entry.id}` === activeShieldDesk.turn)
+  const activeShieldTurn = activeShieldTurnIndex >= 0 ? masterShieldReadyTurns[activeShieldTurnIndex] : null
+  function advanceMasterShieldTurn(direction: 1 | -1) {
+    if (!masterShieldReadyTurns.length || !shieldDeskKey) return
+    // Não retrocede para uma rodada inexistente.
+    if (direction === -1 && activeShieldTurnIndex === 0 && activeShieldDesk.round === 1) return
+    const nextIndex = activeShieldTurnIndex < 0 ? 0
+      : (activeShieldTurnIndex + direction + masterShieldReadyTurns.length) % masterShieldReadyTurns.length
+    const crossedBoundary = activeShieldTurnIndex >= 0 && (direction === 1
+      ? nextIndex === 0 : nextIndex === masterShieldReadyTurns.length - 1)
+    const nextRound = crossedBoundary
+      ? Math.max(1, activeShieldDesk.round + direction) : activeShieldDesk.round
+    updateMasterShieldDesk({ round: nextRound, turn: `${masterShieldReadyTurns[nextIndex].kind}:${masterShieldReadyTurns[nextIndex].id}` })
+  }
+  const normalizeShieldSearch = (value: string) => value.normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
+  const shieldQuery = normalizeShieldSearch(masterShieldSearch.trim())
+  const masterShieldLowPvCharacterIds = new Set<string>()
+  for (const character of characters) {
+    const data = masterShieldSheets[character.id]
+    if (!data || data.seasonParticipation !== true || data.partyParticipation !== true) continue
+    const tier = String(data.family?.tier ?? '5')
+    const rank = String(data.progression?.rankId ?? 'zaidan')
+    const limits = calculateSheetResourceMaximums(data, {
+      skillPointConfig: activeSystem?.data?.skillPoints,
+      usesFamilyTiers: systemFeatures.usesFamilyTiers ?? false,
+      familyTier: systemFeatures.usesFamilyTiers ? getSystemFamilyTier(tier) : null,
+      familyBreathingBonus: systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'breathing') : 0,
+      rankStatus: systemFeatures.usesRanks ? getSystemRankStatus(rank) : null,
+    })
+    const pv = Number(data.status?.current?.pv ?? limits.pv)
+    if (limits.pv > 0 && Number.isFinite(pv) && pv / limits.pv <= .25) masterShieldLowPvCharacterIds.add(character.id)
+  }
+  const masterShieldLowPvEnemyIds = new Set<string>()
+  for (const enemy of enemyPartyMembers) {
+    const overview = getEnemySheetOverview(enemy)
+    if (overview.maxPV > 0 && overview.pv / overview.maxPV <= .25) masterShieldLowPvEnemyIds.add(enemy.id)
+  }
+  const masterShieldLowPvCount = masterShieldLowPvCharacterIds.size + masterShieldLowPvEnemyIds.size
+  const masterShieldVisibleCharacters = characters.filter(character =>
+    masterShieldSheets[character.id]?.seasonParticipation === true &&
+    masterShieldSheets[character.id]?.partyParticipation === true &&
+    (!shieldQuery || normalizeShieldSearch(`${character.name} ${character.archetype || ''}`).includes(shieldQuery)) &&
+    (masterShieldPartyFilter === 'all' || masterShieldLowPvCharacterIds.has(character.id)))
+  const masterShieldVisibleEnemies = enemyPartyMembers.filter(enemy =>
+    (!shieldQuery || normalizeShieldSearch(`${enemy.name} ${enemy.archetype || ''}`).includes(shieldQuery)) &&
+    (masterShieldPartyFilter === 'all' || masterShieldLowPvEnemyIds.has(enemy.id)))
+
   async function clearAllMasterShieldInitiatives(seasonId: string) {
     if (!isMaster || !seasonId || sheetSaving || enemyPartySavingId) return
     if (!masterShieldInitiativeEntries.some(entry => entry.initiative !== null)) {
@@ -6703,6 +6788,7 @@ async function sendItemToCharacter() {
         `Iniciativa de ${enemy.name} removida.`)
       if (!ok) return // Preserva a mensagem de erro e permite tentar de novo.
     }
+    updateMasterShieldDesk({ round: 1, turn: '' })
     setNotice('Iniciativas de personagens e inimigos removidas da ordem de combate.')
   }
 
@@ -12511,7 +12597,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <span className="hb-kicker">✦ CENTRAL DE SESSÃO · ÁREA DO MESTRE</span>
                     <h2 id="master-shield-title">Escudo do Mestre<span className="hb-title-dot">.</span></h2>
                     <p>Sua mesa de comando: acompanhe os dois grupos, prepare o combate e consulte tudo o que importa durante a sessão.</p>
-                    <div className="hb-hero-tags"><span>⚑ {selectedCampaign.name}</span><span>✧ {selectedCampaign.system_name || 'Sistema não definido'}</span></div>
+                    <div className="hb-hero-tags"><span>⚑ {selectedCampaign.name}</span><span>✧ {selectedCampaign.system_name || 'Sistema não definido'}</span><span>♜ Mesa do mestre</span></div>
                   </div>
                   <div className="hb-ms-hero-stamp" aria-hidden="true"><span className="master-shield-icon hb-hero-emblem">♜</span><small>PAINEL DO MESTRE</small></div>
                 </div>
@@ -12521,6 +12607,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <a href="#hb-ms-enemies"><span aria-hidden="true">⚔</span> Party de inimigos</a>
                   <a href="#hb-ms-initiative"><span aria-hidden="true">⚡</span> Iniciativa conjunta</a>
                   <a href="#hb-ms-activities"><span aria-hidden="true">◷</span> Atividades</a>
+                  <a href="#hb-ms-notes"><span aria-hidden="true">✎</span> Anotações</a>
                 </nav>
 
                 <div className="master-shield-grid hb-ms-stats">
@@ -12545,6 +12632,31 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
                 {selectedCampaign.description && <details className="hb-ms-campaign-description"><summary>✧ Sobre esta campanha</summary><p>{selectedCampaign.description}</p></details>}
 
+                <div className="hb-ms-command-strip" aria-label="Acesso rápido do mestre">
+                  <div className="hb-ms-command-intro"><span className="hb-kicker">COMANDO RÁPIDO</span><strong>À mão durante a sessão</strong><small>Abra as ferramentas sem sair da campanha.</small></div>
+                  <div className="hb-ms-command-links">
+                    <button type="button" onClick={() => setActivePage('conditions')}>◈ Condições</button>
+                    <button type="button" onClick={() => setActivePage('master-chest')}>▣ Baú do mestre</button>
+                    <button type="button" onClick={() => { setSheetCharacterView(false); setActivePage('sheets') }}>♙ Fichas</button>
+                    <button type="button" onClick={() => { setEnemySheetView(false); setActivePage('enemies') }}>⚔ Inimigos</button>
+                  </div>
+                </div>
+
+                <div className="hb-ms-roster-toolbar" aria-label="Filtros das parties">
+                  <label className="hb-ms-roster-search"><span aria-hidden="true">⌕</span>
+                    <input type="search" aria-label="Buscar participantes em cena" placeholder="Buscar personagem ou inimigo..."
+                      value={masterShieldSearch} onChange={event => setMasterShieldSearch(event.target.value)} />
+                  </label>
+                  <div className="hb-ms-roster-filters" role="group" aria-label="Filtrar por recursos">
+                    <button type="button" aria-pressed={masterShieldPartyFilter === 'all'} className={masterShieldPartyFilter === 'all' ? 'is-active' : ''}
+                      onClick={() => setMasterShieldPartyFilter('all')}>Todos</button>
+                    <button type="button" aria-pressed={masterShieldPartyFilter === 'low-pv'} className={masterShieldPartyFilter === 'low-pv' ? 'is-active' : ''}
+                      onClick={() => setMasterShieldPartyFilter('low-pv')}>◉ PV baixo <span>{masterShieldLowPvCount}</span></button>
+                  </div>
+                  {(masterShieldSearch || masterShieldPartyFilter !== 'all') &&
+                    <button type="button" className="hb-ms-clear-search" onClick={() => { setMasterShieldSearch(''); setMasterShieldPartyFilter('all') }}>Limpar filtros</button>}
+                </div>
+
                 <div className="hb-ms-group-heading" aria-label="Grupos da sessão">
                   <div className="hb-ms-group-heading-left"><span className="hb-ms-group-index" aria-hidden="true">01</span><div><span className="hb-kicker">ELENCO DO ENCONTRO</span><h3>Grupos em cena</h3><p>Seus personagens e seus adversários, lado a lado na batalha e organizados em painéis iguais.</p></div></div>
                   <div className="hb-ms-legend" aria-label="Tipos de participantes"><span><i className="hb-ms-legend-dot players"/> Personagens</span><span><i className="hb-ms-legend-dot enemies"/> Inimigos</span></div>
@@ -12552,7 +12664,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <div className="hb-ms-party-layout">
                   <section className="hb-ms-pane hb-ms-party-main" id="hb-ms-players" aria-labelledby="hb-ms-players-heading">
                     <div className="hb-ms-pane-heading"><div><span className="hb-kicker">PERSONAGENS E RECURSOS</span><h3 id="hb-ms-players-heading">♙ Party dos personagens</h3><p>Visualize PV, PS e os demais recursos diretamente das fichas.</p></div><span className="hb-ms-section-count">{characters.filter(character => masterShieldSheets[character.id]?.seasonParticipation === true && masterShieldSheets[character.id]?.partyParticipation === true).length} ativos</span></div>
-                    {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{characters.map(character => {
+                    {masterShieldLoading ? <p className="master-shield-empty">Carregando personagens...</p> : !masterShieldSeasonId ? <p className="master-shield-empty">Selecione uma temporada para visualizar os personagens.</p> : characters.length ? <div className="master-shield-character-list">{masterShieldVisibleCharacters.map(character => {
                       const data = masterShieldSheets[character.id]
                       if (
   !data ||
@@ -12581,13 +12693,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         const extra=key==='PV'?Math.max(0,value-max):0
                         return {key,max,value,extra,pct:max>0?Math.min(100,value/max*100):0,extraPct:max>0?Math.min(100,extra/max*100):0}
                       })
-                      return <button type="button" className="master-shield-character hb-ms-player-card" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title hb-ms-player-identity"><span className="hb-ms-player-avatar" aria-hidden="true">{character.emoji || '🧑'}</span><span className="hb-ms-player-copy"><strong>{character.name}</strong><small>{String(data.progression?.rankName || getSystemRankName(rankId) || character.archetype || 'Sem graduação')}</small></span><span className="hb-ms-card-arrow" aria-hidden="true">↗</span></div><div className="hb-ms-resource-heading"><span>RECURSOS ATUAIS</span><span>ATUAL / MÁX.</span></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Ver ficha completa <span aria-hidden="true">↗</span></small></button>
-                    })}{!characters.some(character =>
-  masterShieldSheets[character.id]?.seasonParticipation === true &&
-  masterShieldSheets[character.id]?.partyParticipation === true
-) && (
+                      return <button type="button" className="master-shield-character hb-ms-player-card" key={character.id} onClick={() => { setSelectedSeasonId(masterShieldSeasonId); setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') }}><div className="master-shield-character-title hb-ms-player-identity"><span className="hb-ms-player-avatar" aria-hidden="true">{character.emoji || '🧑'}</span><span className="hb-ms-player-copy"><strong>{character.name}</strong><small>{String(data.progression?.rankName || getSystemRankName(rankId) || character.archetype || 'Sem graduação')}</small></span><span className="hb-ms-card-arrow" aria-hidden="true">↗</span></div><span className={`hb-ms-vital-state${masterShieldLowPvCharacterIds.has(character.id) ? ' is-low' : ''}`}>{masterShieldLowPvCharacterIds.has(character.id) ? '◉ PV baixo · atenção' : '✧ Recursos acompanhados'}</span><div className="hb-ms-resource-heading"><span>RECURSOS ATUAIS</span><span>ATUAL / MÁX.</span></div><div className="master-shield-bars">{stats.map(stat=><div className="master-shield-bar-row" key={stat.key}><span>{stat.key}</span><strong>{stat.value} / {stat.max}</strong><div className="master-shield-bar"><i style={{width:`${stat.pct}%`}}/></div>{stat.extra>0&&<><span className="master-shield-extra-name">PV Ex.</span><strong className="master-shield-extra-value">+ {stat.extra}</strong><div className="master-shield-bar master-shield-bar-extra"><i style={{width:`${stat.extraPct}%`}}/></div></>}</div>)}</div><small className="master-shield-open-hint">Ver ficha completa <span aria-hidden="true">↗</span></small></button>
+                    })}{masterShieldVisibleCharacters.length === 0 && (
   <p className="master-shield-empty">
-    Nenhum personagem participa da Party nesta temporada.
+    {masterShieldSearch || masterShieldPartyFilter !== 'all'
+      ? 'Nenhum personagem corresponde aos filtros selecionados.'
+      : 'Nenhum personagem participa da Party nesta temporada.'}
   </p>
 )}</div> : <p className="master-shield-empty">Ainda não há personagens cadastrados.</p>}
                   </section>
@@ -12652,7 +12763,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
     {!enemies.length ? <p className="hb-enemy-party-empty">Nenhum inimigo cadastrado. Use “Inimigos da campanha” para criar a primeira ficha.</p>
       : !enemyPartyMembers.length ? <p className="hb-enemy-party-empty">Nenhum inimigo adicionado a esta temporada. Escolha um na lista acima para começar.</p>
       : <>
-        <div className="hb-enemy-party-grid">{enemyPartyMembers.map(enemy => {
+        <div className="hb-enemy-party-grid">{masterShieldVisibleEnemies.map(enemy => {
           const status = getEnemySheetOverview(enemy)
           const party = getEnemyPartySeason(enemy, masterShieldSeasonId)
           const busy = enemyPartySavingId !== null
@@ -12661,11 +12772,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             { label: 'PS', current: status.ps, max: status.maxPS },
             { label: enemyResourceAbbreviation, current: status.pr, max: status.maxPR },
           ])
-          return <article key={enemy.id} className="hb-enemy-party-card">
+          return <article key={enemy.id} className={`hb-enemy-party-card${masterShieldLowPvEnemyIds.has(enemy.id) ? ' hb-ms-low-pv' : ''}`}>
             <div className="hb-enemy-party-card-head">
               <span className="hb-enemy-party-avatar" aria-hidden="true">{enemy.emoji || '👹'}</span>
               <div><strong>{enemy.name}</strong><small>{enemy.archetype || 'Sem arquétipo'} · Inimigo ativo</small></div>
             </div>
+            <span className={`hb-ms-vital-state${masterShieldLowPvEnemyIds.has(enemy.id) ? ' is-low' : ''}`}>{masterShieldLowPvEnemyIds.has(enemy.id) ? '◉ PV baixo · atenção' : '✧ Recursos acompanhados'}</span>
             <div className="hb-ms-resource-heading"><span>RECURSOS ATUAIS</span><span>ATUAL / MÁX.</span></div><div className="hb-enemy-party-resources">{resources.map(resource => <div className={`hb-enemy-party-resource${resource.label === 'SG' ? ' blood' : ''}`} key={resource.label}>
               <span>{resource.label}</span><div className="hb-enemy-party-track" aria-hidden="true"><i style={{width: `${resource.max > 0 ? Math.max(0, Math.min(100, resource.current / resource.max * 100)) : 0}%`}} /></div>
               <strong>{resource.current} / {resource.max}</strong>
@@ -12688,7 +12800,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               <button type="button" className="secondary-button" disabled={busy} onClick={() => void updateEnemyPartySeason(enemy.id, masterShieldSeasonId, { participating: false })}>Remover da party</button>
             </div>
           </article>
-        })}</div>
+        })}{masterShieldVisibleEnemies.length === 0 && <p className="master-shield-empty">Nenhum inimigo corresponde aos filtros selecionados.</p>}</div>
       </>}
   </>}
 </section>
@@ -12707,8 +12819,24 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   </div>
                   {masterShieldSeasonId && (
                     <div className="hb-ms-initiative-content">
+                      <div className="hb-ms-turn-desk" aria-label="Controle de turnos do mestre">
+                        <div className="hb-ms-turn-emblem" aria-hidden="true">♜</div>
+                        <div className="hb-ms-turn-copy">
+                          <span className="hb-kicker">CONTROLE DO ENCONTRO</span>
+                          <strong>Rodada {activeShieldDesk.round}</strong>
+                          <small aria-live="polite">{activeShieldTurn ? `Turno de ${activeShieldTurn.name}` : masterShieldReadyTurns.length ? 'Escolha o primeiro turno ou avance para começar.' : 'Registre iniciativas para iniciar a rodada.'}</small>
+                        </div>
+                        <div className="hb-ms-turn-actions">
+                          <button type="button" className="secondary-button" disabled={!masterShieldReadyTurns.length || !shieldDeskKey || (activeShieldTurnIndex === 0 && activeShieldDesk.round === 1)}
+                            onClick={() => advanceMasterShieldTurn(-1)} aria-label="Turno anterior">← Anterior</button>
+                          <button type="button" className="primary-button" disabled={!masterShieldReadyTurns.length || !shieldDeskKey}
+                            onClick={() => advanceMasterShieldTurn(1)}>Próximo turno →</button>
+                          <button type="button" className="hb-ms-turn-reset" disabled={!shieldDeskKey || (activeShieldDesk.round === 1 && !activeShieldDesk.turn)}
+                            onClick={() => { if (window.confirm('Reiniciar o marcador de rodadas e turnos? As iniciativas salvas não serão apagadas.')) updateMasterShieldDesk({ round: 1, turn: '' }) }}>Reiniciar marcador</button>
+                        </div>
+                      </div>
                       <div className="hb-ms-initiative-toolbar">
-                        <p>As iniciativas continuam salvas nas fichas de origem de cada participante.</p>
+                        <p>As iniciativas continuam salvas nas fichas. O marcador de turno é particular deste navegador.</p>
                         <button type="button" className="secondary-button" style={{ padding: '8px 12px', fontSize: 12 }}
                           disabled={sheetSaving || enemyPartySavingId !== null || masterShieldLoading ||
                             !masterShieldInitiativeEntries.some(entry => entry.initiative !== null)}
@@ -12722,19 +12850,24 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       {!masterShieldLoading && masterShieldInitiativeEntries.length > 0 &&
                         <div className="hb-ms-combined-initiative-list">
                           {masterShieldInitiativeEntries.map((entry, index) => (
-                            <div className={`hb-ms-initiative-row hb-ms-initiative-${entry.kind}${index === 0 && entry.initiative !== null ? ' hb-ms-initiative-leader' : ''}`} key={`${entry.kind}-${entry.id}`}>
+                            <div className={`hb-ms-initiative-row hb-ms-initiative-${entry.kind}${index === 0 && entry.initiative !== null ? ' hb-ms-initiative-leader' : ''}${activeShieldDesk.turn === `${entry.kind}:${entry.id}` && entry.initiative !== null ? ' hb-ms-turn-active' : ''}`} key={`${entry.kind}-${entry.id}`} aria-current={activeShieldDesk.turn === `${entry.kind}:${entry.id}` && entry.initiative !== null ? 'step' : undefined}>
                               <div className="hb-ms-initiative-identity">
                                 <strong className="hb-ms-initiative-rank" aria-label={`${index + 1}ª posição`}>{index + 1}<small>º</small></strong>
                                 <span className="hb-ms-initiative-avatar" aria-hidden="true">{entry.emoji || (entry.kind === 'enemy' ? '👹' : '🧑')}</span>
                                 <div className="hb-ms-initiative-person">
                                   <strong>{entry.name}</strong>
-                                  <small>{entry.kind === 'enemy' ? '⚔ Inimigo' : '♙ Personagem'}</small>
+                                  <small>{entry.kind === 'enemy' ? '⚔ Inimigo' : '♙ Personagem'}{activeShieldDesk.turn === `${entry.kind}:${entry.id}` && entry.initiative !== null ? ' · TURNO ATUAL' : ''}</small>
                                 </div>
                               </div>
                               <div className="hb-ms-initiative-score">
                                 <strong className={entry.initiative === null ? 'pending' : ''}>
                                   {entry.initiative ?? 'Não rolou'}
                                 </strong>
+                                {entry.initiative !== null && <button type="button" className="hb-ms-set-turn"
+                                  disabled={!shieldDeskKey || activeShieldDesk.turn === `${entry.kind}:${entry.id}`}
+                                  onClick={() => updateMasterShieldDesk({ turn: `${entry.kind}:${entry.id}` })}>
+                                  {activeShieldDesk.turn === `${entry.kind}:${entry.id}` ? 'Em turno' : 'Definir turno'}
+                                </button>}
                                 {entry.initiative !== null && (
                                   <button type="button" className="secondary-button"
                                     disabled={sheetSaving || enemyPartySavingId !== null}
@@ -12810,6 +12943,22 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   )}
 </section>
                 </div>
+
+                <section className="hb-ms-notes-panel" id="hb-ms-notes" aria-labelledby="hb-ms-notes-heading">
+                  <div className="hb-ms-notes-heading">
+                    <div><span className="hb-kicker">✎ CADERNO DO MESTRE</span><h3 id="hb-ms-notes-heading">Anotações da sessão</h3><p>Guarde pistas, acontecimentos, ideias e lembretes desta temporada.</p></div>
+                    <span className="hb-ms-local-hint">⌂ Salvo neste navegador</span>
+                  </div>
+                  <label htmlFor="hb-ms-notes-editor" className="hb-ms-notes-label">Notas privadas</label>
+                  <textarea id="hb-ms-notes-editor" maxLength={5000} rows={5}
+                    placeholder="Ex.: pista encontrada na biblioteca, reações dos NPCs, próximos acontecimentos..."
+                    disabled={!shieldDeskKey} value={activeShieldDesk.notes}
+                    onChange={event => updateMasterShieldDesk({ notes: event.target.value })} />
+                  <div className="hb-ms-notes-footer"><small>{activeShieldDesk.notes.length} / 5000 caracteres · Não sincroniza entre dispositivos.</small>
+                    <button type="button" disabled={!shieldDeskKey || !activeShieldDesk.notes.trim()}
+                      onClick={() => { if (window.confirm('Apagar as anotações locais desta temporada?')) updateMasterShieldDesk({ notes: '' }) }}>Limpar notas</button>
+                  </div>
+                </section>
               </section>
             </section>
           )}
