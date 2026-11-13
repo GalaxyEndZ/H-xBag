@@ -6028,305 +6028,189 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
  .app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar).active .season-style-preview { transition:none }
 }
 
-
 /* ======================================================================
-   HÄXBAG V29 — SILVAM ARGENTEA | ÁRVORE NÓRDICA INTEGRALMENTE VETORIAL
-   Artes SVG originais, em caminhos e folhas vetoriais; nenhuma imagem rasterizada. Não é uma nova
-   página nem um logo avulso: é o estilo visual da interface inteira.
-   Sem depender da paleta escolhida, sem alterar regras de jogo ou status.
-   Chave salva preservada: floresta_esquecida.
+   HÄXBAG V30 / SILVAM ARGENTEA
+   Vetores de linhas preenchidas baseados na referência fornecida.
+   Estética: nordic engraving; grafite, prata mate, verde pinheiro discreto.
+   Não altera dados de jogos, nem estatísticas e estados semânticos.
    ====================================================================== */
 .app-shell.hb-polish.visual-style-floresta_esquecida {
-  --silvam-fundo: #090c12;
-  --silvam-profundo: #0d111a;
-  --silvam-superficie: #151a23;
-  --silvam-prata: #edf0f4;
-  --silvam-metal: #c6ced9;
-  --silvam-fosco: #98a4b6;
-  --silvam-linha: rgba(193,204,219,.32);
-  --silvam-linha-sutil: rgba(193,204,219,.17);
-  --silvam-luz: rgba(226,234,245,.075);
-  --silvam-arvore: url('./style-art/floresta_esquecida-crest.svg');
-  --silvam-cena: url('./style-art/floresta_esquecida-hero.svg');
-  --silvam-tranca: url('./style-art/silvam-argentea-tranca.svg');
-  --hb-v26-hero: var(--silvam-cena);
-  --hb-v26-crest: var(--silvam-arvore);
-  --hb-v26-ink: var(--silvam-prata);
-  --hb-v26-edge: var(--silvam-linha);
-  --hb-v26-soft: var(--silvam-luz);
-  --hb-v26-deep: var(--silvam-profundo);
-  --hb-v26-radius: 15px;
-  --sb-crest: var(--silvam-arvore);
-  --roster-crest: var(--silvam-arvore);
-  --hb-art-sigil: var(--silvam-arvore);
-  --forest-rule: var(--silvam-linha);
+  --silvam-crest:url('./style-art/floresta_esquecida-crest.svg');
+  --silvam-hero:url('./style-art/floresta_esquecida-hero.svg');
+  --silvam-border:url('./style-art/silvam-argentea-tranca.svg');
+  --silvam-silver:#d6e0df;
+  --silvam-muted:#a9beb9;
+  --silvam-line:rgba(181,207,198,.27);
+  --silvam-soft:rgba(178,199,194,.11);
+  --sb-crest:var(--silvam-crest);
+  --roster-crest:var(--silvam-crest);
+  --hb-art-sigil:var(--silvam-crest);
+  --hb-new-hero:var(--silvam-hero);
+  --hb-new-crest:var(--silvam-crest);
+  --hb-v26-hero:var(--silvam-hero);
+  --hb-v26-crest:var(--silvam-crest);
+  --hb-preview-art:var(--silvam-hero);
+  --hb-theme-ink:var(--silvam-silver);
+  --hb-theme-edge:var(--silvam-line);
+  --hb-theme-edge-soft:rgba(171,192,188,.20);
+  --hb-theme-wash:var(--silvam-soft);
+  --hb-theme-deep:#0c1416;
+  --roster-ink:var(--silvam-silver);
+  --roster-rule:var(--silvam-line);
+  --roster-wash:var(--silvam-soft);
+  background-color:#101719;
 }
-
-/* Fundo e navegação: carvão mineral e prata, sem a antiga camada verde. */
+/* A árvore é a arte principal; a interface mantém formas e contenção dos temas clássicos. */
 .app-shell.hb-polish.visual-style-floresta_esquecida .main-content {
-  background-color: var(--silvam-fundo);
+  background-color:#101719;
   background-image:
-    radial-gradient(ellipse at 92% 6%, rgba(204,218,237,.09), transparent 42%),
-    radial-gradient(ellipse at 14% 86%, rgba(120,136,165,.045), transparent 46%),
-    linear-gradient(180deg,#0c1018 0%,#080b11 100%) !important;
+     radial-gradient(ellipse at 89% 5%,rgba(168,189,182,.045),transparent 34%),
+     linear-gradient(180deg,#121a1c,#0d1416) !important;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar {
-  background-color: var(--silvam-fundo) !important;
-  background-image:
-    linear-gradient(90deg,transparent calc(100% - 2px),rgba(222,232,247,.10) calc(100% - 1px)),
-    radial-gradient(circle at 12% 2%,rgba(209,218,230,.11),transparent 42%),
-    linear-gradient(180deg,#11151f,#080b12 98%) !important;
-  border-right: 1px solid var(--silvam-linha) !important;
-  box-shadow: inset -1px 0 0 rgba(255,255,255,.035);
+  background:#0c1315 !important;
+  border-right:1px solid var(--silvam-line) !important;
+  box-shadow:inset -1px 0 0 rgba(224,232,230,.03);
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .topbar {
-  border-bottom: 1px solid var(--silvam-linha) !important;
-  background-image:linear-gradient(90deg,rgba(221,232,247,.085),transparent 55%) !important;
-  box-shadow: inset 0 -1px rgba(255,255,255,.03);
+  border-bottom:1px solid var(--silvam-line) !important;
+  background:#0d1517 !important;
 }
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-topbar-style-badge {
-  border-color: var(--silvam-linha) !important;
-  color: var(--silvam-metal) !important;
-}
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar :is(.hb-sidebar-group-title,.hb-sidebar-eyebrow,.hb-sidebar-style-signature) {
-  color:var(--silvam-fosco) !important;
-  letter-spacing:.14em;
-}
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link {
-  border-radius:12px !important;
-  transition:background-color .16s,border-color .16s;
-}
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link:hover:not(:disabled) {
-  background:rgba(213,225,240,.08) !important;
-}
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link.active {
-  color:var(--silvam-prata) !important;
-  border:1px solid var(--silvam-linha) !important;
-  border-left:3px solid var(--silvam-metal) !important;
-  background:linear-gradient(90deg,rgba(213,224,239,.16),rgba(174,191,215,.035)) !important;
-  box-shadow:inset 0 1px rgba(255,255,255,.045) !important;
-}
-
-/* A identidade na barra lateral usa EXATAMENTE a árvore de referência. */
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity {
-  isolation:isolate;
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar-style-identity,.hb-sidebar-workspace) {
   position:relative;
   overflow:hidden;
-  border:1px solid var(--silvam-linha) !important;
-  border-radius:16px !important;
+  border:1px solid var(--silvam-line) !important;
+  border-radius:12px !important;
   background:
-    linear-gradient(90deg,rgba(9,13,20,.99) 0%,rgba(9,13,20,.96) 60%,rgba(9,13,20,.65)),
-    var(--silvam-cena) right center / auto 120% no-repeat,
-    #10151f !important;
-  background-position:center,right -27px center,center !important;
-  background-repeat:no-repeat !important;
-  box-shadow:0 12px 30px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.05) !important;
+    linear-gradient(90deg,rgba(10,17,19,.96) 0%,rgba(10,17,19,.89) 66%,rgba(10,17,19,.46)),
+    var(--silvam-hero) right center / auto 130% no-repeat,
+    #0d1516 !important;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity::before {
-  content:"";
-  position:absolute;
-  inset:auto 12px 2px;
-  height:12px;
-  width:auto;
-  opacity:.23;
-  background:var(--silvam-tranca) center / 136px 12px repeat-x;
-  pointer-events:none;
+  content:'';position:absolute;bottom:0;left:12px;right:12px;height:10px;
+  pointer-events:none;opacity:.22;
+  background:var(--silvam-border) center / 160px 10px repeat-x;
 }
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity > * {
-  position:relative;
-  z-index:1;
-}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity > * {position:relative;z-index:1;}
 .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-emblem {
-  flex:0 0 53px;
-  width:53px;
-  height:53px;
-  font-size:0 !important;
-  border:1px solid rgba(216,228,244,.48) !important;
+  width:52px;height:52px;flex:0 0 52px;
+  background:var(--silvam-crest) center / 46px 46px no-repeat,#091113 !important;
+  border:1px solid var(--silvam-line) !important;
   border-radius:50% !important;
-  background:var(--silvam-arvore) center / 49px 49px no-repeat,#090d14 !important;
-  box-shadow:0 0 0 3px rgba(197,208,225,.055),inset 0 0 12px rgba(199,213,233,.05) !important;
+  font-size:0 !important;
 }
-
-/* Banner: motivo nórdico em destaque, títulos livres à esquerda. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link.active {
+  border-color:var(--silvam-line) !important;
+  border-left:2px solid var(--silvam-silver) !important;
+  background:linear-gradient(90deg,rgba(176,195,189,.13),rgba(176,195,189,.025)) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link.active :is(.hb-sidebar-nav-name,.hb-sidebar-nav-icon) {color:#e1e9e7 !important;}
+/* Banner has a full vector forest artwork; text remains visible at left. */
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,
-  .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,
-  .overview-hero,.bestiary-hero,.mc-hero
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
 ) {
   position:relative;
   isolation:isolate;
   overflow:hidden;
-  border:1px solid var(--silvam-linha) !important;
-  border-top:2px solid rgba(224,233,244,.58) !important;
-  border-radius:18px !important;
+  border:1px solid var(--silvam-line) !important;
+  border-radius:14px !important;
   background:
-    linear-gradient(90deg,#0e131d 0%,rgba(14,19,29,.98) 35%,rgba(14,19,29,.78) 56%,rgba(14,19,29,.18) 100%),
-    var(--silvam-cena) right center / cover no-repeat,
-    radial-gradient(ellipse at 85% 24%,rgba(219,228,243,.10),transparent 48%),
-    linear-gradient(140deg,#101622,#090d14) !important;
-  box-shadow:0 18px 44px rgba(0,0,0,.23),inset 0 1px rgba(255,255,255,.06) !important;
+    linear-gradient(90deg,#0d1517 0%,rgba(13,21,23,.96) 35%,rgba(13,21,23,.70) 56%,rgba(13,21,23,.08) 100%),
+    var(--silvam-hero) right center / cover no-repeat,
+    #0d1517 !important;
+  box-shadow:0 14px 28px rgba(0,0,0,.17),inset 0 1px 0 rgba(217,231,226,.05) !important;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
   .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
   .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
 )::after {
-  content:"";
-  position:absolute;
-  bottom:5px;
-  left:22px;
-  right:22px;
-  height:12px;
-  opacity:.30;
-  background:var(--silvam-tranca) left center / 136px 12px repeat-x;
-  pointer-events:none;
-  z-index:0;
+  content:'';position:absolute;left:24px;right:24px;bottom:0;height:10px;
+  background:var(--silvam-border) left bottom / 160px 10px repeat-x;
+  opacity:.17;pointer-events:none;z-index:0;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-detail-hero,.hb-ms-hero,.mc-hero
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-ms-hero,.mc-hero
 ) > * {position:relative;z-index:1;}
-.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  h1,.sheet-page-hero h2,.hb-ms-hero h2,.hb-beast-hero h2
-) {font-family:Georgia,'Times New Roman',serif;letter-spacing:.005em;}
-.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  .sheet-page-eyebrow,.eyebrow,.hb-ms-eyebrow,.hb-sidebar-group-title
-) {letter-spacing:.16em;}
-
-/* Cartões: metais frios, brilho contido e hierarquia mais harmoniosa. */
-.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  .card,.panel,.hb-panel,.stat-card,.sheet-card,.sheet-summary-card,
-  .sheet-library-card,.campaign-card,.season-card,.content-card,
-  .inventory-section,.hb-ms-pane,.hb-ms-card,.hb-ms-section,
-  .enemy-hub-card,.hb-beast-card,.shop-card,.shop-item-card,
-  .season-theme-panel,.mc-main,.mc-item,.mc-loot-card,.mc-curation-card
-) {
-  border-color:var(--silvam-linha-sutil) !important;
-  border-radius:15px !important;
-  box-shadow:inset 0 1px rgba(245,249,255,.035),0 13px 29px rgba(0,0,0,.12);
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(h1,.sheet-page-hero h2,.hb-ms-hero h2) {
+  font-family:Georgia,'Times New Roman',serif;
+  letter-spacing:.015em;
 }
+/* Controls and cards follow the original theme language, leaving gameplay resource colors intact. */
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  .sheet-card-title,.sheet-section-heading,.inventory-heading,
-  .hb-panel-heading,.enemy-hub-section-heading,.hb-ms-group-heading
-) {border-bottom-color:var(--silvam-linha) !important;}
+ .card,.panel,.hb-panel,.stat-card,.sheet-card,.sheet-summary-card,.sheet-library-card,
+ .campaign-card,.season-card,.content-card,.inventory-section,.hb-ms-pane,.hb-ms-card,
+ .enemy-hub-card,.hb-beast-card,.shop-card,.shop-item-card,.season-theme-panel,
+ .mc-main,.mc-item,.mc-loot-card,.mc-curation-card
+) {border-color:rgba(181,207,198,.18) !important;border-radius:13px !important;}
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-  .sheet-card,.sheet-library-card,.campaign-card,.mc-item,.mc-loot-card
-):hover {border-color:rgba(207,220,239,.46) !important;}
-/* Respeita cores semânticas de PV, PS, PR, danos, raridade e condições. */
+ .sheet-card-title,.sheet-section-heading,.inventory-heading,.hb-panel-heading,.hb-ms-group-heading
+) {border-bottom-color:var(--silvam-line) !important;}
 .app-shell.hb-polish.visual-style-floresta_esquecida .mc-page {
-  --mc-accent:#d4dce8;
-  --mc-border:var(--silvam-linha);
-  --mc-soft:rgba(205,218,237,.095);
-}
-.app-shell.hb-polish.visual-style-floresta_esquecida .mc-page :is(.mc-stat,.mc-curation-card) {
-  border-color:var(--silvam-linha-sutil) !important;
-  background:linear-gradient(145deg,#191f2b,#10151e) !important;
+  --mc-accent:#cbd8d3;
+  --mc-border:var(--silvam-line);
+  --mc-soft:rgba(182,204,198,.09);
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card {
   position:relative;
-  border:1px solid var(--silvam-linha) !important;
-  background:linear-gradient(150deg,#19202c,#111723) !important;
-  border-radius:15px !important;
+  border:1px solid var(--silvam-line) !important;
+  background:linear-gradient(145deg,#1b2526,#11191b) !important;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card::before {
-  content:"" !important;
-  position:absolute !important;
-  inset:5px 7px auto auto !important;
-  width:140px !important;
-  height:140px !important;
-  background:var(--silvam-arvore) center / contain no-repeat !important;
-  opacity:.11 !important;
-  border:0 !important;
-  border-radius:0 !important;
-  box-shadow:none !important;
-  pointer-events:none !important;
+  content:'' !important;
+  position:absolute !important;left:auto !important;bottom:auto !important;top:4px !important;right:4px !important;
+  width:160px !important;height:160px !important;border:0 !important;
+  background:var(--silvam-crest) center/contain no-repeat !important;
+  opacity:.10 !important;pointer-events:none !important;box-shadow:none !important;
 }
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-profile-identity-cover-art,
-.app-shell.hb-polish.visual-style-floresta_esquecida .hb-profile-banner-art {
-  background-image:var(--silvam-cena) !important;
-  background-color:#090d14;
-  background-position:right center;
-  background-size:cover;
-  background-repeat:no-repeat;
-}
-
-/* Seleção e prévia REAL do estilo, independente do estilo atual da campanha. */
-.app-shell .season-visual-style-group .season-style-floresta_esquecida {
-  --hb-v26-hero:url('./style-art/floresta_esquecida-hero.svg');
-  --hb-v26-ink:#e8edf4;
-  --hb-v26-edge:rgba(210,221,236,.54);
-  --hb-v26-radius:14px;
-  border:1px solid rgba(195,207,223,.40) !important;
-  border-radius:15px !important;
-  background:linear-gradient(155deg,#171d28,#0d1119) !important;
-}
-.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview {
-  border:1px solid rgba(207,220,239,.50) !important;
-  border-radius:11px !important;
-  background:
-    linear-gradient(90deg,rgba(9,13,19,.98) 0%,rgba(9,13,19,.82) 30%,rgba(9,13,19,.1) 90%),
-    url('./style-art/floresta_esquecida-hero.svg') right center / cover no-repeat,
-    #0b0f17 !important;
-}
-.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview::after {
-  content:"";
-  position:absolute;
-  bottom:4px;
-  left:12px;
-  right:12px;
-  height:8px;
-  opacity:.35;
-  background:url('./style-art/silvam-argentea-tranca.svg') center / 136px 8px repeat-x;
-  pointer-events:none;
-}
-.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview-caption {
-  color:#edf2fa !important;
-  text-shadow:0 2px 12px #06090f;
-}
-.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-card-info strong {
-  color:#f2f5fa !important;
-  font:700 15px/1.3 Georgia,'Times New Roman',serif;
-}
-.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-card-info small {
-  color:#aebaca !important;
-}
-.app-shell .season-visual-style-group .season-style-floresta_esquecida.active {
-  border-color:#e0e8f4 !important;
-  box-shadow:0 0 0 1px rgba(220,232,246,.20),0 15px 34px rgba(0,0,0,.21) !important;
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-profile-identity-cover-art,.hb-profile-banner-art) {
+ background-image:var(--silvam-hero) !important;background-position:right center;background-size:cover;
+ background-repeat:no-repeat;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-hero-preview {
-  border-color:var(--silvam-linha) !important;
   background:
-    linear-gradient(180deg,rgba(7,11,17,.22),rgba(7,11,17,.63)),
-    var(--silvam-cena) center / cover no-repeat,
-    #0b1018 !important;
+   linear-gradient(90deg,rgba(7,13,14,.66),rgba(7,13,14,.2)),
+   var(--silvam-hero) right center / cover no-repeat,
+   #0d1517 !important;
+  border-color:var(--silvam-line) !important;
 }
 .app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-preview-symbol {
-  display:block;
-  font-size:0 !important;
-  background:var(--silvam-arvore) center / contain no-repeat !important;
-  filter:drop-shadow(0 10px 18px rgba(0,0,0,.25));
+  display:block;font-size:0 !important;width:170px;height:170px;
+  background:var(--silvam-crest) center / contain no-repeat !important;
 }
-
+/* The Silvam card is legible even when a different style is currently selected. */
+.app-shell .season-visual-style-group .season-style-floresta_esquecida {
+  --hb-preview-art:url('./style-art/floresta_esquecida-hero.svg');
+  --hb-v26-hero:var(--hb-preview-art);
+  --hb-v26-ink:#dce6e3;
+  --hb-v26-edge:rgba(182,204,195,.42);
+  --hb-v26-radius:12px;
+  background:linear-gradient(145deg,#162023,#0b1315) !important;
+  border-color:rgba(184,207,199,.3) !important;
+  border-radius:13px !important;
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview {
+  border:1px solid rgba(188,214,206,.4) !important;
+  border-radius:9px !important;
+  background:
+    linear-gradient(90deg,rgba(9,16,18,.96),rgba(9,16,18,.66) 40%,rgba(9,16,18,.08)),
+    url('./style-art/floresta_esquecida-hero.svg') right center / cover no-repeat,
+    #0d1517 !important;
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview-caption {color:#e2ece9 !important;text-shadow:0 2px 8px #0a1012;}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-card-info strong {color:#e3ebe8 !important;}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-card-info small {color:#b1c6bf !important;}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida.active {border-color:#d5e3de !important;box-shadow:0 0 0 1px rgba(218,232,226,.14) !important;}
 @media(max-width:720px) {
   .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
-    .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,
-    .hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,
-    .overview-hero,.bestiary-hero,.mc-hero
-  ) {
-    background:
-      linear-gradient(90deg,rgba(10,14,22,.97),rgba(10,14,22,.90) 62%,rgba(10,14,22,.64)),
-      var(--silvam-cena) right center / auto 95% no-repeat,
-      #0b1018 !important;
-  }
-  .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity {
-    background:
-      linear-gradient(90deg,#0a0e15 0%,rgba(10,14,21,.85) 65%,rgba(10,14,21,.6)),
-      var(--silvam-cena) right center / auto 115% no-repeat,
-      #0e1420 !important;
-  }
-  .app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card::before {
-    width:90px !important;height:90px !important;opacity:.07 !important;
-  }
+    .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+    .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+  ) {background:
+      linear-gradient(90deg,rgba(13,21,23,.98),rgba(13,21,23,.86) 72%,rgba(13,21,23,.52)),
+      var(--silvam-hero) right center / auto 100% no-repeat,
+      #0d1517 !important;}
+  .app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card::before {width:92px !important;height:92px !important;opacity:.08 !important;}
 }
-@media(prefers-reduced-motion:reduce) {
+@media(prefers-reduced-motion:reduce){
   .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link {transition:none;}
 }
