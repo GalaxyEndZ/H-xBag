@@ -1,3 +1,4 @@
+import { KISATSUTAI_SKILL_GROUPS } from './systems/kisatsutai/extendedData'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 
@@ -21,6 +22,26 @@ const CONDITION_KEYS: Record<string, {value:string;label:string}[]> = {
   ],
   actions: [{value:'movement',label:'Ações de movimento'},{value:'extra',label:'Ações extras'}],
   resource: [{value:'pv',label:'Pontos de Vida (PV)'},{value:'ps',label:'Pontos de Sanidade (PS)'},{value:'pr',label:'Pontos de Recurso (PR)'}],
+}
+const GENERAL_SKILL_GROUPS = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
+const SKILL_CHOICES: Record<string, {value:string;label:string}[]> = {
+  main_skill: [{value:'*',label:'Todas as perícias principais'}],
+  extra_skill: [{value:'*',label:'Todas as perícias gerais'}],
+  archetype_skill: [{value:'*',label:'Todas as perícias de arquétipo'}],
+}
+for (const [group, entries] of Object.entries(KISATSUTAI_SKILL_GROUPS)) {
+  const target = GENERAL_SKILL_GROUPS.has(group) ? 'extra_skill' : 'archetype_skill'
+  for (const entry of entries) {
+    const skill = entry.name
+    if (!skill) continue
+    SKILL_CHOICES[target].push({value:`${group}:${skill}`,label:`${group} · ${skill}`})
+    if (!SKILL_CHOICES.main_skill.some(item => item.value === skill))
+      SKILL_CHOICES.main_skill.push({value:skill,label:skill})
+  }
+}
+for (const target of Object.keys(SKILL_CHOICES)) {
+  const [all, ...rest] = SKILL_CHOICES[target]
+  SKILL_CHOICES[target] = [all, ...rest.sort((a,b)=>a.label.localeCompare(b.label,'pt-BR'))]
 }
 const labelForConditionKey = (key:string) => Object.values(CONDITION_KEYS).flat().find(option=>option.value===key.toLowerCase())?.label || (key==='*'?'Todos':key)
 
@@ -203,6 +224,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
       if(['modifier','dice','resource'].includes(effect.type)){
         if(!effect.key?.trim())return `${prefix}: selecione o atributo, perícia, ação ou recurso.`
         if(!Number.isFinite(effect.value)||(effect.unit!=='percent'&&!Number.isInteger(effect.value)))return `${prefix}: informe um número válido.`
+        if(effect.type==='dice'&&effect.unit==='percent')return `${prefix}: dados não podem ser percentuais.`
         if(Math.abs(effect.value||0)>999)return `${prefix}: use valores entre -999 e 999.`
       }
       if(effect.type==='round_counter'&&(!Number.isInteger(effect.value)||!effect.value||effect.value<1||effect.value>999))return `${prefix}: escolha entre 1 e 999 rodadas.`
@@ -223,7 +245,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
       {items.map((effect,index)=>{
         const selected=effectTypes.find(t=>t.value===effect.type)
         const category=effect.type==='resource'?'resource':effect.target||'status'
-        const choices=CONDITION_KEYS[category]
+        const choices=SKILL_CHOICES[category] || CONDITION_KEYS[category]
         const customSkill=['main_skill','extra_skill','archetype_skill'].includes(category)
         const unknownKey=Boolean(choices&&effect.key&&!choices.some(option=>option.value===effect.key))
         return <div key={index} className="hb-condition-effect-row">
@@ -236,7 +258,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
             }}><option value="status">Atributos</option>{effect.type!=='dice'&&<><option value="main_skill">Perícias principais</option><option value="extra_skill">Perícias gerais</option><option value="archetype_skill">Perícias de arquétipo</option></>}<option value="combat_points">Testes de combate</option>{effect.type!=='dice'&&<option value="actions">Quantidade de ações</option>}</select></label>}
             {['modifier','dice','resource'].includes(effect.type)&&<>
               <label>{effect.type==='resource'?'Recurso afetado':customSkill?'Perícia afetada':category==='actions'?'Tipo de ação afetada':'Atributo ou ação afetada'}
-                {customSkill?<input value={effect.key||''} onChange={e=>update(index,{key:e.target.value})} placeholder="Nome exato da perícia ou * para todas" />:<select value={unknownKey?'__custom__':effect.key||''} onChange={e=>update(index,{key:e.target.value==='__custom__'?'':e.target.value})}><option value="">Selecione...</option>{(choices||[]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}{unknownKey&&<option value="__custom__">Identificador antigo (personalizado)</option>}</select>}
+                {customSkill?<select value={effect.key||'*'} onChange={e=>update(index,{key:e.target.value})}><option value="" disabled>Escolha a perícia...</option>{(choices||[]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}{effect.key&&!choices?.some(option=>option.value===effect.key)&&<option value={effect.key}>{effect.key} (valor anterior)</option>}</select>:<select value={unknownKey?'__custom__':effect.key||''} onChange={e=>update(index,{key:e.target.value==='__custom__'?'':e.target.value})}><option value="">Selecione...</option>{(choices||[]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}{unknownKey&&<option value="__custom__">Identificador antigo (personalizado)</option>}</select>}
                 {unknownKey&&<input value={effect.key||''} onChange={e=>update(index,{key:e.target.value})} aria-label="Identificador antigo" placeholder="Identificador personalizado" />}
               </label>
               <label>{effect.type==='dice'?'Dados adicionais (+ vantagem / − desvantagem)':effect.type==='resource'?'Alteração do limite (+/−)':category==='actions'?'Ações adicionadas (+) ou retiradas (−)':'Pontos adicionados ou subtraídos'}<div style={{display:'flex',gap:8,alignItems:'center'}}><input type="number" min="-999" max="999" step={effect.unit==='percent'?'0.1':'1'} value={effect.value??0} onChange={e=>update(index,{value:e.target.value===''?NaN:Number(e.target.value)})}/>{effect.type!=='dice'&&<select aria-label="Unidade do modificador" value={effect.unit||'flat'} onChange={e=>update(index,{unit:e.target.value as 'flat'|'percent'})}><option value="flat">Pontos</option><option value="percent">%</option></select>}</div></label>
@@ -338,7 +360,7 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
  const labels:Record<string,string>={status:'Status',main_skill:'Perícia principal',extra_skill:'Perícia extra',archetype_skill:'Perícia de arquétipo',combat_points:'Pontos de combate'}
  return <div className="hb-condition-indicator"><strong>🩸 Condições {active.length>0?`(${active.length})`:''}</strong><div>{active.length===0?<small>Nenhuma condição ativa</small>:[...active].sort((a,b)=>(displayOrder[a.id]??999999)-(displayOrder[b.id]??999999)).map(a=><span key={a.id} className={`hb-condition-tag severity-${a.severity}`} title={[a.description,a.duration_label,a.notes].filter(Boolean).join(' · ')}>{a.emoji} {a.name}{a.duration_label?` · ${a.duration_label}`:''}</span>)}</div>
  {modifiers.size>0&&<div className="hb-condition-modifiers" aria-label="Modificadores cumulativos ativos"><strong>Modificadores ativos</strong>{[...modifiers.entries()].filter(([,value])=>value!==0).map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className="hb-condition-tag">{labels[target]||target}{rest.join(':')?` · ${labelForConditionKey(rest.join(':'))}`:''}: {value>0?'+':''}{value}{isPercent?'%':''}</span>})}</div>}
- {active.length>0&&<div className="hb-condition-rule-hints"><strong>Regras adicionais configuradas</strong>{active.flatMap(a=>{const d=definitions.find(item=>item.id===a.definition_id);return (d?.effects||[]).filter(e=>['dice','restriction','resource','periodic_damage','round_counter'].includes(e.type)).map((e,i)=><span key={`${a.id}:${i}`} className="hb-condition-rule-hint">{a.emoji} {a.name}: {e.type==='dice'?`${(e.value||0)>0?'+':''}${e.value||0} dado(s) · ${e.target||'status'} / ${e.key||'*'}`:e.type==='restriction'?`Bloqueia ${e.key||'ação'}`:e.type==='resource'?`${(e.value||0)>0?'+':''}${e.value||0} ${e.key||'recurso'} máximo`:e.type==='periodic_damage'?`${e.dice||'dano'} por rodada (${e.key||'pv'}; acionamento manual)`:`${e.value||3} rodadas (controle do mestre)`}</span>)})}</div>}
+ {active.length>0&&<div className="hb-condition-rule-hints"><strong>Regras adicionais configuradas</strong>{active.flatMap(a=>{const d=definitions.find(item=>item.id===a.definition_id);return (d?.effects||[]).filter(e=>['dice','restriction','resource','periodic_damage','round_counter'].includes(e.type)).map((e,i)=><span key={`${a.id}:${i}`} className="hb-condition-rule-hint">{a.emoji} {a.name}: {e.type==='dice'?`${(e.value||0)>0?'+':''}${e.value||0} dado(s) · ${e.target||'status'} / ${e.key||'*'}`:e.type==='restriction'?`Bloqueia ${e.key||'ação'}`:e.type==='resource'?`${(e.value||0)>0?'+':''}${e.value||0}${e.unit==='percent'?'%':' pontos'} em ${e.key||'recurso'} máximo`:e.type==='periodic_damage'?`${e.dice||'dano'} por rodada (${e.key||'pv'}; acionamento manual)`:`${e.value||3} rodadas (controle do mestre)`}</span>)})}</div>}
  {error&&<small role="status">{error}</small>}
  </div>
 }

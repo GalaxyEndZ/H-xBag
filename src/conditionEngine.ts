@@ -3,8 +3,8 @@ import { supabase } from './supabase'
 
 export type ConditionModifiers = Record<string, number>
 type Effect = { type?: string; target?: string; key?: string; value?: number; unit?: 'flat' | 'percent' }
-type Assignment = { definition_id: string }
-type DefinitionEffects = { id: string; effects: Effect[] }
+type Assignment = { definition_id?: string; condition_id?: string; id?: string }
+type DefinitionEffects = { id: string; effects: Effect[] | string | null }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
 
@@ -14,10 +14,10 @@ export function conditionModifier(modifiers: ConditionModifiers, target: string,
 }
 
 export function calculateConditionModifiers(assignments: Assignment[], definitions: DefinitionEffects[]): ConditionModifiers {
-  const byId = new Map(definitions.map(def => [def.id, def.effects]))
+  const byId = new Map(definitions.map(def => [def.id, typeof def.effects === 'string' ? JSON.parse(def.effects) as Effect[] : (Array.isArray(def.effects) ? def.effects : [])]))
   const totals: ConditionModifiers = {}
   for (const assignment of assignments) {
-    for (const effect of byId.get(assignment.definition_id) || []) {
+    for (const effect of byId.get(assignment.definition_id || assignment.condition_id || '') || []) {
       if (effect.type !== 'modifier' || !effect.target || !Number.isFinite(effect.value)) continue
       const key = `${effect.unit === 'percent' ? 'percent:' : ''}${effect.target}:${normalize(effect.key || '*')}`
       totals[key] = (totals[key] || 0) + Number(effect.value)
@@ -51,17 +51,18 @@ export function useCharacterConditionModifiers(campaignId: string, characterId: 
 export type ConditionRuleState = {
   dice: ConditionModifiers
   resources: ConditionModifiers
+  resourcePercent: ConditionModifiers
   restrictions: string[]
   periodic: { resource: string; dice: string; definitionId: string }[]
   counters: { rounds: number; definitionId: string }[]
 }
 
 export function calculateConditionRules(assignments: Assignment[], definitions: DefinitionEffects[]): ConditionRuleState {
-  const byId = new Map(definitions.map(def => [def.id, def.effects]))
-  const result: ConditionRuleState = { dice: {}, resources: {}, restrictions: [], periodic: [], counters: [] }
+  const byId = new Map(definitions.map(def => [def.id, typeof def.effects === 'string' ? JSON.parse(def.effects) as Effect[] : (Array.isArray(def.effects) ? def.effects : [])]))
+  const result: ConditionRuleState = { dice: {}, resources: {}, resourcePercent: {}, restrictions: [], periodic: [], counters: [] }
   const restrictions = new Set<string>()
   for (const assignment of assignments) {
-    for (const raw of byId.get(assignment.definition_id) || []) {
+    for (const raw of byId.get(assignment.definition_id || assignment.condition_id || '') || []) {
       const effect = raw as Effect & { dice?: string }
       const key = normalize(effect.key || '*')
       const value = Number(effect.value)
@@ -70,12 +71,13 @@ export function calculateConditionRules(assignments: Assignment[], definitions: 
         result.dice[index] = (result.dice[index] || 0) + value
       } else if (effect.type === 'resource' && ['pv', 'ps', 'pr'].includes(key) && Number.isFinite(value)) {
         const index = `resource:${key}`
-        result.resources[index] = (result.resources[index] || 0) + value
+        if (effect.unit === 'percent') result.resourcePercent[index] = (result.resourcePercent[index] || 0) + value
+        else result.resources[index] = (result.resources[index] || 0) + value
       } else if (effect.type === 'restriction' && key !== '*') restrictions.add(key)
       else if (effect.type === 'periodic_damage' && /^\d{1,2}d\d{1,3}$/i.test(effect.dice || '')) {
-        result.periodic.push({ resource: key, dice: effect.dice!, definitionId: assignment.definition_id })
+        result.periodic.push({ resource: key, dice: effect.dice!, definitionId: assignment.definition_id || assignment.condition_id || '' })
       } else if (effect.type === 'round_counter' && Number.isInteger(value) && value > 0) {
-        result.counters.push({ rounds: value, definitionId: assignment.definition_id })
+        result.counters.push({ rounds: value, definitionId: assignment.definition_id || assignment.condition_id || '' })
       }
     }
   }
@@ -102,12 +104,12 @@ export function useCharacterConditionRules(campaignId: string, characterId: stri
     const timer = window.setInterval(() => void load(), 5000)
     return () => { live = false; window.clearInterval(timer) }
   }, [campaignId, characterId, scope])
-  return state?.scope === scope ? state.rules : { dice: {}, resources: {}, restrictions: [], periodic: [], counters: [] }
+  return state?.scope === scope ? state.rules : { dice: {}, resources: {}, resourcePercent: {}, restrictions: [], periodic: [], counters: [] }
 }
 
 /** Aplica pontos e porcentagens sobre o valor-base, arredondando ao inteiro mais próximo. */
 export function applyConditionModifier(base: number, modifiers: ConditionModifiers, target: string, key: string): number {
   const fixed = conditionModifier(modifiers, target, key)
   const percent = conditionModifier(modifiers, `percent:${target}`, key)
-  return Math.round((base + fixed) * (1 + percent / 100))
+  return Math.round(base * (1 + percent / 100) + fixed)
 }

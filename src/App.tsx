@@ -7566,8 +7566,11 @@ const attribute =
   const dice = roll.rolls
   const highest = roll.result
   const preparationBonus = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') && (complexPending?.skill === ((kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate')) ? (complexPending?.bonus || 0) : 0
-  const conditionBonus = conditionModifier(conditionModifiers, 'status', kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense')
-  const combatConditionBonus = conditionModifier(conditionModifiers, 'combat_points', (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge')
+  const conditionAttributeKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
+  const conditionCombatKey = (kind.startsWith('Ataque') || kind === 'Tiro' || kind === 'Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
+  const attributeBase = kind === 'Ataque bruto' ? strength : kind === 'Ataque ágil' || kind === 'Esquiva' || kind === 'Disparo' ? agility : kind === 'Ataque especial' ? breathing : kind === 'Tiro' ? intellect : defense
+  const conditionBonus = applyConditionModifier(attributeBase, conditionModifiers, 'status', conditionAttributeKey) - attributeBase
+  const combatConditionBonus = applyConditionModifier(bonus, conditionModifiers, 'combat_points', conditionCombatKey) - bonus
   const total = highest + bonus + preparationBonus + conditionBonus + combatConditionBonus
   if ((kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') && complexPending && preparationBonus) setComplexPending(null)
 
@@ -7709,10 +7712,16 @@ const attribute =
                         ? getSystemAttributeBonus(familyTierKey, 'breathing') : 0,
                       rankStatus,
                     })
+                    const conditionResourceMaximum = (key: 'pv' | 'ps' | 'pr', base: number) => {
+                      if (forEnemy) return base
+                      const flat = conditionRules.resources[`resource:${key}`] || 0
+                      const percent = conditionRules.resourcePercent[`resource:${key}`] || 0
+                      return Math.max(0, Math.round((base + flat) * (1 + percent / 100)))
+                    }
                     const derived = [
-                      ['Pontos de Vida (PV)', sharedResourceMaximums.pv, `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
-                      ['Pontos de Sanidade (PS)', sharedResourceMaximums.ps, `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
-                      [sheetResourcePointsLabel, sharedResourceMaximums.pr, `(${sheetResourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
+                      ['Pontos de Vida (PV)', conditionResourceMaximum('pv', sharedResourceMaximums.pv), `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
+                      ['Pontos de Sanidade (PS)', conditionResourceMaximum('ps', sharedResourceMaximums.ps), `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
+                      [sheetResourcePointsLabel, conditionResourceMaximum('pr', sharedResourceMaximums.pr), `(${sheetResourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
                     ] as const
 const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => {
   const limit = path.startsWith('attributes.')
@@ -9080,8 +9089,10 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   if (!selected) return
                                   const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key) + conditionModifier(conditionRules.dice, 'main_skill', selected.name)
                                   const roll = rollAttributeDice(testDiceCount + conditionDiceBonus, testAttribute.key === 'agility')
-                                  const attributeConditionBonus = conditionModifier(conditionModifiers, 'status', testAttribute.key)
-                                  const skillConditionBonus = conditionModifier(conditionModifiers, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key) + conditionModifier(conditionModifiers, 'main_skill', selected.name)
+                                  const attributeConditionBonus = applyConditionModifier(testAttribute.value, conditionModifiers, 'status', testAttribute.key) - testAttribute.value
+                                  const skillGroup = selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill'
+                                  const trainedSkillBonus = applyConditionModifier(selected.bonus, conditionModifiers, skillGroup, selected.key)
+                                  const skillConditionBonus = applyConditionModifier(trainedSkillBonus, conditionModifiers, 'main_skill', selected.name) - selected.bonus
                                   const conditionTotal = attributeConditionBonus + skillConditionBonus
                                   const total = roll.result + selected.bonus + conditionTotal
                                   const diceDescription = roll.hasDisadvantage
@@ -9183,7 +9194,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           })()}
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
                             canApply={Boolean(canEditSelectedSheet && selectedCharacterId && selectedSeasonId)}
-                            maxPR={sharedResourceMaximums.pr}
+                            maxPR={Number(derived[2][1])}
                             inventoryItems={items.filter(item=>item.character_id===selectedCharacterId)}
                             onApply={async recovery => {
                               const parsed = JSON.parse(sheetDraft) as Record<string, any>
