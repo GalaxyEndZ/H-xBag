@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="28" viewBox="0 0 240 28" fill="none" aria-hidden="true">
+ <path d="M0 14H240" stroke="#9daea8" opacity=".16"/>
+ <path d="M0 14h25l14-10 14 10-14 10-14-10h50l14-10 14 10-14 10-14-10h50l14-10 14 10-14 10-14-10h50l14-10 14 10-14 10-14-10h25" stroke="#d0dbd3" stroke-width="1.1" opacity=".58"/>
+ <path d="M10 14l15-10 15 10-15 10-15-10M70 14l15-10 15 10-15 10-15-10M130 14l15-10 15 10-15 10-15-10M190 14l15-10 15 10-15 10-15-10" stroke="#a7bfb1" stroke-width=".7" opacity=".43"/>
+ </svg>
