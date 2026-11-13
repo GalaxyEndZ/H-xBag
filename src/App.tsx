@@ -675,6 +675,22 @@ type CampaignShopItem = {
 
 // Avatares armazenados apenas nos metadados da conta do usuário.
 const profileAvatarOptions = ['🌸', '🌙', '🦊', '🐉', '🦋', '🗡️', '🛡️', '⚜️', '🌿', '🔮', '🪶', '✦'] as const
+const profileCoverOptions = [
+  { id: 'eclipse', name: 'Eclipse Rubro', symbol: '☾', description: 'Noite, sangue e mistério' },
+  { id: 'lunar', name: 'Vigília Lunar', symbol: '☽', description: 'Prata sob as estrelas' },
+  { id: 'verdant', name: 'Floresta Ancestral', symbol: '❧', description: 'Verde, raízes e névoa' },
+  { id: 'arcane', name: 'Véu Arcano', symbol: '✧', description: 'Magia, constelações e violeta' },
+  { id: 'golden', name: 'Trono Solar', symbol: '✺', description: 'Ouro, honra e alvorada' },
+  { id: 'winter', name: 'Inverno Eterno', symbol: '❄', description: 'Gelo, silêncio e estrelas' },
+] as const
+const profileTitleOptions = [
+  { id: 'traveler', name: 'Viajante dos Mundos', symbol: '✦' },
+  { id: 'chronicler', name: 'Guardião das Crônicas', symbol: '❖' },
+  { id: 'storyteller', name: 'Tecelão de Histórias', symbol: '✧' },
+  { id: 'sentinel', name: 'Sentinela do Crepúsculo', symbol: '☽' },
+  { id: 'arcane', name: 'Portador do Arcano', symbol: '◇' },
+  { id: 'wanderer', name: 'Alma Errante', symbol: '❦' },
+] as const
 
 function displayNameForMembers(session: Session | null) {
   return session?.user.user_metadata?.display_name ||
@@ -1384,10 +1400,15 @@ const resetCreatureFilters = () => {
   const [profileUsernameDraft, setProfileUsernameDraft] = useState('')
   const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
   const [profileBioDraft, setProfileBioDraft] = useState('')
+  const [profileCoverDraft, setProfileCoverDraft] = useState('eclipse')
+  const [profileTitleDraft, setProfileTitleDraft] = useState('traveler')
   const [profileSaving, setProfileSaving] = useState(false)
+  const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
   const [profileCharacterQuery, setProfileCharacterQuery] = useState('')
   const [profileCampaignQuery, setProfileCampaignQuery] = useState('')
+  const [profileCharacterCampaignFilter, setProfileCharacterCampaignFilter] = useState('all')
+  const [profileCampaignRoleFilter, setProfileCampaignRoleFilter] = useState<'all' | 'master' | 'player'>('all')
   const [profileFeaturedCharacterId, setProfileFeaturedCharacterId] = useState<string | null>(null)
   const [newSeasonName, setNewSeasonName] = useState('')
   const [newSeasonDescription, setNewSeasonDescription] = useState('')
@@ -6726,17 +6747,31 @@ async function sendItemToCharacter() {
     profileAvatarOptions.some(emoji => emoji === rawAccountAvatar) ? rawAccountAvatar : ''
   const accountBio = typeof session?.user.user_metadata?.profile_bio === 'string'
     ? String(session.user.user_metadata.profile_bio) : ''
+  const accountCover = profileCoverOptions.find(option => option.id === session?.user.user_metadata?.profile_cover)?.id ?? 'eclipse'
+  const accountCoverName = profileCoverOptions.find(option => option.id === accountCover)?.name ?? 'Eclipse Rubro'
+  const accountTitle = profileTitleOptions.find(option => option.id === session?.user.user_metadata?.profile_title)?.id ?? 'traveler'
+  const accountTitleName = profileTitleOptions.find(option => option.id === accountTitle)?.name ?? 'Viajante dos Mundos'
+  const storedFeaturedCharacterId = typeof session?.user.user_metadata?.profile_featured_character_id === 'string'
+    ? String(session.user.user_metadata.profile_featured_character_id) : null
+  const accountAssignedCharacters = characters.filter(character => character.current_player_id === session?.user.id)
+  const accountMasterCampaigns = campaigns.filter(campaign => campaign.role === 'master' || campaign.created_by === session?.user.id)
+  const profileCompletion = [Boolean(accountUsername), Boolean(accountAvatar), Boolean(accountBio.trim()), Boolean(storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId))]
+    .filter(Boolean).length * 25
   const accountCreatedAt = session?.user.created_at
     ? new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : 'Data indisponível'
   const profileHasChanges = profileUsernameDraft.trim().toLowerCase() !== accountUsername.toLowerCase() || profileNameDraft.trim() !== String(displayName).trim() ||
-    profileAvatarDraft !== accountAvatar || profileBioDraft.trim() !== accountBio.trim()
+    profileAvatarDraft !== accountAvatar || profileBioDraft.trim() !== accountBio.trim() ||
+    profileCoverDraft !== accountCover || profileTitleDraft !== accountTitle
   const openProfilePage = () => {
     setProfileNameDraft(String(displayName))
     setProfileUsernameDraft(accountUsername)
     setProfileAvatarDraft(accountAvatar)
     setProfileBioDraft(accountBio)
+    setProfileCoverDraft(accountCover)
+    setProfileTitleDraft(accountTitle)
     setProfileEditing(false)
+    setProfileFeaturedCharacterId(null)
     setError('')
     setNotice('')
     setActivePage('profile')
@@ -11171,7 +11206,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} />
           )}
           {activePage === 'profile' && (
-            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16" aria-labelledby="hb-profile-title">
+            <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16 hb-profile-page-v17" data-cover={accountCover} aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
                 <div className="hb-profile-identity-cover">
                   <span className="hb-profile-identity-cover-art" aria-hidden="true" />
@@ -11181,9 +11216,10 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <span className="hb-profile-identity-style">{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
                   </div>
                   <div className="hb-profile-cover-story">
-                    <span className="hb-profile-cover-chapter"><span aria-hidden="true">✧</span> CRÔNICAS PESSOAIS <span className="hb-profile-cover-chapter-index">· VOL. I</span></span>
+                    <span className="hb-profile-cover-chapter"><span aria-hidden="true">✧</span> O SEU LEGADO <span className="hb-profile-cover-chapter-index">· ARQUIVO I</span></span>
                     <p className="hb-profile-cover-title">Toda jornada tem<br /><em>uma história.</em></p>
-                    <p className="hb-profile-cover-subtitle">O seu espaço entre mundos, personagens e aventuras.</p>
+                    <p className="hb-profile-cover-subtitle">Seu nome. Suas histórias. Um universo inteiro por escrever.</p>
+                    <span className="hb-profile-cover-crest" aria-hidden="true">{profileCoverOptions.find(option => option.id === accountCover)?.symbol || '✦'}</span>
                   </div>
                   <div className="hb-profile-identity-cover-bottomline" aria-hidden="true"><span>✧</span><i /><span>✧</span></div>
                 </div>
@@ -11197,12 +11233,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div className="hb-profile-identity-copy">
                     <span className="hb-profile-identity-kicker"><span aria-hidden="true">✦</span> IDENTIDADE DO AVENTUREIRO</span>
                     <h1 id="hb-profile-title">{displayName}</h1>
+                    <span className="hb-profile-honorific"><span aria-hidden="true">❖</span> {accountTitleName}</span>
                     <div className="hb-profile-handle-row"><p className="hb-profile-username">{accountUsername ? `@${accountUsername}` : 'Escolha seu @usuário em Editar perfil'}</p>{accountUsername && <button type="button" className="hb-profile-copy-handle" title="Copiar nome de usuário" aria-label="Copiar nome de usuário" onClick={() => { void navigator.clipboard.writeText(`@${accountUsername}`).then(() => setNotice('Nome de usuário copiado!')).catch(() => setError('Não foi possível copiar o nome de usuário.')) }}>⧉ Copiar</button>}</div>
                     <p>{accountBio.trim() || 'Toda aventura merece uma história. Personalize a sua apresentação e deixe sua marca no HäxBag.'}</p>
                     <div className="hb-profile-identity-badges">
                       <span><i aria-hidden="true" className="hb-profile-status-light" /> Conta ativa</span>
                       <span aria-label={`Estilo ${activeVisualStyle.label}`}>{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
                       <span>✧ Membro desde {accountCreatedAt}</span>
+                      <span className="hb-profile-banner-pill">{accountCoverName}</span>
                     </div>
                   </div>
                   <button type="button" className="hb-profile-identity-edit" onClick={() => setProfileEditing(value => !value)}
@@ -11216,82 +11254,104 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <a href="#hb-profile-journey"><span aria-hidden="true">◈</span> Visão geral</a>
                 <a href="#hb-profile-characters"><span aria-hidden="true">♙</span> Personagens</a>
                 <a href="#hb-profile-campaigns"><span aria-hidden="true">⚑</span> Campanhas</a>
-                <a href="#hb-profile-editor-region"><span aria-hidden="true">✎</span> Dados do perfil</a>
+                <a href="#hb-profile-editor-region"><span aria-hidden="true">✎</span> Meu ateliê</a>
                 <a href="#hb-social-hub"><span aria-hidden="true">♧</span> Amigos</a>
               </nav>
               <div id="hb-profile-journey" className="hb-profile-section-heading" aria-hidden="true">
                 <span className="hb-profile-section-emblem">✧</span>
-                <span>MINHA JORNADA</span>
+                <span>O LEGADO DO AVENTUREIRO</span>
                 <i />
-                <span className="hb-profile-section-end">EM NÚMEROS</span>
+                <span className="hb-profile-section-end">NOSSOS REGISTROS</span>
               </div>
               <div className="hb-profile-action-strip" aria-label="Ações do perfil">
-                <button type="button" onClick={() => setProfileEditing(true)}><span aria-hidden="true">✎</span><span><strong>Personalizar perfil</strong><small>Nome, avatar e apresentação</small></span></button>
+                <button type="button" onClick={() => setProfileEditing(true)}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Capas, títulos e identidade</small></span></button>
                 <button type="button" onClick={() => document.getElementById('hb-social-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
-                <button type="button" onClick={() => document.getElementById('hb-social-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">✉</span><span><strong>Convites</strong><small>Campanhas compartilhadas</small></span></button>
+                <button type="button" onClick={() => document.getElementById('hb-profile-characters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
               </div>
-              <div className="hb-profile-overview-grid">
-                <article className="hb-profile-info-tile">
-                  <span className="hb-profile-tile-icon" aria-hidden="true">⚑</span>
-                  <span>Campanhas vinculadas</span>
-                  <strong>{campaigns.length}</strong>
-                  <small>Seus mundos e aventuras</small>
-                </article>
-                <article className="hb-profile-info-tile">
-                  <span className="hb-profile-tile-icon" aria-hidden="true">♜</span>
-                  <span>Atuação na campanha</span>
-                  <strong>{selectedCampaign ? isMaster ? 'Mestre' : 'Jogador' : '—'}</strong>
-                  <small>{selectedCampaign?.name || 'Nenhuma campanha selecionada'}</small>
-                </article>
-                <article className="hb-profile-info-tile">
-                  <span className="hb-profile-tile-icon" aria-hidden="true">✧</span>
-                  <span>Conta criada em</span>
-                  <strong>{accountCreatedAt}</strong>
-                  <small>Seu registro no HäxBag</small>
-                </article>
+              <div className="hb-profile-overview-grid" aria-label="Estatísticas do aventureiro">
+                <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">♙</span><span>Personagens atribuídos</span><strong>{accountAssignedCharacters.length}</strong><small>Heróis e histórias que você vive</small></article>
+                <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">⚑</span><span>Campanhas</span><strong>{campaigns.length}</strong><small>Mundos dos quais você participa</small></article>
+                <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">♜</span><span>Como mestre</span><strong>{accountMasterCampaigns.length}</strong><small>Campanhas sob sua direção</small></article>
+                <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">✧</span><span>Desde</span><strong>{accountCreatedAt}</strong><small>Seu primeiro registro no HäxBag</small></article>
               </div>
 
               <section className="hb-profile-collections hb-profile-collections-v2" aria-label="Minha jornada nas campanhas">
                 {(() => {
-                  const assigned = characters.filter(character => character.current_player_id === session.user.id)
-                  const featured = assigned.find(character => character.id === profileFeaturedCharacterId) ?? assigned[0]
+                  const assigned = accountAssignedCharacters
+                  const featured = assigned.find(character => character.id === (profileFeaturedCharacterId ?? storedFeaturedCharacterId)) ?? assigned[0]
                   const visibleCharacters = assigned.filter(character => {
                     const campaignName = campaigns.find(campaign => campaign.id === character.campaign_id)?.name ?? ''
-                    return `${character.name} ${character.archetype ?? ''} ${campaignName}`.toLocaleLowerCase('pt-BR').includes(profileCharacterQuery.trim().toLocaleLowerCase('pt-BR'))
+                    const matchesCampaign = profileCharacterCampaignFilter === 'all' || character.campaign_id === profileCharacterCampaignFilter
+                    return matchesCampaign && `${character.name} ${character.archetype ?? ''} ${campaignName}`.toLocaleLowerCase('pt-BR').includes(profileCharacterQuery.trim().toLocaleLowerCase('pt-BR'))
                   })
-                  const visibleCampaigns = campaigns.filter(campaign => `${campaign.name} ${campaign.system_name ?? ''}`.toLocaleLowerCase('pt-BR').includes(profileCampaignQuery.trim().toLocaleLowerCase('pt-BR')))
+                  const visibleCampaigns = campaigns.filter(campaign => {
+                    const matchesRole = profileCampaignRoleFilter === 'all' || (campaign.role === 'master' || campaign.created_by === session.user.id ? 'master' : 'player') === profileCampaignRoleFilter
+                    return matchesRole && `${campaign.name} ${campaign.system_name ?? ''}`.toLocaleLowerCase('pt-BR').includes(profileCampaignQuery.trim().toLocaleLowerCase('pt-BR'))
+                  })
                   return <>
-                    {featured && <div className="hb-profile-featured-character">
-                      <div className="hb-profile-featured-art" aria-hidden="true">{featured.emoji || '⚔️'}</div>
-                      <div className="hb-profile-featured-copy">
-                        <span className="hb-kicker">✦ PERSONAGEM EM DESTAQUE</span>
-                        <h2>{featured.name}</h2>
-                        <p>{featured.archetype || 'Arquétipo não definido'} · {campaigns.find(campaign => campaign.id === featured.campaign_id)?.name || 'Campanha não disponível'}</p>
-                        <small>Um dos personagens em que você está atribuído como jogador.</small>
-                      </div>
-                    </div>}
+                    <div className="hb-profile-featured-character">
+                      {featured ? <>
+                        <span className="hb-profile-featured-ornament" aria-hidden="true">✦</span>
+                        <div className="hb-profile-featured-art" aria-hidden="true">{featured.emoji || '⚔️'}</div>
+                        <div className="hb-profile-featured-copy">
+                          <span className="hb-kicker">✦ SEU PROTAGONISTA</span>
+                          <h2>{featured.name}</h2>
+                          <p>{featured.archetype || 'Arquétipo não definido'} <span aria-hidden="true">·</span> {campaigns.find(campaign => campaign.id === featured.campaign_id)?.name || 'Campanha não disponível'}</p>
+                          <small>Seu personagem em destaque — só personagens atribuídos a você.</small>
+                        </div>
+                        <div className="hb-profile-featured-aside">
+                          <span>REGISTRO DE PERSONAGEM</span><strong>✧</strong>
+                          <button type="button" onClick={() => document.getElementById('hb-profile-characters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Ver meus personagens ↗</button>
+                        </div>
+                      </> : <>
+                        <div className="hb-profile-featured-art" aria-hidden="true">✧</div>
+                        <div className="hb-profile-featured-copy"><span className="hb-kicker">✦ SEU PROTAGONISTA</span><h2>Uma história por começar</h2><p>Quando você for atribuído como jogador, poderá destacar aqui o seu personagem.</p></div>
+                      </>}
+                    </div>
                     <div id="hb-profile-characters" className="hb-profile-collection-heading">
                       <div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Somente personagens em que você está atribuído como jogador.</p></div>
                       <span className="hb-profile-collection-count">{assigned.length} personagens</span>
                     </div>
-                    <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar personagem</span><input type="search" value={profileCharacterQuery} onChange={event => setProfileCharacterQuery(event.target.value)} placeholder="Nome, arquétipo ou campanha…" /></label>{profileCharacterQuery && <button type="button" className="hb-profile-clear-search" onClick={() => setProfileCharacterQuery('')}>Limpar busca</button>}<span className="hb-profile-result-count" aria-live="polite">{visibleCharacters.length} de {assigned.length} personagens</span></div>
+                    <div className="hb-profile-collection-tools hb-profile-filter-bar">
+                      <label className="hb-profile-search-label"><span>Procurar personagem</span><input type="search" value={profileCharacterQuery} onChange={event => setProfileCharacterQuery(event.target.value)} placeholder="Nome, arquétipo ou campanha…" /></label>
+                      <label className="hb-profile-filter-select"><span>Campanha</span><select value={profileCharacterCampaignFilter} onChange={event => setProfileCharacterCampaignFilter(event.target.value)}><option value="all">Todas as campanhas</option>{campaigns.filter(campaign => assigned.some(character => character.campaign_id === campaign.id)).map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label>
+                      {(profileCharacterQuery || profileCharacterCampaignFilter !== 'all') && <button type="button" className="hb-profile-clear-search" onClick={() => { setProfileCharacterQuery(''); setProfileCharacterCampaignFilter('all') }}>Limpar filtros</button>}
+                      <span className="hb-profile-result-count" aria-live="polite">{visibleCharacters.length} de {assigned.length}</span>
+                    </div>
                     <div className="hb-profile-character-grid">
                       {visibleCharacters.length ? visibleCharacters.map(character => (
                         <article className={`hb-profile-character-card ${featured?.id === character.id ? 'hb-profile-character-card-featured' : ''}`} key={character.id}>
                           <span className="hb-profile-character-avatar" aria-hidden="true">{character.emoji || '⚔️'}</span>
                           <div className="hb-profile-character-info"><strong>{character.name}</strong><span>{campaigns.find(campaign => campaign.id === character.campaign_id)?.name || 'Campanha não disponível'}</span><small>{character.archetype || 'Arquétipo não definido'}</small></div>
-                          <div className="hb-profile-character-actions"><span className="hb-profile-character-role">Jogador</span><button type="button" className="hb-profile-feature-button" aria-pressed={featured?.id === character.id} onClick={() => setProfileFeaturedCharacterId(character.id)}>{featured?.id === character.id ? '★ Em destaque' : '☆ Destacar'}</button></div>
+                          <div className="hb-profile-character-actions"><span className="hb-profile-character-role">Jogador</span><button type="button" className="hb-profile-feature-button" aria-pressed={featured?.id === character.id} disabled={profileFeatureSaving} onClick={async () => {
+                            if (profileFeatureSaving) return
+                            setProfileFeatureSaving(true)
+                            setError('')
+                            try {
+                              const { error: featureError } = await supabase.auth.updateUser({ data: { profile_featured_character_id: character.id } })
+                              if (featureError) throw featureError
+                              setProfileFeaturedCharacterId(character.id)
+                              setNotice(`${character.name} agora é seu personagem em destaque.`)
+                            } catch (err) {
+                              setError(`Não foi possível salvar o destaque: ${err instanceof Error ? err.message : String(err)}`)
+                            } finally { setProfileFeatureSaving(false) }
+                          }}>{profileFeatureSaving ? 'Salvando…' : featured?.id === character.id ? '★ Em destaque' : '☆ Destacar'}</button></div>
                         </article>
                       )) : <p className="hb-profile-empty-collection">{assigned.length ? 'Nenhum personagem corresponde à busca.' : 'Os personagens aparecerão aqui quando você for atribuído como jogador.'}</p>}
                     </div>
                     <div id="hb-profile-campaigns" className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Campanhas em que você participa, como mestre ou jogador.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
-                    <div className="hb-profile-collection-tools"><label className="hb-profile-search-label"><span>Buscar campanha</span><input type="search" value={profileCampaignQuery} onChange={event => setProfileCampaignQuery(event.target.value)} placeholder="Nome ou sistema de RPG…" /></label></div>
+                    <div className="hb-profile-collection-tools hb-profile-filter-bar">
+                      <label className="hb-profile-search-label"><span>Procurar campanha</span><input type="search" value={profileCampaignQuery} onChange={event => setProfileCampaignQuery(event.target.value)} placeholder="Nome ou sistema de RPG…" /></label>
+                      <label className="hb-profile-filter-select"><span>Meu papel</span><select value={profileCampaignRoleFilter} onChange={event => setProfileCampaignRoleFilter(event.target.value as 'all' | 'master' | 'player')}><option value="all">Todas</option><option value="master">Mestre</option><option value="player">Jogador</option></select></label>
+                      {(profileCampaignQuery || profileCampaignRoleFilter !== 'all') && <button type="button" className="hb-profile-clear-search" onClick={() => { setProfileCampaignQuery(''); setProfileCampaignRoleFilter('all') }}>Limpar filtros</button>}
+                      <span className="hb-profile-result-count" aria-live="polite">{visibleCampaigns.length} de {campaigns.length}</span>
+                    </div>
                     <div className="hb-profile-campaign-grid">
                       {visibleCampaigns.length ? visibleCampaigns.map(campaign => (
                         <article key={campaign.id} className="hb-profile-campaign-card">
                           <span className="hb-profile-campaign-emblem" aria-hidden="true">✧</span>
                           <div><strong>{campaign.name}</strong><small>{campaign.system_name || 'Campanha de RPG'}</small></div>
-                          <span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? 'Mestre' : 'Jogador'}</span>
+                          <span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? '♜ Mestre' : '♙ Jogador'}</span>
                         </article>
                       )) : <p className="hb-profile-empty-collection">{campaigns.length ? 'Nenhuma campanha corresponde à busca.' : 'Você ainda não participa de nenhuma campanha.'}</p>}
                     </div>
@@ -11328,7 +11388,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       if (!available) { setError('Esse nome de usuário já está em uso.'); return }
                     }
                     const { error: authError } = await supabase.auth.updateUser({
-                      data: { display_name: nextName, username: nextUsername, profile_avatar: profileAvatarDraft, profile_bio: nextBio },
+                      data: { display_name: nextName, username: nextUsername, profile_avatar: profileAvatarDraft, profile_bio: nextBio, profile_cover: profileCoverDraft, profile_title: profileTitleDraft },
                     })
                     if (authError) throw authError
                     if (nextName !== String(displayName).trim()) {
@@ -11353,8 +11413,27 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 }}>
                   <div className="hb-profile-card-heading">
                     <span className="hb-profile-card-glyph" aria-hidden="true">✦</span>
-                    <div><span className="hb-kicker">PERSONALIZAÇÃO</span><h2>Editar perfil</h2><p>Deixe sua marca no HäxBag. As mudanças aparecem na prévia ao lado.</p></div>
+                    <div><span className="hb-kicker">SEU ATELIÊ PESSOAL</span><h2>Forje sua identidade</h2><p>Escolha sua capa, seu título e sua assinatura. Visualize tudo antes de salvar.</p></div>
                   </div>
+                  <fieldset className="hb-profile-atelier-fieldset">
+                    <legend>01 <span aria-hidden="true">✧</span> Capa da sua história</legend>
+                    <p>Escolha um cenário para seu arquivo de aventureiro. As capas são estilizadas, sem arquivos externos.</p>
+                    <div className="hb-profile-cover-grid" role="group" aria-label="Escolha a capa do perfil">
+                      {profileCoverOptions.map(option => <button key={option.id} type="button" className={`hb-profile-cover-option ${profileCoverDraft === option.id ? 'is-active' : ''}`} data-cover={option.id} aria-pressed={profileCoverDraft === option.id} onClick={() => setProfileCoverDraft(option.id)}>
+                        <span className="hb-profile-cover-option-art" aria-hidden="true"><i>{option.symbol}</i></span>
+                        <strong>{option.name}</strong><small>{option.description}</small>
+                        <span className="hb-profile-cover-check" aria-hidden="true">{profileCoverDraft === option.id ? '✓' : '✧'}</span>
+                      </button>)}
+                    </div>
+                  </fieldset>
+                  <fieldset className="hb-profile-atelier-fieldset">
+                    <legend>02 <span aria-hidden="true">✧</span> Título do aventureiro</legend>
+                    <p>Seu título é uma escolha estética. Não representa conquistas ou permissões na campanha.</p>
+                    <div className="hb-profile-title-grid" role="group" aria-label="Escolha seu título">
+                      {profileTitleOptions.map(option => <button key={option.id} type="button" className={`hb-profile-title-option ${profileTitleDraft === option.id ? 'is-active' : ''}`} aria-pressed={profileTitleDraft === option.id} onClick={() => setProfileTitleDraft(option.id)}><span aria-hidden="true">{option.symbol}</span>{option.name}</button>)}
+                    </div>
+                  </fieldset>
+                  <div className="hb-profile-editor-divider"><span>03</span> Sua assinatura</div>
                   <fieldset className="hb-profile-avatar-fieldset">
                     <legend>Avatar do perfil</legend>
                     <p>Escolha um símbolo para representar sua conta no menu principal e no seu cartão de perfil.</p>
@@ -11381,14 +11460,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <label className="hb-profile-field">Sobre você <span className="hb-profile-optional">Opcional</span>
                     <textarea rows={4} maxLength={180} value={profileBioDraft} onChange={event => setProfileBioDraft(event.target.value)}
                       placeholder="Uma frase sobre suas aventuras, personagens ou histórias favoritas…" />
-                    <span className="hb-profile-bio-meta"><small>Visível apenas para você nesta versão</small><small>{profileBioDraft.length}/180</small></span>
+                    <span className="hb-profile-bio-meta"><small>Exibido no seu próprio perfil e cartão de aventureiro.</small><small>{profileBioDraft.length}/180</small></span>
                     <span className="hb-profile-bio-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, (profileBioDraft.length / 180) * 100)}%` }} /></span>
                   </label>
                   <div className="hb-profile-form-footer">
                     <span className={`hb-profile-save-status ${profileHasChanges ? 'has-changes' : 'is-saved'}`} aria-live="polite">{profileHasChanges ? '● Alterações não salvas' : '✓ Perfil atualizado'}</span>
                     <div className="hb-profile-form-actions">
                       <button type="button" className="secondary-button" disabled={profileSaving || !profileHasChanges}
-                        onClick={() => { setProfileNameDraft(String(displayName)); setProfileUsernameDraft(accountUsername); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio) }}>Descartar</button>
+                        onClick={() => { setProfileNameDraft(String(displayName)); setProfileUsernameDraft(accountUsername); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio); setProfileCoverDraft(accountCover); setProfileTitleDraft(accountTitle) }}>Descartar</button>
                       <button type="submit" className="primary-button" disabled={profileSaving || !profileHasChanges}>
                         {profileSaving ? 'Salvando…' : 'Salvar alterações'}
                       </button>
@@ -11423,22 +11502,41 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <aside className="hb-profile-side-panel">
                   <section className="hb-profile-side-card hb-profile-preview-panel" aria-label="Prévia do perfil">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Prévia do perfil' : 'Cartão do aventureiro'}</h2></div></div>
-                    <div className="hb-profile-preview-card">
+                    <div className="hb-profile-preview-card" data-cover={profileEditing ? profileCoverDraft : accountCover}>
                       <span className="hb-profile-preview-art" aria-hidden="true" />
                       <div className="hb-profile-preview-topline"><span>HÄXBAG <span className="hb-profile-preview-edition">· CARTA DE IDENTIDADE</span></span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
                       <span className="hb-profile-preview-decor" aria-hidden="true">✧</span>
                       <span className="hb-profile-preview-avatar" aria-hidden="true">{profileEditing ? (profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()) : (accountAvatar || String(displayName).charAt(0).toUpperCase())}</span>
                       <strong className="hb-profile-preview-name">{profileEditing ? (profileNameDraft.trim() || 'Seu nome de exibição') : displayName}</strong>
+                      <span className="hb-profile-preview-title">✧ {profileTitleOptions.find(option => option.id === (profileEditing ? profileTitleDraft : accountTitle))?.name || 'Viajante dos Mundos'}</span>
                       <p className="hb-profile-preview-bio">{(profileEditing ? profileBioDraft : accountBio).trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
                       <span className="hb-profile-preview-signature"><span>✦ CARTÃO DO AVENTUREIRO</span><span>HÄXBAG · I</span></span>
                     </div>
-                    <p className="hb-profile-preview-help">{profileEditing ? 'Prévia das suas alterações. Somente as informações salvas ficarão na sua conta.' : 'Seu cartão pessoal, com a identidade visual da temporada em uso.'}</p>
+                    <p className="hb-profile-preview-help">{profileEditing ? 'Uma prévia em tempo real. As escolhas serão salvas na sua conta quando você confirmar.' : 'Seu cartão pessoal, com sua capa e título escolhidos.'}</p>
+                    <button type="button" className="hb-profile-copy-card" onClick={() => {
+                      const text = [`✦ HÄXBAG · CARTÃO DO AVENTUREIRO`, String(displayName), accountUsername ? `@${accountUsername}` : '', accountTitleName, accountBio.trim()].filter(Boolean).join('\n')
+                      void navigator.clipboard.writeText(text).then(() => setNotice('Cartão do aventureiro copiado!')).catch(() => setError('Não foi possível copiar seu cartão.'))
+                    }}><span aria-hidden="true">⧉</span> Copiar meu cartão</button>
+                  </section>
+                  <section className="hb-profile-side-card hb-profile-legacy-panel" aria-label="Personalização do perfil">
+                    <div className="hb-profile-side-heading"><span aria-hidden="true">✦</span><div><span className="hb-kicker">O SEU LEGADO</span><h2>Registro do aventureiro</h2></div></div>
+                    <div className="hb-profile-legacy-progress"><strong>{profileCompletion}%</strong><div><span>Identidade preenchida</span><span>Detalhes que fazem sua história única</span></div></div>
+                    <div className="hb-profile-progress-rail" role="progressbar" aria-label="Identidade preenchida" aria-valuemin={0} aria-valuemax={100} aria-valuenow={profileCompletion}><span style={{width: `${profileCompletion}%`}} /></div>
+                    <ul className="hb-profile-legacy-steps">
+                      <li className={accountUsername ? 'done' : ''}>{accountUsername ? '✓' : '○'} Nome de usuário</li>
+                      <li className={accountAvatar ? 'done' : ''}>{accountAvatar ? '✓' : '○'} Símbolo de avatar</li>
+                      <li className={accountBio.trim() ? 'done' : ''}>{accountBio.trim() ? '✓' : '○'} Sua apresentação</li>
+                      <li className={storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId) ? 'done' : ''}>{storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId) ? '✓' : '○'} Protagonista escolhido</li>
+                    </ul>
+                    {profileCompletion < 100 && <button type="button" className="hb-profile-legacy-action" onClick={() => !accountUsername || !accountAvatar || !accountBio.trim() ? setProfileEditing(true) : document.getElementById('hb-profile-characters')?.scrollIntoView({behavior:'smooth',block:'start'})}>Completar minha identidade <span aria-hidden="true">↗</span></button>}
                   </section>
                   <section className="hb-profile-side-card">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">⌘</span><div><span className="hb-kicker">DADOS DA CONTA</span><h2>Informações</h2></div></div>
                     <div className="hb-profile-account-line"><span>E-mail</span><strong title={session.user.email || ''}>{session.user.email || 'Indisponível'}</strong><small>Privado · não exibido para outros jogadores</small></div>
                     <div className="hb-profile-account-line"><span>Tipo de acesso</span><strong>{selectedCampaign ? isMaster ? 'Mestre e jogador' : 'Jogador' : 'Conta pessoal'}</strong></div>
-                    <div className="hb-profile-account-line"><span>Estilo em uso</span><strong>{activeVisualStyle.symbol} {activeVisualStyle.label}</strong><small>O visual acompanha a temporada ativa</small></div>
+                    <div className="hb-profile-account-line"><span>Estilo da campanha</span><strong>{activeVisualStyle.symbol} {activeVisualStyle.label}</strong><small>A aparência da campanha continua independente da capa do perfil</small></div>
+                    <div className="hb-profile-account-line"><span>Capa do perfil</span><strong>{accountCoverName}</strong></div>
+                    <div className="hb-profile-account-line"><span>Título pessoal</span><strong>{accountTitleName}</strong></div>
                   </section>
                   <section className="hb-profile-side-card">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">↗</span><div><span className="hb-kicker">ACESSO RÁPIDO</span><h2>Continuar aventura</h2></div></div>
