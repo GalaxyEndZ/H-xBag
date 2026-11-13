@@ -6107,3 +6107,44 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
   border-color:rgba(197,216,226,.35) !important;
 }
 .app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview-caption {color:#e2edf5;}
+
+/* V25 — geometria de emblemas em sintonia com Eclipse, Ciclos e Kisatsutai */
+
+/* Previews are portraits of the themed worlds rather than floating icon mocks. */
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview {
+  background:
+    linear-gradient(90deg,rgba(7,11,17,.88) 0%,rgba(10,15,22,.54) 23%,transparent 60%),
+    var(--hb-preview-art) right center / auto 100% no-repeat,
+    linear-gradient(125deg,var(--season-bg),var(--season-surface-alt)) !important;
+  border-color:color-mix(in srgb,var(--season-primary) 46%,var(--season-line)) !important;
+}
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-floresta_esquecida,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview-caption {font-size:10px;font-weight:850;letter-spacing:.13em;color:#f8f7fb;text-shadow:0 2px 6px rgba(0,0,0,.7)}
+
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero) {
+  background:
+    linear-gradient(90deg,var(--season-surface) 0%,color-mix(in srgb,var(--season-surface) 93%,transparent) 28%,color-mix(in srgb,var(--season-surface) 50%,transparent) 72%,transparent 100%),
+    var(--hb-new-hero) right center / auto 100% no-repeat,
+    linear-gradient(145deg,var(--season-surface),var(--hb-theme-deep)) !important;
+  border:1px solid var(--hb-theme-edge) !important;
+  box-shadow:inset 0 1px 0 var(--hb-theme-wash),0 16px 34px rgba(0,0,0,.14) !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) :is(.hb-sidebar-style-identity,.hb-sidebar-workspace,.hb-sidebar-invite) {border-color:var(--hb-theme-edge-soft)}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-identity::before {width:128px;opacity:.25;background-size:112px 112px}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-emblem {background:var(--hb-new-crest) center/44px 44px no-repeat,radial-gradient(circle,var(--hb-theme-wash),var(--season-bg));}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card::before {opacity:.16 !important;}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(.sheet-card,.sheet-summary-card,.sheet-summary-status-card,.shop-item-card,.enemy-hub-card,.hb-ms-pane,.campaign-card,.mc-item,.mc-loot-card) {border-top-color:var(--hb-theme-edge) !important;}
+
+.app-shell.hb-polish.visual-style-catedral_onix .page-content :is(h1,h2,h3),
+.app-shell.hb-polish.visual-style-jardim_espectral .page-content :is(h1,h2,h3),
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(h1,h2,h3) {font-family:Georgia,"Times New Roman",serif;}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity {background:linear-gradient(135deg,#111e22,#182529) !important;}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-emblem {border-color:rgba(207,228,231,.45);}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(.sheet-card,.sheet-summary-card,.campaign-card,.mc-item) {box-shadow:inset 0 1px 0 rgba(234,244,246,.07),0 12px 25px rgba(0,0,0,.10);}
+.app-shell.hb-polish.visual-style-inverno_eterno .page-content :is(.sheet-card,.campaign-card,.enemy-hub-card) {border-radius:9px !important;}
+.app-shell.hb-polish.visual-style-catedral_onix .page-content :is(.sheet-card,.campaign-card,.enemy-hub-card) {border-radius:13px 13px 5px 5px !important;}
+.app-shell.hb-polish.visual-style-relicario_solar .page-content :is(.sheet-card,.campaign-card,.enemy-hub-card) {border-radius:6px !important;}
+@media(max-width:720px){
+ .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-floresta_esquecida,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,.hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero) {
+   background:linear-gradient(90deg,var(--season-surface),color-mix(in srgb,var(--season-surface) 70%,transparent)),var(--hb-new-hero) right center/auto 92% no-repeat,var(--season-surface) !important;
+ }
+}
