@@ -61,8 +61,74 @@ function getKisatsutaiFullPath(primary: string, secondary: string): string {
   return path ? `${primary.trim()} ${path}` : ''
 }
 
+/** Navegação acessível e contextual, compartilhada entre fichas de jogadores e inimigos. */
+function SheetSectionNav({ sections, label }: { sections: Array<[string, string, string]>; label: string }) {
+  const ids = sections.map(([, , id]) => id).join('|')
+  const [activeId, setActiveId] = useState(sections[0]?.[2] || '')
+  useEffect(() => {
+    const targets = ids.split('|').filter(Boolean)
+    let frame = 0
+    const update = () => {
+      frame = 0
+      // Não considera seções que não estão montadas (edição, inventário vazio, etc.).
+      const mounted = targets.map(id => ({ id, element: document.getElementById(id) })).filter(
+        (entry): entry is { id: string; element: HTMLElement } => entry.element !== null,
+      )
+      if (!mounted.length) return
+      const threshold = 190
+      let current = mounted[0].id
+      for (const entry of mounted) {
+        if (entry.element.getBoundingClientRect().top <= threshold) current = entry.id
+      }
+      setActiveId(previous => previous === current ? previous : current)
+    }
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(update)
+    }
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    schedule()
+    return () => {
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [ids])
+  const goTo = (id: string) => {
+    const element = document.getElementById(id)
+    if (!element) return
+    setActiveId(id)
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    element.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+  }
+  return (
+    <nav className="sheet-quick-nav hb-sheet-nav-v2 hb-sheet-nav-v3" aria-label={label}>
+      <span className="hb-nav-caption"><span aria-hidden="true">◈</span> NAVEGAR</span>
+      <div className="hb-sheet-nav-items">
+        {sections.map(([symbol, title, target]) => (
+          <button type="button" key={target} aria-current={activeId === target ? 'location' : undefined}
+            className={activeId === target ? 'is-active' : ''} onClick={() => goTo(target)}>
+            <span className="hb-sheet-nav-icon" aria-hidden="true">{symbol}</span><span>{title}</span>
+          </button>
+        ))}
+      </div>
+      <button type="button" className="hb-sheet-back-top" title="Voltar ao início da ficha"
+        aria-label="Voltar ao início da ficha"
+        onClick={() => {
+          const top = document.getElementById(sections[0]?.[2] || '')
+          const hero = top?.closest('.page-content')?.querySelector('.sheet-page-hero')
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ;(hero || top)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+        }}>↑ <span>Topo</span></button>
+    </nav>
+  )
+}
+
 /** Exibição de treinamentos sem alterar os dados persistidos da ficha. */
 function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = {}, pending = null }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[]; modifiers?: Record<string, number>; pending?: {skill:string;bonus:number}|null }) {
+  const [skillSearch, setSkillSearch] = useState('')
+  const normalizeSkillQuery = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
+  const searchTerm = normalizeSkillQuery(skillSearch)
   const kitBonuses = ARCHETYPE_KITS.filter(kit => kitNames.some(name => name.toLocaleLowerCase('pt-BR') === kit.name.toLocaleLowerCase('pt-BR')))
   const getKitBonus = (skillName: string) => kitBonuses.flatMap(kit => {
     const match = kit.description.match(/\+(\d+)\s+em\s+([^.;]+)/i)
@@ -84,6 +150,9 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
         ? [{ key, group, name: skill.name, level }] : []
     })
   )
+  const displayedSkills = searchTerm
+    ? allSkills.filter(skill => normalizeSkillQuery(`${skill.name} ${skill.group} ${TRAINING_LABELS[skill.level]}`).includes(searchTerm))
+    : allSkills
   return (
     <section className="hb-trained-skills" id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'} aria-labelledby={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>
       <div className="hb-trained-skills-intro">
@@ -95,9 +164,20 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
         </div>
         <span className="hb-trained-skills-total">{allSkills.length} {allSkills.length === 1 ? 'perícia' : 'perícias'}</span>
       </div>
+      <div className="hb-sheet-skill-tools">
+        <label className="hb-sheet-skill-search">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" value={skillSearch} onChange={event => setSkillSearch(event.target.value)}
+            placeholder="Buscar perícia, grupo ou nível" aria-label="Buscar nas perícias treinadas" />
+        </label>
+        <span className="hb-sheet-skill-results" role="status">{displayedSkills.length} de {allSkills.length} perícias</span>
+        {skillSearch && <button type="button" className="hb-sheet-skill-clear" onClick={() => setSkillSearch('')}>Limpar</button>}
+      </div>
+      {searchTerm && displayedSkills.length === 0 && <p className="hb-sheet-skill-noresults" role="status">Nenhuma perícia encontrada. Tente outro nome ou grupo.</p>}
       <div className="hb-trained-skills-sections">
         {sections.map(section => {
-          const skills = allSkills.filter(skill => section.accepts(skill.group))
+          const skills = displayedSkills.filter(skill => section.accepts(skill.group))
+          if (searchTerm && skills.length === 0) return null
           return (
             <article className="hb-trained-skills-section" key={section.id}>
               <header className="hb-trained-skills-section-head">
@@ -106,7 +186,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
                 <span className="hb-trained-skills-count">{skills.length}</span>
               </header>
               <div className="hb-trained-skills-tiers">
-                {levels.map(level => {
+                {levels.filter(level => !searchTerm || skills.some(skill => skill.level === level)).map(level => {
                   const entries = skills.filter(skill => skill.level === level).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
                   return (
                     <div className="hb-trained-skills-tier" key={level}>
@@ -7791,8 +7871,10 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                       const dexterityLoss = Math.max(0, dexterity - armorDexterity)
                       return (
                         <>
-                        {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
-                        {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
+                        <div className="hb-sheet-conditions-section" id={forEnemy ? 'inimigo-condicoes' : 'ficha-condicoes'}>
+                          {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
+                          {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
+                        </div>
                         <section
                           className="combat-armor-panel sheet-armor-standalone sheet-armor-premium"
                           id={forEnemy ? 'inimigo-armadura-protecao' : 'ficha-armadura-protecao'}
@@ -8864,6 +8946,23 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                       </div>)}
                       {panel('Anotações', area('notes','Anotações gerais'))}
                       </fieldset>) : (<section className="character-sheet-summary sheet-overview-premium">
+                        <div className="hb-sheet-vitals" aria-label="Resumo imediato dos recursos">
+                          <div className="hb-sheet-vitals-caption"><span>◈</span><div><strong>Leitura rápida</strong><small>Recursos atuais da ficha</small></div></div>
+                          {derived.map(([label, maximum], index) => {
+                            const key = (['pv', 'ps', 'pr'] as const)[index]
+                            const raw = Number(read(`status.current.${key}`, maximum))
+                            const current = Math.max(0, key === 'pv' ? (Number.isFinite(raw) ? raw : maximum) : Math.min(maximum, Number.isFinite(raw) ? raw : maximum))
+                            const ratio = maximum > 0 ? current / maximum : 0
+                            const state = ratio <= 0.25 ? 'critical' : ratio <= 0.5 ? 'warning' : 'normal'
+                            return <button key={key} type="button" className={`hb-sheet-vital hb-vital-${key} is-${state}`}
+                              aria-label={`${label}: ${current} de ${maximum}. Ir aos status`}
+                              onClick={() => document.getElementById(forEnemy ? 'inimigo-status' : 'ficha-status')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}>
+                              <span className="hb-sheet-vital-symbol" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : '〰'}</span>
+                              <span className="hb-sheet-vital-info"><span>{key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}</span><strong>{current}<small> / {maximum}</small></strong></span>
+                              <span className="hb-sheet-vital-track" aria-hidden="true"><span style={{width:`${Math.min(100,ratio*100)}%`}} /></span>
+                            </button>
+                          })}
+                        </div>
                         <header className="sheet-summary-header">
                           <div className="sheet-summary-identity"><div className="sheet-summary-identity-main"><span className="sheet-summary-avatar" aria-hidden="true">{forEnemy ? (selectedEnemy?.emoji || '👹') : (selectedCharacter?.emoji || '⚔️')}</span><div className="sheet-summary-identity-copy"><span className="sheet-eyebrow">{forEnemy ? 'FICHA DE INIMIGO' : 'FICHA DE PERSONAGEM'}</span><h2>{String(read('identity.name', renderSubject?.name || (forEnemy ? 'Inimigo' : 'Personagem')))}</h2><p>
   {String(read('identity.family', 'Família não definida'))}
@@ -8940,8 +9039,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           const percent = value > 0 ? Math.min(current / value * 100, 100) : 0
                           const extraPV = key === 'pv' ? Math.max(0, current - value) : 0
                           const extraPercent = value > 0 ? Math.min(extraPV / value * 100, 100) : 0
-                          return <article key={label} className={`sheet-summary-status-card sheet-status-${key}`} style={{position:'relative',overflow:'hidden'}}>
-                            <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span></div>
+                          return <article key={label} className={`sheet-summary-status-card sheet-status-${key} ${percent<=25?'is-resource-critical':percent<=50?'is-resource-warning':'is-resource-stable'}`} style={{position:'relative',overflow:'hidden'}}>
+                            <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span><span className="hb-resource-condition">{percent<=0?'Esgotado':percent<=25?'Crítico':percent<=50?'Atenção':'Estável'}</span></div>
                             <span className="sheet-status-full-label">{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
                             <strong style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
                             <div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
@@ -8957,8 +9056,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <input type="text" inputMode="numeric" aria-label={`Ajuste de ${key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()}`} value={statusAdjustments[key] ?? ''} onChange={event=>setStatusAdjustments(previous=>({...previous,[key]:event.target.value}))} onKeyDown={event=>{if(event.key==='Enter')applyTypedAdjustment()}} placeholder="+10 ou -10" style={{minWidth:0,width:'100%',padding:'8px 10px',borderRadius:9,border:'1px solid rgba(255,255,255,.18)',background:'rgba(0,0,0,.2)',color:'inherit',font:'inherit'}} />
                               <button type="button" onClick={applyTypedAdjustment} style={{whiteSpace:'nowrap',padding:'7px 11px',borderRadius:9,border:'1px solid '+colors.accent,background:colors.glow,color:'inherit',fontWeight:700,cursor:'pointer'}}>Aplicar</button>
                             </div>}
-                            {key === 'pv' && <div className="status-card-damage-control"><strong>Aplicar dano físico</strong><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${isKisatsutaiSystem && physicalDamageType !== 'especial_bruto' ? 0 : physicalProtection}` : `Proteção: ${isKisatsutaiSystem && physicalDamageType !== 'especial_bruto' ? 0 : physicalProtection}`}</small><button type="button" disabled={!renderCanEdit || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const reduced=calculateSheetPhysicalDamage({incoming,reactionReduction:0,damageType:physicalDamageType,defenses:characterDefenses,specialBruteProtectionOnly:isKisatsutaiSystem}).remaining;const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div>}
-                            {key === 'ps' && <div className="status-card-damage-control sanity"><strong>Aplicar dano de sanidade</strong><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!renderCanEdit || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div>}
+                            {key === 'pv' && <details className="status-card-damage-control"><summary><span aria-hidden="true">⚔</span>Aplicar dano físico<span aria-hidden="true" className="hb-disclosure-chevron">⌄</span></summary><div className="hb-status-damage-body"><label>Tipo de dano<select value={physicalDamageType} onChange={event=>setPhysicalDamageType(event.target.value as 'cortante_perfurante'|'especial_bruto')}><option value="cortante_perfurante">Cortante / Perfurante</option><option value="especial_bruto">Especial / Bruto</option></select></label><label>Dano recebido<input type="number" min="0" value={physicalDamageAmount} onChange={event=>setPhysicalDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>{armorCovers(physicalDamageType) ? `Armadura: ${armorResistance} · Proteção: ${isKisatsutaiSystem && physicalDamageType !== 'especial_bruto' ? 0 : physicalProtection}` : `Proteção: ${isKisatsutaiSystem && physicalDamageType !== 'especial_bruto' ? 0 : physicalProtection}`}</small><button type="button" disabled={!renderCanEdit || physicalDamageAmount.trim()==='' || Number(physicalDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(physicalDamageAmount)||0);const reduced=calculateSheetPhysicalDamage({incoming,reactionReduction:0,damageType:physicalDamageType,defenses:characterDefenses,specialBruteProtectionOnly:isKisatsutaiSystem}).remaining;const currentPV=Number(read('status.current.pv',derived[0][1]));const nextPV=Math.max(0,currentPV-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:nextPV,ps:Number(read('status.current.ps',derived[1][1])),pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano ${physicalDamageType==='cortante_perfurante'?'cortante/perfurante':'especial/bruto'}: ${incoming}. Redução: ${incoming-reduced}. PV perdidos: ${reduced}.`);setPhysicalDamageAmount('')}}>Aplicar aos PV</button></div></details>}
+                            {key === 'ps' && <details className="status-card-damage-control sanity"><summary><span aria-hidden="true">✧</span>Aplicar dano de sanidade<span aria-hidden="true" className="hb-disclosure-chevron">⌄</span></summary><div className="hb-status-damage-body"><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!renderCanEdit || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div></details>}
                             {key === 'pr' && usesFamilyTiers && (() => {
                               const rank = getSystemRank(rankIdForStatus)
                               const group = rank.group
@@ -11974,16 +12073,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             </div>
           </div>
         </div>
-        <nav className="sheet-quick-nav hb-sheet-nav-v2" aria-label="Navegação da ficha do inimigo"><span className="hb-nav-caption">SEÇÕES DA FICHA</span>
-          {(enemyEditingSheet ? [
-            ['✎', 'Edição', 'inimigo-edicao'], ['⚔', 'Ações', 'inimigo-acoes'], ['◈', 'Reações', 'inimigo-reacoes'],
-            ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
-          ] : [
-            ['♥', 'Status', 'inimigo-status'], ['✦', 'Atributos', 'inimigo-atributos'], ['✧', 'Perícias', 'inimigo-pericias'],
-            ['⚔', 'Combate', 'inimigo-combate'], ['◈', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'],
-            ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
-          ]).map(([symbol,label,target]) => <button type="button" key={target} onClick={() => document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">{symbol}</span>{label}</button>)}
-        </nav>
+        <SheetSectionNav label="Navegação da ficha do inimigo" sections={enemyEditingSheet ? [
+          ['✎', 'Edição', 'inimigo-edicao'], ['⚔', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'],
+          ['✺', 'Condições', 'inimigo-condicoes'], ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
+        ] : [
+          ['♥', 'Status', 'inimigo-status'], ['✦', 'Atributos', 'inimigo-atributos'], ['✧', 'Perícias', 'inimigo-pericias'],
+          ['⚔', 'Combate', 'inimigo-combate'], ['◈', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'],
+          ['✺', 'Condições', 'inimigo-condicoes'], ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
+        ]} />
         {renderSharedSheetCore(true)}
         {renderSharedSheetCore(true, 'armor')}
 <section className="inventory-section sheet-inventory-section" id="inimigo-inventario">
@@ -12977,16 +13074,14 @@ disabled={
   </div>
 )}
                   </div>
-                  <nav className="sheet-quick-nav hb-sheet-nav-v2" aria-label="Navegação da ficha"><span className="hb-nav-caption">SEÇÕES DA FICHA</span>
-                    {(editingSheet ? [
-                      ['✎', 'Edição', 'ficha-edicao'], ['⚔', 'Ações', 'ficha-acoes'], ['◈', 'Reações', 'ficha-reacoes'],
-                      ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
-                    ] : [
-                      ['♥', 'Status', 'ficha-status'], ['✦', 'Atributos', 'ficha-atributos'], ['✧', 'Perícias', 'ficha-pericias'],
-                      ['⚔', 'Combate', 'ficha-combate'], ['◈', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'],
-                      ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
-                    ]).map(([symbol,label,target]) => <button type="button" key={target} onClick={() => document.getElementById(target)?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">{symbol}</span>{label}</button>)}
-                  </nav>
+                                     <SheetSectionNav label="Navegação da ficha" sections={editingSheet ? [
+                     ['✎', 'Edição', 'ficha-edicao'], ['⚔', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'],
+                     ['✺', 'Condições', 'ficha-condicoes'], ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
+                   ] : [
+                     ['♥', 'Status', 'ficha-status'], ['✦', 'Atributos', 'ficha-atributos'], ['✧', 'Perícias', 'ficha-pericias'],
+                     ['⚔', 'Combate', 'ficha-combate'], ['◈', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'],
+                     ['✺', 'Condições', 'ficha-condicoes'], ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
+                   ]} />
                   {renderSharedSheetCore(false)}
                   {editingSheet && canEditSelectedSheet && (
   <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:12}}>
