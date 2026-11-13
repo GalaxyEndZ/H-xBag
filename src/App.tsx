@@ -9049,7 +9049,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <small>{Math.floor(1 + agility) <= 0 ? `${2 - Math.floor(1 + agility)}D20 (desvantagem)` : `${Math.floor(1 + agility)}D20`} + Combate ({combat})</small>
                             </button>
 
-                            {isKisatsutaiSystem && <><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">🎯</span><strong>Tiro</strong><small>({Math.max(1, 1 + Math.floor(intellect))}d20, maior resultado) + Habilidade ({ability})</small></button><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">🏹</span><strong>Disparo</strong><small>({Math.max(1, 1 + Math.floor(agility))}d20, maior resultado) + Habilidade ({ability})</small></button></>}
+                            {isKisatsutaiSystem && <><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">🎯</span><strong>Tiro</strong><small>{Math.max(1, 1 + Math.floor(intellect))}D20 + Habilidade ({ability})</small></button><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">🏹</span><strong>Disparo</strong><small>{Math.max(1, 1 + Math.floor(agility))}D20 + Habilidade ({ability})</small></button></>}
 
                             <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
                               <span className="combat-action-icon">✦</span>
@@ -11141,6 +11141,30 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <small>Seu registro no HäxBag</small>
                 </article>
               </div>
+
+              <section className="hb-profile-collections" aria-label="Minha jornada nas campanhas">
+                <div className="hb-profile-collection-heading"><div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Personagens que você criou ou que foram atribuídos a você.</p></div><span className="hb-profile-collection-count">{characters.filter(character => character.user_id === session.user.id || character.current_player_id === session.user.id).length} personagens</span></div>
+                <div className="hb-profile-character-grid">
+                  {characters.filter(character => character.user_id === session.user.id || character.current_player_id === session.user.id).length ?
+                    characters.filter(character => character.user_id === session.user.id || character.current_player_id === session.user.id).map(character => (
+                      <article className="hb-profile-character-card" key={character.id}>
+                        <span className="hb-profile-character-avatar" aria-hidden="true">{character.emoji || '⚔️'}</span>
+                        <div className="hb-profile-character-info"><strong>{character.name}</strong><span>{campaigns.find(campaign => campaign.id === character.campaign_id)?.name || 'Campanha não disponível'}</span><small>{character.archetype || 'Arquétipo não definido'}</small></div>
+                        <span className="hb-profile-character-role">{character.current_player_id === session.user.id ? 'Jogador' : 'Criador'}</span>
+                      </article>
+                    )) : <p className="hb-profile-empty-collection">Seus personagens aparecerão aqui quando forem criados ou atribuídos à sua conta.</p>}
+                </div>
+                <div className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Uma visão das campanhas das quais você participa.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
+                <div className="hb-profile-campaign-grid">
+                  {campaigns.length ? campaigns.map(campaign => (
+                    <article key={campaign.id} className="hb-profile-campaign-card">
+                      <span className="hb-profile-campaign-emblem" aria-hidden="true">✧</span>
+                      <div><strong>{campaign.name}</strong><small>{campaign.system_name || 'Campanha de RPG'}</small></div>
+                      <span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? 'Mestre' : 'Jogador'}</span>
+                    </article>
+                  )) : <p className="hb-profile-empty-collection">Você ainda não participa de nenhuma campanha.</p>}
+                </div>
+              </section>
 
               <div className="hb-profile-layout" id="hb-profile-editor-region">
                 {profileEditing ? (
