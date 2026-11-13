@@ -40,6 +40,30 @@ export const visualStyles = {
     signature: 'TUDO ESTÁ NORMAL',
     description: 'Tinta, lua pálida e névoa sobre o vale.',
   },
+  vigilia_lunar: {
+    label: 'Vigília Lunar',
+    symbol: '☽',
+    signature: 'A LUA OBSERVA',
+    description: 'Crescente velada, véus de luz e silêncio ritual sobre superfícies escuras.',
+  },
+  floresta_esquecida: {
+    label: 'Floresta Esquecida',
+    symbol: '❀',
+    signature: 'RAÍZES E SUSSURROS',
+    description: 'Folhagens místicas, trilhas cobertas de musgo e ornamentos de natureza antiga.',
+  },
+  inverno_eterno: {
+    label: 'Inverno Eterno',
+    symbol: '❄',
+    signature: 'FRIO SOBERANO',
+    description: 'Cristais glaciais, névoa de inverno e arquitetura talhada pelo gelo.',
+  },
+  arcano: {
+    label: 'Arcano',
+    symbol: '✶',
+    signature: 'RUNAS EM MOVIMENTO',
+    description: 'Geometrias místicas, círculos de invocação e gravuras de grimório refinado.',
+  },
 } as const
 
 export type VisualStyleKey = keyof typeof visualStyles

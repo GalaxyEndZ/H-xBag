@@ -626,6 +626,21 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
   const totalDelivered = history.reduce((total, record) => total + record.quantity, 0)
   const categoryList = [...new Set(items.flatMap(itemCategories))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   const lowStockCount = items.filter(item => !isInfinite(item) && item.quantity <= lowStockThreshold && item.status === 'available').length
+  const categoryInsights = useMemo(() => Object.entries(items.reduce<Record<string, number>>((acc, item) => {
+    itemCategories(item).forEach(category => { acc[category] = (acc[category] ?? 0) + 1 })
+    return acc
+  }, {})).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR')).slice(0, 5), [items])
+  const rarityInsights = useMemo(() => RARITIES.map(rarity => ({
+    ...rarity,
+    count: items.filter(item => itemRarity(item) === rarity.value).length,
+  })).filter(entry => entry.count > 0).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pt-BR')).slice(0, 4), [items])
+  const readyLoots = useMemo(() => loots.filter(loot => loot.entries.some(entry => lootItemIsAvailable(items.find(item => item.id === entry.itemId)))).length, [loots, items])
+  const stalledLoots = useMemo(() => loots.filter(loot => loot.entries.length > 0 && !loot.entries.some(entry => lootItemIsAvailable(items.find(item => item.id === entry.itemId)))).length, [loots, items])
+  const latestDelivery = useMemo(() => history.reduce<DeliveryRecord | null>((latest, record) => {
+    if (!latest) return record
+    return new Date(record.created_at).getTime() > new Date(latest.created_at).getTime() ? record : latest
+  }, null), [history])
+  const favoriteCount = items.filter(item => favorites.includes(item.id)).length
   const bundleEntries = useMemo(() => Object.entries(bundle).map(([id, quantity]) => ({
     id, item: items.find(candidate => candidate.id === id), quantity,
   })), [bundle, items])
@@ -1222,6 +1237,37 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
       <div><span>◇ Valor de estoque finito</span><strong>{stockValueByCurrency.length ? `${stockValueByCurrency.length} moeda(s)` : 'Sem valor'}</strong><small>{stockValueByCurrency.map(([currencyId, amount]) => currencyValue(amount, currencyId || null, currencyOptions)).join(' · ') || 'Nenhum preço cadastrado'}{variableMoneyInStock ? ' · valores aleatórios calculados pelo mínimo' : ''}</small></div>
       <div><span>✓ Drops prontos</span><strong>{items.filter(item => item.status === 'available' && hasStock(item)).length}</strong></div>
     </div>
+
+    <section className="mc-curation-grid" aria-label="Curadoria do baú do mestre">
+      <article className="mc-curation-card mc-curation-card-categories">
+        <div className="mc-curation-head"><span className="mc-eyebrow">CURADORIA</span><h2>Linhas do baú</h2><p>As categorias mais presentes ajudam a perceber onde a campanha está mais abastecida.</p></div>
+        {categoryInsights.length > 0 ? <div className="mc-curation-list">{categoryInsights.map(([category, count]) => <div className="mc-curation-row" key={category}><div><strong>{category}</strong><small>{count} {count === 1 ? 'item' : 'itens'} com esta classificação</small></div><span>{count}</span></div>)}</div> : <p className="mc-curation-empty">Ainda não há categorias suficientes para analisar.</p>}
+      </article>
+
+      <article className="mc-curation-card mc-curation-card-rarity">
+        <div className="mc-curation-head"><span className="mc-eyebrow">RARIDADE & COLEÇÃO</span><h2>Curva de valor</h2><p>Veja rapidamente onde estão as peças mais comuns, valiosas e favoritas do baú.</p></div>
+        <div className="mc-curation-pill-row">
+          <span className="mc-curation-pill">★ {favoriteCount} favorito(s)</span>
+          <span className="mc-curation-pill">🎯 {availableFiltered.length} disponíveis nos filtros</span>
+          <span className="mc-curation-pill">🧩 {bundlePresets.length} modelo(s) salvo(s)</span>
+        </div>
+        {rarityInsights.length > 0 ? <div className="mc-curation-list">{rarityInsights.map(entry => <div className="mc-curation-row" key={entry.value}><div><strong>{entry.label}</strong><small>Distribuição atual no acervo do mestre</small></div><span>{entry.count}</span></div>)}</div> : <p className="mc-curation-empty">Cadastre drops para compor a distribuição por raridade.</p>}
+      </article>
+
+      <article className="mc-curation-card mc-curation-card-rhythm">
+        <div className="mc-curation-head"><span className="mc-eyebrow">RITMO DE SESSÃO</span><h2>Pulso da campanha</h2><p>Acompanhe o estado dos loots, das entregas e da remessa atual sem sair do Baú.</p></div>
+        <div className="mc-curation-metrics">
+          <div><span>Loots prontos</span><strong>{readyLoots}</strong><small>{stalledLoots ? `${stalledLoots} sem drops disponíveis` : 'Todos com itens aptos para sorteio'}</small></div>
+          <div><span>Remessa ativa</span><strong>{bundleCount}</strong><small>{bundleCount ? `${bundleRecipients.length} destinatário(s) selecionado(s)` : 'Nenhum drop separado no momento'}</small></div>
+        </div>
+        {latestDelivery ? <div className="mc-curation-latest"><span>Última entrega</span><strong>{latestDelivery.item_name}</strong><small>Para {latestDelivery.character_name} · ×{latestDelivery.quantity} · {formatDate(latestDelivery.created_at)}</small></div> : <p className="mc-curation-empty">Ainda não há entregas registradas nesta campanha.</p>}
+        <div className="mc-curation-actions">
+          <button type="button" className="mc-button mc-ghost" onClick={() => setTab('loots')}>Abrir loots</button>
+          <button type="button" className="mc-button mc-ghost" onClick={() => setTab('history')}>Ver histórico</button>
+          <button type="button" className="mc-button mc-primary" onClick={openBundle} disabled={!bundleCount && !bundlePresets.length}>Preparar remessa</button>
+        </div>
+      </article>
+    </section>
     {bundleCount > 0 && <aside className="mc-bundle-strip" aria-label="Remessa em preparo">
       <div className="mc-bundle-strip-icon" aria-hidden="true">🎒</div>
       <div><strong>{bundleCount} {bundleCount === 1 ? 'drop separado' : 'drops separados'} para entrega</strong><span>{bundleTotal} unidade(s) · {bundleWeight.toLocaleString('pt-BR', {maximumFractionDigits: 2})} kg por personagem · {bundleMissing ? `${bundleMissing} indisponível(is)` : 'pronto para revisão'}</span></div>
