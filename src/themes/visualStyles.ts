@@ -64,6 +64,30 @@ export const visualStyles = {
     signature: 'RUNAS EM MOVIMENTO',
     description: 'Geometrias místicas, círculos de invocação e gravuras de grimório refinado.',
   },
+  catedral_onix: {
+    label: 'Catedral de Ônix',
+    symbol: '♜',
+    signature: 'VOTOS NA ESCURIDÃO',
+    description: 'Vitrais góticos, arcos ogivais e arquitetura imponente esculpida em sombra.',
+  },
+  mare_abissal: {
+    label: 'Maré Abissal',
+    symbol: '≋',
+    signature: 'ECOS DAS PROFUNDEZAS',
+    description: 'Marés ancestrais, anéis submarinos e movimentos fluidos das profundezas.',
+  },
+  jardim_espectral: {
+    label: 'Jardim Espectral',
+    symbol: '❦',
+    signature: 'PÉTALAS DO ALÉM',
+    description: 'Pétalas suspensas, arabescos botânicos e o silêncio dos jardins encantados.',
+  },
+  relicario_solar: {
+    label: 'Relicário Solar',
+    symbol: '✷',
+    signature: 'LEGADO DA AURORA',
+    description: 'Raios geométricos, molduras art déco e insígnias de um império solar.',
+  },
 } as const
 
 export type VisualStyleKey = keyof typeof visualStyles

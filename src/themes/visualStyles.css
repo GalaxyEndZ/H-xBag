@@ -5678,3 +5678,90 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
   pointer-events: none;
   background: linear-gradient(135deg, transparent 0 72%, color-mix(in srgb, var(--season-primary) 6%, transparent) 100%);
 }
+
+/* HäxBag V22 — Galeria de identidades: prévias luxuosas, pesquisa e quatro novos universos. */
+.app-shell .hb-customization-gallery{margin-top:6px}
+.app-shell .hb-style-gallery-toolbar{display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap;padding:14px;border-radius:16px;border:1px solid var(--season-line,rgba(255,255,255,.14));background:color-mix(in srgb,var(--season-surface-alt) 64%,var(--season-bg))}
+.app-shell .hb-style-gallery-count{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.app-shell .hb-style-gallery-count>span{color:var(--season-primary);font-size:23px;line-height:1}
+.app-shell .hb-style-gallery-count>strong{font-size:13px;font-weight:850;color:var(--season-text)}
+.app-shell .hb-style-gallery-count>small{font-size:11px;color:var(--season-muted)}
+.app-shell .hb-style-gallery-search{display:flex;align-items:center;gap:9px;min-width:0;min-height:40px;flex:0 1 350px;padding:0 11px;border:1px solid color-mix(in srgb,var(--season-primary) 24%,var(--season-line));border-radius:10px;background:var(--season-bg);color:var(--season-muted)}
+.app-shell .hb-style-gallery-search>span{color:var(--season-primary);font-size:22px}
+.app-shell .hb-style-gallery-search:focus-within{border-color:var(--season-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--season-primary) 12%,transparent)}
+.app-shell .hb-style-gallery-search input{width:100%;min-width:0;flex:1;background:transparent;border:none;outline:none;box-shadow:none;color:var(--season-text);font-family:inherit;font-weight:650;font-size:12px;line-height:1.35;padding:10px 0}
+.app-shell .hb-style-gallery-search button{border:none;background:transparent;color:var(--season-muted);font-size:18px;padding:4px 6px;border-radius:5px;cursor:pointer}
+.app-shell .hb-style-gallery-search button:hover{background:var(--season-surface-alt);color:var(--season-text)}
+.app-shell .hb-customization-gallery .hb-style-gallery-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,248px),1fr));gap:15px}
+.app-shell .hb-customization-gallery .season-style-card{position:relative;isolation:isolate;overflow:hidden;grid-template-columns:minmax(0,1fr) 27px;grid-template-rows:auto auto 1fr auto;align-content:start;gap:9px 11px;padding:13px;border:1px solid color-mix(in srgb,var(--season-primary) 26%,var(--season-line));border-radius:17px;background:linear-gradient(145deg,var(--season-surface),var(--season-bg));box-shadow:0 8px 23px rgba(0,0,0,.08),inset 0 1px rgba(255,255,255,.035);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.app-shell .hb-customization-gallery .season-style-card:hover:not(:disabled){transform:translateY(-3px);border-color:color-mix(in srgb,var(--season-primary) 72%,var(--season-line));box-shadow:0 14px 31px rgba(0,0,0,.18),0 0 0 1px color-mix(in srgb,var(--season-primary) 15%,transparent)}
+.app-shell .hb-customization-gallery .season-style-card.active{border-color:var(--season-primary);background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary) 9%,var(--season-surface)),var(--season-bg));box-shadow:0 0 0 1px color-mix(in srgb,var(--season-primary) 22%,transparent),0 14px 28px rgba(0,0,0,.15)}
+.app-shell .hb-customization-gallery .season-style-signature{grid-column:1;grid-row:1;display:flex;gap:7px;align-items:center;min-width:0;min-height:20px;font-size:9px;letter-spacing:.12em;font-weight:900;text-transform:uppercase;color:var(--season-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-shell .hb-customization-gallery .season-style-signature>span{font-size:9px;opacity:.6}
+.app-shell .hb-customization-gallery .season-style-preview{grid-column:1 / -1;grid-row:2;height:145px;min-width:0;overflow:hidden;isolation:isolate;border:1px solid color-mix(in srgb,var(--season-primary) 33%,transparent);border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),inset 0 -25px 35px rgba(0,0,0,.14)}
+.app-shell .hb-customization-gallery .season-style-preview::before{content:"";position:absolute;inset:9px;border:1px solid color-mix(in srgb,var(--season-primary) 14%,transparent);border-radius:7px;pointer-events:none;z-index:1}
+.app-shell .hb-customization-gallery .season-style-preview::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,transparent 20%,rgba(0,0,0,.11) 100%);pointer-events:none;z-index:0}
+.app-shell .hb-customization-gallery .season-style-preview-orb{z-index:0;width:80px;height:80px;top:18px;right:37px;box-shadow:0 0 0 14px color-mix(in srgb,var(--season-primary) 5%,transparent),0 0 0 28px color-mix(in srgb,var(--season-primary) 3%,transparent)}
+.app-shell .hb-customization-gallery .season-style-preview-glyph{z-index:2;top:19px;left:26px;font-size:62px;line-height:1.2;text-shadow:0 0 19px var(--season-glow)}
+.app-shell .hb-customization-gallery .season-style-preview-lines{z-index:2;bottom:34px;left:28px;right:28px;gap:5px}
+.app-shell .hb-customization-gallery .season-style-preview-lines i{height:3px;opacity:.88}
+.app-shell .hb-customization-gallery .season-style-preview-caption{position:absolute;z-index:3;bottom:11px;left:26px;right:12px;font-family:inherit;font-weight:850;font-size:9px;line-height:1.2;letter-spacing:.13em;color:color-mix(in srgb,var(--season-primary) 74%,var(--season-text));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.app-shell .hb-customization-gallery .season-style-preview-ornament{position:absolute;z-index:3;width:21px;height:21px;pointer-events:none}
+.app-shell .hb-customization-gallery .season-style-preview-ornament-top{top:12px;left:12px;border-top:1px solid color-mix(in srgb,var(--season-primary) 50%,transparent);border-left:1px solid color-mix(in srgb,var(--season-primary) 50%,transparent)}
+.app-shell .hb-customization-gallery .season-style-preview-ornament-bottom{bottom:12px;right:12px;border-bottom:1px solid color-mix(in srgb,var(--season-primary) 50%,transparent);border-right:1px solid color-mix(in srgb,var(--season-primary) 50%,transparent)}
+.app-shell .hb-customization-gallery .season-style-card-info{grid-column:1 / -1;grid-row:3;align-content:start;gap:8px;padding:3px 2px}
+.app-shell .hb-customization-gallery .season-style-card-info strong{font-size:16px;letter-spacing:-.025em;color:var(--season-text)}
+.app-shell .hb-customization-gallery .season-style-card-info small{font-size:11px;line-height:1.65;color:var(--season-muted)}
+.app-shell .hb-customization-gallery .season-style-card-check{grid-column:2;grid-row:1;margin-left:auto;width:24px;height:24px;align-self:start;font-size:15px}
+.app-shell .hb-customization-gallery .hb-style-gallery-choice{grid-column:1 / -1;grid-row:4;display:block;padding:10px 12px;border-radius:9px;border:1px solid color-mix(in srgb,var(--season-primary) 17%,var(--season-line));background:color-mix(in srgb,var(--season-primary) 7%,var(--season-surface-alt));font-size:9px;font-weight:900;letter-spacing:.13em;color:var(--season-muted);text-align:center}
+.app-shell .hb-customization-gallery .season-style-card.active .hb-style-gallery-choice{color:var(--season-primary);border-color:color-mix(in srgb,var(--season-primary) 45%,transparent);background:color-mix(in srgb,var(--season-primary) 12%,transparent)}
+.app-shell .hb-style-gallery-empty{display:flex;flex-direction:column;align-items:center;gap:9px;padding:26px 16px;border:1px dashed var(--season-line);border-radius:13px;background:var(--season-surface-alt);text-align:center}
+.app-shell .hb-style-gallery-empty strong{font-size:15px;color:var(--season-text)}
+.app-shell .hb-style-gallery-empty small{font-size:12px;color:var(--season-muted)}
+.app-shell .hb-style-gallery-empty button{margin-top:5px}
+.app-shell .hb-customization-hero-preview{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary) 9%,transparent),0 15px 37px rgba(0,0,0,.12)}
+.app-shell .hb-customization-preview-rays{position:absolute;inset:8%;pointer-events:none;opacity:.3;background:repeating-conic-gradient(from 0deg at 50% 50%,color-mix(in srgb,var(--season-primary) 24%,transparent) 0 1.5deg,transparent 1.5deg 16deg);mask-image:radial-gradient(circle,transparent 21%,#000 50%,transparent 75%)}
+.app-shell .hb-customization-preview-motto{font-size:9px;letter-spacing:.19em;font-weight:850;color:var(--season-primary);text-align:center;margin-top:6px;position:relative;z-index:1}
+@media(max-width:750px){.app-shell .hb-style-gallery-search{flex:1 1 100%;max-width:none}.app-shell .hb-customization-gallery .hb-style-gallery-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr))}}
+@media(max-width:500px){.app-shell .hb-customization-gallery .hb-style-gallery-grid{grid-template-columns:1fr}.app-shell .hb-customization-gallery .season-style-preview{height:135px}}
+@media(prefers-reduced-motion:reduce){.app-shell .hb-customization-gallery .season-style-card{transition:none}.app-shell .hb-customization-gallery .season-style-card:hover:not(:disabled){transform:none}}
+
+/* Catedral de Ônix — arcos e vitrais. */
+.app-shell .season-style-catedral_onix .season-style-preview{border-radius:14px 14px 5px 5px;background:repeating-linear-gradient(90deg,transparent 0 32px,color-mix(in srgb,var(--season-primary) 12%,transparent) 33px 34px,transparent 35px 60px),radial-gradient(ellipse at 52% -10%,color-mix(in srgb,var(--season-primary) 20%,transparent),transparent 72%),linear-gradient(155deg,var(--season-bg),var(--season-surface-alt))}
+.app-shell .season-style-catedral_onix .season-style-preview-orb{top:12px;right:35px;width:78px;height:105px;border-radius:50% 50% 3px 3px;border-width:2px;background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary) 24%,transparent),transparent)}
+.app-shell .season-style-catedral_onix .season-style-preview-glyph{font-family:Georgia,serif;font-size:65px;left:27px;top:17px}
+.app-shell .season-style-catedral_onix .season-style-preview-lines i{height:2px;border-radius:0}
+.app-shell.visual-style-catedral_onix .main-content{background-image:linear-gradient(90deg,transparent 98%,color-mix(in srgb,var(--season-primary) 3%,transparent) 99%),radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--season-primary) 8%,transparent),transparent 35%);background-size:68px 100%,auto}
+.app-shell.visual-style-catedral_onix .page-content :is(h1,h2,h3){font-family:Georgia,serif;letter-spacing:.005em}
+.app-shell.visual-style-catedral_onix .page-content :is(.card,.panel,.sheet-card,.sheet-summary-card,.campaign-card,.season-theme-panel,.enemy-hub-card){border-radius:15px 15px 5px 5px !important;border-top-color:color-mix(in srgb,var(--season-primary) 48%,var(--season-line))}
+.app-shell.visual-style-catedral_onix :is(.sidebar,.topbar){border-color:color-mix(in srgb,var(--season-primary) 35%,var(--season-line))}
+
+/* Maré Abissal — anéis concêntricos e curvas profundas. */
+.app-shell .season-style-mare_abissal .season-style-preview{background:repeating-radial-gradient(ellipse at 90% 20%,transparent 0 13px,color-mix(in srgb,var(--season-primary) 13%,transparent) 14px 15px,transparent 16px 28px),linear-gradient(145deg,color-mix(in srgb,var(--season-bg) 86%,#071b2b),color-mix(in srgb,var(--season-surface-alt) 82%,#07131c))}
+.app-shell .season-style-mare_abissal .season-style-preview-orb{top:14px;right:32px;width:88px;height:88px;border:3px double color-mix(in srgb,var(--season-primary) 60%,transparent);border-radius:50%;background:radial-gradient(circle,transparent 28%,color-mix(in srgb,var(--season-primary) 14%,transparent) 30% 38%,transparent 44%)}
+.app-shell .season-style-mare_abissal .season-style-preview-glyph{font-size:69px;left:24px;top:8px}
+.app-shell .season-style-mare_abissal .season-style-preview-lines i{border-radius:999px}
+.app-shell.visual-style-mare_abissal .main-content{background-image:repeating-radial-gradient(ellipse at 110% -10%,transparent 0 150px,color-mix(in srgb,var(--season-primary) 3%,transparent) 151px 152px,transparent 153px 240px)}
+.app-shell.visual-style-mare_abissal .page-content :is(.card,.panel,.sheet-card,.campaign-card,.season-theme-panel,.enemy-hub-card){border-radius:24px !important}
+.app-shell.visual-style-mare_abissal .page-content :is(.sheet-card-title,.inventory-heading){border-bottom-style:double}
+.app-shell.visual-style-mare_abissal :is(.sidebar,.topbar){border-color:color-mix(in srgb,var(--season-primary) 25%,var(--season-line))}
+
+/* Jardim Espectral — arabescos e pétalas flutuantes. */
+.app-shell .season-style-jardim_espectral .season-style-preview{background:radial-gradient(ellipse at 78% 19%,color-mix(in srgb,var(--season-primary) 19%,transparent),transparent 45%),repeating-conic-gradient(from 15deg at 78% 34%,transparent 0 22deg,color-mix(in srgb,var(--season-primary) 8%,transparent) 23deg 26deg,transparent 27deg 45deg),linear-gradient(145deg,var(--season-bg),var(--season-surface-alt))}
+.app-shell .season-style-jardim_espectral .season-style-preview-orb{top:16px;right:37px;width:84px;height:84px;border-radius:50% 12% 50% 12%;transform:rotate(45deg);background:radial-gradient(circle,color-mix(in srgb,var(--season-primary) 19%,transparent),transparent 75%)}
+.app-shell .season-style-jardim_espectral .season-style-preview-glyph{font-family:Georgia,serif;font-size:70px;left:25px;top:14px}
+.app-shell .season-style-jardim_espectral .season-style-preview-lines i{border-radius:30% 70% 30% 70%}
+.app-shell.visual-style-jardim_espectral .main-content{background-image:radial-gradient(ellipse at 98% 6%,color-mix(in srgb,var(--season-primary) 9%,transparent),transparent 26%),radial-gradient(ellipse at 3% 94%,color-mix(in srgb,var(--season-primary) 5%,transparent),transparent 31%)}
+.app-shell.visual-style-jardim_espectral .page-content :is(h1,h2,h3){font-family:Georgia,serif;letter-spacing:.012em}
+.app-shell.visual-style-jardim_espectral .page-content :is(.card,.panel,.sheet-card,.campaign-card,.season-theme-panel){border-radius:20px 9px 20px 9px !important}
+.app-shell.visual-style-jardim_espectral .page-content :is(.sheet-card-title,.inventory-heading){border-bottom-color:color-mix(in srgb,var(--season-primary) 35%,var(--season-line))}
+
+/* Relicário Solar — geometria art déco e raios imperiais. */
+.app-shell .season-style-relicario_solar .season-style-preview{background:repeating-conic-gradient(from 0deg at 76% 36%,color-mix(in srgb,var(--season-primary) 15%,transparent) 0 3deg,transparent 4deg 18deg),linear-gradient(145deg,color-mix(in srgb,var(--season-bg) 90%,#281507),var(--season-surface-alt))}
+.app-shell .season-style-relicario_solar .season-style-preview-orb{top:17px;right:34px;width:75px;height:75px;border:3px double color-mix(in srgb,var(--season-primary) 65%,transparent);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--season-primary) 22%,transparent),transparent 70%)}
+.app-shell .season-style-relicario_solar .season-style-preview-glyph{font-family:Georgia,serif;font-size:72px;left:25px;top:10px}
+.app-shell .season-style-relicario_solar .season-style-preview-lines i{border-radius:0;height:2px}
+.app-shell.visual-style-relicario_solar .main-content{background-image:repeating-linear-gradient(135deg,transparent 0 80px,color-mix(in srgb,var(--season-primary) 2%,transparent) 81px 82px,transparent 83px 160px),radial-gradient(ellipse at 84% -3%,color-mix(in srgb,var(--season-primary) 7%,transparent),transparent 32%)}
+.app-shell.visual-style-relicario_solar .page-content :is(h1,h2,h3){letter-spacing:.025em}
+.app-shell.visual-style-relicario_solar .page-content :is(.card,.panel,.sheet-card,.campaign-card,.season-theme-panel,.enemy-hub-card){border-radius:5px !important;border-color:color-mix(in srgb,var(--season-primary) 30%,var(--season-line));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary) 7%,transparent)}
+.app-shell.visual-style-relicario_solar :is(.primary-button,.secondary-button,.nav-link,.campaign-select){border-radius:6px !important}

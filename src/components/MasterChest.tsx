@@ -1193,7 +1193,8 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
       <div className="mc-hero-copy">
         <span className="mc-eyebrow">✦ ARSENAL DA CAMPANHA · ACESSO DO MESTRE</span>
         <h1><span aria-hidden="true">🗝️</span> Baú do Mestre</h1>
-        <p>Prepare o próximo encontro, organize recompensas e entregue drops aos personagens sem sair da campanha.</p>
+        <p>Organize artefatos e recompensas, prepare sorteios e distribua os tesouros da campanha em um único relicário.</p>
+        <div className="mc-hero-highlights" aria-label="Indicadores rápidos do Baú"><span>✦ {items.length} tesouros</span><span>♜ {loots.length} loots</span><span>↗ {history.length} entregas registradas</span></div>
         <div className="mc-hero-actions">
           <button type="button" className="mc-button mc-primary" onClick={() => startEditor()}>＋ Criar drop</button>
           <button type="button" className="mc-button mc-ghost" onClick={() => { setTab('loots'); openLootEditor() }}>🎲 Criar loot</button>
@@ -1202,7 +1203,49 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
           <button type="button" className="mc-button mc-ghost" onClick={() => void refresh()} disabled={loading || Boolean(busy)}>↻ Atualizar</button>
         </div>
       </div>
-      <div className="mc-hero-art" aria-hidden="true"><span className="mc-chest-glyph">✧</span><span className="mc-chest-icon">▣</span><span className="mc-chest-engraving">HÄXBAG · LOOT VAULT</span></div>
+      <div className="mc-hero-art mc-hero-art-regalia" aria-hidden="true">
+        <span className="mc-hero-art-halo" />
+        <svg className="mc-hero-chest-svg" viewBox="0 0 280 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="mc-gold-v22" x1="54" y1="75" x2="230" y2="211" gradientUnits="userSpaceOnUse">
+              <stop stopColor="currentColor" stopOpacity=".95" />
+              <stop offset=".52" stopColor="currentColor" stopOpacity=".55" />
+              <stop offset="1" stopColor="currentColor" stopOpacity=".9" />
+            </linearGradient>
+            <linearGradient id="mc-fill-v22" x1="83" y1="101" x2="195" y2="197" gradientUnits="userSpaceOnUse">
+              <stop stopColor="currentColor" stopOpacity=".17" />
+              <stop offset="1" stopColor="currentColor" stopOpacity=".035" />
+            </linearGradient>
+          </defs>
+          <g stroke="currentColor" strokeOpacity=".42" strokeWidth="1.15">
+            <circle cx="140" cy="122" r="104" strokeDasharray="2 9" />
+            <circle cx="140" cy="122" r="85" strokeDasharray="4 10" />
+            <path d="M140 13v21m0 175v20M30 122h23m174 0h23M63 45l17 18m120 121 17 18M217 45l-17 18M80 184l-17 18" />
+          </g>
+          <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M140 33c6 13 12 21 23 27-14 1-20 8-23 20-3-12-9-19-23-20 11-6 17-14 23-27Z" fill="currentColor" fillOpacity=".09" />
+            <path d="M61 80c11-8 20-7 27-2m-9-18c6 10 10 14 19 17M219 80c-11-8-20-7-27-2m9-18c-6 10-10 14-19 17" strokeOpacity=".45" />
+            <path d="M46 148c-18 9-20 21-5 30m14-21c-7 22 3 34 21 29m158-38c18 9 20 21 5 30m-14-21c7 22-3 34-21 29" strokeOpacity=".35" />
+          </g>
+          <path d="M58 125 72 90c26-22 110-22 136 0l14 35-9 15H67l-9-15Z" fill="url(#mc-fill-v22)" stroke="url(#mc-gold-v22)" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M72 93c35-16 101-16 136 0M66 121h148M83 86l-8 36m122-36 8 36" stroke="currentColor" strokeOpacity=".45" strokeWidth="1.4" />
+          <path d="M62 133h156l-10 65c-38 15-99 15-136 0l-10-65Z" fill="url(#mc-fill-v22)" stroke="url(#mc-gold-v22)" strokeWidth="3" strokeLinejoin="round" />
+          <path d="M82 135v60m116-60v60M63 160h154M69 183c43 11 99 11 142 0" stroke="currentColor" strokeOpacity=".45" strokeWidth="1.4" />
+          <path d="M56 124h168v17H56z" fill="currentColor" fillOpacity=".14" stroke="currentColor" strokeWidth="2" strokeOpacity=".72" />
+          <path d="M129 128h22v39c0 12-22 12-22 0v-39Z" fill="currentColor" fillOpacity=".16" stroke="currentColor" strokeWidth="2.4" />
+          <path d="M140 138c-10 9-10 16 0 24 10-8 10-15 0-24Z" fill="currentColor" fillOpacity=".36" />
+          <path d="M140 142v13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <path d="M89 154c10 4 19 5 29 4m73-4c-10 4-19 5-29 4M82 103h30m56 0h30" stroke="currentColor" strokeOpacity=".56" strokeWidth="1.8" strokeLinecap="round" />
+          <g fill="currentColor" fillOpacity=".5">
+            <circle cx="80" cy="128" r="2.4"/><circle cx="201" cy="128" r="2.4"/><circle cx="83" cy="186" r="2"/><circle cx="197" cy="186" r="2"/>
+            <circle cx="49" cy="102" r="2.5"/><circle cx="234" cy="102" r="2.5"/>
+          </g>
+          <path d="m140 6 3 6-3 6-3-6 3-6Zm-99 52 2 5-2 5-2-5 2-5Zm198 0 2 5-2 5-2-5 2-5Z" fill="currentColor" fillOpacity=".68" />
+          <path d="M90 219c30 12 70 12 100 0" stroke="currentColor" strokeWidth="1.5" strokeOpacity=".52" />
+        </svg>
+        <span className="mc-chest-engraving">HÄXBAG · RELICÁRIO DO MESTRE</span>
+        <span className="mc-hero-art-corner mc-hero-art-corner-tl" /><span className="mc-hero-art-corner mc-hero-art-corner-br" />
+      </div>
     </header>
 
     {importOpen && <section className="mc-inventory-import" aria-label="Copiar itens do inventário comum">

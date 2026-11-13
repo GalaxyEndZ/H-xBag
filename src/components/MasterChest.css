@@ -382,3 +382,54 @@
 .mc-message-preview small{font-size:10px;color:var(--mc-muted)}
 .mc-message-tag{display:inline-flex;align-items:center;width:fit-content;margin-top:7px;padding:4px 8px;border:1px solid var(--mc-border);border-radius:7px;color:var(--mc-accent);font-size:10px;font-weight:700}
 .mc-delivery-message-note{margin:12px 0;padding:10px 13px;border:1px solid var(--mc-border);border-radius:10px;background:var(--mc-soft);font-size:12px;line-height:1.5}
+
+/* HäxBag V22 — Relicário do Mestre: identidade ornamental e controles refinados. */
+.mc-page .mc-hero {
+  min-height: 286px;
+  grid-template-columns: minmax(0,1.52fr) minmax(230px,.48fr);
+  border-radius: 25px;
+  border-color: color-mix(in srgb,var(--mc-accent) 45%,var(--mc-border));
+  background:
+    radial-gradient(ellipse at 77% 23%,color-mix(in srgb,var(--mc-accent) 19%,transparent),transparent 48%),
+    radial-gradient(ellipse at 8% 105%,color-mix(in srgb,var(--mc-accent) 6%,transparent),transparent 48%),
+    linear-gradient(125deg,var(--mc-surface),var(--mc-bg));
+  box-shadow:0 24px 64px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.065);
+}
+.mc-page .mc-hero::before{inset:10px;border-radius:17px;border-color:color-mix(in srgb,var(--mc-accent) 20%,transparent)}
+.mc-page .mc-hero::after{content:"✧";pointer-events:none;position:absolute;z-index:0;left:clamp(12px,2vw,28px);bottom:10px;font:35px Georgia,serif;color:color-mix(in srgb,var(--mc-accent) 25%,transparent);transform:rotate(-18deg)}
+.mc-page .mc-hero-copy{gap:0}
+.mc-page .mc-hero h1{letter-spacing:-.055em;font-size:clamp(31px,3.5vw,48px);text-wrap:balance}
+.mc-page .mc-hero .mc-eyebrow{letter-spacing:.18em;font-size:10px}
+.mc-page .mc-hero p{max-width:59ch;font-size:13px;line-height:1.75}
+.mc-page .mc-hero-highlights{display:flex;flex-wrap:wrap;gap:7px;margin-top:19px}
+.mc-page .mc-hero-highlights span{display:inline-flex;align-items:center;gap:5px;padding:7px 10px;font-family:inherit;font-weight:750;font-size:10px;line-height:1.25;border-radius:999px;color:var(--mc-ink);border:1px solid color-mix(in srgb,var(--mc-accent) 25%,var(--mc-border));background:color-mix(in srgb,var(--mc-accent) 8%,transparent)}
+.mc-page .mc-hero-actions{margin-top:22px}
+.mc-page .mc-hero-actions .mc-button{min-height:41px;border-radius:11px;font-weight:800}
+.mc-page .mc-hero-art-regalia{align-self:stretch;justify-self:center;max-width:312px;min-width:0;min-height:235px;opacity:1;isolation:isolate}
+.mc-page .mc-hero-art-halo{position:absolute;z-index:-1;inset:10% 1% 9%;border-radius:50%;background:radial-gradient(ellipse at center,color-mix(in srgb,var(--mc-accent) 20%,transparent),transparent 62%);filter:blur(5px);pointer-events:none}
+.mc-page .mc-hero-chest-svg{display:block;width:min(100%,298px);height:auto;aspect-ratio:280/250;color:var(--mc-accent);filter:drop-shadow(0 7px 13px rgba(0,0,0,.28));transition:transform .45s ease,filter .45s ease}
+.mc-page .mc-hero-art-regalia:hover .mc-hero-chest-svg{transform:translateY(-3px);filter:drop-shadow(0 11px 18px rgba(0,0,0,.34))}
+.mc-page .mc-hero-art-regalia .mc-chest-engraving{position:static;margin:-2px auto 8px;font-family:inherit;font-weight:800;font-size:9px;line-height:1.5;letter-spacing:.18em;text-align:center;color:var(--mc-accent);white-space:normal}
+.mc-page .mc-hero-art-corner{position:absolute;width:25px;height:25px;opacity:.5;pointer-events:none}
+.mc-page .mc-hero-art-corner-tl{top:15px;left:0;border-top:1px solid var(--mc-accent);border-left:1px solid var(--mc-accent)}
+.mc-page .mc-hero-art-corner-br{bottom:18px;right:0;border-bottom:1px solid var(--mc-accent);border-right:1px solid var(--mc-accent)}
+.mc-page .mc-stats{gap:12px}
+.mc-page .mc-stat{position:relative;overflow:hidden;border-radius:17px;min-height:110px;justify-content:center;background:linear-gradient(145deg,var(--mc-surface),color-mix(in srgb,var(--mc-accent) 2%,var(--mc-bg)))}
+.mc-page .mc-stat::before{content:"";position:absolute;left:18px;top:0;width:60px;height:2px;border-radius:0 0 5px 5px;background:var(--mc-accent);opacity:.46;pointer-events:none}
+.mc-page .mc-stat>strong{font-variant-numeric:tabular-nums}
+.mc-page .mc-curation-grid{gap:14px}
+.mc-page .mc-curation-card{position:relative;overflow:hidden;padding:19px;border-radius:19px;border-color:color-mix(in srgb,var(--mc-accent) 25%,var(--mc-border));background:radial-gradient(circle at 100% 0,color-mix(in srgb,var(--mc-accent) 8%,transparent),transparent 44%),linear-gradient(155deg,var(--mc-surface),var(--mc-bg));box-shadow:0 13px 35px rgba(0,0,0,.08),inset 0 1px rgba(255,255,255,.04)}
+.mc-page .mc-curation-card::before{content:"";position:absolute;right:16px;top:13px;width:40px;height:40px;border-top:1px solid color-mix(in srgb,var(--mc-accent) 30%,transparent);border-right:1px solid color-mix(in srgb,var(--mc-accent) 30%,transparent);border-radius:0 13px 0 0;pointer-events:none}
+.mc-page .mc-curation-head h2{font-size:21px;text-wrap:balance}
+.mc-page .mc-curation-head .mc-eyebrow{font-size:10px;letter-spacing:.16em}
+.mc-page .mc-curation-row{transition:border-color .17s ease,background .17s ease}
+.mc-page .mc-curation-row:hover{border-color:color-mix(in srgb,var(--mc-accent) 38%,var(--mc-border));background:color-mix(in srgb,var(--mc-accent) 7%,var(--mc-bg))}
+.mc-page .mc-curation-row>span{font-variant-numeric:tabular-nums}
+.mc-page .mc-main{border-radius:20px;border-color:color-mix(in srgb,var(--mc-accent) 18%,var(--mc-border));box-shadow:0 16px 37px rgba(0,0,0,.12)}
+.mc-page .mc-tabs button.active{color:var(--mc-accent)}
+.mc-page .mc-item,.mc-page .mc-loot-card{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.mc-page .mc-item:hover,.mc-page .mc-loot-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--mc-accent) 34%,var(--mc-border));box-shadow:0 14px 32px rgba(0,0,0,.12)}
+.mc-page .mc-item-icon,.mc-page .mc-loot-card-icon{box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+@media(max-width:860px){.mc-page .mc-hero{grid-template-columns:minmax(0,1fr) minmax(160px,.42fr)}.mc-page .mc-hero-art-regalia{min-height:165px}.mc-page .mc-hero .mc-hero-actions{gap:8px}}
+@media(max-width:650px){.mc-page .mc-hero{grid-template-columns:1fr}.mc-page .mc-hero-art-regalia{display:none}.mc-page .mc-hero-highlights{gap:6px}.mc-page .mc-hero-actions .mc-button{flex:1 1 145px}.mc-page .mc-curation-card{padding:16px}}
+@media(prefers-reduced-motion:reduce){.mc-page .mc-hero-chest-svg,.mc-page .mc-item,.mc-page .mc-loot-card{transition:none}.mc-page .mc-hero-art-regalia:hover .mc-hero-chest-svg,.mc-page .mc-item:hover,.mc-page .mc-loot-card:hover{transform:none}}
