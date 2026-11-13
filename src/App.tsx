@@ -9186,7 +9186,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             const current = Math.max(0, key === 'pv' ? (Number.isFinite(raw) ? raw : maximum) : Math.min(maximum, Number.isFinite(raw) ? raw : maximum))
                             const ratio = maximum > 0 ? current / maximum : 0
                             const state = ratio <= 0.25 ? 'critical' : ratio <= 0.5 ? 'warning' : 'normal'
-                            return <button key={key} type="button" className={`hb-sheet-vital hb-vital-${key} is-${state}`}
+                            return <button key={key} type="button" className={`hb-sheet-vital hb-vital-${key} ${forEnemy && isKisatsutaiSystem && key === 'pr' ? 'hb-vital-blood' : ''} is-${state}`}
                               aria-label={`${label}: ${current} de ${maximum}. Ir aos status`}
                               onClick={() => document.getElementById(forEnemy ? 'inimigo-status' : 'ficha-status')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}>
                               <span className="hb-sheet-vital-symbol" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : '〰'}</span>
@@ -9294,7 +9294,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   : percent <= 50
                                     ? { state: forEnemy && isKisatsutaiSystem ? 'Instável' : 'Cansado', availability: forEnemy && isKisatsutaiSystem ? 'Reserva pressionada' : 'Ritmo em queda', tone: 'warning' }
                                     : { state: forEnemy && isKisatsutaiSystem ? 'Fluxo Ativo' : 'Ritmo Firme', availability: forEnemy && isKisatsutaiSystem ? 'Reserva estável' : 'Respiração controlada', tone: 'stable' }
-                          return <article key={label} className={`sheet-summary-status-card sheet-status-${key} ${percent<=25?'is-resource-critical':percent<=50?'is-resource-warning':'is-resource-stable'}`} style={{position:'relative',overflow:'hidden'}}>
+                          return <article key={label} data-resource={key} data-resource-state={statusMeta.tone} className={`sheet-summary-status-card sheet-status-${key} ${forEnemy && isKisatsutaiSystem && key === 'pr' ? 'sheet-status-blood' : ''} ${percent<=25?'is-resource-critical':percent<=50?'is-resource-warning':'is-resource-stable'}`} style={{position:'relative',overflow:'hidden'}}>
                             <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span><span className="hb-resource-condition">{statusMeta.state}</span></div>
                             <span className="sheet-status-full-label">{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
                             <p className="sheet-status-description">
@@ -9307,7 +9307,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                     : 'Mostra o fôlego, o controle da respiração e a reserva necessária para sustentar técnicas, reações e esforços intensos.'}
                             </p>
                             <strong className="sheet-status-current-value" style={{display:'block',fontSize:24,margin:'5px 0'}}>{current}<small style={{fontSize:13,fontWeight:500,opacity:.7}}> / {value}</small></strong>
-                            <div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
+                            <div className="sheet-status-progress-track" role="progressbar" aria-label={`${key === 'pv' ? 'Vida' : key === 'ps' ? 'Sanidade' : sheetResourceName} disponível`} aria-valuemin={0} aria-valuemax={Math.max(0, value)} aria-valuenow={Math.min(current, Math.max(0, value))} style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'8px 0 4px'}}><div className="sheet-status-progress-fill" style={{height:'100%',width:`${percent}%`,borderRadius:99,background:colors.accent,boxShadow:`0 0 12px ${colors.glow}`,transition:'width .2s ease'}}/></div>
                             {extraPV > 0 && <><div style={{height:6,borderRadius:99,background:'rgba(255,255,255,.12)',overflow:'hidden',margin:'0 0 6px'}}><div style={{height:'100%',width:`${extraPercent}%`,borderRadius:99,background:'linear-gradient(90deg,#f6b84a,#ff7b45)',boxShadow:'0 0 12px rgba(246,184,74,.3)',transition:'width .2s ease'}}/></div><small style={{display:'block',color:'#ffc875',marginBottom:6}}>＋{extraPV} PV excedentes · barra extra</small></>}
                             <div className="sheet-status-availability-row" style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                               <small className="sheet-status-availability" style={{opacity:.7}}>{Math.round(percent)}% disponível · {statusMeta.availability}</small>

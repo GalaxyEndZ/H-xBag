@@ -15745,3 +15745,288 @@ button:disabled { opacity: .58; }
 @media (max-width: 640px){
   .app-shell .sheet-summary-status-card .sheet-status-description{max-width:none}
 }
+
+
+/* =======================================================================
+   HÄXBAG · FICHA REFINADA V14 — Tríade e acabamento unificado
+   Interface somente: nenhuma alteração nas regras, dados ou rolagens.
+   ======================================================================= */
+
+/* Os cartões param de herdar a altura do mais longo (inclusive o teste PR). */
+.app-shell .sheet-summary-status{align-items:start;gap:clamp(10px,1.2vw,17px)}
+.app-shell .sheet-summary-status-card{
+  --hb-status-color:var(--season-primary,#bda1db);
+  --hb-status-rgb:189,161,219;
+  --hb-status-fade:color-mix(in srgb,var(--hb-status-color) 11%,transparent);
+  --hb-status-border:color-mix(in srgb,var(--hb-status-color) 29%,var(--season-line,rgba(255,255,255,.12)));
+  border:1px solid var(--hb-status-border) !important;
+  border-radius:20px !important;
+  padding:clamp(14px,1.65vw,21px) !important;
+  background:
+    radial-gradient(ellipse 100% 64% at 95% 0%,color-mix(in srgb,var(--hb-status-color) 12%,transparent),transparent 80%),
+    linear-gradient(160deg,var(--season-surface-alt,#25232c) 0%,var(--season-surface,#16191e) 78%) !important;
+  box-shadow:0 12px 31px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.035) !important;
+  transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.app-shell .sheet-summary-status-card:is(:hover,:focus-within){
+  border-color:color-mix(in srgb,var(--hb-status-color) 55%,transparent) !important;
+  box-shadow:0 16px 35px rgba(0,0,0,.22),0 0 0 1px color-mix(in srgb,var(--hb-status-color) 9%,transparent) !important;
+}
+.app-shell .sheet-summary-status-card.sheet-status-pv{--hb-status-color:#ef8998;--hb-status-rgb:239,137,152}
+.app-shell .sheet-summary-status-card.sheet-status-ps{--hb-status-color:#b9a1ff;--hb-status-rgb:185,161,255}
+.app-shell .sheet-summary-status-card.sheet-status-pr{--hb-status-color:#7bcde8;--hb-status-rgb:123,205,232}
+.app-shell .sheet-summary-status-card.sheet-status-pr.sheet-status-blood{--hb-status-color:#df7c8c;--hb-status-rgb:223,124,140}
+.app-shell .sheet-summary-status-card::before{
+  height:3px;
+  opacity:1;
+  background:linear-gradient(90deg,transparent 0%,var(--hb-status-color) 23%,var(--hb-status-color) 78%,transparent 100%);
+  box-shadow:0 0 16px color-mix(in srgb,var(--hb-status-color) 19%,transparent);
+}
+/* Marca d'água sutil. Não cria espaço ou interfere nos cliques. */
+.app-shell .sheet-summary-status-card::after{
+  content:'♥';
+  position:absolute;
+  z-index:0;
+  top:70px;
+  right:-5px;
+  bottom:auto;
+  left:auto;
+  display:block;
+  width:auto;height:auto;
+  border-radius:0;
+  background:none;
+  opacity:.075;
+  font-size:clamp(72px,8vw,132px);
+  font-weight:300;
+  line-height:1;
+  color:var(--hb-status-color);
+  transform:rotate(-13deg);
+  pointer-events:none;
+}
+.app-shell .sheet-summary-status-card.sheet-status-ps::after{content:'✧';transform:rotate(9deg);opacity:.09}
+.app-shell .sheet-summary-status-card.sheet-status-pr::after{content:'〰';transform:rotate(-9deg);opacity:.11}
+.app-shell .sheet-summary-status-card.sheet-status-blood::after{content:'◆';transform:rotate(15deg);opacity:.08}
+.app-shell .sheet-summary-status-card .sheet-status-icon{
+  color:var(--hb-status-color) !important;
+  background:var(--hb-status-fade) !important;
+  border-color:color-mix(in srgb,var(--hb-status-color) 32%,transparent) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 18px color-mix(in srgb,var(--hb-status-color) 8%,transparent);
+}
+.app-shell .sheet-summary-status-card .sheet-status-card-name{
+  color:var(--season-text,#f1eef5) !important;
+  font-weight:850;
+  font-size:10px;
+  letter-spacing:.10em;
+}
+.app-shell .sheet-summary-status-card .sheet-status-full-label{
+  padding:5px 11px;
+  margin:1px 0 10px;
+  border:1px solid color-mix(in srgb,var(--hb-status-color) 31%,transparent);
+  background:var(--hb-status-fade);
+  color:var(--hb-status-color);
+  font-size:10.5px;
+  letter-spacing:.10em;
+}
+.app-shell .sheet-summary-status-card .sheet-status-description{
+  position:relative;
+  margin:0 0 15px;
+  min-height:4.15em;
+  max-width:39ch;
+  font-size:12px;
+  color:var(--season-muted,#b6bac6);
+  line-height:1.65;
+  text-wrap:pretty;
+}
+.app-shell .sheet-summary-status-card .sheet-status-current-value{
+  padding-top:3px;
+  color:var(--season-text,#f7f2fa);
+  font-size:clamp(30px,2.5vw,39px) !important;
+  font-weight:850;
+  letter-spacing:-.06em;
+  font-variant-numeric:tabular-nums;
+}
+.app-shell .sheet-summary-status-card .sheet-status-current-value small{color:var(--season-muted,#c5c5d4);font-weight:650}
+.app-shell .sheet-summary-status-card .sheet-status-progress-track{
+  height:9px !important;
+  margin:11px 0 9px !important;
+  background:rgba(127,134,151,.14) !important;
+  border:1px solid color-mix(in srgb,var(--hb-status-color) 19%,transparent) !important;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.22);
+  overflow:hidden;
+}
+.app-shell .sheet-summary-status-card .sheet-status-progress-fill{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--hb-status-color) 72%,#111 28%),var(--hb-status-color)) !important;
+  box-shadow:0 0 12px color-mix(in srgb,var(--hb-status-color) 46%,transparent) !important;
+  transition:width .22s ease !important;
+}
+.app-shell .sheet-summary-status-card .sheet-status-availability{font-size:11px;line-height:1.5;letter-spacing:0}
+.app-shell .sheet-summary-status-card .hb-resource-condition{
+  max-width:100%;
+  color:#b2f0d0;
+  border-color:rgba(110,218,160,.35);
+  background:rgba(110,218,160,.075);
+  font-size:10px;
+  letter-spacing:.025em;
+}
+.app-shell .sheet-summary-status-card.is-resource-warning .hb-resource-condition{color:#ffe0a5;background:rgba(244,185,100,.10);border-color:rgba(244,185,100,.35)}
+.app-shell .sheet-summary-status-card.is-resource-critical .hb-resource-condition{color:#ffc2c9;background:rgba(240,102,120,.11);border-color:rgba(240,102,120,.39)}
+/* Status 0% ganha borda mais forte; não altera nenhum efeito do personagem. */
+.app-shell .sheet-summary-status-card[data-resource-state="critical"]:has(.sheet-status-progress-fill[style*="width: 0%"]){
+  border-color:color-mix(in srgb,var(--hb-status-color) 47%,transparent) !important;
+}
+.app-shell .sheet-summary-status-card :is(input[type="text"],input[type="number"],select){
+  border-color:color-mix(in srgb,var(--hb-status-color) 21%,var(--season-line,rgba(255,255,255,.14))) !important;
+  background:color-mix(in srgb,var(--season-bg,#11151b) 91%,transparent) !important;
+  border-radius:11px !important;
+}
+.app-shell .sheet-summary-status-card :is(input[type="text"],input[type="number"],select):focus-visible{
+  outline:2px solid var(--hb-status-color) !important;
+  outline-offset:2px;
+}
+.app-shell .sheet-summary-status-card button{
+  transition:transform .14s ease,border-color .14s ease,background .14s ease;
+}
+.app-shell .sheet-summary-status-card button:not(:disabled):hover{border-color:var(--hb-status-color) !important}
+.app-shell .sheet-summary-status-card details.status-card-damage-control{
+  border-color:color-mix(in srgb,var(--hb-status-color) 27%,transparent) !important;
+  background:linear-gradient(125deg,var(--hb-status-fade),color-mix(in srgb,var(--hb-status-color) 2%,transparent)) !important;
+}
+.app-shell .sheet-summary-status-card .status-card-damage-control > summary > span:first-child{
+  color:var(--hb-status-color);
+  background:var(--hb-status-fade);
+}
+.app-shell .sheet-summary-status-card .status-card-damage-control[open]{box-shadow:0 11px 24px rgba(0,0,0,.12)}
+.app-shell .sheet-summary-status-card .status-card-damage-control > summary:hover{background:var(--hb-status-fade)}
+
+/* A mesma paleta visual segue a linha de leitura da ficha. */
+.app-shell .sheet-section-heading{
+  padding:11px 0 13px;
+  margin-top:22px;
+  margin-bottom:13px;
+  border-bottom:1px solid var(--hb-sheet-line,var(--season-line));
+}
+.app-shell .sheet-section-heading .sheet-section-symbol{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  border-radius:13px;
+}
+.app-shell .sheet-section-heading h3{font-weight:850;letter-spacing:-.035em}
+.app-shell .sheet-section-heading p{max-width:67ch;text-wrap:pretty}
+.app-shell .sheet-quick-nav.hb-sheet-nav-v3{
+  border-color:color-mix(in srgb,var(--season-primary,#bfa0db) 24%,var(--hb-sheet-line)) !important;
+  box-shadow:0 12px 32px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.app-shell .hb-sheet-nav-v3 .hb-sheet-nav-items > button.is-active{
+  border-color:color-mix(in srgb,var(--season-primary,#bca9d8) 53%,transparent);
+  box-shadow:inset 0 -2px 0 var(--season-primary,#bca9d8);
+}
+.app-shell .sheet-summary-attributes article{
+  border-radius:17px;
+  background:radial-gradient(circle at 100% 0%,var(--hb-sheet-glow),transparent 55%),linear-gradient(155deg,var(--season-surface-alt,#24232a),var(--season-surface,#17191e));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.app-shell .sheet-summary-attributes article strong{
+  display:grid;
+  place-items:center;
+  line-height:1.1;
+  font-weight:850;
+  border:1px solid color-mix(in srgb,var(--season-primary,#bea6db) 21%,transparent);
+}
+.app-shell .sheet-summary-grid .sheet-summary-card,.app-shell .sheet-summary-notes{
+  border-color:color-mix(in srgb,var(--season-primary,#bea6db) 20%,var(--hb-sheet-line));
+  background:radial-gradient(ellipse at 0% 0%,var(--hb-sheet-glow),transparent 46%),linear-gradient(150deg,var(--season-surface-alt,#28232e),var(--season-surface,#15191f));
+  box-shadow:0 12px 28px rgba(0,0,0,.11),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.app-shell .sheet-summary-values > div{
+  border-radius:11px;
+  padding:11px 13px;
+  background:color-mix(in srgb,var(--season-bg,#10151b) 78%,transparent);
+}
+.app-shell .sheet-card-title-icon{
+  border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+}
+.app-shell .sheet-actions-premium{
+  border-color:color-mix(in srgb,var(--season-primary,#bea6db) 23%,var(--hb-sheet-line)) !important;
+  box-shadow:0 15px 37px rgba(0,0,0,.13),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.app-shell .sheet-actions-premium .combat-action-card{
+  border-radius:16px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--season-surface-alt,#29252d) 88%,transparent),var(--season-surface,#15191f));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.app-shell .sheet-actions-premium .combat-action-card:focus-visible{
+  outline:2px solid var(--season-primary,#bca9d8);
+  outline-offset:2px;
+}
+.app-shell .hb-trained-skills{
+  border-color:color-mix(in srgb,var(--season-primary,#bda1db) 23%,var(--season-line)) !important;
+  border-radius:22px;
+  background:radial-gradient(ellipse at 0% 0%,var(--hb-sheet-glow),transparent 48%),var(--season-surface,#17191e);
+}
+.app-shell .hb-trained-skills-section{
+  padding:clamp(12px,1.5vw,18px);
+  border-color:var(--hb-sheet-line);
+  border-radius:17px;
+  background:linear-gradient(160deg,var(--season-surface-alt,#28242d),var(--season-surface,#17191e));
+}
+.app-shell .hb-trained-skills-tier{
+  border-radius:13px;
+  border-color:color-mix(in srgb,var(--season-primary,#bda1db) 17%,var(--season-line));
+  background:color-mix(in srgb,var(--season-bg,#12151b) 60%,transparent);
+}
+.app-shell .hb-trained-skills-item{
+  gap:11px;
+  border-color:color-mix(in srgb,var(--season-primary,#bda1db) 10%,var(--season-line));
+  background:color-mix(in srgb,var(--season-surface,#17191e) 80%,var(--season-surface-alt,#25242b));
+  transition:border-color .16s ease,background .16s ease;
+}
+.app-shell .hb-trained-skills-item:hover{border-color:color-mix(in srgb,var(--season-primary,#bda1db) 34%,transparent);background:color-mix(in srgb,var(--season-primary,#bda1db) 5%,var(--season-surface,#17191e))}
+.app-shell .hb-trained-skills-item-total{min-width:58px}
+.app-shell .hb-trained-skills-item-bonus{font-variant-numeric:tabular-nums;font-size:1.11rem}
+.app-shell .hb-trained-skills-chip{font-size:10px;font-weight:750}
+.app-shell .sheet-armor-standalone,.app-shell .sheet-inventory-section{
+  border-color:color-mix(in srgb,var(--season-primary,#bea6db) 22%,var(--hb-sheet-line)) !important;
+  box-shadow:0 12px 28px rgba(0,0,0,.11),inset 0 1px 0 rgba(255,255,255,.025);
+}
+.app-shell .sheet-editor-premium{
+  border-color:color-mix(in srgb,var(--season-primary,#bea6db) 22%,var(--hb-sheet-line)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+.app-shell .sheet-editor-premium > summary:focus-visible{
+  outline:2px solid var(--season-primary,#bea6db);
+  outline-offset:-3px;
+}
+@media(max-width:900px){
+  .app-shell .sheet-summary-status{grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr))}
+}
+@media(max-width:630px){
+  .app-shell .sheet-summary-status{grid-template-columns:minmax(0,1fr)}
+  .app-shell .sheet-summary-status-card .sheet-status-description{max-width:none;min-height:0}
+  .app-shell .sheet-section-heading{margin-top:14px}
+  .app-shell .hb-trained-skills-section{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell :is(.sheet-summary-status-card,.sheet-status-progress-fill,.hb-trained-skills-item){transition:none !important}
+}
+@media print{
+  .app-shell .sheet-summary-status-card{box-shadow:none !important;break-inside:avoid}
+  .app-shell .sheet-summary-status-card::after{display:none}
+}
+
+/* O resumo rápido espelha a identidade cromática dos recursos. */
+.app-shell .hb-sheet-vital.hb-vital-pv{--hb-vital:#ef8998}
+.app-shell .hb-sheet-vital.hb-vital-ps{--hb-vital:#b9a1ff}
+.app-shell .hb-sheet-vital.hb-vital-pr{--hb-vital:#7bcde8}
+.app-shell .hb-sheet-vital.hb-vital-blood{--hb-vital:#df7c8c}
+.app-shell .hb-sheet-vital{
+  border-color:color-mix(in srgb,var(--hb-vital) 24%,var(--hb-sheet-line));
+  background:radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--hb-vital) 9%,transparent),transparent 65%),linear-gradient(150deg,var(--season-surface-alt,#292332),var(--season-surface,#17151e));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+.app-shell .hb-sheet-vital:hover,.app-shell .hb-sheet-vital:focus-visible{
+  border-color:color-mix(in srgb,var(--hb-vital) 55%,transparent);
+  outline-offset:2px;
+}
+.app-shell .hb-sheet-vital .hb-sheet-vital-track{background:color-mix(in srgb,var(--hb-vital) 12%,transparent)}
+.app-shell .hb-sheet-vital .hb-sheet-vital-track span{box-shadow:0 0 9px color-mix(in srgb,var(--hb-vital) 28%,transparent)}
+.app-shell .sheet-section-heading[id$="-status"] .sheet-section-symbol{color:#ef8998;border-color:rgba(239,137,152,.24);background:rgba(239,137,152,.08)}
