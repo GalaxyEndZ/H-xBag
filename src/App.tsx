@@ -1861,6 +1861,26 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [activePage, setActivePage] = useState<
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile' | 'conditions'
 >('overview')
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
+  useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
+  useEffect(() => {
+    const onResize = () => { if (window.innerWidth > 800) setSidebarMobileOpen(false) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  useEffect(() => {
+    if (!sidebarMobileOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarMobileOpen(false)
+    }
+    const oldOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = oldOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [sidebarMobileOpen])
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
   // Navegação unificada; não altera regras, fichas nem permissões de acesso.
   const [quickOpen, setQuickOpen] = useState(false)
@@ -10024,8 +10044,9 @@ counterAttackDT
     <div className={`app-shell hb-polish theme-${activeThemeKey} visual-style-${activeVisualStyleKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
-      <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
-        <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
+      {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
+      <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
+        <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => { setActivePage('overview'); setSidebarMobileOpen(false) }} aria-label="HäxBag — ir para visão geral">
           <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
           <span className="hb-sidebar-brand-copy">
             <strong>Häx<span className="brand-light">Bag</span></strong>
@@ -10033,6 +10054,7 @@ counterAttackDT
           </span>
           <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
         </a>
+        <button type="button" className="hb-sidebar-close" onClick={() => setSidebarMobileOpen(false)} aria-label="Fechar menu lateral" title="Fechar menu lateral">✕</button>
 
         <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
           <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
@@ -10044,7 +10066,7 @@ counterAttackDT
           <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
         </div>
 
-        <section className="hb-sidebar-workspace" aria-label="Campanha atual" style={{display:"flex",flexDirection:"column",height:"auto",minHeight:0,maxHeight:"none",overflow:"visible",flexShrink:0,position:"relative",zIndex:2,padding:"15px 13px 12px"}}>
+        <section className="hb-sidebar-workspace" aria-label="Campanha atual">
           <div className="hb-sidebar-workspace-top">
             <span className="hb-sidebar-eyebrow">✦ ESPAÇO DE JOGO</span>
             <span className="hb-sidebar-role">{isMaster ? 'Mestre' : 'Jogador'}</span>
@@ -10082,7 +10104,7 @@ counterAttackDT
           <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
             aria-label="Abrir notas privadas da sessão" title="Notas privadas da sessão">✎</button>
         </div>
-        <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal">
+        <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal" onClick={event => { if ((event.target as HTMLElement).closest('button.nav-link')) setSidebarMobileOpen(false) }}>
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">EXPLORAR</span>
             <button type="button" className={`nav-link ${activePage === 'overview' ? 'active' : ''}`} onClick={() => setActivePage('overview')} disabled={!selectedCampaignId} aria-current={activePage === 'overview' ? 'page' : undefined}>
@@ -10138,21 +10160,26 @@ counterAttackDT
         </nav>
 
         <div className="sidebar-bottom hb-sidebar-footer">
-          <div className="invite-card hb-sidebar-invite">
-            <div className="hb-sidebar-invite-top"><span className="invite-icon" aria-hidden="true">✉</span><span className="hb-sidebar-invite-tag">SUA EQUIPE</span></div>
-            <strong>{isMaster && selectedCampaignId ? 'Reúna seus jogadores' : 'Continue sua aventura'}</strong>
-            <p>{isMaster && selectedCampaignId
-              ? 'Envie um convite para a campanha e reúna seu grupo.'
-              : 'Encontre uma campanha ou participe usando um convite.'}</p>
-            <button type="button" className="hb-sidebar-invite-button" disabled={inviteLoading} onClick={() => {
-              if (isMaster && selectedCampaignId) void createCampaignInvite()
-              else { setActivePage('campaigns'); setShowCampaignForm(false) }
-            }}>{inviteLoading ? 'Gerando convite…' : isMaster && selectedCampaignId ? 'Gerar convite' : 'Ver campanhas'} <span aria-hidden="true">↗</span></button>
-            {campaignInviteLink && selectedCampaignId && isMaster && <button type="button" className="hb-sidebar-copy" onClick={() => {
-              void navigator.clipboard.writeText(campaignInviteLink)
-              setNotice('Link copiado!')
-            }}>⧉ Copiar link gerado</button>}
-          </div>
+          <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
+            <summary className="hb-sidebar-invite-summary">
+              <span className="hb-sidebar-invite-glyph" aria-hidden="true">✉</span>
+              <span className="hb-sidebar-invite-summary-copy"><strong>Convites e equipe</strong><small>{isMaster && selectedCampaignId ? 'Reúna seus jogadores' : 'Sua próxima aventura'}</small></span>
+              <span className="hb-sidebar-invite-chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div className="hb-sidebar-invite-content">
+              <p>{isMaster && selectedCampaignId
+                ? 'Crie um convite seguro para seus jogadores.'
+                : 'Explore campanhas ou entre usando um convite.'}</p>
+              <button type="button" className="hb-sidebar-invite-button" disabled={inviteLoading} onClick={() => {
+                if (isMaster && selectedCampaignId) void createCampaignInvite()
+                else { setActivePage('campaigns'); setShowCampaignForm(false) }
+              }}>{inviteLoading ? 'Gerando convite…' : isMaster && selectedCampaignId ? 'Gerar convite' : 'Ver campanhas'} <span aria-hidden="true">↗</span></button>
+              {campaignInviteLink && selectedCampaignId && isMaster && <button type="button" className="hb-sidebar-copy" onClick={() => {
+                void navigator.clipboard.writeText(campaignInviteLink)
+                setNotice('Link copiado!')
+              }}>⧉ Copiar link gerado</button>}
+            </div>
+          </details>
           <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={openProfilePage} title="Abrir meu perfil">
             <div className="avatar">{accountAvatar || displayName.charAt(0).toUpperCase()}</div>
             <div className="profile-info"><strong>{displayName}</strong><small>{session.user.email}</small></div>
@@ -10234,6 +10261,11 @@ counterAttackDT
       )}
       <main className={`main-content ${activePage === 'player-table' ? 'hb-vtt-app-main' : ''}`} id="inicio">
         <header className="topbar">
+          <button type="button" className="hb-sidebar-mobile-toggle" onClick={() => setSidebarMobileOpen(open => !open)}
+            aria-label={sidebarMobileOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
+            aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" title="Menu do HäxBag">
+            <span aria-hidden="true">☰</span><span>Menu</span>
+          </button>
           <div className="breadcrumb hb-topbar-trail">
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
