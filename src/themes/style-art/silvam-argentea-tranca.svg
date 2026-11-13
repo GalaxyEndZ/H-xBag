@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 18" width="160" height="18"><g fill="none" stroke="#aebdba" stroke-width="1.35" opacity=".67"><path d="M0 9 C20 -2 28 -2 40 9 S60 20 80 9 S100 -2 120 9 S140 20 160 9"/><path d="M0 9 C20 20 28 20 40 9 S60 -2 80 9 S100 20 120 9 S140 -2 160 9"/></g><g fill="none" stroke="#dce4e0" opacity=".55" stroke-width=".75"><path d="M20 9 l8 -6 8 6 -8 6Z M100 9 l8 -6 8 6 -8 6Z"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 18" width="240" height="18" role="img" aria-label="Trança nórdica prateada original">
+<path d="M0 9 H32 M208 9 H240 M32 9 C40 0 48 0 56 9 S72 18 80 9 S96 0 104 9 S120 18 128 9 S144 0 152 9 S168 18 176 9 S192 0 200 9 H208" fill="none" stroke="#b8cbd0" stroke-width="2.1" opacity=".8"/>
+<path d="M32 9 C40 18 48 18 56 9 S72 0 80 9 S96 18 104 9 S120 0 128 9 S144 18 152 9 S168 0 176 9 S192 18 200 9" fill="none" stroke="#839da4" stroke-width="1.4" opacity=".7"/>
+<path d="M116 2 L124 9 L116 16 L108 9Z" fill="none" stroke="#e4ebec" stroke-width="1.5"/>
+</svg>
