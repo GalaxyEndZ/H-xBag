@@ -986,7 +986,7 @@ function App() {
   const [sheetCharacterArchetype, setSheetCharacterArchetype] = useState('all')
   const [sheetSeasonFilter, setSheetSeasonFilter] = useState('all')
   const [sheetTeamFilter, setSheetTeamFilter] = useState('all')
-  const [sheetSeasonRoster, setSheetSeasonRoster] = useState<Record<string, Record<string, {participating:boolean;party:boolean;team:string}>>>({})
+  const [sheetSeasonRoster, setSheetSeasonRoster] = useState<Record<string, Record<string, {participating:boolean;party:boolean;team:string;teams:string[]}>>>({})
   const [sheetCharacterOwnerFilter, setSheetCharacterOwnerFilter] = useState<'all' | 'mine' | 'assigned' | 'unassigned'>('all')
   const [sheetCharacterSort, setSheetCharacterSort] = useState<'name' | 'recent' | 'level' | 'favorites'>('name')
   const [sheetCharacterLayout, setSheetCharacterLayout] = useState<'grid' | 'list'>('grid')
@@ -1674,15 +1674,18 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
         .select('character_id,season_id,sheet_data').in('season_id', seasons.map(season => season.id))
         .in('character_id', ids)
       if (cancelled || rosterError) return
-      const next: Record<string, Record<string, {participating:boolean;party:boolean;team:string}>> = {}
+      const next: Record<string, Record<string, {participating:boolean;party:boolean;team:string;teams:string[]}>> = {}
       for (const row of data ?? []) {
         const raw = (row.sheet_data ?? {}) as Record<string, any>
-        const team = String(raw.teamName ?? raw.team ?? raw.equipe ?? raw.identity?.team ?? '').trim()
+        const rawTeams = raw.identity?.teams ?? raw.teams
+        const teamNames = Array.from(new Set([...(Array.isArray(rawTeams) ? rawTeams.filter((value: unknown): value is string => typeof value === 'string') : []), String(raw.teamName ?? raw.team ?? raw.equipe ?? raw.identity?.team ?? '').trim()].filter(Boolean)))
+        const team = teamNames[0] ?? ''
         if (!next[row.season_id]) next[row.season_id] = {}
         next[row.season_id][row.character_id] = {
           participating: raw.seasonParticipation === true,
           party: raw.partyParticipation === true,
           team,
+          teams: teamNames,
         }
       }
       setSheetSeasonRoster(next)
@@ -1692,7 +1695,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [selectedCampaignId, seasons, characters])
   const sheetTeams = Array.from(new Set(Object.entries(sheetSeasonRoster)
     .filter(([season]) => sheetSeasonFilter === 'all' || season === sheetSeasonFilter)
-    .flatMap(([, roster]) => Object.values(roster).map(entry => entry.team).filter(Boolean))))
+    .flatMap(([, roster]) => Object.values(roster).flatMap(entry => entry.teams ?? (entry.team ? [entry.team] : [])))))
     .sort((a,b) => a.localeCompare(b, 'pt-BR'))
   const sheetFilteredCharacters = characters.filter(character => {
     const text = [character.name, character.archetype, systemFeatures.usesRanks ? characterRanks[character.id] : character.level]
@@ -1704,7 +1707,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
       const records = Object.entries(sheetSeasonRoster).filter(([season]) => sheetSeasonFilter === 'all' || season === sheetSeasonFilter).map(([, roster]) => roster[character.id]).filter(Boolean)
       if (sheetTeamFilter === 'party' && !records.some(entry => entry.participating && entry.party)) return false
       if (sheetTeamFilter === 'outside' && !records.some(entry => entry.participating && !entry.party)) return false
-      if (sheetTeamFilter.startsWith('team:') && !records.some(entry => entry.participating && entry.team === sheetTeamFilter.slice(5))) return false
+      if (sheetTeamFilter.startsWith('team:') && !records.some(entry => entry.participating && (entry.teams ?? [entry.team]).includes(sheetTeamFilter.slice(5)))) return false
     }
     if (sheetCharacterArchetype !== 'all' && (character.archetype?.trim() || '') !== sheetCharacterArchetype) return false
     if (sheetCharacterOwnerFilter === 'mine' && !sheetCharacterIsMine(character)) return false
@@ -7392,7 +7395,7 @@ useEffect(() => {
                       mental: 'Mental',
                       combat: 'Combate',
                       dexterity: 'Destreza',
-                      resistance: 'Resistência',
+                      resistance: 'Respiração',
                       ability: 'Habilidade',
                     }
                     const skillLabels = {
@@ -7594,7 +7597,7 @@ const attribute =
     setBlockIncomingDamage('')
     setBlockDamageReduction(reduction)
     setCombatActionResult(
-      `Bloqueio: ${diceDescription} + Vigor + Resistência (${bonus}) = ${total}. ${outcome}`
+      `Bloqueio: ${diceDescription} + Vigor + Respiração (${bonus}) = ${total}. ${outcome}`
     )
   } else if (kind === 'Esquiva') {
     const target =
@@ -8149,14 +8152,30 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                           />
                         )}
                         {(() => {
-                          const team = String(read('identity.team', '') || read('identity.teamName', '')).trim()
-                          return <div className="hb-sheet-team-indicator" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                            <div className="hb-team-identity"><span className="hb-team-crest" aria-hidden="true">🛡️</span><div><span className="hb-team-eyebrow">EQUIPE ATUAL</span><strong>{team || 'Sem equipe'}</strong></div></div>
+                          const legacyTeam = String(read('identity.team', '') || read('identity.teamName', '')).trim()
+                          const storedTeams = read('identity.teams', [])
+                          const teams = Array.from(new Set([
+                            ...(Array.isArray(storedTeams) ? storedTeams.filter((value): value is string => typeof value === 'string') : []),
+                            ...(legacyTeam ? [legacyTeam] : []),
+                          ].map(value => value.trim()).filter(Boolean)))
+                          const updateTeams = (next: string[]) => {
+                            const unique = Array.from(new Set(next.map(value => value.trim()).filter(Boolean)))
+                            write('identity.teams', unique)
+                            write('identity.team', unique[0] ?? '')
+                          }
+                          return <div className="hb-sheet-team-indicator hb-sheet-team-multi">
+                            <div className="hb-team-identity"><span className="hb-team-crest" aria-hidden="true">🛡️</span><div><span className="hb-team-eyebrow">EQUIPES DO PERSONAGEM</span><strong>{teams.length ? `${teams.length} equipe${teams.length > 1 ? 's' : ''}` : 'Sem equipe'}</strong></div></div>
+                            <div className="hb-team-memberships">
+                              {teams.map(name => <span key={name} className="hb-team-membership">🛡️ {name}{isMaster && <button type="button" aria-label={`Remover da equipe ${name}`} title={`Remover da equipe ${name}`} onClick={() => updateTeams(teams.filter(item => item !== name))}>×</button>}</span>)}
+                              {!teams.length && <span className="hb-team-empty">Nenhuma equipe atribuída</span>}
+                            </div>
                             {isMaster && <div className="hb-team-controls">
-                              <label className="hb-team-field"><span>Nome da equipe</span><input aria-label="Nome da equipe" list="hax-sheet-teams" value={team} placeholder="Criar ou selecionar equipe" onChange={event => write('identity.team', event.target.value)} /></label>
+                              <label className="hb-team-field"><span>Adicionar equipe existente</span><select aria-label="Adicionar equipe existente" value="" onChange={event => {if(event.target.value)updateTeams([...teams,event.target.value])}}><option value="">Selecionar equipe</option>{sheetTeams.filter(name => !teams.includes(name)).map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+                              <form className="hb-team-add-form" onSubmit={event => {event.preventDefault();const input=event.currentTarget.elements.namedItem('newTeam') as HTMLInputElement | null;const value=input?.value.trim();if(value){updateTeams([...teams,value]);if(input)input.value=''}}}>
+                                <label className="hb-team-field"><span>Criar / adicionar equipe</span><input name="newTeam" aria-label="Nome da nova equipe" list="hax-sheet-teams" placeholder="Nome da equipe" maxLength={80} /></label>
+                                <button type="submit" className="hb-team-add-button">+ Adicionar</button>
+                              </form>
                               <datalist id="hax-sheet-teams">{sheetTeams.map(name => <option key={name} value={name} />)}</datalist>
-                              <label className="hb-team-field"><span>Equipes existentes</span><select aria-label="Selecionar equipe existente" value={sheetTeams.includes(team) ? team : ''} onChange={event => write('identity.team', event.target.value)}><option value="">Selecionar equipe</option>{sheetTeams.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
-                              {team && <button type="button" className="hb-team-clear" onClick={() => write('identity.team', '')}>Remover da equipe</button>}
                             </div>}
                           </div>
                         })()}
@@ -9175,7 +9194,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               </div>
                               <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={3}><span style={{width:`${complexSceneCount / 3 * 100}%`}} /></div>
                               <div className="hax-complex-fields">
-                                <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Resistência</option></select></label>
+                                <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Respiração</option></select></label>
                                 <label><span>2 · 📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
@@ -9300,7 +9319,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Resistência Física: ${roll.description} + Resistência (${resistance}) = ${total}.`
+                                    `Resistência Física: ${roll.description} + Respiração (${resistance}) = ${total}.`
                                   )
                                 }}
                               >
@@ -9333,7 +9352,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="combat-reactions-section" id={forEnemy ? 'inimigo-reacoes' : 'ficha-reacoes'}>
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Vigor + Resistência</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Vigor + Respiração</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
   {(() => {
     const diceCount = 1 + Math.floor(agility) - (renderOverloaded ? 1 : 0)

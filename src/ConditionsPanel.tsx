@@ -12,7 +12,7 @@ type Active = { id: string; character_id: string; definition_id: string; duratio
 const CONDITION_KEYS: Record<string, {value:string;label:string}[]> = {
   status: [
     {value:'strength',label:'Força (FOR)'}, {value:'agility',label:'Agilidade (AGI)'},
-    {value:'defense',label:'Defesa (DEF)'}, {value:'resistance',label:'Resistência (RES)'},
+    {value:'defense',label:'Defesa (DEF)'}, {value:'resistance',label:'Respiração (RES)'},
     {value:'intelligence',label:'Intelecto (INT)'}, {value:'*',label:'Todos os atributos'},
   ],
   combat_points: [
