@@ -15752,8 +15752,9 @@ button:disabled { opacity: .58; }
    Interface somente: nenhuma alteração nas regras, dados ou rolagens.
    ======================================================================= */
 
-/* Os cartões param de herdar a altura do mais longo (inclusive o teste PR). */
-.app-shell .sheet-summary-status{align-items:start;gap:clamp(10px,1.2vw,17px)}
+/* PV, PS e PR têm a mesma altura em cada linha da grade, inclusive com o teste de Respiração. */
+.app-shell .sheet-summary-status{align-items:stretch;gap:clamp(10px,1.2vw,17px)}
+.app-shell .sheet-summary-status > .sheet-summary-status-card{align-self:stretch;box-sizing:border-box}
 .app-shell .sheet-summary-status-card{
   --hb-status-color:var(--season-primary,#bda1db);
   --hb-status-rgb:189,161,219;
@@ -16030,3 +16031,54 @@ button:disabled { opacity: .58; }
 .app-shell .hb-sheet-vital .hb-sheet-vital-track{background:color-mix(in srgb,var(--hb-vital) 12%,transparent)}
 .app-shell .hb-sheet-vital .hb-sheet-vital-track span{box-shadow:0 0 9px color-mix(in srgb,var(--hb-vital) 28%,transparent)}
 .app-shell .sheet-section-heading[id$="-status"] .sheet-section-symbol{color:#ef8998;border-color:rgba(239,137,152,.24);background:rgba(239,137,152,.08)}
+
+
+/* =======================================================================
+   HÄXBAG V16 · Selos ornamentais da tríade
+   Arte vetorial decorativa: PV (coração vital), PS (olho astral),
+   PR (pulmões e vento), Sangue (gota ritual). Não ocupa espaço na grade.
+   ======================================================================= */
+.app-shell .sheet-summary-status-card::after{content:none !important;display:none !important}
+.app-shell .sheet-summary-status-card > .hb-status-art{
+  position:absolute !important;
+  z-index:0 !important;
+  top:72px;
+  right:4px;
+  width:clamp(110px,12vw,170px);
+  aspect-ratio:1;
+  display:grid;
+  place-items:center;
+  pointer-events:none;
+  user-select:none;
+  color:var(--hb-status-color);
+  opacity:.28;
+  mask-image:linear-gradient(90deg,transparent 0%,#000 27%,#000 100%);
+  transform:rotate(0deg);
+  transition:opacity .24s ease,transform .4s ease;
+}
+.app-shell .sheet-summary-status-card:hover > .hb-status-art,
+.app-shell .sheet-summary-status-card:focus-within > .hb-status-art{
+  opacity:.37;
+  transform:rotate(3deg) scale(1.025);
+}
+.app-shell .sheet-summary-status-card .hb-status-sigil{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--hb-status-color) 28%,transparent))}
+.app-shell .sheet-summary-status-card .hb-sigil-orbit{opacity:.46}
+.app-shell .sheet-summary-status-card .hb-sigil-wash{fill-opacity:.075}
+.app-shell .sheet-summary-status-card .hb-sigil-stroke{opacity:.9}
+.app-shell .sheet-summary-status-card .hb-sigil-fine{opacity:.73}
+.app-shell .sheet-summary-status-card .hb-sigil-branch{opacity:.55}
+.app-shell .sheet-summary-status-card .hb-sigil-core{fill-opacity:.19}
+/* A marca ornamenta o fundo sem afetar a leitura ou o foco dos botões. */
+.app-shell .sheet-summary-status-card > :not(.hb-status-art){z-index:1}
+@media(max-width:1200px){
+  .app-shell .sheet-summary-status-card > .hb-status-art{top:80px;width:135px;opacity:.24}
+}
+@media(max-width:640px){
+  .app-shell .sheet-summary-status-card > .hb-status-art{top:70px;right:0;width:145px;opacity:.21}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .sheet-summary-status-card > .hb-status-art{transition:none !important}
+}
+@media print{
+  .app-shell .sheet-summary-status-card > .hb-status-art{opacity:.16;filter:none}
+}

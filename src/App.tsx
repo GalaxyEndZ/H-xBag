@@ -94,6 +94,64 @@ function getKisatsutaiFullPath(primary: string, secondary: string): string {
   return path ? `${primary.trim()} ${path}` : ''
 }
 
+/** Selos vetoriais ornamentais dos recursos. Apenas arte: não interfere na ficha nem nos cálculos. */
+function SheetStatusSigil({ kind }: { kind: 'pv' | 'ps' | 'pr' | 'blood' }) {
+  return (
+    <svg className={`hb-status-sigil hb-status-sigil-${kind}`} viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+      <g className="hb-sigil-orbit" stroke="currentColor" strokeWidth="1.15">
+        <circle cx="100" cy="100" r="75" strokeDasharray="2 7" />
+        <circle cx="100" cy="100" r="64" strokeDasharray="48 8 20 8" />
+        <path d="M100 14v13M100 173v13M14 100h13M173 100h13" strokeWidth="1.6" />
+        <path d="M35 35l9 9M156 156l9 9M165 35l-9 9M44 156l-9 9" opacity=".65" />
+        <path d="M100 17l4 7-4 7-4-7 4-7ZM183 100l-7 4-7-4 7-4 7 4ZM100 183l-4-7 4-7 4 7-4 7ZM17 100l7-4 7 4-7 4-7-4Z" fill="currentColor" fillOpacity=".08" />
+      </g>
+      {kind === 'pv' && (
+        <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <path className="hb-sigil-wash" d="M100 153C79 137 52 119 47 92C42 66 56 53 75 55C86 56 95 63 100 73C105 63 114 56 125 55C144 53 158 66 153 92C148 119 121 137 100 153Z" fill="currentColor" strokeWidth="1.8" />
+          <path className="hb-sigil-stroke" d="M100 150C75 131 56 115 53 92C51 76 59 63 74 62C88 61 95 69 100 79C105 69 112 61 126 62C141 63 149 76 147 92C144 115 125 131 100 150Z" strokeWidth="2.25" />
+          <path className="hb-sigil-fine" d="M59 102h20l8-14 10 31 11-24 7 7h25" strokeWidth="2.35" />
+          <path className="hb-sigil-fine" d="M100 73v-20m0-6V35M89 58l-7-18m29 18 7-18" strokeWidth="1.5" />
+          <path className="hb-sigil-branch" d="M50 121c-13-5-16-16-14-29m4 11-11-4m15 14-8 6M150 121c13-5 16-16 14-29m-4 11 11-4m-15 14 8 6" strokeWidth="1.4" />
+          <path d="m100 163-6-6 6-6 6 6-6 6Z" fill="currentColor" fillOpacity=".3" />
+        </g>
+      )}
+      {kind === 'ps' && (
+        <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <path className="hb-sigil-wash" d="M100 43C121 70 136 85 159 100C136 115 121 130 100 157C79 130 64 115 41 100C64 85 79 70 100 43Z" fill="currentColor" strokeWidth="1.5" />
+          <path className="hb-sigil-stroke" d="M44 100C64 81 81 76 100 76C119 76 136 81 156 100C136 119 119 124 100 124C81 124 64 119 44 100Z" strokeWidth="2.2" />
+          <circle cx="100" cy="100" r="19" strokeWidth="1.65" />
+          <circle className="hb-sigil-core" cx="100" cy="100" r="8" fill="currentColor" strokeWidth="1.2" />
+          <circle cx="100" cy="100" r="3" fill="currentColor" fillOpacity=".6" stroke="none" />
+          <path className="hb-sigil-fine" d="M100 26v26M100 148v26M26 100h22M152 100h22" strokeWidth="1.5" />
+          <path d="m100 32 5 9-5 9-5-9 5-9ZM100 168l5-9-5-9-5 9 5 9Z" fill="currentColor" fillOpacity=".22" strokeWidth="1" />
+          <path className="hb-sigil-branch" d="M59 58c12-9 25-13 41-13s29 4 41 13M59 142c12 9 25 13 41 13s29-4 41-13" strokeWidth="1.3" />
+          <path className="hb-sigil-fine" d="m52 54 9-2-2 9m82-9 9 2-7 7M59 139l-7 7 9 2m82-9 7 7-9 2" strokeWidth="1.15" />
+        </g>
+      )}
+      {kind === 'pr' && (
+        <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <path className="hb-sigil-stroke" d="M98 43v35c-15 3-23 10-29 22-6 14-5 29-8 41-2 8-9 12-16 7-9-7-10-27-8-42 4-24 16-43 34-55m31-8v35c15 3 23 10 29 22 6 14 5 29 8 41 2 8 9 12 16 7 9-7 10-27 8-42-4-24-16-43-34-55" strokeWidth="2.1" />
+          <path className="hb-sigil-wash" d="M84 80c-18 7-28 19-32 39-2 11-2 21-7 23-6 2-8-10-8-24 0-20 8-37 20-49 9-8 16-12 27-16v27Zm32 0c18 7 28 19 32 39 2 11 2 21 7 23 6 2 8-10 8-24 0-20-8-37-20-49-9-8-16-12-27-16v27Z" fill="currentColor" stroke="none" />
+          <path className="hb-sigil-fine" d="M100 39v69m0 0c-8 8-15 20-16 33m16-33c8 8 15 20 16 33" strokeWidth="1.6" />
+          <path className="hb-sigil-branch" d="M27 121c-7-15-6-33 2-47m-2 47c-1 19 4 27 13 32m133-32c7-15 6-33-2-47m2 47c1 19-4 27-13 32" strokeWidth="1.25" />
+          <path className="hb-sigil-fine" d="M32 64c16-17 29-24 47-27m89 27c-16-17-29-24-47-27M66 161c21 10 47 10 68 0" strokeWidth="1.35" />
+          <path d="M70 144c7 5 14 7 21 8m39-8c-7 5-14 7-21 8" strokeWidth="1.8" />
+        </g>
+      )}
+      {kind === 'blood' && (
+        <g stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          <path className="hb-sigil-wash" d="M100 40C89 63 61 91 59 116c-2 25 18 43 41 43s43-18 41-43c-2-25-30-53-41-76Z" fill="currentColor" strokeWidth="1.8" />
+          <path className="hb-sigil-stroke" d="M100 48C86 76 65 94 65 118c0 21 16 35 35 35s35-14 35-35c0-24-21-42-35-70Z" strokeWidth="2" />
+          <path className="hb-sigil-fine" d="M89 90c-9 17-13 26-13 37m42-28c6 8 10 19 10 29" strokeWidth="1.8" />
+          <path d="M100 111c6 11 9 15 9 21a9 9 0 0 1-18 0c0-6 3-10 9-21Z" strokeWidth="1.6" />
+          <path className="hb-sigil-branch" d="M42 94c-5 22-3 40 9 55m107-55c5 22 3 40-9 55" strokeWidth="1.3" />
+          <path d="m100 34-4-10 4-8 4 8-4 10Z" fill="currentColor" fillOpacity=".22" />
+        </g>
+      )}
+    </svg>
+  )
+}
+
 /** Navegação acessível e contextual, compartilhada entre fichas de jogadores e inimigos. */
 function SheetSectionNav({ sections, label }: { sections: Array<[string, string, string]>; label: string }) {
   const ids = sections.map(([, , id]) => id).join('|')
@@ -9295,6 +9353,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                     ? { state: forEnemy && isKisatsutaiSystem ? 'Instável' : 'Cansado', availability: forEnemy && isKisatsutaiSystem ? 'Reserva pressionada' : 'Ritmo em queda', tone: 'warning' }
                                     : { state: forEnemy && isKisatsutaiSystem ? 'Fluxo Ativo' : 'Ritmo Firme', availability: forEnemy && isKisatsutaiSystem ? 'Reserva estável' : 'Respiração controlada', tone: 'stable' }
                           return <article key={label} data-resource={key} data-resource-state={statusMeta.tone} className={`sheet-summary-status-card sheet-status-${key} ${forEnemy && isKisatsutaiSystem && key === 'pr' ? 'sheet-status-blood' : ''} ${percent<=25?'is-resource-critical':percent<=50?'is-resource-warning':'is-resource-stable'}`} style={{position:'relative',overflow:'hidden'}}>
+                            <div className="hb-status-art" aria-hidden="true"><SheetStatusSigil kind={key === 'pr' && forEnemy && isKisatsutaiSystem ? 'blood' : key} /></div>
                             <div className="sheet-status-card-top"><span className="sheet-status-icon" aria-hidden="true">{key === 'pv' ? '♥' : key === 'ps' ? '✧' : forEnemy && isKisatsutaiSystem ? '🩸' : '〰'}</span><span className="sheet-status-card-name">{key === 'pv' ? 'PONTOS DE VIDA' : key === 'ps' ? 'SANIDADE' : sheetResourceAbbreviation}</span><span className="hb-resource-condition">{statusMeta.state}</span></div>
                             <span className="sheet-status-full-label">{label.replace('Pontos de ', '').replace(/\s\(.+\)/, '')}</span>
                             <p className="sheet-status-description">
