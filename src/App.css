@@ -15524,3 +15524,122 @@ button:disabled { opacity: .58; }
 @media(prefers-reduced-motion:reduce){
   .hb-polish .hb-ms-dashboard :is(.hb-ms-player-card,.hb-enemy-party-card,.hb-ms-command-links button,.master-shield-stat,.hb-ms-quicknav a){transition:none!important;transform:none!important}
 }
+/* ═══════════════════════════════════════════════════════════════
+   HÄXBAG · V11 — Central de Aventura / UX transversal
+   Estilos complementares, sem reescrever os temas existentes.
+   ═══════════════════════════════════════════════════════════════ */
+.hb-polish .hb-skip-link {position:fixed;top:-100px;left:20px;z-index:100001;padding:12px 18px;background:var(--season-surface,#201c23);color:var(--season-text,#fff);border:2px solid var(--season-primary,#d3a77e);border-radius:12px;font-size:13px;font-weight:800;text-decoration:none}
+.hb-polish .hb-skip-link:focus {top:12px}
+.hb-polish .hb-global-actions {display:flex;gap:7px;margin:15px 2px 0;align-items:stretch}
+.hb-polish .hb-global-actions button {cursor:pointer}
+.hb-polish .hb-quick-launcher {display:flex;align-items:center;gap:8px;flex:1;min-width:0;min-height:44px;padding:8px 11px;background:var(--season-surface-alt,rgba(255,255,255,.045));border:1px solid var(--season-line,rgba(255,255,255,.15));border-radius:12px;color:var(--season-muted,#aba3ae);transition:.17s ease;transition-property:border-color,background,color,box-shadow}
+.hb-polish .hb-quick-launcher:hover,.hb-polish .hb-quick-notes-launcher:hover {background:color-mix(in srgb,var(--season-primary,#c99f75) 10%,var(--season-surface,#252029));color:var(--season-text,#f6edf4);border-color:color-mix(in srgb,var(--season-primary,#c99f75) 44%,transparent)}
+.hb-polish .hb-quick-launcher > span:first-child{display:grid;place-items:center;color:var(--season-primary,#e3b68b);font-size:24px;font-weight:500;width:24px;line-height:1}
+.hb-polish .hb-quick-launcher > span:nth-child(2){font-size:11px;font-weight:750;min-width:0;flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-polish .hb-quick-launcher kbd {display:flex;align-items:center;justify-content:center;padding:5px 6px;border-radius:6px;border:1px solid var(--season-line,rgba(255,255,255,.13));font:700 9px/1 Manrope,sans-serif;white-space:nowrap;color:var(--season-muted,#aaa);background:var(--season-bg,#18141a)}
+.hb-polish .hb-quick-notes-launcher {flex:0 0 43px;display:grid;place-items:center;border:1px solid var(--season-line,rgba(255,255,255,.15));border-radius:12px;background:var(--season-surface-alt,rgba(255,255,255,.045));font-size:22px;color:var(--season-primary,#e3b68b)}
+.hb-polish .hb-quick-topbar{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:6px 10px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:9px;background:var(--season-surface-alt,rgba(255,255,255,.04));color:var(--season-text,#f5eaf4);font:750 10px Manrope,sans-serif;white-space:nowrap;cursor:pointer}
+.hb-polish .hb-quick-topbar:hover {border-color:var(--season-primary,#d6ad81);background:color-mix(in srgb,var(--season-primary,#d6ad81) 10%,transparent)}
+.hb-polish .hb-quick-topbar > span:first-child {font-size:20px;line-height:1;color:var(--season-primary,#d6ad81)}
+.hb-polish .hb-quick-topbar kbd {border:1px solid var(--season-line,rgba(255,255,255,.18));padding:3px 6px;border-radius:6px;font:650 9px Manrope,sans-serif;color:var(--season-muted,#bbb)}
+.hb-polish .hb-quick-scrim {position:fixed;inset:0;z-index:99999;display:flex;justify-content:center;align-items:flex-start;padding:clamp(38px,9vh,104px) 16px 20px;overflow:auto;background:rgba(5,5,10,.77);-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px)}
+.hb-polish .hb-quick-dialog {--hq-accent:var(--season-primary,#d3a67e);--hq-text:var(--season-text,#f5eff5);--hq-muted:var(--season-muted,#aaa1aa);--hq-stroke:var(--season-line,rgba(255,255,255,.15));width:min(100%,710px);max-height:min(740px,calc(100dvh - 70px));min-width:0;display:flex;flex-direction:column;overflow:hidden;isolation:isolate;position:relative;border:1px solid color-mix(in srgb,var(--hq-accent) 41%,var(--hq-stroke));border-radius:24px;box-shadow:0 40px 100px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.025),inset 0 1px 0 rgba(255,255,255,.08);background:radial-gradient(ellipse 70% 33% at 0% 0%,color-mix(in srgb,var(--hq-accent) 15%,transparent),transparent),linear-gradient(155deg,var(--season-surface,#29212a),var(--season-bg,#121017));color:var(--hq-text)}
+.hb-polish .hb-quick-dialog:before {content:'✦';position:absolute;top:-59px;right:-19px;z-index:-1;font-size:260px;color:color-mix(in srgb,var(--hq-accent) 6%,transparent);pointer-events:none;transform:rotate(-15deg);line-height:1}
+.hb-polish .hb-quick-heading{display:flex;align-items:center;gap:14px;padding:22px 24px 17px}
+.hb-polish .hb-quick-emblem{flex:0 0 54px;display:grid;place-items:center;height:54px;border-radius:16px;border:1px solid color-mix(in srgb,var(--hq-accent) 38%,transparent);background:color-mix(in srgb,var(--hq-accent) 14%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.07);font-size:27px;color:var(--hq-accent)}
+.hb-polish .hb-quick-heading > div{flex:1;min-width:0}
+.hb-polish .hb-quick-heading small{display:block;color:var(--hq-accent);font:850 9px Manrope,sans-serif;letter-spacing:.16em;margin:0 0 5px}
+.hb-polish .hb-quick-heading h2{font:850 clamp(20px,2.5vw,28px)/1.2 'Space Grotesk',Manrope,sans-serif;letter-spacing:-.045em;margin:0;color:var(--hq-text)}
+.hb-polish .hb-quick-close{display:grid;place-items:center;width:37px;height:37px;border:1px solid var(--hq-stroke);border-radius:11px;color:var(--hq-muted);font-size:14px;background:var(--season-surface-alt,rgba(255,255,255,.04));cursor:pointer}
+.hb-polish .hb-quick-close:hover{border-color:var(--hq-accent);color:var(--hq-text)}
+.hb-polish .hb-quick-tabs{display:flex;gap:9px;padding:0 24px 16px;border-bottom:1px solid var(--hq-stroke)}
+.hb-polish .hb-quick-tabs button{font:800 11px Manrope,sans-serif;color:var(--hq-muted);background:transparent;border:1px solid var(--hq-stroke);padding:9px 15px;border-radius:10px;cursor:pointer}
+.hb-polish .hb-quick-tabs button.active{color:var(--hq-accent);border-color:color-mix(in srgb,var(--hq-accent) 48%,transparent);background:color-mix(in srgb,var(--hq-accent) 13%,transparent)}
+.hb-polish .hb-quick-search-row{display:flex;align-items:center;gap:12px;margin:21px 24px 13px;padding:0 14px;border-radius:13px;border:1px solid color-mix(in srgb,var(--hq-accent) 42%,var(--hq-stroke));background:var(--season-bg,rgba(0,0,0,.27));box-shadow:0 0 0 4px color-mix(in srgb,var(--hq-accent) 5%,transparent)}
+.hb-polish .hb-quick-search-row >span{font-size:30px;color:var(--hq-accent);line-height:1}
+.hb-polish .hb-quick-search-row input{height:51px;min-width:0;flex:1;border:0!important;box-shadow:none!important;outline:0!important;background:transparent!important;color:var(--hq-text)!important;font:600 13px Manrope,sans-serif}
+.hb-polish .hb-quick-search-row input::placeholder{color:var(--hq-muted);opacity:.82}
+.hb-polish .hb-quick-clear{padding:6px 9px;border-radius:8px;border:1px solid var(--hq-stroke);color:var(--hq-muted);font:750 10px Manrope,sans-serif;background:transparent;cursor:pointer}
+.hb-polish .hb-quick-results-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 25px 12px;color:var(--hq-muted);font:850 9px Manrope,sans-serif;letter-spacing:.12em}
+.hb-polish .hb-quick-results-heading strong{font:750 10px Manrope,sans-serif;letter-spacing:0;color:var(--hq-accent)}
+.hb-polish .hb-quick-results{overflow:auto;min-height:125px;max-height:410px;padding:0 13px 13px;overscroll-behavior:contain;scrollbar-color:color-mix(in srgb,var(--hq-accent) 27%,transparent) transparent;scrollbar-width:thin}
+.hb-polish .hb-quick-result{display:flex;align-items:center;gap:13px;width:100%;min-width:0;padding:11px 12px;border:1px solid transparent;border-radius:13px;background:transparent;color:var(--hq-text);text-align:left;cursor:pointer}
+.hb-polish .hb-quick-result:hover,.hb-polish .hb-quick-result.is-selected{border-color:color-mix(in srgb,var(--hq-accent) 30%,transparent);background:color-mix(in srgb,var(--hq-accent) 9%,var(--season-surface-alt,transparent))}
+.hb-polish .hb-quick-result-icon{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border:1px solid var(--hq-stroke);border-radius:12px;background:color-mix(in srgb,var(--hq-accent) 9%,transparent);color:var(--hq-accent);font-size:22px}
+.hb-polish .hb-quick-result-copy{display:grid;gap:3px;flex:1;min-width:0}
+.hb-polish .hb-quick-result-copy strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:850 12px Manrope,sans-serif;color:var(--hq-text)}
+.hb-polish .hb-quick-result-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--hq-muted);font:550 10px Manrope,sans-serif}
+.hb-polish .hb-quick-result-meta{font:800 9px Manrope,sans-serif;color:var(--hq-muted);max-width:120px;text-align:right}
+.hb-polish .hb-quick-result-arrow{font-size:16px;color:var(--hq-accent);opacity:.65}
+.hb-polish .hb-quick-empty{display:grid;justify-items:center;gap:7px;padding:48px 12px;text-align:center;color:var(--hq-muted)}
+.hb-polish .hb-quick-empty >span{font-size:45px;color:var(--hq-accent)}
+.hb-polish .hb-quick-empty strong{font-size:14px;color:var(--hq-text)}
+.hb-polish .hb-quick-empty p{margin:0;font-size:11px}
+.hb-polish .hb-quick-footer{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:13px 24px;border-top:1px solid var(--hq-stroke);color:var(--hq-muted);font:650 10px Manrope,sans-serif}
+.hb-polish .hb-quick-footer span{display:flex;align-items:center;gap:4px}
+.hb-polish .hb-quick-footer span:last-child{margin-left:auto;opacity:.7}
+.hb-polish .hb-quick-footer kbd{padding:3px 5px;border:1px solid var(--hq-stroke);border-radius:5px;background:var(--season-surface-alt,rgba(255,255,255,.05));font:700 9px Manrope,sans-serif}
+.hb-polish .hb-quick-notes{display:grid;gap:12px;padding:22px 24px 25px;min-height:0;overflow:auto}
+.hb-polish .hb-quick-notes-title{display:flex;justify-content:space-between;gap:12px}
+.hb-polish .hb-quick-notes-title strong{font:850 15px Manrope,sans-serif;color:var(--hq-text)}
+.hb-polish .hb-quick-notes-title p{margin:6px 0 0;font:550 11px/1.65 Manrope,sans-serif;color:var(--hq-muted)}
+.hb-polish .hb-quick-notes-title >span{font:750 10px Manrope,sans-serif;color:var(--hq-muted);white-space:nowrap}
+.hb-polish .hb-quick-notes label{font:800 11px Manrope,sans-serif;color:var(--hq-accent)}
+.hb-polish .hb-quick-notes textarea{resize:vertical;width:100%;min-height:180px;max-height:45vh;padding:16px;border:1px solid var(--hq-stroke);border-radius:13px;background:var(--season-bg,#17121b);color:var(--hq-text);font:550 12px/1.7 Manrope,sans-serif}
+.hb-polish .hb-quick-notes textarea:focus{outline:2px solid var(--hq-accent);outline-offset:2px}
+.hb-polish .hb-quick-notes textarea::placeholder{color:var(--hq-muted)}
+.hb-polish .hb-quick-notes-bottom{display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap;color:var(--hq-muted);font:600 10px Manrope,sans-serif}
+.hb-polish .hb-quick-notes-bottom button{padding:9px 12px;border:1px solid var(--hq-stroke);border-radius:9px;color:var(--hq-text);background:transparent;font:750 10px Manrope,sans-serif;cursor:pointer}
+.hb-polish .hb-quick-notes-bottom button:disabled{opacity:.45;cursor:default}
+.hb-polish .hb-quick-dialog :is(button,input,textarea):focus-visible,.hb-polish :is(.hb-quick-launcher,.hb-quick-notes-launcher,.hb-quick-topbar,.hb-back-to-top):focus-visible{outline:2px solid var(--season-primary,#d4ac82);outline-offset:3px}
+.hb-polish .hb-back-to-top{position:fixed;right:22px;bottom:22px;z-index:5000;display:flex;align-items:center;gap:7px;padding:12px 17px;border:1px solid color-mix(in srgb,var(--season-primary,#d0a77d) 48%,transparent);border-radius:99px;box-shadow:0 15px 30px rgba(0,0,0,.25);background:var(--season-surface,#241c27);color:var(--season-text,#f5edf4);font:850 11px Manrope,sans-serif;cursor:pointer}
+.hb-polish .hb-back-to-top:hover{background:color-mix(in srgb,var(--season-primary,#d0a77d) 16%,var(--season-surface,#241c27))}
+.hb-polish .hb-back-to-top:first-letter{color:var(--season-primary,#d0a77d)}
+/* Campos interativos de vários módulos passam a exibir estados de foco consistentes. */
+.hb-polish :is(.page-content,.sidebar) :is(input,select,textarea,button,a[href]):focus-visible {outline:2px solid var(--season-primary,#d4a67e);outline-offset:2px}
+/* Telas de fichas / biblioteca: rolagem suave sem forçar movimento para quem o desativa. */
+.hb-polish :is(.page-content,.main-content,.hb-quick-dialog){min-width:0}
+@media(max-width:1180px){.hb-polish .hb-quick-topbar kbd{display:none}.hb-polish .hb-quick-topbar>span:nth-child(2){display:none}.hb-polish .hb-quick-topbar{min-width:36px;justify-content:center}}
+@media(max-width:670px){
+  .hb-polish .hb-quick-scrim{padding:12px 10px;align-items:flex-start}
+  .hb-polish .hb-quick-dialog{max-height:calc(100dvh - 24px);border-radius:18px}
+  .hb-polish .hb-quick-heading{padding:18px 17px 14px;gap:11px}
+  .hb-polish .hb-quick-emblem{width:43px;height:43px;flex-basis:43px;font-size:22px}
+  .hb-polish .hb-quick-tabs{padding:0 16px 13px}
+  .hb-polish .hb-quick-tabs button{flex:1;padding:9px 8px}
+  .hb-polish .hb-quick-search-row{margin:14px 14px 12px}
+  .hb-polish .hb-quick-results-heading{padding:2px 16px 9px}
+  .hb-polish .hb-quick-results{padding:0 7px 10px}
+  .hb-polish .hb-quick-result{gap:9px;padding:10px 8px}
+  .hb-polish .hb-quick-result-icon{width:37px;height:37px;flex-basis:37px;font-size:17px}
+  .hb-polish .hb-quick-result-meta{display:none}
+  .hb-polish .hb-quick-footer{padding:12px 15px;gap:8px}
+  .hb-polish .hb-quick-footer span:last-child{display:none}
+  .hb-polish .hb-quick-notes{padding:18px}
+  .hb-polish .hb-back-to-top{right:12px;bottom:14px;padding:11px 13px}
+}
+@media(prefers-reduced-motion:reduce){.hb-polish .hb-quick-launcher,.hb-polish .hb-quick-notes-launcher,.hb-polish .hb-quick-dialog,.hb-polish .hb-quick-result{animation:none!important;transition:none!important}}
+/* V11 · Área de continuidade na visão geral */
+.hb-polish .hb-v11-session-hub{display:grid;gap:16px;min-width:0;margin:0 0 23px;padding:21px clamp(17px,2.5vw,25px);border:1px solid var(--season-line,rgba(255,255,255,.15));border-radius:20px;background:radial-gradient(ellipse at 99% 0%,color-mix(in srgb,var(--season-primary,#d6aa82) 11%,transparent),transparent 55%),linear-gradient(135deg,var(--season-surface,#262129),var(--season-surface-alt,rgba(255,255,255,.045)));box-shadow:0 12px 29px rgba(0,0,0,.09)}
+.hb-polish .hb-v11-session-head{display:flex;gap:13px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.hb-polish .hb-v11-session-head h3{font:850 clamp(19px,2vw,24px)/1.2 'Space Grotesk',Manrope,sans-serif;letter-spacing:-.04em;margin:5px 0 6px;color:var(--season-text,#f3eff1)}
+.hb-polish .hb-v11-session-head p{font-size:11px;color:var(--season-muted,#ada5ad);margin:0}
+.hb-polish .hb-v11-hub-search{display:flex;align-items:center;gap:12px;white-space:nowrap;padding:11px 14px;border:1px solid color-mix(in srgb,var(--season-primary,#d6aa82) 35%,transparent);border-radius:10px;color:var(--season-primary,#d6aa82);background:color-mix(in srgb,var(--season-primary,#d6aa82) 9%,transparent);font:800 11px Manrope,sans-serif;cursor:pointer}
+.hb-polish .hb-v11-hub-search:hover,.hb-polish .hb-v11-notes-glance button:hover{background:color-mix(in srgb,var(--season-primary,#d6aa82) 18%,transparent)}
+.hb-polish .hb-v11-session-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(250px,1fr);gap:14px}
+.hb-polish .hb-v11-recent-links,.hb-polish .hb-v11-notes-glance{min-width:0;padding:17px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:14px;background:var(--season-bg,rgba(0,0,0,.20))}
+.hb-polish .hb-v11-small-label{display:block;margin-bottom:12px;font:850 9px Manrope,sans-serif;letter-spacing:.13em;color:var(--season-primary,#d6aa82)}
+.hb-polish .hb-v11-recent-links button{display:flex;align-items:center;gap:12px;width:100%;padding:8px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--season-text,#eee);text-align:left;cursor:pointer}
+.hb-polish .hb-v11-recent-links button:hover{background:color-mix(in srgb,var(--season-primary,#d6aa82) 9%,transparent);border-color:color-mix(in srgb,var(--season-primary,#d6aa82) 24%,transparent)}
+.hb-polish .hb-v11-recent-links button>.hb-v11-recent-icon{display:grid;place-items:center;flex:0 0 36px;height:36px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:10px;color:var(--season-primary,#d6aa82);font-size:17px;background:var(--season-surface-alt,rgba(255,255,255,.05))}
+.hb-polish .hb-v11-recent-links button>span:nth-child(2){display:grid;flex:1;min-width:0;gap:3px}
+.hb-polish .hb-v11-recent-links button strong{display:block;font:800 11px Manrope,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-polish .hb-v11-recent-links button small{color:var(--season-muted,#aca4ac);font:650 10px Manrope,sans-serif}
+.hb-polish .hb-v11-recent-links button>span:last-child{color:var(--season-primary,#d6aa82)}
+.hb-polish .hb-v11-notes-glance{display:flex;flex-direction:column;align-items:flex-start}
+.hb-polish .hb-v11-notes-glance p{margin:0 0 18px;min-height:48px;max-height:85px;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;color:var(--season-muted,#ada5ac);font:550 11px/1.7 Manrope,sans-serif;overflow-wrap:anywhere;white-space:pre-wrap}
+.hb-polish .hb-v11-notes-glance button{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 12px;margin-top:auto;border:1px solid color-mix(in srgb,var(--season-primary,#d6aa82) 27%,transparent);border-radius:9px;background:color-mix(in srgb,var(--season-primary,#d6aa82) 8%,transparent);color:var(--season-primary,#d6aa82);font:800 10px Manrope,sans-serif;cursor:pointer}
+@media(max-width:700px){.hb-polish .hb-v11-session-grid{grid-template-columns:1fr}.hb-polish .hb-v11-hub-search{width:100%;justify-content:space-between}.hb-polish .hb-v11-session-hub{padding:17px}.hb-polish .hb-v11-notes-glance p{min-height:0}}
+.hb-polish .hb-quick-notes-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.hb-polish .hb-quick-notes-actions button:first-child{color:var(--hq-accent);border-color:color-mix(in srgb,var(--hq-accent) 35%,transparent)}
+.hb-polish .hb-quick-notes-actions button:not(:disabled):hover{background:color-mix(in srgb,var(--hq-accent) 13%,transparent)}

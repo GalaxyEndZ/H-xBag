@@ -23,6 +23,23 @@ import { ConditionsPanel, CharacterConditions, EnemyConditions } from './Conditi
 import { ARCHETYPE_KITS } from './archetypeKits'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier } from './conditionEngine'
 
+/** A central de navegação opera somente sobre registros já carregados e autorizados. */
+type HaxQuickCommand = {
+  id: string
+  label: string
+  description: string
+  section: string
+  symbol: string
+  keywords?: string
+  action: () => void
+}
+function normalizeHaxQuery(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
+}
+function readHaxLocalText(key: string, max = 3000): string {
+  try { return window.localStorage.getItem(key)?.slice(0, max) || '' } catch { return '' }
+}
+
 /** Ferramentas pessoais da sessão: armazenadas apenas neste navegador, por conta/campanha/temporada. */
 type MasterShieldDesk = { key: string; round: number; turn: string; notes: string }
 const EMPTY_MASTER_SHIELD_DESK: MasterShieldDesk = { key: '', round: 1, turn: '', notes: '' }
@@ -1757,6 +1774,73 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile' | 'conditions'
 >('overview')
   const [sheetCharacterView, setSheetCharacterView] = useState(false)
+  // Navegação unificada; não altera regras, fichas nem permissões de acesso.
+  const [quickOpen, setQuickOpen] = useState(false)
+  const [quickMode, setQuickMode] = useState<'search' | 'notes'>('search')
+  const [quickQuery, setQuickQuery] = useState('')
+  const [quickSelected, setQuickSelected] = useState(0)
+  const [quickRecent, setQuickRecent] = useState<string[]>([])
+  const [quickNotesDraft, setQuickNotesDraft] = useState<{key:string;value:string}>({key:'',value:''})
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const quickInputRef = useRef<HTMLInputElement | null>(null)
+  const quickDialogRef = useRef<HTMLElement | null>(null)
+  const quickStorageKey = `haxbag:quick-recent:v11:${session?.user.id || 'guest'}`
+  const quickNotesKey = `haxbag:session-notes:v11:${session?.user.id || 'guest'}:${selectedCampaignId || 'general'}`
+  const quickNotes = quickNotesDraft.key === quickNotesKey
+    ? quickNotesDraft.value : readHaxLocalText(quickNotesKey)
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(quickStorageKey) || '[]') as unknown
+      setQuickRecent(Array.isArray(saved) ? saved.filter((entry):entry is string => typeof entry === 'string').slice(0, 7) : [])
+    } catch { setQuickRecent([]) }
+  }, [quickStorageKey])
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase('pt-BR') === 'k') {
+        event.preventDefault()
+        setQuickMode('search')
+        setQuickOpen(current => !current)
+      } else if (event.key === 'Escape') {
+        setQuickOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+  useEffect(() => {
+    if (!quickOpen) return
+    const focusFrame = window.requestAnimationFrame(() => {
+      if (quickMode === 'search') quickInputRef.current?.focus()
+      else quickDialogRef.current?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
+    })
+    const activeBefore = document.activeElement as HTMLElement | null
+    const onTrap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !quickDialogRef.current) return
+      const focusables = Array.from(quickDialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),a[href]'
+      ))
+      if (!focusables.length) return
+      const first = focusables[0], last = focusables[focusables.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onTrap)
+    return () => { window.cancelAnimationFrame(focusFrame); window.removeEventListener('keydown', onTrap); activeBefore?.focus() }
+  }, [quickOpen, quickMode])
+  useEffect(() => {
+    let frame = 0
+    const onScroll = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        setShowScrollTop(window.scrollY > 600)
+        frame = 0
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => { window.removeEventListener('scroll', onScroll); if (frame) window.cancelAnimationFrame(frame) }
+  }, [])
+
 
   const [showCampaignForm, setShowCampaignForm] = useState(false)
   const [showCampaignEditor, setShowCampaignEditor] = useState(false)
@@ -9706,6 +9790,109 @@ counterAttackDT
                   })()}</>
   }
 
+  // Busca transversal pela campanha. A lista parte apenas dos dados que a sessão já pode consultar.
+  const quickPages: Array<{
+    id: typeof activePage; label: string; symbol: string; description: string; master?: boolean; campaign?: boolean
+  }> = [
+    {id:'overview',label:'Visão geral',symbol:'◈',description:'Painel da campanha',campaign:true},
+    {id:'player-table',label:'Mesa dos jogadores',symbol:'▦',description:'Mesa virtual e ferramentas de sessão',campaign:true},
+    {id:'sheets',label:'Fichas',symbol:'▧',description:'Biblioteca de personagens',campaign:true},
+    {id:'enemies',label:'Inimigos',symbol:'⚔',description:'Fichas e grupos inimigos',campaign:true,master:true},
+    {id:'master-shield',label:'Escudo do mestre',symbol:'♜',description:'Iniciativas, turnos, recursos e anotações',campaign:true,master:true},
+    {id:'conditions',label:'Condições e efeitos',symbol:'✧',description:'Biblioteca e condições ativas',campaign:true,master:true},
+    {id:'master-chest',label:'Baú do mestre',symbol:'🗝',description:'Itens, recompensas e entregas',campaign:true,master:true},
+    {id:'shops',label:'Lojas',symbol:'▤',description:'Comércio da campanha',campaign:true},
+    {id:'bestiary',label:'Bestiário',symbol:'♞',description:'Criaturas e registros',campaign:true},
+    {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
+    {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
+    {id:'profile',label:'Meu perfil',symbol:'♙',description:'Identidade, amigos e personagens'},
+  ]
+  const quickCommands: HaxQuickCommand[] = quickPages
+    .filter(item => (!item.master || isMaster) && (!item.campaign || Boolean(selectedCampaignId)))
+    .map(item => ({
+      id:`page:${item.id}`, label:item.label, description:item.description, symbol:item.symbol, section:'Páginas',
+      action:() => {
+        if (item.id === 'profile') openProfilePage()
+        else {
+          setActivePage(item.id)
+          if (item.id === 'sheets') setSheetCharacterView(false)
+          if (item.id === 'master-chest' || item.id === 'customization') setNotice('')
+        }
+      },
+    }))
+  for (const campaign of campaigns) {
+    quickCommands.push({
+      id:`campaign:${campaign.id}`, label:campaign.name, symbol:'⚑', section:'Campanhas',
+      description:`Campanha · ${campaign.system_name || 'RPG'} · ${campaign.role === 'master' ? 'Mestre' : 'Jogador'}`,
+      keywords:'selecionar trocar campanha',
+      action:() => {
+        setSelectedCampaignId(campaign.id)
+        setActivePage('overview')
+        void supabase.auth.updateUser({data:{primary_campaign_id:campaign.id}}).then(({error: preferenceError}) => {
+          if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
+        })
+      },
+    })
+  }
+  if (selectedCampaignId) {
+    for (const season of seasons) quickCommands.push({
+      id:`season:${season.id}`, label:season.name, symbol:'◷', section:'Temporadas',
+      description:`Temporada ${season.season_number} · ${season.status === 'active' ? 'Ativa' : season.status === 'completed' ? 'Concluída' : season.status === 'archived' ? 'Arquivada' : 'Rascunho'}`,
+      keywords:'capitulo temporada selecionar',
+      action:() => { setSelectedSeasonId(season.id); setActivePage(isMaster ? 'master-shield' : 'sheets'); if (!isMaster) setSheetCharacterView(false) },
+    })
+    for (const character of characters) quickCommands.push({
+      id:`character:${character.id}`, label:character.name, symbol:character.emoji || '⚔', section:'Personagens',
+      description:`Ficha de personagem · ${character.archetype || 'Sem arquétipo'}`, keywords:'ficha abrir personagem',
+      action:() => { setSelectedCharacterId(character.id); setSheetCharacterView(true); setActivePage('sheets') },
+    })
+    if (isMaster) for (const enemy of enemies) quickCommands.push({
+      id:`enemy:${enemy.id}`, label:enemy.name, symbol:enemy.emoji || '⚔', section:'Inimigos',
+      description:`Ficha de inimigo · ${enemy.archetype || 'Sem arquétipo'}`, keywords:'ficha combate inimigo',
+      action:() => { if (!enemySheetDirty || enemy.id === selectedEnemyId || window.confirm('A ficha do inimigo atual possui alterações não salvas. Deseja trocar de ficha?')) { setSelectedEnemyId(enemy.id); setEnemySheetView(true); setEnemyItemEditorOpen(false); setActivePage('enemies') } },
+    })
+    for (const shop of shops) quickCommands.push({
+      id:`shop:${shop.id}`, label:shop.name, symbol:'▤', section:'Lojas', description:'Loja da campanha',
+      keywords:'comercio comprar vender', action:() => { setSelectedShopId(shop.id); setActivePage('shops') },
+    })
+    for (const creature of accessibleCreatures) quickCommands.push({
+      id:`creature:${creature.id}`, label:creature.name, symbol:'♞', section:'Bestiário',
+      description:`Criatura · ${creature.category || 'Bestiário'}`, keywords:'criatura monstro bestiario',
+      action:() => { setSelectedCreatureId(creature.id); setActivePage('bestiary') },
+    })
+  }
+  const quickNormalizedQuery = normalizeHaxQuery(quickQuery)
+  const quickTokens = quickNormalizedQuery.split(/\s+/).filter(Boolean)
+  const quickResults = quickCommands
+    .filter(command => !quickTokens.length || quickTokens.every(token =>
+      normalizeHaxQuery(`${command.label} ${command.description} ${command.section} ${command.keywords || ''}`).includes(token)))
+    .sort((a,b) => {
+      if (quickTokens.length) {
+        const aStarts = normalizeHaxQuery(a.label).startsWith(quickNormalizedQuery) ? 1 : 0
+        const bStarts = normalizeHaxQuery(b.label).startsWith(quickNormalizedQuery) ? 1 : 0
+        if (aStarts !== bStarts) return bStarts - aStarts
+      } else {
+        const ia = quickRecent.indexOf(a.id), ib = quickRecent.indexOf(b.id)
+        if (ia !== ib) return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib)
+      }
+      return a.section.localeCompare(b.section, 'pt-BR') || a.label.localeCompare(b.label, 'pt-BR')
+    }).slice(0, 12)
+  const runQuickCommand = (command: HaxQuickCommand) => {
+    setQuickOpen(false); setQuickQuery(''); setQuickSelected(0)
+    setQuickRecent(previous => {
+      const next = [command.id, ...previous.filter(id => id !== command.id)].slice(0,7)
+      try { window.localStorage.setItem(quickStorageKey, JSON.stringify(next)) } catch { /* modo privado */ }
+      return next
+    })
+    command.action()
+  }
+  const openQuick = (mode: 'search' | 'notes' = 'search') => {
+    setQuickMode(mode)
+    setQuickQuery('')
+    setQuickSelected(0)
+    setQuickOpen(true)
+  }
+
   if (authLoading) {
     return <main style={centerStyle}>Verificando sua sessão...</main>
   }
@@ -9714,6 +9901,7 @@ counterAttackDT
 
   return (
     <div className={`app-shell hb-polish theme-${activeThemeKey} visual-style-${activeVisualStyleKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
+      <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
       <aside className="sidebar hb-sidebar" aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => setActivePage('overview')} aria-label="HäxBag — ir para visão geral">
@@ -9765,6 +9953,14 @@ counterAttackDT
           }}><span aria-hidden="true">＋</span> Criar campanha</button>
         </section>
 
+        <div className="hb-global-actions" aria-label="Ferramentas rápidas">
+          <button type="button" className="hb-quick-launcher" onClick={() => openQuick('search')}
+            title="Buscar e navegar pelo HäxBag (Ctrl ou ⌘ + K)" aria-keyshortcuts="Control+K Meta+K">
+            <span aria-hidden="true">⌕</span><span>Buscar no HäxBag</span><kbd>Ctrl K</kbd>
+          </button>
+          <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
+            aria-label="Abrir notas privadas da sessão" title="Notas privadas da sessão">✎</button>
+        </div>
         <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal">
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">EXPLORAR</span>
@@ -9844,6 +10040,79 @@ counterAttackDT
         </div>
       </aside>
 
+      {quickOpen && (
+        <div className="hb-quick-scrim" onMouseDown={event => {if (event.target === event.currentTarget) setQuickOpen(false)}}>
+          <section className="hb-quick-dialog" role="dialog" aria-modal="true" aria-labelledby="hb-quick-dialog-title" ref={quickDialogRef}>
+            <header className="hb-quick-heading">
+              <span className="hb-quick-emblem" aria-hidden="true">✧</span>
+              <div><small>HÄXBAG · CENTRAL DE AVENTURA</small><h2 id="hb-quick-dialog-title">Portal de navegação</h2></div>
+              <button type="button" className="hb-quick-close" onClick={() => setQuickOpen(false)} aria-label="Fechar central de navegação">✕</button>
+            </header>
+            <div className="hb-quick-tabs" role="group" aria-label="Ferramentas da central">
+              <button type="button" className={quickMode === 'search' ? 'active' : ''} aria-pressed={quickMode === 'search'} onClick={() => {setQuickMode('search');setQuickSelected(0)}}>⌕ Navegar e buscar</button>
+              <button type="button" className={quickMode === 'notes' ? 'active' : ''} aria-pressed={quickMode === 'notes'} onClick={() => setQuickMode('notes')}>✎ Minhas notas</button>
+            </div>
+            {quickMode === 'search' ? <>
+              <div className="hb-quick-search-row">
+                <span aria-hidden="true">⌕</span>
+                <input ref={quickInputRef} type="search" value={quickQuery}
+                  onChange={event => {setQuickQuery(event.target.value);setQuickSelected(0)}}
+                  onKeyDown={event => {
+                    if (event.key === 'ArrowDown') {event.preventDefault();setQuickSelected(current => Math.min(quickResults.length - 1, current + 1))}
+                    else if (event.key === 'ArrowUp') {event.preventDefault();setQuickSelected(current => Math.max(0, current - 1))}
+                    else if (event.key === 'Enter' && quickResults.length) {event.preventDefault();runQuickCommand(quickResults[Math.min(quickSelected, quickResults.length-1)])}
+                  }}
+                  placeholder="Buscar páginas, personagens, campanhas, lojas…"
+                  aria-label="Buscar no HäxBag" aria-controls="hb-quick-results" aria-activedescendant={quickResults.length ? `hb-quick-option-${Math.min(quickSelected,quickResults.length-1)}` : undefined} role="combobox" aria-expanded="true" aria-autocomplete="list" />
+                {quickQuery && <button type="button" className="hb-quick-clear" onClick={() => {setQuickQuery('');setQuickSelected(0);quickInputRef.current?.focus()}}>Limpar</button>}
+              </div>
+              <div className="hb-quick-results-heading"><span>{quickQuery ? 'RESULTADOS DA BUSCA' : 'ACESSO RÁPIDO E RECENTES'}</span><strong>{quickResults.length} {quickResults.length === 1 ? 'opção' : 'opções'}</strong></div>
+              <div id="hb-quick-results" className="hb-quick-results" role="listbox" aria-label="Resultados da busca">
+                {quickResults.map((command,index) =>
+                  <button type="button" id={`hb-quick-option-${index}`} role="option" aria-selected={quickSelected === index}
+                    key={command.id} className={`hb-quick-result ${index === quickSelected ? 'is-selected' : ''}`}
+                    onMouseEnter={() => setQuickSelected(index)} onClick={() => runQuickCommand(command)}>
+                    <span className="hb-quick-result-icon" aria-hidden="true">{command.symbol}</span>
+                    <span className="hb-quick-result-copy"><strong>{command.label}</strong><small>{command.description}</small></span>
+                    <span className="hb-quick-result-meta">{command.section}</span>
+                    <span className="hb-quick-result-arrow" aria-hidden="true">↗</span>
+                  </button>
+                )}
+                {!quickResults.length && <div className="hb-quick-empty"><span aria-hidden="true">⌕</span><strong>Nenhum registro encontrado</strong><p>Experimente outro nome ou pesquise por uma área da campanha.</p></div>}
+              </div>
+              <footer className="hb-quick-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Selecionar</span><span><kbd>Enter</kbd> Abrir</span><span><kbd>Esc</kbd> Fechar</span><span>Os resultados respeitam suas permissões</span></footer>
+            </> : <div className="hb-quick-notes">
+              <div className="hb-quick-notes-title"><div><strong>✎ Diário particular</strong><p>Rascunhos, pistas e lembretes para sua sessão. Só ficam neste navegador.</p></div><span>{quickNotes.length}/3000</span></div>
+              <label htmlFor="hb-quick-notes-textarea">Anotações {selectedCampaign ? `· ${selectedCampaign.name}` : '· Gerais'}</label>
+              <textarea id="hb-quick-notes-textarea" maxLength={3000} value={quickNotes} rows={10}
+                placeholder="O que vale lembrar na próxima sessão? Registre objetivos, pistas, NPCs e ideias…"
+                onChange={event => {
+                  const value = event.target.value
+                  setQuickNotesDraft({key:quickNotesKey,value})
+                  try {window.localStorage.setItem(quickNotesKey,value)} catch {/* indisponível neste navegador */}
+                }} />
+              <div className="hb-quick-notes-bottom"><span>✦ Salvo automaticamente neste dispositivo, separado por conta e campanha.</span>
+                <div className="hb-quick-notes-actions">
+                  <button type="button" disabled={!quickNotes.trim()} onClick={() => {
+                    const file = new Blob([`HäxBag · Notas pessoais\nCampanha: ${selectedCampaign?.name || 'Gerais'}\n\n${quickNotes}\n`], {type:'text/plain;charset=utf-8'})
+                    const url = URL.createObjectURL(file)
+                    const link = document.createElement('a')
+                    link.href=url
+                    link.download=`haxbag-notas-${normalizeHaxQuery(selectedCampaign?.name || 'gerais').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'campanha'}.txt`
+                    document.body.appendChild(link)
+                    link.click()
+                    link.remove()
+                    window.setTimeout(() => URL.revokeObjectURL(url), 1200)
+                  }}>↓ Exportar .txt</button>
+                  <button type="button" disabled={!quickNotes.trim()} onClick={() => {if (window.confirm('Limpar suas notas privadas desta campanha?')) {setQuickNotesDraft({key:quickNotesKey,value:''});try{window.localStorage.removeItem(quickNotesKey)}catch{}}}}>Limpar notas</button>
+                </div>
+              </div>
+            </div>}
+          </section>
+        </div>
+      )}
+      {showScrollTop && !quickOpen && <button className="hb-back-to-top" type="button" title="Voltar ao topo" aria-label="Voltar ao topo da página"
+        onClick={() => window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'})}>↑ <span>Topo</span></button>}
       <main className={`main-content ${activePage === 'player-table' ? 'hb-vtt-app-main' : ''}`} id="inicio">
         <header className="topbar">
           <div className="breadcrumb hb-topbar-trail">
@@ -9854,6 +10123,10 @@ counterAttackDT
           </div>
 
           <div className="topbar-right">
+            <button type="button" className="hb-quick-topbar" onClick={() => openQuick('search')}
+              aria-label="Buscar páginas, personagens e campanhas (Ctrl K)" title="Busca global (Ctrl K)">
+              <span aria-hidden="true">⌕</span><span>Busca global</span><kbd>Ctrl K</kbd>
+            </button>
             <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
               <span aria-hidden="true">{activeVisualStyle.symbol}</span>
               <strong>{activeVisualStyle.label}</strong>
@@ -9871,7 +10144,7 @@ counterAttackDT
           </div>
         </header>
 
-        <div className={`page-content page-${activePage}`}>
+        <div className={`page-content page-${activePage}`} id="inicio-conteudo" tabIndex={-1}>
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <MasterChest
               key={selectedCampaignId}
@@ -11677,6 +11950,25 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             </button>
           ))}
         </div>
+        <section className="hb-v11-session-hub" aria-label="Atalhos pessoais da campanha">
+          <div className="hb-v11-session-head"><div><span className="hb-kicker">✦ SEU ESPAÇO</span><h3>Continuar jornada</h3><p>Seus últimos acessos e lembretes, sempre à mão.</p></div>
+            <button type="button" className="hb-v11-hub-search" onClick={() => openQuick('search')}>⌕ Explorar tudo <span aria-hidden="true">↗</span></button>
+          </div>
+          <div className="hb-v11-session-grid">
+            <div className="hb-v11-recent-links"><span className="hb-v11-small-label">◷ ACESSOS RÁPIDOS</span>
+              {(quickRecent.map(id => quickCommands.find(command => command.id === id)).filter((command):command is HaxQuickCommand => Boolean(command)).slice(0,3).length
+                ? quickRecent.map(id => quickCommands.find(command => command.id === id)).filter((command):command is HaxQuickCommand => Boolean(command)).slice(0,3)
+                : quickCommands.filter(command => ['page:sheets','page:campaigns', isMaster ? 'page:master-shield' : 'page:bestiary'].includes(command.id)).slice(0,3)
+              ).map(command => <button type="button" key={command.id} onClick={() => runQuickCommand(command)}>
+                <span className="hb-v11-recent-icon" aria-hidden="true">{command.symbol}</span><span><strong>{command.label}</strong><small>{command.section}</small></span><span aria-hidden="true">↗</span>
+              </button>)}
+            </div>
+            <div className="hb-v11-notes-glance"><span className="hb-v11-small-label">✎ NOTAS PARTICULARES</span>
+              <p>{quickNotes.trim() || 'Guarde pistas, lembretes e ideias para a próxima sessão. As notas ficam somente no seu navegador.'}</p>
+              <button type="button" onClick={() => openQuick('notes')}>{quickNotes.trim() ? 'Editar minhas notas' : 'Criar anotação'} <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+        </section>
         <div className="hb-dashboard-grid">
           <section className="hb-panel hb-journey-panel">
             <div className="hb-panel-heading"><div><span className="hb-kicker">CAMPANHA EM ANDAMENTO</span><h3>Temporadas</h3><p>Capítulos da jornada do seu grupo.</p></div><span className="hb-heading-icon">◷</span></div>
