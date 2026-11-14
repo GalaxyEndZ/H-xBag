@@ -6802,3 +6802,204 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 @media(prefers-reduced-motion:reduce){
   .app-shell .hb-identity-preview-modes button{transition:none}
 }
+
+
+/* =======================================================================
+   HÄXBAG V35 · GALERIA CLARA, LEGÍVEL E RESPONSIVA
+   Corrige miniaturas estreitas, baixo contraste e prévia de Silvam.
+   Escopo apenas no catálogo: não altera temas, dados nem regras do RPG.
+   ======================================================================= */
+.app-shell .hb-identity-selection-layout .hb-identity-catalog {
+  padding:clamp(15px,1.8vw,22px);
+  gap:17px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 23%,var(--season-line));
+  border-radius:20px;
+  background:linear-gradient(160deg,
+    color-mix(in srgb,var(--season-surface) 91%,var(--season-bg)),
+    color-mix(in srgb,var(--season-bg) 82%,var(--season-surface-alt)));
+}
+.app-shell .hb-identity-selection-layout .hb-customization-gallery-heading {
+  padding:3px 1px 15px;
+  gap:10px;
+}
+.app-shell .hb-identity-selection-layout .hb-customization-gallery-heading>div{gap:6px}
+.app-shell .hb-identity-selection-layout .hb-customization-gallery-heading strong {
+  font-size:19px;
+  line-height:1.2;
+  letter-spacing:-.025em;
+}
+.app-shell .hb-identity-selection-layout .hb-customization-gallery-heading small {
+  font-size:12px;
+  line-height:1.55;
+  max-width:600px;
+}
+/* Não comprimir 3 cartões numa galeria de ~850px. */
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,285px),1fr));
+  gap:16px;
+  align-items:stretch;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 30px;
+  grid-template-rows:27px 177px minmax(105px,1fr) auto auto;
+  gap:11px 10px;
+  padding:15px;
+  min-height:414px;
+  border-radius:18px !important;
+  border:1px solid color-mix(in srgb,var(--season-primary) 24%,var(--season-line));
+  background:linear-gradient(160deg,
+    color-mix(in srgb,var(--season-surface-alt) 71%,var(--season-surface)),
+    var(--season-bg));
+  box-shadow:0 10px 27px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card:hover:not(:disabled) {
+  transform:translateY(-2px);
+  border-color:color-mix(in srgb,var(--season-primary) 65%,var(--season-line));
+  box-shadow:0 15px 32px rgba(0,0,0,.2);
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-signature {
+  max-width:100%;
+  font-size:10px;
+  letter-spacing:.075em;
+  min-height:26px;
+  color:color-mix(in srgb,var(--season-primary) 78%,var(--season-text));
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card-check {
+  width:27px;
+  height:27px;
+  font-size:15px;
+  border-radius:50%;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-preview {
+  width:100%;
+  height:177px;
+  border-radius:12px;
+  border-color:color-mix(in srgb,var(--season-primary) 32%,var(--season-line));
+  overflow:hidden;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-preview::before {
+  inset:10px;
+  border-radius:6px;
+  opacity:.7;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-preview-glyph {
+  top:22px;
+  left:28px;
+  font-size:72px;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-preview-caption {
+  left:23px;
+  right:16px;
+  bottom:14px;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-shadow:0 2px 7px rgba(0,0,0,.85);
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card-info {
+  grid-row:3;
+  grid-column:1/-1;
+  padding:4px 3px 0;
+  gap:7px;
+  min-height:0;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card-info strong {
+  font-size:18px;
+  line-height:1.27;
+  overflow-wrap:anywhere;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card-info strong::after {
+  margin-top:7px;
+  line-height:1.4;
+  font-size:10px;
+  letter-spacing:.115em;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card-info small {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  line-clamp:3;
+  overflow:hidden;
+  font-size:12px;
+  line-height:1.5;
+  color:color-mix(in srgb,var(--season-muted) 83%,var(--season-text));
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .hb-identity-collection-tag {
+  padding:7px 10px;
+  min-height:28px;
+  align-items:center;
+  font-size:10px;
+  letter-spacing:.08em;
+  border-radius:7px;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .hb-style-gallery-choice {
+  padding:12px 14px;
+  min-height:41px;
+  display:grid;
+  place-items:center;
+  font-size:11px;
+  letter-spacing:.095em;
+  border-radius:10px;
+  background:color-mix(in srgb,var(--season-primary) 8%,var(--season-surface-alt));
+  color:color-mix(in srgb,var(--season-muted) 67%,var(--season-text));
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card.inspected:not(.active) {
+  border-color:color-mix(in srgb,var(--season-primary) 70%,var(--season-line)) !important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--season-primary) 32%,transparent),
+    0 13px 30px rgba(0,0,0,.18) !important;
+}
+.app-shell .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-favorite {
+  top:59px;
+  right:27px;
+  width:35px;
+  height:35px;
+  font-size:23px;
+  border-radius:50%;
+  background:color-mix(in srgb,var(--season-bg) 91%,#090c12);
+  border-color:color-mix(in srgb,var(--season-primary) 35%,var(--season-line));
+  color:color-mix(in srgb,var(--season-muted) 75%,var(--season-text));
+}
+.app-shell .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-favorite:hover {
+  transform:scale(1.06);
+}
+/* Recorte do SVG original: o freixo prateado aparece por inteiro e em destaque.
+   O hero de tela cheia continua sendo o arquivo original sem recortes. */
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview {
+  background:
+    linear-gradient(0deg,rgba(5,12,17,.48),transparent 25%),
+    url('./style-art/silvam-argentea-gallery.svg') center / cover no-repeat,
+    #0b151a !important;
+  border-color:rgba(195,217,222,.58) !important;
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview::after {
+  background:linear-gradient(0deg,rgba(4,10,15,.35),transparent 35%);
+}
+/* O formato compacto permanece compacto, mas sua prévia também usa o SVG corrigido. */
+.app-shell .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-floresta_esquecida .season-style-preview {
+  background:
+    linear-gradient(0deg,rgba(5,12,17,.48),transparent 25%),
+    url('./style-art/silvam-argentea-gallery.svg') center / cover no-repeat,
+    #0b151a !important;
+}
+@media(max-width:700px){
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact){
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,255px),1fr));
+    gap:12px;
+  }
+  .app-shell .hb-identity-selection-layout .hb-identity-catalog{padding:12px}
+}
+@media(max-width:570px){
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact){grid-template-columns:1fr}
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .season-style-card{
+    grid-template-rows:27px 177px minmax(0,1fr) auto auto;
+    min-height:0;
+  }
+  .app-shell .hb-identity-selection-layout .hb-customization-gallery-heading strong{font-size:17px}
+  .app-shell .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-favorite{top:59px;right:27px}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-favorite:hover{transform:none}
+}

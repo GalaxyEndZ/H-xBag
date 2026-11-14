@@ -11813,7 +11813,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       </div>
                       <div className="hb-identity-catalog">
                         <div className="hb-customization-gallery-heading">
-                          <div><strong>Galeria de estilos</strong><small>{visibleVisualStyles.length} {visibleVisualStyles.length===1?'identidade encontrada':'identidades encontradas'} · Clique numa arte para comparar.</small></div>
+                          <div><strong>Galeria de estilos</strong><small>{visibleVisualStyles.length} {visibleVisualStyles.length===1?'identidade encontrada':'identidades encontradas'} · Selecione para visualizar, sem alterar o estilo em uso.</small></div>
                           <div className="hb-identity-gallery-head-actions">{visualStyleIsPending && <span className="hb-customization-unsaved">✧ Prévia não salva</span>}<button type="button" className="hb-identity-show-preview" onClick={()=>customizationInspectorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})}>Ver prévia ↑</button></div>
                         </div>
                         <div className={`season-style-grid hb-style-gallery-grid ${visualStyleCompact?'is-compact':''}`}>
@@ -11832,7 +11832,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                                 </span>
                                 <span className="season-style-card-info"><strong>{style.label}</strong><small>{style.description}</small></span>
                                 <span className="hb-identity-collection-tag">{classicVisualStyles.includes(key)?'ORIGINAL':'NOVA COLEÇÃO'}</span>
-                                <span className="season-style-card-check" aria-hidden="true">{activeVisualStyleKey===key?'✓':inspectedVisualStyleKey===key?'◉':'＋'}</span>
+                                <span className="season-style-card-check" aria-hidden="true">{activeVisualStyleKey===key?'✓':inspectedVisualStyleKey===key?'◉':'↗'}</span>
                                 <span className="hb-style-gallery-choice">{activeVisualStyleKey===key?'✓ EM USO':inspectedVisualStyleKey===key?'◉ VISUALIZANDO':'VER IDENTIDADE'}</span>
                               </button>
                               <button type="button" className={`hb-style-favorite ${favoriteVisualStyles.includes(key)?'is-favorite':''}`} aria-pressed={favoriteVisualStyles.includes(key)} aria-label={`${favoriteVisualStyles.includes(key)?'Remover':'Adicionar'} ${style.label} ${favoriteVisualStyles.includes(key)?'dos':'aos'} favoritos`} title={favoriteVisualStyles.includes(key)?'Remover dos favoritos':'Adicionar aos favoritos'} onClick={()=>toggleVisualStyleFavorite(key)}>{favoriteVisualStyles.includes(key)?'★':'☆'}</button>
