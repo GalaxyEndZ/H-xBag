@@ -6625,3 +6625,180 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 @media(prefers-reduced-motion:reduce){
   .app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card{transition:none}
 }
+
+/* =====================================================================
+   HÄXBAG V34 · ATELIÊ DE IDENTIDADES
+   Comparação de capas, fichas e navegação; leitura rápida da galeria.
+   Simulações ilustrativas, sem interferir no sistema ou nos temas salvos.
+   ===================================================================== */
+.app-shell .hb-customization-gallery .hb-identity-current-tools {
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; margin-left:auto;
+}
+.app-shell .hb-customization-gallery .hb-identity-current-state{margin:0}
+.app-shell .hb-customization-gallery .hb-identity-current-view {
+  min-height:31px; padding:6px 11px; border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 36%,var(--season-line));
+  color:var(--season-text); background:color-mix(in srgb,var(--season-primary) 8%,var(--season-surface));
+  font-size:11px; font-weight:750; cursor:pointer;
+}
+.app-shell .hb-customization-gallery .hb-identity-current-view:hover {border-color:var(--season-primary)}
+.app-shell .hb-customization-gallery .hb-identity-tools{align-items:flex-end}
+.app-shell .hb-identity-density {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  flex:0 0 auto; gap:3px; align-items:center; min-width:175px;
+  padding:4px; border:1px solid color-mix(in srgb,var(--season-primary) 24%,var(--season-line));
+  border-radius:12px; background:var(--season-bg);
+}
+.app-shell .hb-identity-density>span{
+  grid-column:1/-1; padding:0 7px 2px; font-size:10px; color:var(--season-muted); font-weight:800;
+}
+.app-shell .hb-identity-density button {
+  min-height:31px; padding:6px 9px; border:1px solid transparent; border-radius:8px;
+  background:transparent; font-size:11px; font-weight:750; color:var(--season-muted); cursor:pointer;
+}
+.app-shell .hb-identity-density button.selected{
+  border-color:color-mix(in srgb,var(--season-primary) 33%,var(--season-line));
+  background:color-mix(in srgb,var(--season-primary) 15%,var(--season-surface-alt)); color:var(--season-text);
+}
+.app-shell .hb-identity-gallery-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.app-shell .hb-identity-show-preview{
+  display:none; min-height:32px; border:1px solid var(--season-line); border-radius:9px;
+  padding:5px 10px; color:var(--season-text); background:var(--season-surface-alt);
+  font-size:11px; font-weight:800; cursor:pointer;
+}
+.app-shell .hb-identity-show-preview:hover{border-color:var(--season-primary)}
+.app-shell .hb-identity-preview-modes {
+  display:flex; align-items:center; width:100%; gap:4px; padding:4px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 20%,var(--season-line));
+  border-radius:12px; background:color-mix(in srgb,var(--season-bg) 82%,var(--season-surface-alt));
+}
+.app-shell .hb-identity-preview-modes button{
+  flex:1; min-width:0; min-height:36px; padding:8px 6px;
+  border:1px solid transparent; border-radius:9px; background:transparent;
+  font-size:11px; font-weight:800; color:var(--season-muted); cursor:pointer;
+  transition:background-color .14s ease,color .14s ease,border-color .14s ease;
+}
+.app-shell .hb-identity-preview-modes button.selected{
+  color:var(--season-text); background:color-mix(in srgb,var(--season-primary) 13%,var(--season-surface-alt));
+  border-color:color-mix(in srgb,var(--season-primary) 34%,var(--season-line));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+}
+.app-shell .hb-identity-preview-modes button:not(.selected):hover{color:var(--season-text)}
+.app-shell .hb-identity-inspector-tools {
+  display:flex; justify-content:space-between; align-items:center; gap:9px; width:100%; flex-wrap:wrap;
+  padding:7px 0; border-bottom:1px solid color-mix(in srgb,var(--season-primary) 17%,var(--season-line));
+}
+.app-shell .hb-identity-inspector-tools>span {
+  font-size:9px; font-weight:900; letter-spacing:.11em; color:var(--season-muted);
+}
+.app-shell .hb-identity-inspector-tools>div{display:flex;align-items:center;gap:7px}
+.app-shell .hb-identity-inspector-tools>div>span{font-size:10px;color:var(--season-muted);font-variant-numeric:tabular-nums}
+.app-shell .hb-identity-inspector-tools button{
+  display:grid; place-items:center; width:31px; height:31px; font-size:16px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 25%,var(--season-line));
+  border-radius:9px; background:var(--season-surface-alt); color:var(--season-text); cursor:pointer;
+}
+.app-shell .hb-identity-inspector-tools button:hover:not(:disabled){border-color:var(--season-primary);color:var(--season-primary)}
+.app-shell .hb-identity-inspector-tools button:disabled{opacity:.4;cursor:not-allowed}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-art{isolation:isolate}
+.app-shell .hb-identity-mode-sheet .hb-style-inspector-art,
+.app-shell .hb-identity-mode-menu .hb-style-inspector-art {overflow:hidden}
+.app-shell .hb-identity-mode-sheet .hb-style-inspector-art::before,
+.app-shell .hb-identity-mode-menu .hb-style-inspector-art::before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(130deg,rgba(7,8,13,.88),rgba(7,8,13,.55));
+}
+.app-shell .hb-identity-mode-sheet .hb-style-inspector-glyph,
+.app-shell .hb-identity-mode-menu .hb-style-inspector-glyph{opacity:0}
+.app-shell .hb-identity-mode-sheet .hb-style-inspector-art-label,
+.app-shell .hb-identity-mode-menu .hb-style-inspector-art-label{font-size:8px;bottom:11px;left:18px;letter-spacing:.1em;opacity:.86}
+.app-shell .hb-identity-demo {
+  position:absolute; inset:17px 16px 32px; z-index:3; pointer-events:none;
+  border:1px solid color-mix(in srgb,var(--hb-demo-primary) 45%,#59616d);
+  border-radius:13px; background:color-mix(in srgb,var(--hb-demo-bg) 95%,#10131d);
+  box-shadow:0 15px 30px rgba(0,0,0,.37),inset 0 1px 0 rgba(255,255,255,.05);
+  overflow:hidden; color:#f3f1f7;
+}
+.app-shell .hb-identity-demo-sheet{padding:13px;display:grid;gap:12px;grid-template-rows:auto 1fr}
+.app-shell .hb-identity-demo-heading{display:flex;align-items:center;gap:8px}
+.app-shell .hb-identity-demo-avatar {
+  flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;border-radius:9px;
+  background:color-mix(in srgb,var(--hb-demo-primary) 19%,#15151b);
+  border:1px solid color-mix(in srgb,var(--hb-demo-primary) 44%,#25262d);color:var(--hb-demo-primary);font-size:21px;
+}
+.app-shell .hb-identity-demo-heading>div{display:grid;gap:3px;min-width:0;flex:1}
+.app-shell .hb-identity-demo-heading strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-shell .hb-identity-demo-heading small{font-size:9px;color:#b6b5c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-shell .hb-identity-demo-crest{font:25px Georgia,serif;color:var(--hb-demo-primary)}
+.app-shell .hb-identity-demo-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.app-shell .hb-identity-demo-stats>div{
+  display:flex;flex-direction:column;gap:7px;padding:9px 7px;border:1px solid #ffffff18;border-radius:9px;
+  background:linear-gradient(165deg,#ffffff0b,transparent);min-width:0;
+}
+.app-shell .hb-identity-demo-stats span{color:#bfc1ca;font-size:9px;font-weight:850;letter-spacing:.12em}
+.app-shell .hb-identity-demo-stats b{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.app-shell .hb-identity-demo-stats i{position:relative;width:100%;height:4px;border-radius:999px;background:#ffffff20;overflow:hidden}
+.app-shell .hb-identity-demo-stats i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--hb-demo-width);background:var(--hb-demo-primary);border-radius:inherit}
+.app-shell .hb-identity-demo-stats>div:nth-child(2) i::after{background:var(--hb-demo-secondary)}
+.app-shell .hb-identity-demo-menu{display:grid;grid-template-columns:42% minmax(0,1fr)}
+.app-shell .hb-identity-demo-sidebar{
+  display:flex;flex-direction:column;gap:6px;padding:14px 8px;
+  border-right:1px solid color-mix(in srgb,var(--hb-demo-primary) 26%,#262830);
+  background:linear-gradient(170deg,#ffffff0a,#00000012);
+}
+.app-shell .hb-identity-demo-sidebar strong{font-size:10px;line-height:1.3;letter-spacing:.03em;color:var(--hb-demo-primary);padding-bottom:5px;white-space:nowrap}
+.app-shell .hb-identity-demo-sidebar>span{font-size:9px;line-height:1.25;padding:7px 6px;border-radius:7px;white-space:nowrap}
+.app-shell .hb-identity-demo-sidebar>span.is-active{border:1px solid color-mix(in srgb,var(--hb-demo-primary) 26%,#33343d);background:color-mix(in srgb,var(--hb-demo-primary) 15%,transparent)}
+.app-shell .hb-identity-demo-content{display:flex;flex-direction:column;gap:10px;padding:19px 12px;min-width:0}
+.app-shell .hb-identity-demo-content>small{font-size:8px;font-weight:900;letter-spacing:.12em;color:var(--hb-demo-primary)}
+.app-shell .hb-identity-demo-content>strong{font-size:14px;line-height:1.3}
+.app-shell .hb-identity-demo-content>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:2px}
+.app-shell .hb-identity-demo-content i{height:38px;border:1px solid #ffffff18;border-top:2px solid var(--hb-demo-primary);border-radius:8px;background:linear-gradient(155deg,#ffffff10,transparent)}
+.app-shell .hb-identity-demo-content>span{font-size:9px;line-height:1.3;color:#bac0c8;overflow:hidden;text-overflow:ellipsis}
+/* Galeria compacta: mais opções por tela, sem perder a arte vetorial. */
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:10px;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card{
+  min-height:0; grid-template-rows:auto 106px auto auto; gap:7px;padding:9px;border-radius:13px !important;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card .season-style-preview{grid-row:2;height:106px;border-radius:8px}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-info{grid-row:3;min-height:0;padding:1px 2px}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-info strong{font-size:13px}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-info small,
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-identity-collection-tag{display:none}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-gallery-choice{grid-row:4;padding:8px;font-size:9px}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-favorite{top:40px;right:16px;width:30px;height:30px}
+/* Feedback consistente na seleção, prévia e interações por teclado. */
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card.inspected:not(.active){
+  border-color:var(--season-primary) !important;
+}
+.app-shell .hb-customization-gallery :is(.hb-identity-preview-modes button,.hb-identity-inspector-tools button,.hb-identity-density button,.hb-identity-current-view,.hb-identity-show-preview):focus-visible{
+  outline:2px solid var(--season-primary);outline-offset:3px;
+}
+@media(max-width:1220px){
+  .app-shell .hb-identity-density{min-width:145px}
+}
+@media(max-width:1040px){
+  .app-shell .hb-identity-show-preview{display:inline-flex;align-items:center;justify-content:center}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector-art{min-height:252px}
+}
+@media(max-width:700px){
+  .app-shell .hb-customization-gallery .hb-identity-tools .hb-identity-density{flex:1 1 100%;max-width:none}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector-art{min-height:240px}
+  .app-shell .hb-identity-density{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-shell .hb-identity-demo{inset:14px 13px 29px}
+}
+@media(max-width:430px){
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact{grid-template-columns:1fr 1fr}
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-signature{font-size:8px}
+  .app-shell .hb-identity-demo-stats{gap:4px}
+  .app-shell .hb-identity-demo-stats>div{padding:7px 5px}
+  .app-shell .hb-identity-demo-stats b{font-size:10px}
+  .app-shell .hb-identity-demo-content{padding:17px 8px}
+  .app-shell .hb-identity-demo-content i{height:30px}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .hb-identity-preview-modes button{transition:none}
+}
