@@ -7742,3 +7742,245 @@ body[data-hb-visual-style="floresta_esquecida"] :is(
   outline:2px solid rgba(181,219,196,.67);
   outline-offset:1px;
 }
+
+
+/* ============================================================================
+   HÄXBAG V39 · SILVAM ARGENTEA UNIVERSAL
+   A identidade fornece a gravura nórdica/filigrana prateada, enquanto a paleta
+   (cores, superfícies, luz, botões e bordas) pertence EXCLUSIVAMENTE ao tema
+   de temporada. Compatível com todas as chaves de seasonThemes.ts.
+   Não modifica PV/PS/PR, dados, componentes ou outras 13 identidades.
+   ============================================================================ */
+.app-shell.hb-polish.visual-style-floresta_esquecida {
+  /* Tons lunares neutros + realces derivados da paleta ativa. */
+  --silvam-accent:var(--season-primary, #c8dfe2);
+  --silvam-accent-secondary:var(--season-secondary, #8caeb7);
+  --silvam-ink:color-mix(in srgb, var(--silvam-accent) 7%, #f2f6f5);
+  --silvam-muted:color-mix(in srgb, var(--silvam-accent) 12%, #bfcbd1);
+  --silvam-moon:color-mix(in srgb, var(--silvam-accent) 32%, #eef5f3);
+  --silvam-leaf:color-mix(in srgb, var(--silvam-accent) 49%, #e9f1ed);
+  --silvam-pewter:color-mix(in srgb, var(--silvam-accent) 27%, #a8bec4);
+  --silvam-deep:color-mix(in srgb, var(--season-bg, #0c1418) 92%, #040a0e);
+  --silvam-panel:color-mix(in srgb, var(--season-surface, #17222a) 87%, #09141a);
+  --silvam-panel-alt:color-mix(in srgb, var(--season-surface-alt, #26333e) 85%, #0a1419);
+  --silvam-hairline:color-mix(in srgb, var(--silvam-accent) 25%, var(--season-line, #35424a));
+  --silvam-border:var(--silvam-hairline);
+  --silvam-border-strong:color-mix(in srgb, var(--silvam-accent) 57%, var(--season-line, #35424a));
+  --silvam-tint:color-mix(in srgb, var(--silvam-accent) 8%, transparent);
+  --silvam-ivory:var(--silvam-ink);
+  --silvam-steel:var(--silvam-moon);
+  --hb-theme-ink:var(--silvam-ink);
+  --hb-theme-edge:var(--silvam-border);
+  --hb-theme-edge-soft:color-mix(in srgb, var(--silvam-accent) 17%, transparent);
+  --hb-theme-wash:var(--silvam-tint);
+  --hb-theme-deep:var(--silvam-deep);
+  --hb-v26-ink:var(--silvam-ink);
+  --hb-v26-edge:var(--silvam-border);
+  --hb-v26-soft:var(--silvam-tint);
+  --hb-v26-deep:var(--silvam-deep);
+  --roster-rule:var(--silvam-border);
+  --roster-ink:var(--silvam-ink);
+  --roster-wash:var(--silvam-tint);
+}
+
+/* A ambientação acompanha a paleta mesmo depois de alterar a temporada. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .main-content {
+  background-color:var(--silvam-deep) !important;
+  background-image:
+    radial-gradient(ellipse at 90% 1%, color-mix(in srgb, var(--silvam-accent) 11%, transparent), transparent 42%),
+    radial-gradient(ellipse at 0% 95%, color-mix(in srgb, var(--silvam-accent-secondary) 7%, transparent), transparent 40%),
+    repeating-linear-gradient(112deg,transparent 0 156px,rgba(232,242,240,.009) 157px 158px,transparent 159px 315px),
+    linear-gradient(160deg,var(--silvam-panel),var(--silvam-deep) 78%) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar,.topbar) {
+  border-color:var(--silvam-border) !important;
+  background:linear-gradient(180deg,var(--silvam-panel),var(--silvam-deep)) !important;
+  box-shadow:inset 0 1px rgba(235,246,245,.045) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar {
+  background-image:
+    radial-gradient(ellipse at 100% 6%,color-mix(in srgb,var(--silvam-accent) 11%,transparent),transparent 46%),
+    linear-gradient(180deg,var(--silvam-panel),var(--silvam-deep) 84%) !important;
+  box-shadow:inset -1px 0 color-mix(in srgb,var(--silvam-accent) 13%,transparent),10px 0 34px rgba(0,0,0,.13) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar-style-identity,.hb-sidebar-workspace) {
+  border-color:var(--silvam-border) !important;
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--silvam-deep) 97%,transparent) 0%,color-mix(in srgb,var(--silvam-deep) 90%,transparent) 72%,color-mix(in srgb,var(--silvam-deep) 52%,transparent)),
+    var(--silvam-hero) 63% center / auto 125% no-repeat,
+    var(--silvam-panel) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-emblem {
+  border-color:var(--silvam-border-strong) !important;
+  background:
+    var(--silvam-crest) center / 48px 48px no-repeat,
+    radial-gradient(circle at 47% 37%,var(--silvam-panel-alt),var(--silvam-deep) 82%) !important;
+  box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--silvam-deep) 65%,transparent),0 0 18px var(--silvam-tint) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar-group-title,.eyebrow,.sheet-page-eyebrow,.hb-ms-group-heading) {
+  color:var(--silvam-leaf) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link {
+  color:var(--silvam-muted) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link:hover:not(.active) {
+  color:var(--silvam-ink) !important;
+  border-color:color-mix(in srgb,var(--silvam-accent) 19%,transparent) !important;
+  background:linear-gradient(90deg,var(--silvam-tint),transparent 96%) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link.active {
+  color:var(--silvam-ink) !important;
+  border-color:var(--silvam-border) !important;
+  border-left:3px solid var(--silvam-accent) !important;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--silvam-accent) 19%,transparent),color-mix(in srgb,var(--silvam-accent-secondary) 3%,transparent)) !important;
+  box-shadow:inset 0 1px rgba(242,250,246,.045) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link.active :is(.hb-sidebar-nav-name,.hb-sidebar-nav-icon) {
+  color:var(--silvam-ink) !important;
+}
+
+/* Arte permanece prateada; contorno, banho de luz e superfície mudam com o tema. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+) {
+  border-color:var(--silvam-border-strong) !important;
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--silvam-deep) 91%,transparent) 0%,color-mix(in srgb,var(--silvam-deep) 64%,transparent) 39%,color-mix(in srgb,var(--silvam-deep) 8%,transparent) 100%),
+    var(--silvam-filigree) center / cover no-repeat,
+    var(--silvam-hero) center / cover no-repeat,
+    var(--silvam-panel) !important;
+  box-shadow:inset 0 1px rgba(242,252,247,.09),inset 0 0 0 5px color-mix(in srgb,var(--silvam-accent) 7%,transparent),0 18px 37px rgba(0,0,0,.20) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .sheet-card-title,.sheet-section-heading,.inventory-heading,.hb-panel-heading,
+  .hb-ms-group-heading,.enemy-hub-section-heading
+) {border-bottom-color:var(--silvam-border) !important;}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .card,.panel,.hb-panel,.stat-card,.sheet-card,.sheet-summary-card,.sheet-library-card,
+  .campaign-card,.season-card,.content-card,.inventory-section,.hb-ms-pane,.hb-ms-card,
+  .enemy-hub-card,.hb-beast-card,.shop-card,.shop-item-card,.season-theme-panel,
+  .mc-main,.mc-item,.mc-loot-card,.mc-curation-card
+) {border-color:var(--silvam-border) !important;}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .sheet-card,.hb-panel,.panel,.hb-ms-pane,.inventory-section,.mc-main
+) {background-image:linear-gradient(145deg,var(--silvam-tint),transparent 52%) !important;}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card {
+  border-color:var(--silvam-border) !important;
+  background:
+    radial-gradient(ellipse at 100% 0%,var(--silvam-tint),transparent 48%),
+    linear-gradient(145deg,var(--silvam-panel-alt),var(--silvam-panel)) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(
+  .hb-hero-emblem,.sheet-page-hero-icon,.shops-hero-icon,.hb-heading-icon
+) {border-color:var(--silvam-border-strong) !important;box-shadow:inset 0 1px rgba(255,255,255,.08),0 5px 24px var(--silvam-tint) !important;}
+.app-shell.hb-polish.visual-style-floresta_esquecida .mc-page {
+  --mc-accent:var(--silvam-moon);
+  --mc-border:var(--silvam-border);
+  --mc-soft:var(--silvam-tint);
+}
+
+/* Ações neutras, legíveis, mas com os acentos da temporada — não verde fixo. */
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.primary-button,.hb-sidebar-create,.hb-sidebar-invite-button) {
+  border-color:var(--silvam-border-strong) !important;
+  background:linear-gradient(125deg,
+    color-mix(in srgb,var(--silvam-accent) 29%,var(--silvam-panel-alt)),
+    color-mix(in srgb,var(--silvam-accent-secondary) 20%,var(--silvam-panel))
+  ) !important;
+  color:#f5f7f7 !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.11),0 5px 17px var(--silvam-tint) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.primary-button,.hb-sidebar-create,.hb-sidebar-invite-button):hover:not(:disabled) {
+  filter:brightness(1.12);
+  border-color:var(--silvam-accent) !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.16),0 7px 24px color-mix(in srgb,var(--silvam-accent) 17%,transparent) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.secondary-button,.sheet-page-back,.enemy-hub-back) {
+  border-color:var(--silvam-border) !important;
+  background:linear-gradient(145deg,var(--silvam-tint),color-mix(in srgb,var(--silvam-panel) 5%,transparent)) !important;
+  color:var(--silvam-ink) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.secondary-button,.sheet-page-back,.enemy-hub-back):hover:not(:disabled) {
+  border-color:var(--silvam-border-strong) !important;
+  background:color-mix(in srgb,var(--silvam-accent) 15%,transparent) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(input:not([type='checkbox']):not([type='radio']),textarea,select):focus-visible {
+  outline:2px solid var(--silvam-accent);
+  border-color:var(--silvam-border-strong) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-profile-identity-cover-art,.hb-profile-banner-art) {
+  background-image:
+    linear-gradient(90deg,color-mix(in srgb,var(--silvam-deep) 26%,transparent),transparent 78%),
+    var(--silvam-filigree),var(--silvam-hero) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-hero-preview {
+  border-color:var(--silvam-border-strong) !important;
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--silvam-deep) 70%,transparent),transparent),
+    var(--silvam-filigree) center/cover no-repeat,
+    var(--silvam-hero) center/cover no-repeat,
+    var(--silvam-panel) !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.09),0 14px 34px rgba(0,0,0,.18) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-preview-symbol {
+  filter:drop-shadow(0 4px 19px color-mix(in srgb,var(--silvam-accent) 18%,transparent));
+}
+
+/* Galeria e inspetor: Silvam prateado, contorno contextual à paleta;
+   cada outra entrada mantém os próprios tokens (isolamento da V37). */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida {
+  --hb-gallery-accent:color-mix(in srgb,var(--season-primary) 42%,#e0ebe8);
+  --hb-gallery-secondary:color-mix(in srgb,var(--season-primary) 17%,#c1ced1);
+  --hb-gallery-art:url('./style-art/silvam-argentea-gallery.svg');
+  --hb-gallery-art-position:center;
+  --hb-gallery-art-size:cover;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-preview {
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--season-bg) 71%,transparent),color-mix(in srgb,var(--season-bg) 19%,transparent) 64%,transparent),
+    url('./style-art/silvam-argentea-floral-corner.svg') left -9px top -5px / 105px 105px no-repeat,
+    var(--hb-gallery-art) center/cover no-repeat,
+    color-mix(in srgb,var(--season-bg) 78%,#0a181d) !important;
+  border-color:color-mix(in srgb,var(--season-primary) 42%,#526268) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida > .season-style-card.active {
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--season-primary) 30%,transparent),0 12px 30px rgba(0,0,0,.23) !important;
+}
+.app-shell .season-visual-style-group .hb-style-inspector.season-style-floresta_esquecida {
+  --hb-inspector-art:url('./style-art/floresta_esquecida-hero.svg');
+  border-color:color-mix(in srgb,var(--season-primary) 40%,var(--season-line)) !important;
+}
+.app-shell .season-visual-style-group .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-art {
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--season-bg) 85%,transparent),color-mix(in srgb,var(--season-bg) 20%,transparent) 64%,transparent),
+    var(--hb-inspector-art) center/cover no-repeat,
+    linear-gradient(145deg,var(--season-bg),var(--season-surface-alt)) !important;
+}
+.app-shell .season-visual-style-group .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-glyph {
+  color:color-mix(in srgb,var(--season-primary) 48%,#f1f7f6) !important;
+}
+
+/* Modais montados via portal recebem a paleta em body (useEffect do App). */
+body[data-hb-visual-style="floresta_esquecida"] :is(
+  .bestiary-modal,.enemy-hub-modal,.emoji-modal,.item-details-modal,
+  .item-modal-content,.modal-content,.sheet-item-modal,.sheet-item-editor-modal
+) {
+  border-color:color-mix(in srgb,var(--season-primary) 33%,var(--season-line)) !important;
+  background-image:linear-gradient(155deg,color-mix(in srgb,var(--season-primary) 7%,transparent),transparent 50%) !important;
+  box-shadow:0 25px 65px rgba(0,0,0,.42),inset 0 1px rgba(240,248,248,.065) !important;
+}
+body[data-hb-visual-style="floresta_esquecida"] :is(
+  .bestiary-modal,.enemy-hub-modal,.emoji-modal,.item-modal-content,
+  .modal-content,.sheet-item-modal,.sheet-item-editor-modal
+) :is(input:not([type='checkbox']):not([type='radio']),textarea,select):focus-visible {
+  outline:2px solid var(--season-primary);
+}
+@media(max-width:720px) {
+  .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+    .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+    .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+  ) {background-position:center,66% center,68% center,center !important;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link {transition:none !important;}
+}
