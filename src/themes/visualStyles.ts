@@ -43,8 +43,8 @@ export const visualStyles = {
   vigilia_lunar: {
     label: 'Vigília Lunar',
     symbol: '☽',
-    signature: 'A LUA OBSERVA',
-    description: 'Crescente velada, vitrais de luar e silêncio ritual sobre superfícies escuras.',
+    signature: 'O SANTUÁRIO DA LUA VELADA',
+    description: 'Uma lua de prata ilumina os vitrais de um santuário ancestral, entre constelações, torres de vigília e névoa noturna.',
   },
   floresta_esquecida: {
     label: 'Silvam Argentea',
@@ -60,21 +60,21 @@ export const visualStyles = {
   },
   arcano: {
     label: 'Arcano',
-    symbol: '✶',
-    signature: 'RUNAS EM MOVIMENTO',
-    description: 'Geometrias místicas, círculos de invocação e runas de grimório refinado.',
+    symbol: '✧',
+    signature: 'O ASTROLÁBIO DESPERTA',
+    description: 'Um cristal etéreo flutua em um astrolábio de runas vivas, entre os arcos de um observatório esquecido.',
   },
   catedral_onix: {
     label: 'Catedral de Ônix',
-    symbol: '♜',
-    signature: 'VOTOS NA ESCURIDÃO',
-    description: 'Vitrais góticos, arcos ogivais e arquitetura imponente esculpida em sombra.',
+    symbol: '✥',
+    signature: 'O VITRAL DAS SOMBRAS',
+    description: 'Uma rosácea de vitral desperta na catedral de ônix, entre arcos ancestrais, pedra negra e luz violeta.',
   },
   mare_abissal: {
     label: 'Maré Abissal',
     symbol: '≋',
     signature: 'ECOS DAS PROFUNDEZAS',
-    description: 'Marés ancestrais, anéis submarinos e movimentos fluidos das profundezas.',
+    description: 'Uma espiral de madrepérola emerge entre ruínas submersas, correntes ancestrais e ecos de luz abissal.',
   },
   jardim_espectral: {
     label: 'Jardim Espectral',
@@ -85,8 +85,8 @@ export const visualStyles = {
   relicario_solar: {
     label: 'Relicário Solar',
     symbol: '✷',
-    signature: 'LEGADO DA AURORA',
-    description: 'Raios geométricos, molduras art déco e insígnias de um império solar.',
+    signature: 'A COROA DA AURORA',
+    description: 'Um sol imperial gravado em ouro repousa sobre um relicário art déco, entre pilares e geometrias sagradas.',
   },
 } as const
 

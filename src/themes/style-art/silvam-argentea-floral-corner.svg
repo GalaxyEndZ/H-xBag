@@ -1,9 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280" viewBox="0 0 280 280" fill="none" aria-label="Detalhe ornamental de folhagem prata">
-  <defs><linearGradient id="a" x1="15" y1="12" x2="255" y2="260" gradientUnits="userSpaceOnUse"><stop stop-color="#f0f7ec" stop-opacity=".55"/><stop offset="1" stop-color="#84aaa4" stop-opacity=".1"/></linearGradient></defs>
-  <path d="M12 139V23q0-11 11-11h119M20 98V30q0-10 10-10h69" stroke="url(#a)" stroke-width="1.2"/>
-  <path d="M27 215C46 121 111 53 222 23M34 169c34-39 49-52 88-58m-63 24c12-42 28-62 59-75m25 7c0 21-3 37-15 55M171 47c20 9 32 10 54 6" stroke="url(#a)" stroke-width="2" stroke-linecap="round"/>
-  <g stroke="url(#a)" stroke-width="1.2" fill="#b7d3c8" fill-opacity=".1">
-    <path d="M74 138Q46 109 38 80q36 9 36 58Zm16-22q-5-44 16-66 15 37-16 66Zm37-29q18-35 56-37-10 34-56 37Zm36-29q14-31 39-41 1 29-39 41ZM41 181q-21-8-28-28 29-1 28 28Zm131-131q20-21 44-16-10 26-44 16Z"/>
-  </g>
-  <path d="m16 16 6-6 6 6-6 6Zm222 10 5-5 5 5-5 5Z" stroke="url(#a)"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="112" height="112" viewBox="0 0 112 112" fill="none" aria-label="Canto de prata Silvam" role="img">
+<defs><linearGradient id="m" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8c5c8"/><stop offset=".6" stop-color="#edf6f5"/><stop offset="1" stop-color="#7c9da3"/></linearGradient></defs>
+<path d="M14 73V14h59" stroke="#c6b58b" stroke-width="1.5" opacity=".65"/>
+<path d="M18 88C31 55 55 32 89 18" stroke="url(#m)" stroke-width="2.1" opacity=".9"/>
+<path d="M28 71C40 70 48 64 48 54C36 52 29 59 28 71ZM49 47C62 47 67 39 67 30C55 30 49 35 49 47ZM68 28C81 31 88 25 91 14C80 12 70 17 68 28ZM32 66C31 53 37 45 48 43C51 55 44 62 32 66Z" fill="url(#m)" opacity=".62"/>
+<path d="M14 14l6 6-6 6-6-6Z" fill="#d4c49a" opacity=".7"/></svg>

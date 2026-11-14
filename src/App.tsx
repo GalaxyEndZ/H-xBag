@@ -1410,6 +1410,8 @@ const resetCreatureFilters = () => {
   const [seasonDescriptionDraft, setSeasonDescriptionDraft] = useState('')
   const [seasonThemeSaving, setSeasonThemeSaving] = useState(false)
   const [seasonVisualStyleSaving, setSeasonVisualStyleSaving] = useState(false)
+  const [seasonPaletteSearch, setSeasonPaletteSearch] = useState('')
+  const [seasonPaletteExpanded, setSeasonPaletteExpanded] = useState(false)
   const [visualStyleSearch, setVisualStyleSearch] = useState('')
   const [visualStylePreviewKey, setVisualStylePreviewKey] = useState<VisualStyleKey | null>(null)
   const [visualStyleCollection, setVisualStyleCollection] = useState<'all' | 'originals' | 'new' | 'favorites'>('all')
@@ -1423,6 +1425,7 @@ const resetCreatureFilters = () => {
     } catch { return [] }
   })
   const customizationInspectorRef = useRef<HTMLElement | null>(null)
+  const customizationTopRef = useRef<HTMLElement | null>(null)
   useEffect(() => {
     try { localStorage.setItem('haxbag:customization:favorite-styles', JSON.stringify(favoriteVisualStyles)) } catch { /* Navegação privada pode bloquear armazenamento */ }
   }, [favoriteVisualStyles])
@@ -1493,6 +1496,14 @@ const resetCreatureFilters = () => {
   const activeSeason = seasons.find(entry => entry.id === selectedSeasonId)
   const activeThemeKey = activeSeason?.theme_key && activeSeason.theme_key in seasonThemes ? activeSeason.theme_key as keyof typeof seasonThemes : 'default'
   const activeTheme = seasonThemes[activeThemeKey]
+  const allSeasonPalettes = (Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][])
+    .sort(([left], [right]) => Number(right === activeThemeKey) - Number(left === activeThemeKey))
+  const paletteQuery = normalizeHaxQuery(seasonPaletteSearch)
+  const matchedSeasonPalettes = allSeasonPalettes.filter(([key, theme]) =>
+    !paletteQuery || normalizeHaxQuery(`${theme.label} ${key}`).includes(paletteQuery))
+  const visibleSeasonPalettes = seasonPaletteExpanded || paletteQuery
+    ? matchedSeasonPalettes
+    : matchedSeasonPalettes.slice(0, 12)
   const activeVisualStyleKey: VisualStyleKey = activeSeason?.visual_style_key === 'tyr'
     ? 'hax' // Compatibilidade com temporadas que usavam o antigo Tÿr
     : activeSeason?.visual_style_key && activeSeason.visual_style_key in visualStyles
@@ -11671,31 +11682,33 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
           {activePage === 'customization' && (
             <section className="hb-customization-page" aria-labelledby="hb-customization-title">
-              <header className="hb-customization-hero">
+              <header ref={customizationTopRef} className="hb-customization-hero">
                 <div className="hb-customization-hero-copy">
                   <span className="hb-customization-eyebrow">✦ APARÊNCIA DA CAMPANHA</span>
                   <h1 id="hb-customization-title">Customização<span aria-hidden="true">.</span></h1>
                   <p>Defina a identidade visual da temporada. Combine cores e estilos para personalizar toda a experiência no HäxBag.</p>
-                  <div className="hb-customization-hero-badges">
-                    <span>◈ {activeTheme.label}</span>
+                  <div className="hb-customization-hero-badges" aria-label="Aparência aplicada atualmente">
+                    <span><i className="hb-studio-badge-dot" style={{background:activeTheme.primary}} /> {activeTheme.label}</span>
                     <span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
-                    <span>{isMaster ? '✎ Edição do mestre' : '◉ Visualização'}</span>
+                    <span>{isMaster ? '✎ Modo mestre' : '◉ Somente visualização'}</span>
                   </div>
                   <div className="hb-customization-hero-steps" aria-label="Etapas da customização">
-                    <span><b>01</b> Escolha a paleta</span>
+                    <span><b>01</b> Paleta de cores</span>
                     <span aria-hidden="true">›</span>
-                    <span><b>02</b> Explore os estilos</span>
+                    <span><b>02</b> Identidade visual</span>
                     <span aria-hidden="true">›</span>
-                    <span><b>03</b> Aplique à temporada</span>
+                    <span><b>03</b> Confirmar estilo</span>
                   </div>
+                  {selectedCampaignId && seasons.length > 0 && selectedSeasonId && <nav className="hb-studio-jumpnav" aria-label="Navegar pela customização">
+                    <a href="#hb-studio-palette"><span aria-hidden="true">◈</span> Paletas</a>
+                    <a href="#hb-studio-styles"><span aria-hidden="true">✧</span> Estilos</a>
+                    <a href="#hb-studio-inspector"><span aria-hidden="true">▧</span> Prévia</a>
+                  </nav>}
                 </div>
-                <div className={`hb-customization-hero-preview hb-customization-preview-${activeVisualStyleKey}`} aria-label={`Prévia: ${activeTheme.label} com estilo ${activeVisualStyle.label}`}>
-                  <span className="hb-customization-preview-orbit" aria-hidden="true" />
-                  <span className="hb-customization-preview-rays" aria-hidden="true" />
-                  <span className="hb-customization-preview-symbol" aria-hidden="true">{activeVisualStyle.symbol}</span>
-                  <strong>{activeVisualStyle.label}</strong>
-                  <small>{selectedCampaign?.name || 'HäxBag'}</small>
-                  <span className="hb-customization-preview-motto">{activeVisualStyle.signature}</span>
+                <div className={`hb-customization-hero-preview hb-customization-preview-${activeVisualStyleKey}`} aria-label={`Arte da identidade ${activeVisualStyle.label} aplicada com a paleta ${activeTheme.label}`}>
+                  <span className="hb-studio-preview-eyebrow">✧ IDENTIDADE ATUAL</span>
+                  <span className="hb-studio-preview-caption"><strong>{activeVisualStyle.label}</strong><small>{selectedCampaign?.name || 'HäxBag'}</small><span>{activeVisualStyle.signature}</span></span>
+                  <span className="hb-studio-preview-corner" aria-hidden="true" />
                 </div>
               </header>
 
@@ -11717,9 +11730,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <>
                   <div className="hb-customization-season-bar">
                     <div className="hb-customization-season-copy">
-                      <span className="hb-customization-eyebrow">TEMPORADA EM EDIÇÃO</span>
+                      <span className="hb-customization-eyebrow">CONTEXTO DA PERSONALIZAÇÃO</span>
                       <strong>{activeSeason?.name || 'Escolha uma temporada'}</strong>
-                      <small>As alterações afetam a aparência da temporada selecionada.</small>
+                      <small>A paleta é aplicada ao selecionar; a identidade só muda após confirmar no inspetor.</small>
                     </div>
                     <label htmlFor="hb-customization-season-select">
                       <span>Selecionar temporada</span>
@@ -11731,22 +11744,32 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   </div>
                   {(notice || error) && <div className={`hb-customization-inline-notice ${error?'is-error':''}`} role={error?'alert':'status'}><span aria-hidden="true">{error?'⚠':'✓'}</span><span>{error || notice}</span></div>}
                   {selectedSeasonId ? (
-                <section className="season-theme-panel" aria-label="Identidade visual da temporada">
+                <section className="season-theme-panel hb-studio-panel" aria-label="Identidade visual da temporada">
                   <div className="season-theme-heading">
                     <div><strong>Identidade visual</strong><small>Combine uma paleta de cores com um estilo de interface.</small></div>
                     <span className="season-theme-current-swatch" style={{background:`linear-gradient(135deg,${activeTheme.primary},${activeTheme.secondary})`}} />
                   </div>
-                  <div className="season-visual-group hb-customization-palette">
-                    <div className="season-visual-group-heading"><span>01 · Paleta de cores</span><strong>{activeTheme.label}</strong><small>A paleta controla cores, contrastes e realces em todas as páginas.</small></div>
+                  <div id="hb-studio-palette" className="season-visual-group hb-customization-palette">
+                    <div className="season-visual-group-heading hb-studio-section-heading"><span>ETAPA 01 / CORES</span><strong>Paleta da temporada</strong><small>Escolha uma combinação de cores. A seleção é aplicada imediatamente à temporada e não altera o estilo das ilustrações.</small></div>
                     <div className="hb-customization-current-palette">
                       <div className="hb-customization-current-palette-art" style={{background:`linear-gradient(120deg,${activeTheme.bg},${activeTheme.surface},${activeTheme.surfaceAlt})`}} aria-hidden="true"><i style={{background:activeTheme.primary}}/><i style={{background:activeTheme.secondary}}/><i style={{background:'#f3eff5'}}/></div>
                       <div><strong>{activeTheme.label}</strong><small>Paleta em uso nesta temporada</small></div>
                       <span>✓ Ativa</span>
                     </div>
-                    {isMaster ? <div className="season-theme-options hb-customization-palette-grid">{(Object.entries(seasonThemes) as [keyof typeof seasonThemes, typeof seasonThemes[keyof typeof seasonThemes]][]).map(([key,theme])=><button key={key} type="button" aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':'Selecionar'}</span></button>)}</div> : <small>O mestre escolhe o tema desta temporada.</small>}
+                    <div className="hb-studio-palette-toolbar">
+                      <label htmlFor="hb-studio-palette-search" className="hb-studio-search"><span aria-hidden="true">⌕</span><input id="hb-studio-palette-search" value={seasonPaletteSearch} onChange={event=>setSeasonPaletteSearch(event.target.value)} type="search" placeholder="Buscar paleta por nome..." aria-label="Pesquisar paletas de cores" />{seasonPaletteSearch && <button type="button" aria-label="Limpar busca por paletas" onClick={()=>setSeasonPaletteSearch('')}>×</button>}</label>
+                      <span className="hb-studio-palette-count">{matchedSeasonPalettes.length} de {allSeasonPalettes.length} paletas</span>
+                    </div>
+                    {isMaster ? <>
+                      <div className="season-theme-options hb-customization-palette-grid">{visibleSeasonPalettes.map(([key,theme])=><button key={key} type="button" aria-label={`${theme.label}${activeThemeKey===key?', paleta em uso':', aplicar paleta à temporada'}`} aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':seasonThemeSaving?'Salvando...':'Aplicar'}</span></button>)}</div>
+                      {!paletteQuery && matchedSeasonPalettes.length > 12 && <button type="button" className="hb-studio-show-all" aria-expanded={seasonPaletteExpanded} onClick={()=>setSeasonPaletteExpanded(expanded=>!expanded)}>{seasonPaletteExpanded?'↑ Mostrar menos paletas':`＋ Ver todas as ${matchedSeasonPalettes.length} paletas`}</button>}
+                      {matchedSeasonPalettes.length===0 && <div className="hb-studio-no-results"><strong>Nenhuma paleta encontrada</strong><span>Tente outro termo para encontrar uma combinação.</span><button type="button" onClick={()=>setSeasonPaletteSearch('')}>Limpar pesquisa</button></div>}
+                    </> : <p className="hb-studio-readonly-note">O mestre define a paleta da temporada. Você pode consultar todas as cores no catálogo abaixo.</p>}
+                    {!isMaster && <div className="season-theme-options hb-customization-palette-grid is-readonly">{visibleSeasonPalettes.map(([key,theme])=><div key={key} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':'Prévia'}</span></div>)}{matchedSeasonPalettes.length===0 && <p>Nenhuma paleta encontrada.</p>}</div>}
+                    {!isMaster && !paletteQuery && matchedSeasonPalettes.length>12 && <button type="button" className="hb-studio-show-all" aria-expanded={seasonPaletteExpanded} onClick={()=>setSeasonPaletteExpanded(expanded=>!expanded)}>{seasonPaletteExpanded?'↑ Mostrar menos paletas':`＋ Ver todas as ${matchedSeasonPalettes.length} paletas`}</button>}
                   </div>
-                  <div className="season-visual-group season-visual-style-group hb-customization-gallery">
-                    <div className="season-visual-group-heading hb-identity-section-heading"><span>02 · Estilos visuais</span><strong>Escolha sua identidade</strong><small>Encontre a assinatura visual da sua campanha. Examine as artes, experimente a apresentação e só depois aplique.</small></div>
+                  <div id="hb-studio-styles" className="season-visual-group season-visual-style-group hb-customization-gallery">
+                    <div className="season-visual-group-heading hb-identity-section-heading hb-studio-section-heading"><span>ETAPA 02 / IDENTIDADE</span><strong>Escolha sua identidade</strong><small>Explore as 14 artes originais, compare capas, fichas e menus. Visualizar um estilo não muda a temporada.</small></div>
                     <div className="hb-identity-current-ribbon" aria-label={`Identidade atualmente aplicada: ${activeVisualStyle.label}`}>
                       <span className="hb-identity-current-sigil" aria-hidden="true">{activeVisualStyle.symbol}</span>
                       <div className="hb-identity-current-copy"><small>IDENTIDADE DA TEMPORADA</small><strong>{activeVisualStyle.label}</strong><span>{activeVisualStyle.signature}</span></div>
@@ -11768,7 +11791,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     </div>
                     <div className="hb-identity-selection-layout">
                       <div className="hb-customization-workbench">
-                        <section ref={customizationInspectorRef} className={`hb-style-inspector season-style-${inspectedVisualStyleKey} hb-identity-mode-${visualStylePreviewMode}`} aria-label={`Detalhes do estilo ${inspectedVisualStyle.label}`} style={{'--hb-demo-primary': activeTheme.primary,'--hb-demo-secondary': activeTheme.secondary,'--hb-demo-bg': activeTheme.bg} as React.CSSProperties}>
+                        <section id="hb-studio-inspector" ref={customizationInspectorRef} className={`hb-style-inspector season-style-${inspectedVisualStyleKey} hb-identity-mode-${visualStylePreviewMode}`} aria-label={`Detalhes do estilo ${inspectedVisualStyle.label}`} style={{'--hb-demo-primary': activeTheme.primary,'--hb-demo-secondary': activeTheme.secondary,'--hb-demo-bg': activeTheme.bg} as React.CSSProperties}>
                           <div className="hb-style-inspector-art" aria-hidden="true">
                             <span className="hb-style-inspector-glyph">{inspectedVisualStyle.symbol}</span>
                             <span className="hb-style-inspector-art-label">{visualStylePreviewMode==='cover'?'HÄXBAG / ATELIÊ DE ESTILOS':visualStylePreviewMode==='sheet'?'EXEMPLO ILUSTRATIVO · FICHA':'EXEMPLO ILUSTRATIVO · NAVEGAÇÃO'}</span>
@@ -11813,13 +11836,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       </div>
                       <div className="hb-identity-catalog">
                         <div className="hb-customization-gallery-heading">
-                          <div><strong>Galeria de estilos</strong><small>{visibleVisualStyles.length} {visibleVisualStyles.length===1?'identidade encontrada':'identidades encontradas'} · Selecione para visualizar, sem alterar o estilo em uso.</small></div>
+                          <div><strong>Acervo de identidades</strong><small>{visibleVisualStyles.length} {visibleVisualStyles.length===1?'identidade encontrada':'identidades encontradas'} · Clique em uma arte para comparar com a identidade ativa.</small></div>
                           <div className="hb-identity-gallery-head-actions">{visualStyleIsPending && <span className="hb-customization-unsaved">✧ Prévia não salva</span>}<button type="button" className="hb-identity-show-preview" onClick={()=>customizationInspectorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})}>Ver prévia ↑</button></div>
                         </div>
                         <div className={`season-style-grid hb-style-gallery-grid ${visualStyleCompact?'is-compact':''}`}>
                           {visibleVisualStyles.map(([key, style]) => (
                             <div className={`hb-style-gallery-entry season-style-${key}`} key={key}>
-                              <button type="button" aria-label={`Visualizar estilo ${style.label}${activeVisualStyleKey===key?', atualmente em uso':''}`} aria-pressed={inspectedVisualStyleKey===key} onClick={()=>setVisualStylePreviewKey(key)}
+                              <button type="button" aria-label={`Visualizar estilo ${style.label}${activeVisualStyleKey===key?', atualmente em uso':''}`} aria-pressed={inspectedVisualStyleKey===key} onClick={()=>{setVisualStylePreviewKey(key);customizationInspectorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})}}
                                 className={`season-style-card season-style-${key} ${activeVisualStyleKey===key?'active':''} ${inspectedVisualStyleKey===key?'inspected':''}`}>
                                 <span className="season-style-signature" aria-hidden="true"><span>✦</span>{style.signature}</span>
                                 <span className="season-style-preview" aria-hidden="true">
@@ -11843,7 +11866,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       </div>
                     </div>
                     {!isMaster && <small className="season-style-readonly">Você pode explorar e comparar os estilos. Apenas o mestre pode aplicar alterações à temporada.</small>}
-                    <p className="season-style-hint">Em uso: <b>{activeTheme.label}</b> + <b>{activeVisualStyle.label}</b>. As visualizações de ficha e menu são <b>simulações ilustrativas</b> da identidade, não telas reais. A escolha só é salva por <b>Aplicar à temporada</b>; nenhuma regra ou ficha é alterada.</p>
+                    <div className="hb-studio-final-summary" aria-label="Resumo da aparência aplicada">
+                      <div className="hb-studio-final-icon" aria-hidden="true">✧</div>
+                      <div><span>APARÊNCIA EM USO</span><strong>{activeTheme.label} <i aria-hidden="true">+</i> {activeVisualStyle.label}</strong><small>As prévias de ficha e menu são ilustrativas. Nenhuma regra, ficha ou inventário é alterado ao personalizar a aparência.</small></div>
+                      <button type="button" onClick={()=>customizationTopRef.current?.scrollIntoView({behavior:'smooth',block:'start'})}>Voltar ao início ↑</button>
+                    </div>
                   </div>
                 </section>
                   ) : (

@@ -1,8 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none"><defs>
- <linearGradient id="metal" x1="0" y1="0" x2=".9" y2="1"><stop stop-color="#f7e3b5"/><stop offset=".46" stop-color="#a9a2d6"/><stop offset="1" stop-color="#4d557e"/></linearGradient>
- <linearGradient id="darkmetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4d557e"/><stop offset=".6" stop-color="#0e101d"/><stop offset="1" stop-color="#a9a2d6"/></linearGradient>
- <radialGradient id="light"><stop stop-color="#a9a2d6" stop-opacity=".41"/><stop offset=".53" stop-color="#4d557e" stop-opacity=".16"/><stop offset="1" stop-color="#4d557e" stop-opacity="0"/></radialGradient>
- <linearGradient id="fade"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".39" stop-color="#fff" stop-opacity=".22"/><stop offset=".62" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff"/></linearGradient>
- <mask id="leftFade"><rect width="860" height="300" fill="url(#fade)"/></mask>
- <radialGradient id="orb"><stop stop-color="#f7e3b5" stop-opacity=".95"/><stop offset=".68" stop-color="#a9a2d6" stop-opacity=".56"/><stop offset="1" stop-color="#4d557e" stop-opacity=".13"/></radialGradient>
- </defs><ellipse cx="64" cy="64" rx="48" ry="54" fill="url(#darkmetal)" stroke="url(#metal)" stroke-width="2" opacity="0.82" /><ellipse cx="64" cy="64" rx="42" ry="48" fill="#111323" stroke="#e6d3b7" stroke-width="0.8" opacity="0.85" /><path d="M64 6v12M64 111v12M16 64h8M104 64h8" stroke="url(#metal)" stroke-width="1.5" opacity="0.65" fill="none" stroke-linecap="round" stroke-linejoin="round" /><path d="M58 30A36 36 0 1 0 85 95A31 31 0 1 1 58 30Z" stroke="#f8eace" stroke-width="1.3" opacity="1" fill="url(#metal)" stroke-linecap="round" stroke-linejoin="round" /><path d="M83 29L84.08 33.92L89 35L84.08 36.08L83 41L81.92 36.08L77 35L81.92 33.92Z" fill="url(#metal)" opacity="0.8"/><path d="M45 73L45.72 76.28L49 77L45.72 77.72L45 81L44.28 77.72L41 77L44.28 76.28Z" fill="url(#metal)" opacity="0.8"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Emblema Vigília Lunar: lua crescente prateada no portal lunar">
+<defs><linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff3e7"/><stop offset=".43" stop-color="#d7d4fa"/><stop offset="1" stop-color="#878db8"/></linearGradient><radialGradient id="halo"><stop stop-color="#d4cdeb" stop-opacity=".24"/><stop offset="1" stop-color="#606ba5" stop-opacity="0"/></radialGradient><clipPath id="crestMoonClip"><circle cx="61" cy="62" r="31"/></clipPath></defs>
+<g aria-hidden="true" fill="none" stroke="#cec5ed" stroke-opacity=".24" stroke-width="0.9481481481481482"><circle cx="64.0" cy="64.0" r="60.8"/><circle cx="124.8" cy="64.0" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/><circle cx="64.0" cy="124.8" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/><circle cx="3.2" cy="64.0" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/><circle cx="64.0" cy="3.2" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/></g><circle cx="64" cy="66" r="49" fill="url(#halo)"/>
+<path d="M17 112V53Q17 29 64 10Q111 29 111 53V112" stroke="#a7a0cc" stroke-width="2" stroke-opacity=".7"/>
+<path d="M24 108V54Q24 36 64 20Q104 36 104 54V108" stroke="#dfccdf" stroke-width="1" stroke-opacity=".53"/>
+<path d="M31 103V56Q31 43 64 30Q97 43 97 56V103" stroke="#9a9bc8" stroke-width=".8" stroke-opacity=".44"/>
+<path d="M92 62A31 31 0 1 0 30 62A31 31 0 1 0 92 62Z M104 53A30 30 0 1 0 44 53A30 30 0 1 0 104 53Z" clip-path="url(#crestMoonClip)" fill="url(#metal)" fill-rule="evenodd"/>
+<path d="M92 62A31 31 0 1 0 30 62A31 31 0 1 0 92 62Z M104 53A30 30 0 1 0 44 53A30 30 0 1 0 104 53Z" clip-path="url(#crestMoonClip)" fill="none" stroke="#f6e7f7" stroke-width=".8" fill-rule="evenodd"/>
+<path d="M24 108H104" stroke="#c6b9d7" stroke-opacity=".43"/>
+<path d="M64 15L66 19L70 21L66 23L64 27L62 23L58 21L62 19Z" fill="#f0dce0" opacity=".78"/>
+<circle cx="104" cy="40" r="1.5" fill="#e6d6eb" opacity=".75"/><circle cx="25" cy="37" r="1" fill="#e6d6eb" opacity=".65"/>
+</svg>

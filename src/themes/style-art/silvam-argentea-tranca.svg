@@ -1,5 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 18" width="240" height="18" role="img" aria-label="Trança nórdica prateada original">
-<path d="M0 9 H32 M208 9 H240 M32 9 C40 0 48 0 56 9 S72 18 80 9 S96 0 104 9 S120 18 128 9 S144 0 152 9 S168 18 176 9 S192 0 200 9 H208" fill="none" stroke="#b8cbd0" stroke-width="2.1" opacity=".8"/>
-<path d="M32 9 C40 18 48 18 56 9 S72 0 80 9 S96 18 104 9 S120 0 128 9 S144 18 152 9 S168 0 176 9 S192 18 200 9" fill="none" stroke="#839da4" stroke-width="1.4" opacity=".7"/>
-<path d="M116 2 L124 9 L116 16 L108 9Z" fill="none" stroke="#e4ebec" stroke-width="1.5"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="12" viewBox="0 0 240 12" fill="none">
+<defs><linearGradient id="metal" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#718f91"/><stop offset=".5" stop-color="#c7dada"/><stop offset="1" stop-color="#718f91"/></linearGradient></defs>
+<path d="M0 6H240" stroke="#c2b18a" opacity=".26"/>
+<path d="M0 6Q10 1 20 6T40 6T60 6T80 6T100 6T120 6T140 6T160 6T180 6T200 6T220 6T240 6" stroke="url(#metal)" stroke-width="1"/>
+<path d="M0 6Q10 11 20 6T40 6T60 6T80 6T100 6T120 6T140 6T160 6T180 6T200 6T220 6T240 6" stroke="#a18e64" stroke-width="1" opacity=".58"/>
+<path d="M118 6l2-3 2 3-2 3Z" fill="#cddad2"/></svg>

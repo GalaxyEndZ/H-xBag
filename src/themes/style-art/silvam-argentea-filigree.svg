@@ -1,43 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="620" viewBox="0 0 1600 620" fill="none" aria-label="Filigrana vetorial de prata, folhas e constelações do Silvam Argentea">
-  <defs>
-    <linearGradient id="s" x1="270" y1="0" x2="1550" y2="600" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7c9b9e" stop-opacity=".07"/>
-      <stop offset=".56" stop-color="#c7e1dc" stop-opacity=".38"/>
-      <stop offset="1" stop-color="#e8f5ed" stop-opacity=".64"/>
-    </linearGradient>
-    <linearGradient id="s2" x1="990" y1="52" x2="1520" y2="565" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f4f5e9" stop-opacity=".2"/>
-      <stop offset="1" stop-color="#9ac4bc" stop-opacity=".37"/>
-    </linearGradient>
-    <radialGradient id="moon"><stop stop-color="#d7f0e7" stop-opacity=".20"/><stop offset="1" stop-color="#9dbbb8" stop-opacity="0"/></radialGradient>
-    <g id="leaf">
-      <path d="M0 0C-12-22-28-31-47-28c0 22 16 35 47 28Z" fill="#d2e6de" fill-opacity=".22" stroke="url(#s2)" stroke-width="1.2"/>
-      <path d="M0 0-38-23" stroke="#d3e8e2" stroke-opacity=".23"/>
-    </g>
-    <g id="star" stroke="#dcebe7" stroke-width="1.5" stroke-linecap="round">
-      <path d="M0-9V9M-9 0H9M-4-4 4 4M4-4-4 4"/>
-    </g>
-  </defs>
-  <!-- engraved perimeter: subdued where interface text is placed -->
-  <path d="M968 30H1490l74 74v409l-72 70H953" stroke="url(#s)" stroke-width="1.7" opacity=".65"/>
-  <path d="M1014 42h467l69 69v392l-64 66h-466" stroke="url(#s)" stroke-width=".75" opacity=".55"/>
-  <path d="m1490 30 74 74h-74V30Zm2 553 72-70h-72v70Z" stroke="url(#s2)" stroke-width="1.4" opacity=".65"/>
-  <circle cx="1392" cy="153" r="142" fill="url(#moon)"/>
-  <circle cx="1392" cy="153" r="114" stroke="url(#s2)" stroke-width=".7" stroke-dasharray="2 10" opacity=".48"/>
-  <!-- discreet silver bough curving through the lower corner -->
-  <path d="M1192 614c112-63 206-89 358-79M1290 609c52-83 129-163 239-218M1354 591c12-83 13-155 77-244" stroke="url(#s2)" stroke-width="2.6" stroke-linecap="round" opacity=".7"/>
-  <path d="M1273 588c-2-22-21-41-49-52m91 26c-3-26-23-48-51-62m92 33c19-30 40-43 66-48m-10 65c17-27 28-35 56-49m-70-16c2-22-8-43-31-63m49-33c-8-29-8-43 3-72m23 33c31-20 46-43 53-68" stroke="url(#s2)" stroke-width="1.9" stroke-linecap="round" opacity=".62"/>
-  <use href="#leaf" transform="translate(1226 535) rotate(18)"/><use href="#leaf" transform="translate(1265 500) rotate(-4) scale(.8)"/>
-  <use href="#leaf" transform="translate(1351 530) rotate(120) scale(.87)"/><use href="#leaf" transform="translate(1423 487) rotate(118) scale(.8)"/>
-  <use href="#leaf" transform="translate(1366 423) rotate(20) scale(.8)"/><use href="#leaf" transform="translate(1416 357) rotate(15) scale(.67)"/>
-  <use href="#leaf" transform="translate(1496 328) rotate(100) scale(.75)"/><use href="#leaf" transform="translate(1470 500) rotate(120) scale(.7)"/>
-  <!-- constellation details and crescent runes -->
-  <g opacity=".66"><use href="#star" transform="translate(1160 102) scale(.85)"/><use href="#star" transform="translate(1510 253) scale(.68)"/><use href="#star" transform="translate(1053 438) scale(.54)"/></g>
-  <path d="m1090 156 45 28 54-18 31 38" stroke="#aaccc6" stroke-width=".85" stroke-opacity=".25"/>
-  <circle cx="1090" cy="156" r="2.2" fill="#ccded9" opacity=".32"/><circle cx="1135" cy="184" r="2" fill="#ccded9" opacity=".5"/><circle cx="1189" cy="166" r="2.4" fill="#ccded9" opacity=".38"/>
-  <g stroke="#c4dad4" stroke-opacity=".34" stroke-width="1.2">
-    <path d="m1081 541 10 10-10 10-10-10zM1113 541l10 10-10 10-10-10zM1145 541l10 10-10 10-10-10z"/>
-    <path d="M938 550h119M1166 550h80"/>
-  </g>
-  <path d="M995 43v18m-9-9h18M1554 495v18m-9-9h18" stroke="#c7ddd8" stroke-width=".85" stroke-opacity=".3"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="620" viewBox="0 0 1600 620" role="img" aria-label="Filigrana Silvam Argentea">
+<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8d7a52"/><stop offset=".58" stop-color="#eadcb6"/><stop offset="1" stop-color="#a88c59"/></linearGradient>
+  <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef5f6"/><stop offset="1" stop-color="#b9ccd0"/></linearGradient>
+</defs>
+<g fill="none" stroke="url(#gold)" opacity=".78">
+  <path d="M24 24h1552c13 0 24 11 24 24v524c0 13-11 24-24 24H24c-13 0-24-11-24-24V48c0-13 11-24 24-24Z" stroke-width="1.2"/>
+  <path d="M38 38h1524c12 0 22 10 22 22v500c0 12-10 22-22 22H38c-12 0-22-10-22-22V60c0-12 10-22 22-22Z" stroke-width=".6" opacity=".45"/>
+  <path d="M799 20l8 8-8 8-8-8Z"/><path d="M800 600l8-8-8-8-8 8Z"/>
+  <path d="M744 28h40m75 0h610M58 592h508m485 0h491" stroke-width=".9"/>
+</g>
+<g fill="none" stroke="url(#gold)" opacity=".7">
+  <path d="M70 78v104"/><path d="M78 181l8 8-8 8-8-8Z"/>
+  <path d="M1528 78v88"/><path d="M1528 164l7 7-7 7-7-7Z"/>
+  <path d="M90 542c15 7 29 10 45 8 21-2 37-11 52-26"/>
+  <path d="M1508 540c-15 7-29 10-45 8-21-2-37-11-52-26"/>
+</g>
+<g fill="url(#silver)" opacity=".22">
+  <path d="M108 75c8 10 16 19 24 29 8 11 18 20 29 28-15-1-28-5-39-13-9-7-17-18-24-29 1-5 5-9 10-15Z"/>
+  <path d="M1484 78c-8 10-16 19-24 29-8 11-18 20-29 28 15-1 28-5 39-13 9-7 17-18 24-29-1-5-5-9-10-15Z"/>
+  <path d="M95 534c18-3 33 1 45 12s19 25 21 42c-16-9-29-19-39-31-10-12-18-25-27-23Z"/>
+  <path d="M1505 534c-18-3-33 1-45 12s-19 25-21 42c16-9 29-19 39-31 10-12 18-25 27-23Z"/>
+</g>
 </svg>

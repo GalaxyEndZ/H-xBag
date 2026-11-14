@@ -1,8 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none"><defs>
- <linearGradient id="metal" x1="0" y1="0" x2=".9" y2="1"><stop stop-color="#e6d5ff"/><stop offset=".46" stop-color="#ab83e0"/><stop offset="1" stop-color="#5f4589"/></linearGradient>
- <linearGradient id="darkmetal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5f4589"/><stop offset=".6" stop-color="#140e25"/><stop offset="1" stop-color="#ab83e0"/></linearGradient>
- <radialGradient id="light"><stop stop-color="#ab83e0" stop-opacity=".41"/><stop offset=".53" stop-color="#5f4589" stop-opacity=".16"/><stop offset="1" stop-color="#5f4589" stop-opacity="0"/></radialGradient>
- <linearGradient id="fade"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".39" stop-color="#fff" stop-opacity=".22"/><stop offset=".62" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff"/></linearGradient>
- <mask id="leftFade"><rect width="860" height="300" fill="url(#fade)"/></mask>
- <radialGradient id="orb"><stop stop-color="#e6d5ff" stop-opacity=".95"/><stop offset=".68" stop-color="#ab83e0" stop-opacity=".56"/><stop offset="1" stop-color="#5f4589" stop-opacity=".13"/></radialGradient>
- </defs><circle cx="64" cy="64" r="54" fill="#190f28" stroke="url(#metal)" stroke-width="2.5" opacity="1" /><circle cx="64" cy="64" r="47" fill="none" stroke="#9d7cc9" stroke-width="0.9" opacity="0.8" stroke-dasharray="2 6"/><path d="M115.0 61.4L115.47 63.53L117.6 64.0L115.47 64.47L115.0 66.6L114.53 64.47L112.4 64.0L114.53 63.53Z" fill="#dbc6ff" opacity="0.75"/><path d="M100.1 97.5L100.57 99.63L102.69999999999999 100.1L100.57 100.57L100.1 102.69999999999999L99.63 100.57L97.5 100.1L99.63 99.63Z" fill="#dbc6ff" opacity="0.75"/><path d="M64.0 112.4L64.47 114.53L66.6 115.0L64.47 115.47L64.0 117.6L63.53 115.47L61.4 115.0L63.53 114.53Z" fill="#dbc6ff" opacity="0.75"/><path d="M27.9 97.5L28.37 99.63L30.5 100.1L28.37 100.57L27.9 102.69999999999999L27.43 100.57L25.299999999999997 100.1L27.43 99.63Z" fill="#dbc6ff" opacity="0.75"/><path d="M13.0 61.4L13.47 63.53L15.6 64.0L13.47 64.47L13.0 66.6L12.53 64.47L10.4 64.0L12.53 63.53Z" fill="#dbc6ff" opacity="0.75"/><path d="M27.9 25.299999999999997L28.37 27.43L30.5 27.9L28.37 28.37L27.9 30.5L27.43 28.37L25.299999999999997 27.9L27.43 27.43Z" fill="#dbc6ff" opacity="0.75"/><path d="M64.0 10.4L64.47 12.53L66.6 13.0L64.47 13.47L64.0 15.6L63.53 13.47L61.4 13.0L63.53 12.53Z" fill="#dbc6ff" opacity="0.75"/><path d="M100.1 25.299999999999997L100.57 27.43L102.69999999999999 27.9L100.57 28.37L100.1 30.5L99.63 28.37L97.5 27.9L99.63 27.43Z" fill="#dbc6ff" opacity="0.75"/><circle cx="64" cy="64" r="32" fill="none" stroke="url(#metal)" stroke-width="1.7" opacity="1" /><circle cx="64" cy="64" r="24" fill="none" stroke="#aa80dc" stroke-width="1" opacity="0.7" /><path d="M64 26L85 80L36 51L92 51L43 80Z" stroke="#dbbcff" stroke-width="1.7" opacity="1" fill="none" stroke-linecap="round" stroke-linejoin="round" /><path d="M64 56L65.44 62.56L72 64L65.44 65.44L64 72L62.56 65.44L56 64L62.56 62.56Z" fill="url(#metal)" opacity="0.8"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Emblema do Arcano: cristal etéreo dentro de um círculo rúnico">
+<defs><radialGradient id="core"><stop stop-color="#fffbff"/><stop offset=".22" stop-color="#ecd6ff"/><stop offset=".75" stop-color="#ad76e7"/><stop offset="1" stop-color="#59368f" stop-opacity="0"/></radialGradient><linearGradient id="gem" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e8d4ff"/><stop offset=".5" stop-color="#936cd9"/><stop offset="1" stop-color="#4b3389"/></linearGradient></defs>
+<g aria-hidden="true" fill="none" stroke="#d9b5ff" stroke-opacity=".24" stroke-width="0.9481481481481482"><circle cx="64.0" cy="64.0" r="60.8"/><circle cx="124.8" cy="64.0" r="1.02" fill="#d9b5ff" stroke="none" opacity=".5"/><circle cx="64.0" cy="124.8" r="1.02" fill="#d9b5ff" stroke="none" opacity=".5"/><circle cx="3.2" cy="64.0" r="1.02" fill="#d9b5ff" stroke="none" opacity=".5"/><circle cx="64.0" cy="3.2" r="1.02" fill="#d9b5ff" stroke="none" opacity=".5"/></g><circle cx="64" cy="64" r="56" fill="none" stroke="#b397e9" stroke-opacity=".52" stroke-width="1.2"/>
+<path d="M 110.97 44.14 A 51 51 0 0 1 72.67 114.26" stroke="#ce9ef4" stroke-opacity=".75" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M 49.94 113.03 A 51 51 0 0 1 13.51 71.2" stroke="#ce9ef4" stroke-opacity=".75" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M 16.24 46.11 A 51 51 0 0 1 111.85 46.36" stroke="#ce9ef4" stroke-opacity=".75" stroke-width="2" fill="none" stroke-linecap="round"/>
+<circle cx="64" cy="64" r="42" fill="none" stroke="#aa81de" stroke-opacity=".4" stroke-width=".8"/>
+<path d="M108 64L112 64" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M106.5 75.39L110.36 76.42" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M102.11 86L105.57 88" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M95.11 95.11L97.94 97.94" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M86 102.11L88 105.57" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M75.39 106.5L76.42 110.36" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M64 108L64 112" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M52.61 106.5L51.58 110.36" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M42 102.11L40 105.57" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M32.89 95.11L30.06 97.94" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M25.89 86L22.43 88" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M21.5 75.39L17.64 76.42" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M20 64L16 64" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M21.5 52.61L17.64 51.58" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M25.89 42L22.43 40" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M32.89 32.89L30.06 30.06" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M42 25.89L40 22.43" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M52.61 21.5L51.58 17.64" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M64 20L64 16" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M75.39 21.5L76.42 17.64" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M86 25.89L88 22.43" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M95.11 32.89L97.94 30.06" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M102.11 42L105.57 40" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M106.5 52.61L110.36 51.58" stroke="#d3aeff" stroke-opacity=".46" stroke-width=".9"/>
+<path d="M64 17L87 55L78 88L64 112L50 88L41 55Z" fill="url(#gem)" stroke="#f0ddff" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M64 17L64 112L41 55Z" fill="#e6caff" opacity=".32"/><path d="M64 17L87 55L64 112Z" fill="#5b3ea5" opacity=".43"/>
+<path d="M41 55L87 55L64 74Z" stroke="#f1ddff" stroke-width=".8" fill="#ad8ce9" opacity=".58"/>
+<circle cx="64" cy="70" r="17" fill="url(#core)" opacity=".79"/>
+<path d="M 64 58 L 65.86 68.14 L 76 70 L 65.86 71.86 L 64 82 L 62.14 71.86 L 52 70 L 62.14 68.14 Z" fill="#f9eeff" opacity="0.96"/>
+<path d="M 121 61 L 121.47 63.53 L 124 64 L 121.47 64.47 L 121 67 L 120.53 64.47 L 118 64 L 120.53 63.53 Z" fill="#f6d6ff" opacity="0.9"/>
+<path d="M 64 118 L 64.47 120.53 L 67 121 L 64.47 121.47 L 64 124 L 63.53 121.47 L 61 121 L 63.53 120.53 Z" fill="#f6d6ff" opacity="0.9"/>
+<path d="M 7 61 L 7.46 63.53 L 10 64 L 7.46 64.47 L 7 67 L 6.54 64.47 L 4 64 L 6.54 63.53 Z" fill="#f6d6ff" opacity="0.9"/>
+<path d="M 64 4 L 64.46 6.54 L 67 7 L 64.46 7.46 L 64 10 L 63.53 7.46 L 61 7 L 63.53 6.54 Z" fill="#f6d6ff" opacity="0.9"/>
+</svg>
