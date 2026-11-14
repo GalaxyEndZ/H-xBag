@@ -24,8 +24,18 @@ const CONDITION_KEYS: Record<string, {value:string;label:string}[]> = {
   resource: [{value:'pv',label:'Pontos de Vida (PV)'},{value:'ps',label:'Pontos de Sanidade (PS)'},{value:'pr',label:'Pontos de Recurso (PR)'}],
 }
 const GENERAL_SKILL_GROUPS = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
+// As seis perícias principais da ficha são independentes das perícias treinadas.
+// Usamos os nomes internos originais (skills.*) para preservar os efeitos salvos.
+const MAIN_SKILL_CHOICES = [
+  {value:'vigor',label:'VIGOR'},
+  {value:'mental',label:'MENTAL'},
+  {value:'combat',label:'COMBATE'},
+  {value:'dexterity',label:'DESTREZA'},
+  {value:'resistance',label:'RESISTÊNCIA'},
+  {value:'ability',label:'HABILIDADE'},
+]
 const SKILL_CHOICES: Record<string, {value:string;label:string}[]> = {
-  main_skill: [{value:'*',label:'Todas as perícias principais'}],
+  main_skill: [{value:'*',label:'Todas as perícias principais'}, ...MAIN_SKILL_CHOICES],
   extra_skill: [{value:'*',label:'Todas as perícias gerais'}],
   archetype_skill: [{value:'*',label:'Todas as perícias de arquétipo'}],
 }
@@ -35,15 +45,13 @@ for (const [group, entries] of Object.entries(KISATSUTAI_SKILL_GROUPS)) {
     const skill = entry.name
     if (!skill) continue
     SKILL_CHOICES[target].push({value:`${group}:${skill}`,label:`${group} · ${skill}`})
-    if (!SKILL_CHOICES.main_skill.some(item => item.value === skill))
-      SKILL_CHOICES.main_skill.push({value:skill,label:skill})
   }
 }
-for (const target of Object.keys(SKILL_CHOICES)) {
+for (const target of ['extra_skill', 'archetype_skill']) {
   const [all, ...rest] = SKILL_CHOICES[target]
   SKILL_CHOICES[target] = [all, ...rest.sort((a,b)=>a.label.localeCompare(b.label,'pt-BR'))]
 }
-const labelForConditionKey = (key:string) => Object.values(CONDITION_KEYS).flat().find(option=>option.value===key.toLowerCase())?.label || (key==='*'?'Todos':key)
+const labelForConditionKey = (key:string, target?:string) => (target==='main_skill' ? MAIN_SKILL_CHOICES : CONDITION_KEYS[target||''] || Object.values(CONDITION_KEYS).flat()).find(option=>option.value===key.toLowerCase())?.label || (key==='*'?'Todos':key)
 
 export function ConditionsPanel({ campaignId, characters, enemies, master }: {campaignId:string;characters:CharacterOption[];enemies:EnemyOption[];master:boolean}) {
   const [definitions,setDefinitions]=useState<Definition[]>([])
@@ -342,9 +350,9 @@ const conditionSeverityName:Record<string,string>={normal:'Normal',grave:'Grave'
 const conditionSeverityIcon:Record<string,string>={normal:'●',grave:'▲',critica:'✹'}
 const conditionRuleIcon:Record<string,string>={dice:'⚄',restriction:'⛨',resource:'◉',periodic_damage:'⚔',round_counter:'⌛'}
 const conditionTargetLabels:Record<string,string>={status:'Status',main_skill:'Perícia principal',extra_skill:'Perícia geral',archetype_skill:'Perícia de arquétipo',combat_points:'Pontos de combate',resource:'Recurso'}
-function formatConditionTargetKey(raw:string){
+function formatConditionTargetKey(raw:string,target?:string){
   const value=raw.trim()
-  if(!value.includes(':')) return labelForConditionKey(value)
+  if(!value.includes(':')) return labelForConditionKey(value,target)
   const split=value.split(':')
   const group=split.shift()||''
   const skill=split.join(':')
@@ -355,7 +363,7 @@ function formatConditionTargetKey(raw:string){
 function describeConditionRule(effect:ConditionEffect){
   if(effect.type==='dice'){
     const alvo=conditionTargetLabels[effect.target||'status']||effect.target||'Status'
-    return `${(effect.value||0)>0?'+':''}${effect.value||0} dado(s) em ${alvo}${effect.key?` · ${formatConditionTargetKey(effect.key)}`:''}`
+    return `${(effect.value||0)>0?'+':''}${effect.value||0} dado(s) em ${alvo}${effect.key?` · ${formatConditionTargetKey(effect.key,effect.target)}`:''}`
   }
   if(effect.type==='restriction') return `Bloqueia ${formatConditionTargetKey(effect.key||'ação')}`
   if(effect.type==='resource') return `${(effect.value||0)>0?'+':''}${effect.value||0}${effect.unit==='percent'?'%':' pontos'} em ${formatConditionTargetKey(effect.key||'recurso')} máximo`
@@ -425,7 +433,7 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
      })}</div>}
    {visibleModifiers.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--mods" aria-label="Modificadores cumulativos ativos">
      <div className="hb-condition-subpanel-head"><strong>Modificadores ativos</strong><small>{visibleModifiers.length} ajuste(s) cumulativo(s)</small></div>
-     <div className="hb-condition-token-grid">{visibleModifiers.map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className={`hb-condition-token ${value>0?'is-positive':'is-negative'}`}><span className="hb-condition-token-icon" aria-hidden="true">{value>0?'↗':'↘'}</span><em>{conditionTargetLabels[target]||target}{rest.join(':')?` · ${formatConditionTargetKey(rest.join(':'))}`:''}</em><strong>{value>0?'+':''}{value}{isPercent?'%':''}</strong></span>})}</div>
+     <div className="hb-condition-token-grid">{visibleModifiers.map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className={`hb-condition-token ${value>0?'is-positive':'is-negative'}`}><span className="hb-condition-token-icon" aria-hidden="true">{value>0?'↗':'↘'}</span><em>{conditionTargetLabels[target]||target}{rest.join(':')?` · ${formatConditionTargetKey(rest.join(':'),target)}`:''}</em><strong>{value>0?'+':''}{value}{isPercent?'%':''}</strong></span>})}</div>
    </div>}
    {ruleHints.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--rules">
      <div className="hb-condition-subpanel-head"><strong>Regras adicionais configuradas</strong><small>Restrições, recursos e efeitos especiais da condição.</small></div>

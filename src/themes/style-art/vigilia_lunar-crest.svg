@@ -1,12 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Emblema Vigília Lunar: lua crescente prateada no portal lunar">
-<defs><linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff3e7"/><stop offset=".43" stop-color="#d7d4fa"/><stop offset="1" stop-color="#878db8"/></linearGradient><radialGradient id="halo"><stop stop-color="#d4cdeb" stop-opacity=".24"/><stop offset="1" stop-color="#606ba5" stop-opacity="0"/></radialGradient><clipPath id="crestMoonClip"><circle cx="61" cy="62" r="31"/></clipPath></defs>
-<g aria-hidden="true" fill="none" stroke="#cec5ed" stroke-opacity=".24" stroke-width="0.9481481481481482"><circle cx="64.0" cy="64.0" r="60.8"/><circle cx="124.8" cy="64.0" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/><circle cx="64.0" cy="124.8" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/><circle cx="3.2" cy="64.0" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/><circle cx="64.0" cy="3.2" r="1.02" fill="#cec5ed" stroke="none" opacity=".5"/></g><circle cx="64" cy="66" r="49" fill="url(#halo)"/>
-<path d="M17 112V53Q17 29 64 10Q111 29 111 53V112" stroke="#a7a0cc" stroke-width="2" stroke-opacity=".7"/>
-<path d="M24 108V54Q24 36 64 20Q104 36 104 54V108" stroke="#dfccdf" stroke-width="1" stroke-opacity=".53"/>
-<path d="M31 103V56Q31 43 64 30Q97 43 97 56V103" stroke="#9a9bc8" stroke-width=".8" stroke-opacity=".44"/>
-<path d="M92 62A31 31 0 1 0 30 62A31 31 0 1 0 92 62Z M104 53A30 30 0 1 0 44 53A30 30 0 1 0 104 53Z" clip-path="url(#crestMoonClip)" fill="url(#metal)" fill-rule="evenodd"/>
-<path d="M92 62A31 31 0 1 0 30 62A31 31 0 1 0 92 62Z M104 53A30 30 0 1 0 44 53A30 30 0 1 0 104 53Z" clip-path="url(#crestMoonClip)" fill="none" stroke="#f6e7f7" stroke-width=".8" fill-rule="evenodd"/>
-<path d="M24 108H104" stroke="#c6b9d7" stroke-opacity=".43"/>
-<path d="M64 15L66 19L70 21L66 23L64 27L62 23L58 21L62 19Z" fill="#f0dce0" opacity=".78"/>
-<circle cx="104" cy="40" r="1.5" fill="#e6d6eb" opacity=".75"/><circle cx="25" cy="37" r="1" fill="#e6d6eb" opacity=".65"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Emblema vetorial Vigília Lunar">
+<defs>
+  <linearGradient id="silver" x1="0" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#7b79aa"/><stop offset=".39" stop-color="#efeafc"/><stop offset=".67" stop-color="#c0b6e4"/><stop offset="1" stop-color="#7b79aa"/></linearGradient>
+  <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#efeafc"/><stop offset=".52" stop-color="#c0b6e4"/><stop offset="1" stop-color="#7b79aa"/></linearGradient>
+  <radialGradient id="aura"><stop stop-color="#c0b6e4" stop-opacity=".21"/><stop offset=".48" stop-color="#c0b6e4" stop-opacity=".07"/><stop offset="1" stop-color="#c0b6e4" stop-opacity="0"/></radialGradient>
+  <radialGradient id="inner"><stop stop-color="#efeafc" stop-opacity=".65"/><stop offset=".4" stop-color="#c0b6e4" stop-opacity=".19"/><stop offset="1" stop-color="#c0b6e4" stop-opacity="0"/></radialGradient>
+  <linearGradient id="fade" x1="0" x2="1" y1="0" y2="0"><stop stop-color="white" stop-opacity="0"/><stop offset=".38" stop-color="white" stop-opacity=".05"/><stop offset=".52" stop-color="white" stop-opacity=".49"/><stop offset=".70" stop-color="white" stop-opacity=".98"/><stop offset="1" stop-color="white"/></linearGradient>
+  <mask id="reveal"><rect width="860" height="300" fill="url(#fade)"/></mask>
+  <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
+</defs>
+<circle cx="64" cy="64" r="55" fill="none" stroke="#c0b6e4" stroke-width="1.4" opacity="0.6" /><circle cx="64" cy="64" r="49" fill="none" stroke="#7b79aa" stroke-width="0.65" opacity="0.42" stroke-dasharray="3 6"/>
+<path d="M72 24A40 40 0 1 0 73 103A32 32 0 1 1 72 24Z" fill="url(#silver)" opacity=".94"/><path d="M79.00 33.00v12.00M73.00 39.00h12.00" fill="none" stroke="#efeafc" stroke-width="0.9" opacity="0.7"/><path d="M24.79 49.95A42 42 0 0 1 70.57 23.52" fill="none" stroke="#c0b6e4" stroke-width="1" opacity="0.6" stroke-linecap="round"/>
+<path d="M64 5l3 4-3 4-3-4Z" fill="#d7c7b0" opacity=".7"/>
 </svg>

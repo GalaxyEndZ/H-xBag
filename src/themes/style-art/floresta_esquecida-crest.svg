@@ -1,51 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-<title id="title">Silvam Argentea — Selo da Folha Lunar</title>
-<desc id="desc">Uma folha prateada de contorno orgânico abraçada pela lua crescente, no interior de um aro de ouro envelhecido.</desc>
-<circle cx="164" cy="108" r="73" fill="url(#v62BgSheen)"/>
-<path d="M57 58A103 103 0 0 1 182 35" fill="none" stroke="url(#v62Halo)" stroke-width="1.1" opacity=".5"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Emblema Silvam Argentea: folha prateada e lua crescente">
 <defs>
- <linearGradient id="night" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#10262b"/><stop offset="1" stop-color="#071419"/></linearGradient>
- <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7e7559"/><stop offset=".36" stop-color="#e2d6b0"/><stop offset=".66" stop-color="#a59670"/><stop offset="1" stop-color="#d8c79c"/></linearGradient>
- <linearGradient id="silver" x1="0" y1="0" x2=".95" y2="1"><stop stop-color="#fffefa"/><stop offset=".4" stop-color="#e2f3f0"/><stop offset=".77" stop-color="#b1ccd0"/><stop offset="1" stop-color="#789da6"/></linearGradient>
- <linearGradient id="silverDark" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8eaeb5"/><stop offset="1" stop-color="#eef9f4"/></linearGradient>
- <radialGradient id="sheen" cx=".45" cy=".34" r=".68"><stop stop-color="#b8d8d5" stop-opacity=".17"/><stop offset="1" stop-color="#a4c5c4" stop-opacity="0"/></radialGradient>
-<linearGradient id="v62Engraving" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f9fffc" stop-opacity=".75"/><stop offset="1" stop-color="#81abb1" stop-opacity=".5"/></linearGradient>
- <linearGradient id="v62Halo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f0f7ed" stop-opacity=".8"/><stop offset="1" stop-color="#aec8c8" stop-opacity=".1"/></linearGradient>
- <radialGradient id="v62BgSheen"><stop stop-color="#cce6de" stop-opacity=".08"/><stop offset="1" stop-color="#cce6de" stop-opacity="0"/></radialGradient>
+ <linearGradient id="silver" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a0bcc0"/><stop offset=".32" stop-color="#f9fdfb"/><stop offset=".65" stop-color="#d9e9e8"/><stop offset="1" stop-color="#86afb3"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8c7959"/><stop offset=".5" stop-color="#e2cda3"/><stop offset="1" stop-color="#a38d69"/></linearGradient>
+ <radialGradient id="halo"><stop stop-color="#cde8e7" stop-opacity=".2"/><stop offset="1" stop-color="#cde8e7" stop-opacity="0"/></radialGradient>
 </defs>
-<!-- Compact circular seal; intentionally not a tree illustration. -->
-<circle cx="128" cy="128" r="118" fill="url(#night)"/>
-<circle cx="128" cy="128" r="110" fill="url(#sheen)" stroke="url(#rim)" stroke-width="2.3"/>
-<circle cx="128" cy="128" r="98" fill="none" stroke="#daeae4" stroke-opacity=".19" stroke-width="1"/>
-<circle cx="128" cy="128" r="90" fill="none" stroke="#e8efe8" stroke-opacity=".08" stroke-width="1.1" stroke-dasharray="1 9"/>
-<!-- Broad uninterrupted crescent (readable at 24px). -->
-<path d="M160 43C110 47 76 84 76 133c0 44 32 76 77 81-32-16-50-47-50-80 0-39 20-73 57-91Z" fill="url(#silver)" opacity=".99"/>
-<!-- Central argent leaf: one sculpted blade rather than trunk and twig emblems. -->
-<path d="M113 175C106 133 130 91 184 70c10 51-9 97-54 115l-17 18 5-24Z" fill="url(#silver)" stroke="#e3f5f4" stroke-width="1.6" stroke-linejoin="round"/>
-<path d="M120 185c27-39 46-65 63-100" fill="none" stroke="#5d8790" stroke-opacity=".8" stroke-width="3" stroke-linecap="round"/>
-<path d="M138 157c-7-13-13-22-11-36m25 17c10-6 18-9 26-11m-17-7c-6-13-7-22-5-31m14 15c6-5 10-12 12-20" fill="none" stroke="#729aa0" stroke-opacity=".63" stroke-width="1.5" stroke-linecap="round"/>
-<!-- Small paired seeds below the leaf; no extra tree canopies. -->
-<!-- V62: secondary engraved leaf veins and a delicate silver edge, not a second icon -->
-<path d="M115 174C114 149 128 116 164 88" fill="none" stroke="url(#v62Engraving)" stroke-width="1.25" stroke-linecap="round" opacity=".46"/>
-<path d="M135 163q-8-8-9-16m25 3q10-5 19-6m-29-13q-3-8-3-13m18 2q11-3 18-8" fill="none" stroke="#edf7f3" stroke-width=".9" stroke-linecap="round" stroke-opacity=".42"/>
-<path d="M173 49q5 4 8 12" fill="none" stroke="#f5fdf8" stroke-opacity=".35" stroke-width="1.1"/>
-<path d="M118 183c-14-6-24-4-31 6 10 9 22 9 31-1m12 2c11-8 23-9 32-4-6 11-17 15-29 10" fill="url(#silverDark)" stroke="#cce2df" stroke-width="1"/>
-<path d="M121 192c1 8 0 13-3 18" stroke="#b7d7d4" stroke-width="2.2" stroke-linecap="round"/>
-<!-- Quiet rune punctuation -->
-<path d="M128 23l5 7-5 7-5-7Z" fill="url(#rim)"/>
-<path d="M128 219l5 7-5 7-5-7Z" fill="url(#rim)"/>
-<g stroke="url(#rim)" stroke-width="1.1" fill="none" opacity=".72"><path d="M20 128h9m198 0h9"/><path d="M36 85l4 4m176 78 4 4"/></g>
-<g fill="none" stroke="#bbd8d2" stroke-width="1.2" stroke-linecap="round" opacity=".42">
-<path d="M45 175q9 10 19 13m146-13q-10 10-20 13"/>
-<path d="M55 183q-1-9-6-12m6 12q9-2 12-9m131 9q1-9 6-12m-6 12q-9-2-12-9"/>
-</g><g id="v63-silver-engraving" fill="none" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M118 164c8-27 23-49 45-68" stroke="#fbfffc" stroke-width=".85" stroke-opacity=".52"/>
-  <path d="M124 151q-6-6-6-14m20-4q10-3 17-9m-17-12q-2-7 0-15m19 10q9-1 15-7" stroke="#e0f2ed" stroke-width=".8" stroke-opacity=".43"/>
-  <path d="M92 127q-2 19 3 34" stroke="#fff" stroke-width=".9" stroke-opacity=".17"/>
-</g>
-<g id="v63-lunar-rim" fill="none" stroke="#dccfb0" stroke-opacity=".40" stroke-linecap="round">
- <path d="M62 47q-17 12-26 29M204 46q13 13 20 32M39 189q14 17 33 24M193 214q20-13 29-29" stroke-width="1.05"/>
- <path d="M78 39l4-4 4 4-4 4ZM212 88l3-3 3 3-3 3Z" stroke-width=".85"/>
-</g>
-<g fill="#e7f3ee" opacity=".53"><circle cx="63" cy="103" r="1.5"/><circle cx="196" cy="165" r="1.35"/><circle cx="198" cy="71" r="1"/><circle cx="71" cy="203" r="1.1"/></g>
+<circle cx="128" cy="128" r="118" fill="url(#halo)"/>
+<circle cx="128" cy="128" r="110" stroke="url(#gold)" stroke-width="1.4" opacity=".75" fill="none"/>
+<circle cx="128" cy="128" r="98" stroke="#c2d9d9" stroke-width=".8" opacity=".38" fill="none"/>
+<path d="M143 41a76 76 0 1 0 69 111a66 66 0 0 1-69-111Z" fill="url(#silver)" opacity=".92"/>
+<path d="M125 181C112 164 106 146 111 126C119 96 138 76 170 61C184 105 171 143 147 166C138 175 132 180 125 181Z" fill="url(#silver)" stroke="#e9f8f6" stroke-width="2"/>
+<path d="M127 186Q138 132 167 76" stroke="#7fa5ab" stroke-width="3.5" opacity=".85" fill="none" stroke-linecap="round"/>
+<path d="M131 155Q112 142 104 124M139 132Q160 130 174 110M145 117Q129 101 127 91M122 173Q107 161 99 154" stroke="#8eafb3" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+<path d="M127 188Q119 199 98 205M127 188Q137 202 157 206" stroke="url(#gold)" stroke-width="1.65" stroke-linecap="round" fill="none" opacity=".84"/>
+<path d="M128 15l3.7 6 6 3.7-6 3.7-3.7 6-3.7-6-6-3.7 6-3.7Z" fill="#e4c998" opacity=".83"/>
+<path d="M128 221l3 5 5 3-5 3-3 5-3-5-5-3 5-3Z" fill="#e4c998" opacity=".62"/>
 </svg>

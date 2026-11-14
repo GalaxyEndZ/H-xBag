@@ -16,6 +16,7 @@ import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSUTAI_ONI_CLASSES } from './systems/kisatsutai/extendedData'
 import HaxTable from './components/HaxTable'
+import DiceTower from './components/DiceTower'
 import MasterChest from './components/MasterChest'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
@@ -1416,7 +1417,7 @@ const resetCreatureFilters = () => {
   const [visualStylePreviewKey, setVisualStylePreviewKey] = useState<VisualStyleKey | null>(null)
   const [visualStyleCollection, setVisualStyleCollection] = useState<'all' | 'originals' | 'new' | 'favorites'>('all')
   const [visualStyleOrder, setVisualStyleOrder] = useState<'curated' | 'name' | 'favorites'>('curated')
-  const [visualStylePreviewMode, setVisualStylePreviewMode] = useState<'cover' | 'sheet' | 'menu'>('cover')
+  const [visualStylePreviewMode, setVisualStylePreviewMode] = useState<'cover' | 'sheet' | 'menu' | 'compare'>('cover')
   const [visualStyleCompact, setVisualStyleCompact] = useState(false)
   const [favoriteVisualStyles, setFavoriteVisualStyles] = useState<VisualStyleKey[]>(() => {
     try {
@@ -1539,7 +1540,7 @@ const resetCreatureFilters = () => {
   const toggleVisualStyleFavorite = (key: VisualStyleKey) => {
     setFavoriteVisualStyles(current => current.includes(key) ? current.filter(entry => entry !== key) : [...current, key])
   }
-  useEffect(() => { setVisualStylePreviewKey(null); setVisualStyleCollection('all') }, [selectedSeasonId])
+  useEffect(() => { setVisualStylePreviewKey(null); setVisualStyleCollection('all'); setVisualStylePreviewMode('cover') }, [selectedSeasonId])
 
   // Janelas renderizadas por createPortal ficam fora de .app-shell.
   // Espelhamos o estilo e a paleta no body para modais e seletores flutuantes,
@@ -1916,7 +1917,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile' | 'conditions'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
   useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
@@ -5090,6 +5091,7 @@ async function deleteCampaign(campaign: Campaign) {
     }
     setSeasons(current => current.map(entry => entry.id === season.id ? data as Season : entry))
     setVisualStylePreviewKey(null)
+    setVisualStylePreviewMode('cover')
     setNotice(`Estilo “${visualStyles[styleKey].label}” aplicado à temporada junto do tema “${activeTheme.label}”.`)
     void recordCampaignActivity({
       activityType: 'season_visual_style_changed', title: 'Estilo visual da temporada alterado',
@@ -7817,7 +7819,7 @@ useEffect(() => {
                     const agility = Math.floor(effectiveAttribute('attributes.agility', 'agility'))
                     const movementActions = Math.max(0, applyConditionModifier(1 + Math.floor(agility / 2), conditionModifiers, 'actions', 'movement'))
                     const extraActions = Math.max(0, applyConditionModifier(agility % 2, conditionModifiers, 'actions', 'extra'))
-                    const dexterity = Math.min(maxSkillLevel, num('skills.dexterity'))
+                    const dexterity = applyConditionModifier(Math.min(maxSkillLevel, num('skills.dexterity')), conditionModifiers, 'main_skill', 'dexterity')
                     const intellectChoiceConfig = skillPointConfig?.intellectChoice
                     const skillChoicePath = intellectChoiceConfig?.choicePath ?? 'skills.intelligenceChoices'
                     const mainChoiceValue = intellectChoiceConfig?.mainChoiceValue ?? 'main'
@@ -7927,14 +7929,18 @@ useEffect(() => {
 
                       updateRenderDraft(JSON.stringify(next, null, 2))
                     }
-                    const vigor = Math.min(maxSkillLevel, num('skills.vigor'))
-                    const mental = Math.min(maxSkillLevel, num('skills.mental'))
+                    // Modificadores das perícias principais se aplicam aos valores em uso;
+                    // os pontos salvos na ficha permanecem intactos.
+                    const mainSkill = (key: 'vigor'|'mental'|'combat'|'dexterity'|'resistance'|'ability') =>
+                      applyConditionModifier(Math.min(maxSkillLevel, num(`skills.${key}`)), conditionModifiers, 'main_skill', key)
+                    const vigor = mainSkill('vigor')
+                    const mental = mainSkill('mental')
                     const breathing = effectiveAttribute('attributes.breathing', 'breathing')
-                    const ability = Math.min(maxSkillLevel, num('skills.ability'))
+                    const ability = mainSkill('ability')
                     const defense = effectiveAttribute('attributes.defense', 'defense')
                     const reactions = defense + 1
-                    const combat = Math.min(maxSkillLevel, num('skills.combat'))
-                    const resistance = Math.min(maxSkillLevel, num('skills.resistance'))
+                    const combat = mainSkill('combat')
+                    const resistance = mainSkill('resistance')
                     const strength = effectiveAttribute('attributes.strength', 'strength')
                     const rankName = String(
                       read(
@@ -8169,16 +8175,23 @@ const attribute =
                         ? getSystemAttributeBonus(familyTierKey, 'breathing') : 0,
                       rankStatus,
                     })
+                    // Uma condição em perícia principal afeta também as derivações que
+                    // dependem dessa perícia, sem modificar os pontos salvos na ficha.
+                    const skillResourceBase = {
+                      pv: sharedResourceMaximums.pv + (vigor - num('skills.vigor')) * 10,
+                      ps: sharedResourceMaximums.ps + (mental - num('skills.mental')) * 10,
+                      pr: sharedResourceMaximums.pr + (ability - num('skills.ability')) * 10,
+                    }
                     const conditionResourceMaximum = (key: 'pv' | 'ps' | 'pr', base: number) => {
-                      if (forEnemy) return base
+                      if (forEnemy) return Math.max(0, base)
                       const flat = conditionRules.resources[`resource:${key}`] || 0
                       const percent = conditionRules.resourcePercent[`resource:${key}`] || 0
                       return Math.max(0, Math.round((base + flat) * (1 + percent / 100)))
                     }
                     const derived = [
-                      ['Pontos de Vida (PV)', conditionResourceMaximum('pv', sharedResourceMaximums.pv), `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
-                      ['Pontos de Sanidade (PS)', conditionResourceMaximum('ps', sharedResourceMaximums.ps), `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
-                      [sheetResourcePointsLabel, conditionResourceMaximum('pr', sharedResourceMaximums.pr), `(${sheetResourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
+                      ['Pontos de Vida (PV)', conditionResourceMaximum('pv', skillResourceBase.pv), `Vigor × 10 (${vigor * 10}) + família (${familyPV}) + classe (${classPV}) + progressão (${progressionPV})`],
+                      ['Pontos de Sanidade (PS)', conditionResourceMaximum('ps', skillResourceBase.ps), `Mental × 10 (${mental * 10}) + família (${familyPS}) + classe (${classPS}) + progressão (${progressionPS})`],
+                      [sheetResourcePointsLabel, conditionResourceMaximum('pr', skillResourceBase.pr), `(${sheetResourceName} + Habilidade) × 10 + família (${familyPR}) + classe (${classPR}) + progressão (${progressionPR})`],
                     ] as const
 const field = (path: string, label: string, type: 'number' | 'text' = 'number', hint?: string) => {
   const limit = path.startsWith('attributes.')
@@ -9614,12 +9627,12 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 </select></label>
                                 <button type="button" disabled={!selected} onClick={() => {
                                   if (!selected) return
-                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key) + conditionModifier(conditionRules.dice, 'main_skill', selected.name)
+                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key)
                                   const roll = rollAttributeDice(testDiceCount + conditionDiceBonus, testAttribute.key === 'agility')
                                   const attributeConditionBonus = applyConditionModifier(testAttribute.value, conditionModifiers, 'status', testAttribute.key) - testAttribute.value
                                   const skillGroup = selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill'
                                   const trainedSkillBonus = applyConditionModifier(selected.bonus, conditionModifiers, skillGroup, selected.key)
-                                  const skillConditionBonus = applyConditionModifier(trainedSkillBonus, conditionModifiers, 'main_skill', selected.name) - selected.bonus
+                                  const skillConditionBonus = trainedSkillBonus - selected.bonus
                                   const conditionTotal = attributeConditionBonus + skillConditionBonus
                                   const preparationBonus = complexPending?.skill===selected.name ? complexPending.bonus : 0
                                   const total = roll.result + selected.bonus + conditionTotal + preparationBonus
@@ -9995,6 +10008,7 @@ counterAttackDT
   }> = [
     {id:'overview',label:'Visão geral',symbol:'◈',description:'Painel da campanha',campaign:true},
     {id:'player-table',label:'Mesa dos jogadores',symbol:'▦',description:'Mesa virtual e ferramentas de sessão',campaign:true},
+    {id:'dice-tower',label:'Torre de Dados',symbol:'🎲',description:'Rolagem de dados normais e modificadores',campaign:true},
     {id:'sheets',label:'Fichas',symbol:'▧',description:'Biblioteca de personagens',campaign:true},
     {id:'enemies',label:'Inimigos',symbol:'⚔',description:'Fichas e grupos inimigos',campaign:true,master:true},
     {id:'master-shield',label:'Escudo do mestre',symbol:'♜',description:'Iniciativas, turnos, recursos e anotações',campaign:true,master:true},
@@ -10015,7 +10029,8 @@ counterAttackDT
         else {
           setActivePage(item.id)
           if (item.id === 'sheets') setSheetCharacterView(false)
-          if (item.id === 'master-chest' || item.id === 'customization') setNotice('')
+          if (item.id === 'master-chest' || item.id === 'customization' || item.id === 'dice-tower') setNotice('')
+          if (item.id === 'dice-tower') setError('')
         }
       },
     }))
@@ -10175,6 +10190,9 @@ counterAttackDT
               <span className="hb-sidebar-nav-name">Mesa dos jogadores</span>
               <span className="hb-sidebar-nav-flair">MESA</span>
             </button>
+            <button type="button" className={`nav-link ${activePage === 'dice-tower' ? 'active' : ''}`} onClick={() => { setNotice(''); setError(''); setActivePage('dice-tower') }} disabled={!selectedCampaignId} aria-current={activePage === 'dice-tower' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">🎲</span><span className="hb-sidebar-nav-name">Torre de Dados</span>
+            </button>
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
@@ -10328,7 +10346,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -11741,6 +11759,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         {seasons.map(season => <option key={season.id} value={season.id}>T{season.season_number} · {season.name} ({season.status})</option>)}
                       </select>
                     </label>
+                    </div>
+                  <div className="hb-v66-guide" aria-label="Como personalizar a temporada">
+                    <div><span className="hb-v66-guide-icon" aria-hidden="true">◈</span><div><strong>Escolha uma paleta</strong><small>As cores são aplicadas assim que o mestre seleciona.</small></div></div>
+                    <div><span className="hb-v66-guide-icon" aria-hidden="true">✦</span><div><strong>Explore as identidades</strong><small>Compare artes e telas sem alterar a campanha.</small></div></div>
+                    <div><span className="hb-v66-guide-icon" aria-hidden="true">✓</span><div><strong>Confirme o estilo</strong><small>Apenas a escolha confirmada será salva na temporada.</small></div></div>
                   </div>
                   {(notice || error) && <div className={`hb-customization-inline-notice ${error?'is-error':''}`} role={error?'alert':'status'}><span aria-hidden="true">{error?'⚠':'✓'}</span><span>{error || notice}</span></div>}
                   {selectedSeasonId ? (
@@ -11752,7 +11775,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div id="hb-studio-palette" className="season-visual-group hb-customization-palette">
                     <div className="season-visual-group-heading hb-studio-section-heading"><span>ETAPA 01 / CORES</span><strong>Paleta da temporada</strong><small>Escolha uma combinação de cores. A seleção é aplicada imediatamente à temporada e não altera o estilo das ilustrações.</small></div>
                     <div className="hb-customization-current-palette">
-                      <div className="hb-customization-current-palette-art" style={{background:`linear-gradient(120deg,${activeTheme.bg},${activeTheme.surface},${activeTheme.surfaceAlt})`}} aria-hidden="true"><i style={{background:activeTheme.primary}}/><i style={{background:activeTheme.secondary}}/><i style={{background:'#f3eff5'}}/></div>
+                      <div className="hb-customization-current-palette-art" style={{background:`linear-gradient(120deg,${activeTheme.bg},${activeTheme.surface},${activeTheme.surfaceAlt})`}} aria-hidden="true"><i style={{background:activeTheme.primary}}/><i style={{background:activeTheme.secondary}}/><i style={{background:'#f3eff5'}}/><span className="hb-v66-palette-sample"><b style={{background:activeTheme.surfaceAlt}}/><b style={{background:activeTheme.primary}}/><b style={{background:activeTheme.secondary}}/></span></div>
                       <div><strong>{activeTheme.label}</strong><small>Paleta em uso nesta temporada</small></div>
                       <span>✓ Ativa</span>
                     </div>
@@ -11761,11 +11784,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <span className="hb-studio-palette-count">{matchedSeasonPalettes.length} de {allSeasonPalettes.length} paletas</span>
                     </div>
                     {isMaster ? <>
-                      <div className="season-theme-options hb-customization-palette-grid">{visibleSeasonPalettes.map(([key,theme])=><button key={key} type="button" aria-label={`${theme.label}${activeThemeKey===key?', paleta em uso':', aplicar paleta à temporada'}`} aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':seasonThemeSaving?'Salvando...':'Aplicar'}</span></button>)}</div>
+                      <div className="season-theme-options hb-customization-palette-grid">{visibleSeasonPalettes.map(([key,theme])=><button key={key} type="button" aria-label={`${theme.label}${activeThemeKey===key?', paleta em uso':', aplicar paleta à temporada'}`} aria-pressed={activeThemeKey === key} disabled={seasonThemeSaving} onClick={()=>void saveSeasonTheme(key)} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><span className="hb-v66-palette-scene" style={{background:theme.surface}}><b style={{background:theme.primary}}/><b style={{background:theme.surfaceAlt}}/><b style={{background:theme.secondary}}/></span><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':seasonThemeSaving?'Salvando...':'Aplicar'}</span></button>)}</div>
                       {!paletteQuery && matchedSeasonPalettes.length > 12 && <button type="button" className="hb-studio-show-all" aria-expanded={seasonPaletteExpanded} onClick={()=>setSeasonPaletteExpanded(expanded=>!expanded)}>{seasonPaletteExpanded?'↑ Mostrar menos paletas':`＋ Ver todas as ${matchedSeasonPalettes.length} paletas`}</button>}
                       {matchedSeasonPalettes.length===0 && <div className="hb-studio-no-results"><strong>Nenhuma paleta encontrada</strong><span>Tente outro termo para encontrar uma combinação.</span><button type="button" onClick={()=>setSeasonPaletteSearch('')}>Limpar pesquisa</button></div>}
                     </> : <p className="hb-studio-readonly-note">O mestre define a paleta da temporada. Você pode consultar todas as cores no catálogo abaixo.</p>}
-                    {!isMaster && <div className="season-theme-options hb-customization-palette-grid is-readonly">{visibleSeasonPalettes.map(([key,theme])=><div key={key} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':'Prévia'}</span></div>)}{matchedSeasonPalettes.length===0 && <p>Nenhuma paleta encontrada.</p>}</div>}
+                    {!isMaster && <div className="season-theme-options hb-customization-palette-grid is-readonly">{visibleSeasonPalettes.map(([key,theme])=><div key={key} className={`season-theme-option ${activeThemeKey===key?'active':''}`} style={{ '--hb-palette-first': theme.primary, '--hb-palette-second': theme.secondary } as React.CSSProperties}><span className="hb-customization-palette-art" style={{background:`linear-gradient(140deg,${theme.bg},${theme.surfaceAlt})`}} aria-hidden="true"><span className="hb-v66-palette-scene" style={{background:theme.surface}}><b style={{background:theme.primary}}/><b style={{background:theme.surfaceAlt}}/><b style={{background:theme.secondary}}/></span><i style={{background:theme.primary}}/><i style={{background:theme.secondary}}/></span><span className="hb-customization-palette-name">{theme.label}</span><span className="hb-customization-palette-status">{activeThemeKey===key?'✓ Em uso':'Prévia'}</span></div>)}{matchedSeasonPalettes.length===0 && <p>Nenhuma paleta encontrada.</p>}</div>}
                     {!isMaster && !paletteQuery && matchedSeasonPalettes.length>12 && <button type="button" className="hb-studio-show-all" aria-expanded={seasonPaletteExpanded} onClick={()=>setSeasonPaletteExpanded(expanded=>!expanded)}>{seasonPaletteExpanded?'↑ Mostrar menos paletas':`＋ Ver todas as ${matchedSeasonPalettes.length} paletas`}</button>}
                   </div>
                   <div id="hb-studio-styles" className="season-visual-group season-visual-style-group hb-customization-gallery">
@@ -11794,8 +11817,18 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         <section id="hb-studio-inspector" ref={customizationInspectorRef} className={`hb-style-inspector season-style-${inspectedVisualStyleKey} hb-identity-mode-${visualStylePreviewMode}`} aria-label={`Detalhes do estilo ${inspectedVisualStyle.label}`} style={{'--hb-demo-primary': activeTheme.primary,'--hb-demo-secondary': activeTheme.secondary,'--hb-demo-bg': activeTheme.bg} as React.CSSProperties}>
                           <div className="hb-style-inspector-art" aria-hidden="true">
                             <span className="hb-style-inspector-glyph">{inspectedVisualStyle.symbol}</span>
-                            <span className="hb-style-inspector-art-label">{visualStylePreviewMode==='cover'?'HÄXBAG / ATELIÊ DE ESTILOS':visualStylePreviewMode==='sheet'?'EXEMPLO ILUSTRATIVO · FICHA':'EXEMPLO ILUSTRATIVO · NAVEGAÇÃO'}</span>
+                            <span className="hb-style-inspector-art-label">{visualStylePreviewMode==='cover'?'':visualStylePreviewMode==='sheet'?'EXEMPLO ILUSTRATIVO · FICHA':visualStylePreviewMode==='compare'?'':'EXEMPLO ILUSTRATIVO · NAVEGAÇÃO'}</span>
                             <span className="hb-identity-art-corner" />
+                            {visualStylePreviewMode==='compare' && <div className="hb-v66-compare" role="group" aria-label={`Comparação visual entre ${activeVisualStyle.label} e ${inspectedVisualStyle.label}`}>
+                              <div className={`hb-v66-compare-panel hb-customization-preview-${activeVisualStyleKey}`}>
+                                <span className="hb-v66-compare-photo" aria-hidden="true" />
+                                <div><small>IDENTIDADE APLICADA</small><strong>{activeVisualStyle.label}</strong><span>Em uso</span></div>
+                              </div>
+                              <div className={`hb-v66-compare-panel hb-customization-preview-${inspectedVisualStyleKey}`}>
+                                <span className="hb-v66-compare-photo" aria-hidden="true" />
+                                <div><small>IDENTIDADE EM PRÉVIA</small><strong>{inspectedVisualStyle.label}</strong><span>{visualStyleIsPending?'Ainda não aplicada':'Em uso'}</span></div>
+                              </div>
+                            </div>}
                             {visualStylePreviewMode==='sheet' && <div className="hb-identity-demo hb-identity-demo-sheet">
                               <div className="hb-identity-demo-heading"><span className="hb-identity-demo-avatar">✧</span><div><strong>Ficha de exemplo</strong><small>{inspectedVisualStyle.label} · Visual de teste</small></div><span className="hb-identity-demo-crest">{inspectedVisualStyle.symbol}</span></div>
                               <div className="hb-identity-demo-stats"><div><span>PV</span><b>84 / 100</b><i style={{'--hb-demo-width':'84%'} as React.CSSProperties}/></div><div><span>PS</span><b>72 / 100</b><i style={{'--hb-demo-width':'72%'} as React.CSSProperties}/></div><div><span>PR</span><b>95 / 100</b><i style={{'--hb-demo-width':'95%'} as React.CSSProperties}/></div></div>
@@ -11810,13 +11843,18 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                               <button type="button" className={visualStylePreviewMode==='cover'?'selected':''} aria-pressed={visualStylePreviewMode==='cover'} onClick={()=>setVisualStylePreviewMode('cover')}>✧ Capa</button>
                               <button type="button" className={visualStylePreviewMode==='sheet'?'selected':''} aria-pressed={visualStylePreviewMode==='sheet'} onClick={()=>setVisualStylePreviewMode('sheet')}>▦ Ficha</button>
                               <button type="button" className={visualStylePreviewMode==='menu'?'selected':''} aria-pressed={visualStylePreviewMode==='menu'} onClick={()=>setVisualStylePreviewMode('menu')}>☷ Menu</button>
+                              <button type="button" className={visualStylePreviewMode==='compare'?'selected':''} aria-pressed={visualStylePreviewMode==='compare'} onClick={()=>setVisualStylePreviewMode('compare')}>⇄ Comparar</button>
+                            </div>
+                            <div className={`hb-v66-inspector-status ${visualStyleIsPending?'is-pending':'is-applied'}`} role="status">
+                              <span aria-hidden="true">{visualStyleIsPending?'◉':'✓'}</span>
+                              <div><strong>{visualStyleIsPending?'Você está comparando uma identidade':'Identidade aplicada nesta temporada'}</strong><small>{visualStyleIsPending?'Apenas a prévia mudou; a aparência da campanha permanece a mesma.':'Você pode explorar outras opções sem alterar o estilo atual.'}</small></div>
                             </div>
                             <span className="hb-customization-eyebrow">{visualStyleIsPending?'✧ PRÉVIA NÃO APLICADA':'✦ IDENTIDADE EM USO'}</span>
                             <h3>{inspectedVisualStyle.label}</h3>
                             <p>{inspectedVisualStyle.description}</p>
                             <span className="hb-style-inspector-motto">{inspectedVisualStyle.signature}</span>
-                            <div className="hb-identity-inspector-tools"><span>{classicVisualStyles.includes(inspectedVisualStyleKey)?'IDENTIDADE CLÁSSICA':'NOVA COLEÇÃO'}</span><div><button type="button" aria-label="Estilo anterior na lista filtrada" title="Estilo anterior" disabled={!visibleVisualStyles.length} onClick={()=>navigateVisualStylePreview(-1)}>←</button><span>{visibleVisualStyles.findIndex(([key])=>key===inspectedVisualStyleKey)>=0?`${visibleVisualStyles.findIndex(([key])=>key===inspectedVisualStyleKey)+1} de ${visibleVisualStyles.length}`:'Fora do filtro'}</span><button type="button" aria-label="Próximo estilo na lista filtrada" title="Próximo estilo" disabled={!visibleVisualStyles.length} onClick={()=>navigateVisualStylePreview(1)}>→</button></div></div>
-                            {visualStyleIsPending && <div className="hb-identity-compare" aria-label="Comparação com o estilo atual">
+                            <div className="hb-identity-inspector-tools"><span>{classicVisualStyles.includes(inspectedVisualStyleKey)?'IDENTIDADE CLÁSSICA':'NOVA COLEÇÃO'}</span><button type="button" className="hb-v66-favorite-inline" aria-pressed={favoriteVisualStyles.includes(inspectedVisualStyleKey)} onClick={()=>toggleVisualStyleFavorite(inspectedVisualStyleKey)}>{favoriteVisualStyles.includes(inspectedVisualStyleKey)?'★ Favorito':'☆ Favoritar'}</button><div><button type="button" aria-label="Estilo anterior na lista filtrada" title="Estilo anterior" disabled={!visibleVisualStyles.length} onClick={()=>navigateVisualStylePreview(-1)}>←</button><span>{visibleVisualStyles.findIndex(([key])=>key===inspectedVisualStyleKey)>=0?`${visibleVisualStyles.findIndex(([key])=>key===inspectedVisualStyleKey)+1} de ${visibleVisualStyles.length}`:'Fora do filtro'}</span><button type="button" aria-label="Próximo estilo na lista filtrada" title="Próximo estilo" disabled={!visibleVisualStyles.length} onClick={()=>navigateVisualStylePreview(1)}>→</button></div></div>
+                            {visualStyleIsPending && visualStylePreviewMode !== 'compare' && <div className="hb-identity-compare" aria-label="Comparação com o estilo atual">
                               <div><small>ATUAL</small><strong>{activeVisualStyle.symbol} {activeVisualStyle.label}</strong></div>
                               <span aria-hidden="true">→</span>
                               <div><small>ESCOLHIDO</small><strong>{inspectedVisualStyle.symbol} {inspectedVisualStyle.label}</strong></div>
@@ -11837,12 +11875,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <div className="hb-identity-catalog">
                         <div className="hb-customization-gallery-heading">
                           <div><strong>Acervo de identidades</strong><small>{visibleVisualStyles.length} {visibleVisualStyles.length===1?'identidade encontrada':'identidades encontradas'} · Clique em uma arte para comparar com a identidade ativa.</small></div>
-                          <div className="hb-identity-gallery-head-actions">{visualStyleIsPending && <span className="hb-customization-unsaved">✧ Prévia não salva</span>}<button type="button" className="hb-identity-show-preview" onClick={()=>customizationInspectorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})}>Ver prévia ↑</button></div>
+                          <div className="hb-identity-gallery-head-actions">{visualStyleIsPending && <span className="hb-customization-unsaved">✧ Prévia não salva</span>}<button type="button" className="hb-identity-show-preview" onClick={()=>{setVisualStylePreviewMode(visualStyleIsPending?'compare':'cover');customizationInspectorRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}}>{visualStyleIsPending?'Comparar ↑':'Ver prévia ↑'}</button></div>
                         </div>
                         <div className={`season-style-grid hb-style-gallery-grid ${visualStyleCompact?'is-compact':''}`}>
                           {visibleVisualStyles.map(([key, style]) => (
                             <div className={`hb-style-gallery-entry season-style-${key}`} key={key}>
-                              <button type="button" aria-label={`Visualizar estilo ${style.label}${activeVisualStyleKey===key?', atualmente em uso':''}`} aria-pressed={inspectedVisualStyleKey===key} onClick={()=>{setVisualStylePreviewKey(key);customizationInspectorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})}}
+                              <button type="button" aria-label={`Visualizar estilo ${style.label}${activeVisualStyleKey===key?', atualmente em uso':''}`} aria-pressed={inspectedVisualStyleKey===key} onClick={()=>{setVisualStylePreviewKey(key===activeVisualStyleKey?null:key);setVisualStylePreviewMode(key===activeVisualStyleKey?'cover':'compare');customizationInspectorRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}}
                                 className={`season-style-card season-style-${key} ${activeVisualStyleKey===key?'active':''} ${inspectedVisualStyleKey===key?'inspected':''}`}>
                                 <span className="season-style-signature" aria-hidden="true"><span>✦</span>{style.signature}</span>
                                 <span className="season-style-preview" aria-hidden="true">
@@ -11865,6 +11903,15 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         {visibleVisualStyles.length===0 && <div className="hb-style-gallery-empty"><strong>{visualStyleCollection==='favorites'?'Nenhum favorito nesta busca':'Nenhum estilo encontrado'}</strong><small>Experimente outra coleção ou busque por um nome diferente.</small><button type="button" className="secondary-button" onClick={()=>{setVisualStyleSearch('');setVisualStyleCollection('all')}}>Mostrar todos</button></div>}
                       </div>
                     </div>
+                    {visualStyleIsPending && <div className="hb-v66-decision-dock" role="region" aria-label="Confirmar identidade visual">
+                      <span className="hb-v66-decision-symbol" aria-hidden="true">{inspectedVisualStyle.symbol}</span>
+                      <div className="hb-v66-decision-copy"><small>ESTILO EM PRÉVIA · NÃO APLICADO</small><strong>{inspectedVisualStyle.label}</strong><span>A paleta {activeTheme.label} será mantida.</span></div>
+                      <div className="hb-v66-decision-actions">
+                        <button type="button" className="hb-v66-decision-discard" disabled={seasonVisualStyleSaving} onClick={()=>{setVisualStylePreviewKey(null);setVisualStylePreviewMode('cover')}}>Descartar</button>
+                        {isMaster && <button type="button" className="primary-button" disabled={seasonVisualStyleSaving} onClick={()=>void saveSeasonVisualStyle(inspectedVisualStyleKey)}>{seasonVisualStyleSaving?'Salvando...':'✓ Aplicar identidade'}</button>}
+                        {!isMaster && <small>Somente o mestre pode aplicar</small>}
+                      </div>
+                    </div>}
                     {!isMaster && <small className="season-style-readonly">Você pode explorar e comparar os estilos. Apenas o mestre pode aplicar alterações à temporada.</small>}
                     <div className="hb-studio-final-summary" aria-label="Resumo da aparência aplicada">
                       <div className="hb-studio-final-icon" aria-hidden="true">✧</div>
@@ -13186,6 +13233,10 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
   </section>
 )}
+
+          {activePage === 'dice-tower' && selectedCampaignId && (
+            <DiceTower />
+          )}
 
           {activePage === 'player-table' && selectedCampaign && (
             <HaxTable
@@ -16485,7 +16536,7 @@ style={{cursor:'pointer'}}>
           </section>}
 
 
-          {error && activePage !== 'conditions' && (
+          {error && activePage !== 'conditions' && activePage !== 'dice-tower' && (
             <div className="notice" role="alert">
               <span>!</span> {error}
               <button
@@ -16497,7 +16548,7 @@ style={{cursor:'pointer'}}>
             </div>
           )}
 
-          {notice && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && (
+          {notice && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && activePage !== 'dice-tower' && (
             <div className="notice" role="status">
               <span>✓</span> {notice}
               <button
