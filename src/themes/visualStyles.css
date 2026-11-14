@@ -7003,3 +7003,346 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 @media(prefers-reduced-motion:reduce){
   .app-shell .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-favorite:hover{transform:none}
 }
+
+/* =======================================================================
+   HÄXBAG V36 · CARTÕES DE IDENTIDADE PADRONIZADOS
+   Somente a galeria "Escolha sua identidade". Cada arte e sua cor de destaque
+   são preservadas; estrutura, dimensões, textos e controles são consistentes.
+   ======================================================================= */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid {
+  align-items:stretch;
+  grid-auto-flow:row;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry {
+  --hb-gallery-accent:var(--hb-v26-ink,var(--card-art,var(--season-primary)));
+  display:block;
+  min-width:0;
+  height:100%;
+  position:relative;
+}
+/* Mesmo molde para todos, inclusive coleções novas com geometria própria. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card {
+  box-sizing:border-box;
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) 28px !important;
+  grid-template-rows:28px 174px minmax(0,1fr) 27px 42px !important;
+  gap:10px 10px !important;
+  align-items:stretch;
+  align-content:stretch;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:450px;
+  margin:0;
+  padding:15px !important;
+  border-radius:16px !important;
+  border:1px solid color-mix(in srgb,var(--season-line) 76%,var(--hb-gallery-accent) 24%) !important;
+  background:linear-gradient(155deg,
+    color-mix(in srgb,var(--season-surface-alt) 67%,var(--season-bg)),
+    color-mix(in srgb,var(--season-bg) 89%,var(--season-surface))) !important;
+  box-shadow:0 10px 26px rgba(0,0,0,.15),inset 0 1px rgba(255,255,255,.04) !important;
+  color:var(--season-text);
+  text-align:left;
+  transform:none;
+  overflow:hidden;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card::before,
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card::after {
+  content:none !important;
+  display:none !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card:hover:not(:disabled) {
+  transform:translateY(-2px);
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 65%,var(--season-line)) !important;
+  box-shadow:0 16px 31px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.05) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card.active {
+  border-color:var(--hb-gallery-accent) !important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--hb-gallery-accent) 45%,transparent),0 13px 30px rgba(0,0,0,.22) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card.inspected:not(.active) {
+  border-color:var(--season-primary) !important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--season-primary) 40%,transparent),0 13px 30px rgba(0,0,0,.2) !important;
+}
+/* Cabeçalho e status: mesma posição e mesmas medidas. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-signature {
+  grid-area:1 / 1 / 2 / 2;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:5px;
+  min-width:0;
+  min-height:0;
+  max-width:none;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  font-family:"Cascadia Code",Consolas,monospace !important;
+  font-size:10px !important;
+  font-weight:800;
+  line-height:1.2;
+  letter-spacing:.065em !important;
+  color:var(--hb-gallery-accent);
+  opacity:1;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-signature > span {flex:0 0 auto}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-check {
+  grid-area:1 / 2 / 2 / 3;
+  justify-self:end;
+  align-self:center;
+  width:28px !important;
+  height:28px !important;
+  border-radius:50% !important;
+  font-family:inherit;
+  font-size:14px !important;
+  color:var(--hb-gallery-accent);
+  border:1px solid color-mix(in srgb,var(--hb-gallery-accent) 35%,var(--season-line));
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card.active .season-style-card-check {
+  color:var(--season-bg);
+  background:var(--hb-gallery-accent);
+}
+/* Miniaturas: uma janela consistente, com a arte original de cada estilo. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview {
+  box-sizing:border-box;
+  grid-area:2 / 1 / 3 / -1;
+  position:relative;
+  width:100% !important;
+  height:174px !important;
+  min-height:174px;
+  max-height:174px;
+  min-width:0;
+  margin:0;
+  border-radius:11px !important;
+  border:1px solid color-mix(in srgb,var(--hb-gallery-accent) 32%,var(--season-line)) !important;
+  overflow:hidden;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview::after {
+  content:"";
+  position:absolute;
+  z-index:2;
+  inset:10px;
+  display:block;
+  border:1px solid color-mix(in srgb,var(--hb-gallery-accent) 27%,transparent) !important;
+  border-radius:5px;
+  pointer-events:none;
+  box-shadow:none !important;
+  background:transparent !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview-glyph {
+  top:22px !important;
+  left:25px !important;
+  font-size:65px !important;
+  line-height:1;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview-lines {
+  left:25px;
+  bottom:37px;
+  max-width:42%;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview-caption {
+  position:absolute;
+  left:20px;
+  right:20px;
+  bottom:12px;
+  min-width:0;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  font-size:10px !important;
+  line-height:1.25;
+  letter-spacing:.07em;
+  text-shadow:0 1px 6px rgba(0,0,0,.9);
+}
+/* Corpo com área fixa para o título; descrições curtas não deslocam o rodapé. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info {
+  grid-area:3 / 1 / 4 / -1;
+  display:grid;
+  grid-template-rows:44px auto;
+  gap:6px !important;
+  min-width:0;
+  min-height:0;
+  padding:3px 2px 0 !important;
+  align-content:start;
+  overflow:hidden;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info strong {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  overflow:hidden;
+  min-height:44px;
+  max-height:44px;
+  margin:0;
+  font:650 18px/22px Georgia,"Times New Roman",serif !important;
+  letter-spacing:-.018em;
+  color:var(--season-text) !important;
+}
+/* Três estilos antigos tinham subtítulo extra via ::after; agora todos
+   têm precisamente título + descrição, com a assinatura já no cabeçalho. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info strong::after {
+  content:none !important;
+  display:none !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info small {
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  line-clamp:3;
+  overflow:hidden;
+  min-height:0 !important;
+  margin:0;
+  font-size:12px !important;
+  font-weight:400;
+  line-height:1.5 !important;
+  color:color-mix(in srgb,var(--season-muted) 76%,var(--season-text)) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .hb-identity-collection-tag {
+  box-sizing:border-box;
+  grid-area:4 / 1 / 5 / -1;
+  justify-self:start;
+  align-self:center;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:auto;
+  height:25px;
+  min-height:25px;
+  padding:3px 9px !important;
+  border:1px solid color-mix(in srgb,var(--season-line) 70%,var(--hb-gallery-accent));
+  border-radius:7px;
+  font:800 10px/1.1 "Cascadia Code",Consolas,monospace !important;
+  letter-spacing:.055em;
+  white-space:nowrap;
+  color:var(--season-muted);
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-gallery-choice {
+  box-sizing:border-box;
+  grid-area:5 / 1 / 6 / -1;
+  display:flex !important;
+  justify-content:center;
+  align-items:center;
+  width:100%;
+  height:42px !important;
+  min-height:42px !important;
+  padding:8px 12px !important;
+  margin:0;
+  border:1px solid color-mix(in srgb,var(--season-line) 74%,var(--season-text) 26%);
+  border-radius:9px !important;
+  background:color-mix(in srgb,var(--season-surface-alt) 78%,var(--season-bg));
+  color:var(--season-text);
+  font:800 10px/1.2 "Cascadia Code",Consolas,monospace !important;
+  letter-spacing:.095em;
+  text-align:center;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card.active .hb-style-gallery-choice {
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 55%,var(--season-line));
+  background:color-mix(in srgb,var(--hb-gallery-accent) 13%,var(--season-bg));
+  color:var(--hb-gallery-accent);
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card.inspected:not(.active) .hb-style-gallery-choice {
+  border-color:color-mix(in srgb,var(--season-primary) 50%,var(--season-line));
+  color:var(--season-primary);
+}
+/* Favoritar é uma ação independente, sempre no mesmo ponto da arte. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .hb-style-favorite {
+  box-sizing:border-box;
+  top:59px !important;
+  right:25px !important;
+  display:grid;
+  place-items:center;
+  width:34px !important;
+  height:34px !important;
+  border-radius:50% !important;
+  font-size:22px !important;
+  line-height:1;
+  color:var(--season-text);
+  border:1px solid color-mix(in srgb,var(--hb-gallery-accent) 43%,var(--season-line));
+  background:color-mix(in srgb,var(--season-bg) 90%,#070a10);
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .hb-style-favorite.is-favorite {
+  color:var(--hb-gallery-accent);
+  background:color-mix(in srgb,var(--season-bg) 85%,var(--hb-gallery-accent));
+  border-color:var(--hb-gallery-accent);
+}
+/* Modo compacto: mesmo padrão de cartões, só com menos informações. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-gallery-entry > .season-style-card {
+  grid-template-rows:22px 110px minmax(40px,1fr) 35px !important;
+  gap:8px !important;
+  padding:10px !important;
+  min-height:257px;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-signature {
+  font-size:9px !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-check {
+  width:22px !important;
+  height:22px !important;
+  font-size:12px !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-preview {
+  height:110px !important;
+  min-height:110px;
+  max-height:110px;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-preview-glyph {
+  top:12px !important;
+  left:18px !important;
+  font-size:42px !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-preview-lines {display:none !important}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-preview-caption {
+  left:12px;
+  right:12px;
+  bottom:10px;
+  font-size:8px !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-info {
+  grid-area:3 / 1 / 4 / -1;
+  display:flex;
+  align-items:flex-start;
+  padding:1px 2px !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-info strong {
+  font-size:14px !important;
+  line-height:19px !important;
+  min-height:38px;
+  max-height:38px;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .season-style-card-info small,
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-identity-collection-tag {
+  display:none !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-gallery-choice {
+  grid-area:4 / 1 / 5 / -1;
+  height:35px !important;
+  min-height:35px !important;
+  padding:7px !important;
+  font-size:9px !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-gallery-entry > .hb-style-favorite {
+  top:47px !important;
+  right:18px !important;
+  width:29px !important;
+  height:29px !important;
+  font-size:19px !important;
+}
+@media(max-width:570px){
+  .app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid:not(.is-compact) .hb-style-gallery-entry > .season-style-card {
+    min-height:440px;
+  }
+}
+@media(max-width:430px){
+  .app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-gallery-entry > .season-style-card {
+    padding:8px !important;
+    gap:7px !important;
+  }
+  .app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-grid.is-compact .hb-style-gallery-entry > .hb-style-favorite {
+    right:15px !important;
+    top:43px !important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card:hover:not(:disabled) {transform:none}
+}
