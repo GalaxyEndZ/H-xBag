@@ -6303,3 +6303,325 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell .season-visual-style-group .hb-style-inspector.season-style-relicario_solar{--hb-inspector-art:url('./style-art/relicario_solar-hero.svg')}
 .app-shell .hb-style-gallery-entry .hb-style-favorite{top:49px;right:21px}
 @media(max-width:480px){.app-shell .hb-style-gallery-entry .hb-style-favorite{top:49px;right:18px}}
+
+/* ========================================================================
+   HÄXBAG V33 · ESCOLHA SUA IDENTIDADE
+   Galeria e inspector conversam em um ateliê responsivo e acessível.
+   Interações não aplicam a seleção antes da confirmação.
+   ======================================================================== */
+.app-shell .hb-customization-gallery .hb-identity-section-heading {
+  position:relative;
+  gap:5px 12px;
+  padding:2px 0 6px;
+}
+.app-shell .hb-customization-gallery .hb-identity-section-heading>strong {
+  font-size:clamp(20px,2.4vw,26px);
+  letter-spacing:-.035em;
+  line-height:1.2;
+}
+.app-shell .hb-customization-gallery .hb-identity-section-heading>small {
+  font-size:12px;
+  max-width:680px;
+  line-height:1.6;
+}
+.app-shell .hb-customization-gallery .hb-identity-current-ribbon {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:14px;
+  padding:14px 17px;
+  border-radius:16px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 30%,var(--season-line));
+  background:
+    radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--season-primary) 10%,transparent),transparent 55%),
+    linear-gradient(115deg,var(--season-surface-alt),var(--season-surface));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 11px 25px rgba(0,0,0,.09);
+}
+.app-shell .hb-identity-current-sigil {
+  display:grid;
+  place-items:center;
+  width:54px;
+  height:54px;
+  flex:0 0 54px;
+  border-radius:14px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 40%,var(--season-line));
+  background:color-mix(in srgb,var(--season-primary) 12%,var(--season-bg));
+  font:32px/1 Georgia,serif;
+  color:var(--season-primary);
+}
+.app-shell .hb-identity-current-copy{display:grid;gap:4px;min-width:0;flex:1}
+.app-shell .hb-identity-current-copy small{font-size:9px;font-weight:900;letter-spacing:.15em;color:var(--season-primary)}
+.app-shell .hb-identity-current-copy strong{font-size:16px;color:var(--season-text);letter-spacing:-.02em}
+.app-shell .hb-identity-current-copy>span{font-size:10px;letter-spacing:.08em;color:var(--season-muted)}
+.app-shell .hb-identity-current-state{
+  flex:0 0 auto;
+  padding:8px 12px;
+  font-size:10px;
+  letter-spacing:.07em;
+  font-weight:900;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 40%,transparent);
+  color:var(--season-primary);
+  background:color-mix(in srgb,var(--season-primary) 11%,transparent);
+}
+.app-shell .hb-customization-gallery .hb-identity-tools{
+  gap:10px;
+  padding:12px;
+  border-radius:16px;
+}
+.app-shell .hb-customization-gallery .hb-identity-tools .hb-style-gallery-count{padding:0 8px 0 2px;min-width:145px}
+.app-shell .hb-customization-gallery .hb-identity-tools .hb-style-gallery-search{flex:1 1 230px;max-width:none;min-height:44px}
+.app-shell .hb-identity-sort{
+  display:flex;
+  flex:0 1 190px;
+  flex-direction:column;
+  gap:5px;
+  min-width:140px;
+  font-size:10px;
+  font-weight:800;
+  color:var(--season-muted);
+}
+.app-shell .hb-identity-sort select {
+  width:100%;
+  height:40px;
+  padding:0 12px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 24%,var(--season-line));
+  border-radius:9px;
+  background:var(--season-bg);
+  color:var(--season-text);
+  font:inherit;
+  font-size:12px;
+  cursor:pointer;
+}
+.app-shell .hb-customization-gallery .hb-customization-collections{
+  padding:2px 0 4px;
+  gap:8px;
+}
+.app-shell .hb-customization-gallery .hb-customization-collections button{border-radius:999px;min-height:39px;padding:8px 14px}
+.app-shell .hb-customization-gallery .hb-customization-collections button.selected{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary) 15%,transparent)}
+.app-shell .hb-identity-selection-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(280px,355px);
+  gap:18px;
+  align-items:start;
+  min-width:0;
+}
+.app-shell .hb-identity-selection-layout .hb-identity-catalog{
+  display:grid;
+  grid-column:1;
+  grid-row:1;
+  gap:12px;
+  min-width:0;
+  padding:14px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 17%,var(--season-line));
+  border-radius:18px;
+  background:color-mix(in srgb,var(--season-surface) 86%,var(--season-bg));
+}
+.app-shell .hb-identity-selection-layout .hb-customization-gallery-heading{
+  padding:3px 2px 12px;
+  border-top:0;
+  border-bottom:1px solid color-mix(in srgb,var(--season-primary) 17%,var(--season-line));
+}
+.app-shell .hb-identity-selection-layout .hb-customization-gallery-heading strong{font-size:16px}
+.app-shell .hb-identity-selection-layout .hb-customization-workbench{
+  grid-column:2;
+  grid-row:1;
+  position:sticky;
+  top:88px;
+  min-width:0;
+  align-self:start;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,215px),1fr));
+  gap:12px;
+  align-items:stretch;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card {
+  grid-template-columns:minmax(0,1fr) 25px;
+  grid-template-rows:auto 143px minmax(55px,1fr) auto auto;
+  gap:8px 10px;
+  padding:12px;
+  min-height:316px;
+  border-radius:16px !important;
+  background:linear-gradient(155deg,var(--season-surface-alt),var(--season-bg));
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card.active{
+  background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary) 10%,var(--season-surface)),var(--season-bg));
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card.inspected {
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--season-primary) 45%,transparent),0 12px 24px rgba(0,0,0,.15) !important;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-signature{
+  grid-row:1;
+  grid-column:1;
+  max-width:calc(100% - 24px);
+  font-size:9px;
+  letter-spacing:.075em;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card .season-style-preview {
+  grid-row:2;
+  grid-column:1/-1;
+  height:143px;
+  margin:0;
+  border-radius:10px;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card-info{
+  grid-row:3;
+  grid-column:1/-1;
+  gap:5px;
+  padding:2px 3px 0;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card-info strong{
+  font-size:15px;
+  letter-spacing:-.025em;
+  line-height:1.3;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card-info small{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  overflow:hidden;
+  min-height:unset;
+  font-size:10px;
+  line-height:1.55;
+}
+.app-shell .hb-customization-gallery .hb-identity-collection-tag {
+  grid-column:1/-1;
+  grid-row:4;
+  justify-self:start;
+  display:inline-flex;
+  padding:5px 8px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 17%,var(--season-line));
+  border-radius:6px;
+  color:var(--season-muted);
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.085em;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-choice {
+  grid-row:5;
+  grid-column:1/-1;
+  padding:10px 12px;
+  border-radius:9px;
+  line-height:1.2;
+}
+.app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card-check {
+  grid-row:1;
+  grid-column:2;
+  width:24px;
+  height:24px;
+  font-size:14px;
+  z-index:2;
+}
+.app-shell .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-favorite {
+  top:50px;
+  right:21px;
+  border-radius:50%;
+  width:33px;
+  height:33px;
+  z-index:5;
+}
+.app-shell .hb-identity-selection-layout .hb-style-inspector{
+  display:grid;
+  grid-template-columns:1fr !important;
+  gap:0;
+  border-radius:20px !important;
+  overflow:hidden;
+  box-shadow:0 20px 42px rgba(0,0,0,.2) !important;
+}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-art{
+  min-height:226px;
+  border-right:0;
+  border-bottom:1px solid color-mix(in srgb,var(--season-primary) 22%,var(--season-line));
+  background:
+    linear-gradient(0deg,rgba(8,9,14,.77),transparent 45%),
+    var(--hb-inspector-art) center / cover no-repeat,
+    linear-gradient(140deg,var(--season-bg),var(--season-surface-alt));
+}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-art::after{inset:11px;border-radius:11px}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-glyph{top:21px;left:24px;font-size:42px}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-art-label{
+  left:24px;
+  bottom:23px;
+  font-size:9px;
+  letter-spacing:.16em;
+}
+.app-shell .hb-identity-art-corner{
+  position:absolute;
+  z-index:2;
+  top:20px;
+  right:20px;
+  width:23px;
+  height:23px;
+  border-top:1px solid color-mix(in srgb,var(--season-primary) 65%,transparent);
+  border-right:1px solid color-mix(in srgb,var(--season-primary) 65%,transparent);
+}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-copy{padding:21px;gap:12px}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-copy h3{font-size:clamp(22px,2.4vw,29px)}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-copy p{font-size:12px;line-height:1.65}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-motto{
+  display:block;
+  padding:9px 11px;
+  width:100%;
+  border-left:2px solid var(--season-primary);
+  background:color-mix(in srgb,var(--season-primary) 8%,transparent);
+  letter-spacing:.1em;
+}
+.app-shell .hb-identity-compare{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr);
+  gap:7px;
+  align-items:center;
+  width:100%;
+  padding:11px;
+  border:1px solid color-mix(in srgb,var(--season-primary) 24%,var(--season-line));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--season-surface-alt) 66%,var(--season-bg));
+}
+.app-shell .hb-identity-compare>div{min-width:0;display:grid;gap:5px}
+.app-shell .hb-identity-compare small{color:var(--season-muted);font-size:9px;font-weight:850;letter-spacing:.1em}
+.app-shell .hb-identity-compare strong{font-size:11px;line-height:1.45;color:var(--season-text);overflow-wrap:anywhere}
+.app-shell .hb-identity-compare>span{text-align:center;color:var(--season-primary);font-size:18px}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-palette{margin-top:2px;gap:9px}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-actions{padding-top:5px;gap:8px}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-actions button{flex:1 1 100%;min-height:43px}
+.app-shell .hb-identity-selection-layout .hb-identity-apply{font-weight:900}
+.app-shell .hb-style-inspector-readonly{font-size:11px;color:var(--season-muted);line-height:1.5}
+.app-shell .hb-identity-selection-layout .hb-style-inspector-applied{width:100%;justify-content:center;text-align:center}
+.app-shell .hb-customization-gallery :is(.hb-identity-tools input,.hb-identity-sort select,.hb-customization-collections button,.hb-style-inspector-actions button,.hb-style-gallery-entry button):focus-visible{
+  outline:2px solid var(--season-primary);
+  outline-offset:3px;
+}
+@media (max-width:1040px){
+  .app-shell .hb-identity-selection-layout{display:flex;flex-direction:column;gap:13px}
+  .app-shell .hb-identity-selection-layout .hb-customization-workbench{order:0;position:static;width:100%}
+  .app-shell .hb-identity-selection-layout .hb-identity-catalog{order:1;width:100%}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector{grid-template-columns:minmax(0,.95fr) minmax(0,1fr) !important}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector-art{min-height:270px;border-bottom:0;border-right:1px solid var(--season-line)}
+}
+@media (max-width:700px){
+  .app-shell .hb-customization-gallery .hb-identity-tools .hb-style-gallery-count{flex:1 1 100%}
+  .app-shell .hb-customization-gallery .hb-identity-tools .hb-style-gallery-search{flex:1 1 100%}
+  .app-shell .hb-customization-gallery .hb-identity-tools .hb-identity-sort{flex:1 1 100%;min-width:0}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector{grid-template-columns:1fr !important}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector-art{min-height:205px;border-right:0;border-bottom:1px solid var(--season-line)}
+  .app-shell .hb-identity-selection-layout .hb-customization-gallery-heading{gap:8px}
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .app-shell .hb-identity-selection-layout .hb-identity-catalog{padding:10px}
+  .app-shell .hb-identity-current-ribbon{gap:10px}
+}
+@media (max-width:520px){
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .hb-style-gallery-grid{grid-template-columns:1fr}
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card{min-height:unset;grid-template-rows:auto 155px minmax(0,1fr) auto auto}
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card .season-style-preview{height:155px}
+  .app-shell .hb-identity-current-state{margin-left:0}
+  .app-shell .hb-identity-selection-layout .hb-style-inspector-copy{padding:18px}
+}
+@media(max-height:740px) and (min-width:1041px){
+  .app-shell .hb-identity-selection-layout .hb-customization-workbench{position:static}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .hb-customization-gallery .hb-identity-selection-layout .season-style-card{transition:none}
+}
