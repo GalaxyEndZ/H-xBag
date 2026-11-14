@@ -7487,3 +7487,258 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info strong{
   text-shadow:none !important;
 }
+
+/* ======================================================================
+   HÄXBAG V38 — SILVAM ARGENTEA / COROA DO BOSQUE
+   Gravura vetorial, prata acetinada e verde-neblina.
+   Only .visual-style-floresta_esquecida is themed. Independent preview
+   rules below are scoped to this exact item in the gallery (V37 stays).
+   Gameplay resource colors, semantic states and data remain untouched.
+   ====================================================================== */
+.app-shell.hb-polish.visual-style-floresta_esquecida {
+  --silvam-ink:#eaf2eb;
+  --silvam-muted:#b4cbc5;
+  --silvam-moon:#d9e9dc;
+  --silvam-leaf:#a8cbb9;
+  --silvam-pewter:#819e9c;
+  --silvam-deep:#091318;
+  --silvam-panel:#111f23;
+  --silvam-hairline:rgba(191,219,208,.24);
+  --silvam-filigree:url('./style-art/silvam-argentea-filigree.svg');
+  --silvam-corner:url('./style-art/silvam-argentea-floral-corner.svg');
+  --silvam-ivory:var(--silvam-ink);
+  --silvam-steel:#b3cdc9;
+  --silvam-border:var(--silvam-hairline);
+  --silvam-tint:rgba(165,203,185,.075);
+  --hb-theme-ink:var(--silvam-ink);
+  --hb-theme-edge:var(--silvam-hairline);
+  --hb-theme-edge-soft:rgba(178,218,206,.12);
+  --hb-theme-wash:var(--silvam-tint);
+  --hb-theme-deep:var(--silvam-deep);
+  --hb-v26-ink:var(--silvam-ink);
+  --hb-v26-edge:var(--silvam-hairline);
+  --hb-v26-soft:var(--silvam-tint);
+  --hb-v26-deep:var(--silvam-deep);
+  --roster-rule:var(--silvam-hairline);
+  --roster-ink:var(--silvam-ink);
+  --roster-wash:var(--silvam-tint);
+}
+/* A forest atmosphere rather than a flat charcoal/grey page. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .main-content {
+  background-color:#0b1519 !important;
+  background-image:
+    radial-gradient(ellipse at 88% -6%,rgba(137,188,172,.10),transparent 39%),
+    radial-gradient(ellipse at 5% 84%,rgba(83,132,125,.065),transparent 42%),
+    repeating-linear-gradient(112deg,transparent 0 156px,rgba(204,231,218,.012) 157px 158px,transparent 159px 315px),
+    linear-gradient(155deg,#132126 0%,#0d191d 45%,#091318 100%) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar,.topbar) {
+  border-color:rgba(185,217,206,.17) !important;
+  background:linear-gradient(180deg,rgba(15,29,32,.98),rgba(8,18,22,.98)) !important;
+  box-shadow:inset 0 1px rgba(233,248,234,.045) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar {
+  background-image:
+    radial-gradient(ellipse at 100% 6%,rgba(154,197,180,.095),transparent 44%),
+    linear-gradient(180deg,#122126,#091419 84%) !important;
+  box-shadow:inset -1px 0 rgba(199,229,217,.055),10px 0 34px rgba(0,0,0,.13) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar-brand-copy strong,.topbar strong,.hb-sidebar-nav-name) {
+  color:#e6f0e8;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-sidebar-group-title,.eyebrow,.sheet-page-eyebrow,.hb-ms-group-heading) {
+  color:var(--silvam-leaf);
+  letter-spacing:.09em;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity {
+  background:
+    linear-gradient(90deg,rgba(8,18,22,.96),rgba(8,18,22,.82) 65%,rgba(8,18,22,.36)),
+    var(--silvam-hero) 63% center / auto 125% no-repeat,
+    #0c1b20 !important;
+  border:1px solid rgba(191,219,208,.32) !important;
+  box-shadow:inset 0 1px 0 rgba(234,248,237,.085),0 9px 28px rgba(0,0,0,.15) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-emblem {
+  border:1px solid rgba(211,236,224,.4) !important;
+  background:
+    var(--silvam-crest) center / 48px 48px no-repeat,
+    radial-gradient(circle at 47% 37%,#263d40,#0d1b20 82%) !important;
+  box-shadow:inset 0 0 0 3px rgba(11,24,28,.64),0 0 18px rgba(173,216,197,.09) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link {
+  border:1px solid transparent;
+  color:#a7bdb8;
+  transition:background .2s ease,border-color .2s ease,color .2s ease;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link:hover:not(.active) {
+  color:#e2eee7;
+  border-color:rgba(166,199,184,.13);
+  background:linear-gradient(90deg,rgba(175,208,187,.075),transparent 96%) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link.active {
+  color:#f0f6ef !important;
+  border:1px solid rgba(180,214,197,.26) !important;
+  border-left:3px solid var(--silvam-leaf) !important;
+  border-radius:5px 12px 12px 5px !important;
+  background:linear-gradient(90deg,rgba(160,207,180,.16),rgba(139,184,174,.025)) !important;
+  box-shadow:inset 0 1px 0 rgba(235,249,239,.045) !important;
+}
+/* The composition deliberately leaves the left half quiet for page titles. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+) {
+  border:1px solid rgba(192,226,209,.41) !important;
+  border-radius:15px !important;
+  background:
+    linear-gradient(90deg,rgba(8,18,21,.87) 0%,rgba(8,18,21,.59) 37%,rgba(8,18,21,.07) 100%),
+    var(--silvam-filigree) center center / cover no-repeat,
+    var(--silvam-hero) center center / cover no-repeat,
+    #0b1a1d !important;
+  box-shadow:inset 0 1px rgba(242,252,239,.11),inset 0 0 0 5px rgba(8,22,23,.13),0 18px 37px rgba(0,0,0,.24) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+)::after {
+  background:var(--silvam-trim) center bottom/auto 10px repeat-x;
+  height:10px;
+  opacity:.36;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .hb-hero h1,.hb-hero h2,.sheet-page-hero h2,.enemy-hub-hero h2,.hb-ms-hero h2,
+  .shops-hero h2,.campaigns-hero h2,.overview-hero h2,.bestiary-hero h2,.mc-hero h2
+) {color:#f2f5ed !important;text-shadow:0 2px 20px rgba(1,7,10,.8);}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(h1,h2,h3) {
+  font-family:Georgia,'Palatino Linotype',serif;
+  letter-spacing:.006em;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .sheet-card-title,.sheet-section-heading,.inventory-heading,.hb-panel-heading,
+  .hb-ms-group-heading,.enemy-hub-section-heading
+) {
+  border-bottom-color:rgba(185,217,200,.28) !important;
+}
+/* Materials: softly engraved edges, no global color changes on health/resources. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .panel,.hb-panel,.sheet-card,.sheet-summary-card,.inventory-section,
+  .hb-ms-pane,.hb-ms-card,.season-theme-panel,.mc-main
+) {
+  border-color:rgba(174,211,195,.27) !important;
+  border-radius:13px !important;
+  box-shadow:inset 0 1px rgba(230,246,232,.055),0 8px 22px rgba(0,0,0,.08) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .sheet-card,.hb-panel,.panel,.hb-ms-pane,.inventory-section,.mc-main
+) {
+  background-image:linear-gradient(145deg,rgba(177,216,188,.035),transparent 48%) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card {
+  border-color:rgba(190,225,207,.28) !important;
+  background:
+    radial-gradient(ellipse at 100% 0%,rgba(167,203,186,.10),transparent 48%),
+    linear-gradient(145deg,#15282c,#0d1a1f) !important;
+  box-shadow:inset 0 1px 0 rgba(226,246,229,.05) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card::before {
+  opacity:.18 !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(
+  .hb-hero-emblem,.sheet-page-hero-icon,.shops-hero-icon,.hb-heading-icon
+) {
+  border-color:rgba(204,232,219,.35) !important;
+  box-shadow:inset 0 1px rgba(247,255,240,.10),0 5px 24px rgba(130,188,161,.09);
+}
+/* Navigation and actions should read like brushed pewter, not a saturated neon theme. */
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.primary-button,.hb-sidebar-create,.hb-sidebar-invite-button) {
+  border:1px solid #b0cfc2 !important;
+  border-radius:9px !important;
+  background:linear-gradient(125deg,#dae9db 0%,#a8cbbd 56%,#819f9a 100%) !important;
+  color:#0b2021 !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.45),0 5px 17px rgba(100,157,137,.14) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.primary-button,.hb-sidebar-create,.hb-sidebar-invite-button):hover:not(:disabled) {
+  filter:brightness(1.075);
+  box-shadow:inset 0 1px rgba(255,255,255,.55),0 7px 24px rgba(131,188,161,.21) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.secondary-button,.sheet-page-back,.enemy-hub-back) {
+  border-color:rgba(184,219,203,.34) !important;
+  border-radius:9px !important;
+  background:linear-gradient(145deg,rgba(163,204,183,.085),rgba(5,18,22,.02)) !important;
+  color:#d5e9da !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.secondary-button,.sheet-page-back,.enemy-hub-back):hover:not(:disabled) {
+  border-color:rgba(206,235,219,.59) !important;
+  background:rgba(172,211,192,.12) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(input:not([type='checkbox']):not([type='radio']),textarea,select):focus-visible {
+  outline:2px solid rgba(179,216,194,.59);
+  outline-offset:1px;
+  border-color:rgba(191,226,204,.6) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(.hb-profile-identity-cover-art,.hb-profile-banner-art) {
+  background-image:
+    linear-gradient(90deg,rgba(7,18,21,.28),transparent 78%),
+    var(--silvam-filigree),var(--silvam-hero) !important;
+  background-size:cover,cover,cover !important;
+  background-position:center !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-hero-preview {
+  border-color:rgba(191,225,207,.45) !important;
+  background:
+    linear-gradient(90deg,rgba(8,20,22,.6),transparent 100%),
+    var(--silvam-filigree) center/cover no-repeat,
+    var(--silvam-hero) center/cover no-repeat,#0b191d !important;
+  box-shadow:inset 0 1px 0 rgba(240,255,241,.11),0 14px 34px rgba(0,0,0,.18) !important;
+}
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-preview-symbol {
+  filter:drop-shadow(0 4px 19px rgba(192,234,209,.17));
+}
+/* Per-item gallery styling: only Silvam, unaffected by active page theme. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida {
+  --hb-gallery-accent:#d3e8d6;
+  --hb-gallery-secondary:#b8d0c5;
+  --hb-gallery-art:url('./style-art/silvam-argentea-gallery.svg');
+  --hb-gallery-art-size:cover;
+  --hb-gallery-art-position:center;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-preview {
+  background:
+    linear-gradient(90deg,rgba(8,18,19,.59),rgba(8,18,19,.18) 65%,transparent),
+    url('./style-art/silvam-argentea-floral-corner.svg') left -9px top -5px / 105px 105px no-repeat,
+    var(--hb-gallery-art) center/cover no-repeat,
+    #081619 !important;
+  border-color:rgba(194,226,206,.52) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida > .season-style-card.active {
+  box-shadow:0 0 0 1px rgba(223,242,227,.22),0 12px 30px rgba(0,0,0,.23) !important;
+}
+@media(max-width:720px) {
+  .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+    .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+    .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+  ) {
+    background-position:center,66% center,68% center,center !important;
+  }
+  .app-shell.hb-polish.visual-style-floresta_esquecida .page-sheets .sheet-roster-card::before {opacity:.10 !important;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-nav .nav-link {transition:none !important;}
+}
+
+/* Dialogs are often portals outside the app-shell, so they need a body scope. */
+body[data-hb-visual-style="floresta_esquecida"] :is(
+  .bestiary-modal,.enemy-hub-modal,.emoji-modal,.item-details-modal,
+  .item-modal-content,.modal-content,.sheet-item-modal,.sheet-item-editor-modal
+) {
+  border:1px solid rgba(183,218,202,.35) !important;
+  background-image:linear-gradient(155deg,rgba(155,193,171,.075),transparent 50%) !important;
+  box-shadow:0 25px 65px rgba(0,0,0,.45),inset 0 1px 0 rgba(222,246,224,.07) !important;
+}
+body[data-hb-visual-style="floresta_esquecida"] :is(
+  .bestiary-modal,.enemy-hub-modal,.emoji-modal,.item-modal-content,
+  .modal-content,.sheet-item-modal,.sheet-item-editor-modal
+) :is(input:not([type='checkbox']):not([type='radio']),textarea,select):focus-visible {
+  outline:2px solid rgba(181,219,196,.67);
+  outline-offset:1px;
+}
