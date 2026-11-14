@@ -7346,3 +7346,144 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 @media(prefers-reduced-motion:reduce){
   .app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card:hover:not(:disabled) {transform:none}
 }
+
+
+/* ======================================================================
+   HÄXBAG V37 · GALERIA ISOLADA DO ESTILO ATIVO
+   Os cartões da coleção original não herdam a arte/cor do tema escolhido
+   na temporada. Cada entrada define sua identidade, independentemente
+   de .app-shell.visual-style-*. Não altera o tema aplicado às outras telas.
+   ====================================================================== */
+/* A V36 dependia de --card-art/--hb-theme-ink, definidos pelo estilo da
+   página e não pelo item da galeria. Os 14 itens agora têm tokens locais. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry {
+  --hb-gallery-accent:#d9ba89;
+  --hb-gallery-art:none;
+  --hb-gallery-ink:#f1eff2;
+  --hb-gallery-secondary:#c3bdc6;
+  --hb-gallery-surface:#0d1218;
+  --hb-gallery-stroke:#4c5057;
+  --hb-gallery-art-position:right center;
+  --hb-gallery-art-size:auto 100%;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-classic{
+  --hb-gallery-accent:#eabb84;--hb-gallery-art:url('./style-art/eclipse-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-japanese{
+  --hb-gallery-accent:#f1a99e;--hb-gallery-art:url('./style-art/kisatsutai-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-cyberpunk{
+  --hb-gallery-accent:#e686c5;--hb-gallery-art:url('./style-art/cyberflower-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-ciclos{
+  --hb-gallery-accent:#dbb879;--hb-gallery-art:url('./style-art/ciclos-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-hax{
+  --hb-gallery-accent:#dfb3a5;--hb-gallery-art:url('./style-art/hax-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-vale_fantasma{
+  --hb-gallery-accent:#c4d0c3;--hb-gallery-art:url('./style-art/vale-fantasma-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-vigilia_lunar{
+  --hb-gallery-accent:#c0b3e6;--hb-gallery-art:url('./style-art/vigilia_lunar-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida{
+  --hb-gallery-accent:#c8e0df;--hb-gallery-art:url('./style-art/silvam-argentea-gallery.svg');
+  --hb-gallery-art-size:cover;--hb-gallery-art-position:center;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-inverno_eterno{
+  --hb-gallery-accent:#a5d4ef;--hb-gallery-art:url('./style-art/inverno_eterno-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-arcano{
+  --hb-gallery-accent:#d0adf1;--hb-gallery-art:url('./style-art/arcano-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-catedral_onix{
+  --hb-gallery-accent:#c4a4c0;--hb-gallery-art:url('./style-art/catedral_onix-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-mare_abissal{
+  --hb-gallery-accent:#8bcbd5;--hb-gallery-art:url('./style-art/mare_abissal-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-jardim_espectral{
+  --hb-gallery-accent:#c4d9b2;--hb-gallery-art:url('./style-art/jardim_espectral-hero.svg');
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-relicario_solar{
+  --hb-gallery-accent:#ecc989;--hb-gallery-art:url('./style-art/relicario_solar-hero.svg');
+}
+/* A estrutura comum da V36 é preservada. O cartão deixa de depender dos
+   fundos/tintas usados por um novo estilo aplicado em .app-shell. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card{
+  --card-art:var(--hb-gallery-accent);
+  --card-art-wash:color-mix(in srgb,var(--hb-gallery-accent) 15%,transparent);
+  color:var(--hb-gallery-ink) !important;
+  background:linear-gradient(160deg,#121820,#090d12) !important;
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 24%,#49505c) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview{
+  background:
+    linear-gradient(90deg,rgba(8,12,17,.82) 0%,rgba(8,12,17,.45) 36%,transparent 78%),
+    var(--hb-gallery-art) var(--hb-gallery-art-position) / var(--hb-gallery-art-size) no-repeat,
+    #0a1118 !important;
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 49%,#303943) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+/* A gravura contém detalhes à direita, também nos seis estilos originais.
+   Em nenhuma situação o fundo depende de --hb-theme-*. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview::after{
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 33%,transparent) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-preview-caption{
+  color:#f1f0f4 !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-signature,
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-check{
+  color:var(--hb-gallery-accent) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info strong{
+  color:var(--hb-gallery-ink) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info small{
+  color:var(--hb-gallery-secondary) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .hb-identity-collection-tag{
+  color:var(--hb-gallery-secondary);
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 33%,#505661);
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .hb-style-gallery-choice{
+  background:#282d32 !important;
+  color:var(--hb-gallery-ink) !important;
+  border-color:#53595e !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card.active{
+  border-color:var(--hb-gallery-accent) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card.active .season-style-card-check{
+  background:var(--hb-gallery-accent) !important;
+  color:#0d1115 !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card.active .hb-style-gallery-choice{
+  background:color-mix(in srgb,var(--hb-gallery-accent) 18%,#11161c) !important;
+  color:var(--hb-gallery-accent) !important;
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 58%,#53595e) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .season-style-card.inspected:not(.active){
+  border-color:var(--hb-gallery-accent) !important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--hb-gallery-accent) 35%,transparent),0 13px 30px rgba(0,0,0,.2) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card.inspected:not(.active) .hb-style-gallery-choice{
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 58%,#53595e) !important;
+  color:var(--hb-gallery-accent) !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .hb-style-favorite {
+  color:var(--hb-gallery-ink) !important;
+  border-color:color-mix(in srgb,var(--hb-gallery-accent) 45%,#3a414a) !important;
+  background:#0a0d12 !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry > .hb-style-favorite.is-favorite {
+  color:var(--hb-gallery-accent) !important;
+}
+/* Textos e botões do cartão permanecem estáveis mesmo que a identidade
+   aplicada altere fonte ou cor do restante da interface. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info small,
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry .season-style-card-info strong{
+  text-shadow:none !important;
+}
