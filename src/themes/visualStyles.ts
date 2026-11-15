@@ -43,14 +43,14 @@ export const visualStyles = {
   vigilia_lunar: {
     label: 'Vigília Lunar',
     symbol: '☽',
-    signature: 'O SANTUÁRIO DA LUA VELADA',
-    description: 'Uma lua de prata ilumina os vitrais de um santuário ancestral, entre constelações, torres de vigília e névoa noturna.',
+    signature: 'A LUA OBSERVA',
+    description: 'Crescente velada, vitrais de luar e silêncio ritual sobre superfícies escuras.',
   },
   floresta_esquecida: {
     label: 'Silvam Argentea',
-    symbol: '❀',
-    signature: 'A PRATA FLORESCE NO BOSQUE',
-    description: 'Bosques prateados, galhos lunares, névoa fria e folhagens de brilho argentado.',
+    symbol: '❧',
+    signature: 'O BOSQUE DE PRATA',
+    description: 'Árvore prateada, galhos ancestrais, runas suspensas e ornamentos dourados sobre a noite.',
   },
   inverno_eterno: {
     label: 'Inverno Eterno',
@@ -66,9 +66,9 @@ export const visualStyles = {
   },
   catedral_onix: {
     label: 'Catedral de Ônix',
-    symbol: '✥',
-    signature: 'O VITRAL DAS SOMBRAS',
-    description: 'Uma rosácea de vitral desperta na catedral de ônix, entre arcos ancestrais, pedra negra e luz violeta.',
+    symbol: '♜',
+    signature: 'VOTOS NA ESCURIDÃO',
+    description: 'Vitrais góticos, arcos ogivais e arquitetura imponente esculpida em sombra.',
   },
   mare_abissal: {
     label: 'Maré Abissal',
@@ -85,8 +85,8 @@ export const visualStyles = {
   relicario_solar: {
     label: 'Relicário Solar',
     symbol: '✷',
-    signature: 'A COROA DA AURORA',
-    description: 'Um sol imperial gravado em ouro repousa sobre um relicário art déco, entre pilares e geometrias sagradas.',
+    signature: 'LEGADO DA AURORA',
+    description: 'Raios geométricos, molduras art déco e insígnias de um império solar.',
   },
 } as const
 
