@@ -9390,3 +9390,127 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
     background-size:auto,contain,auto !important;
   }
 }
+
+
+/* ============================================================================
+   HÄXBAG V81 | SILVAM ARGENTEA — ARTE AUTORAL REENQUADRADA
+   Fonte: Silvam Argentea.png (2048×714, transparência original preservada).
+   Um único desenho por área; recortes distintos para proporções distintas.
+   A galeria e a comparação não modificam a identidade de outros estilos.
+   ============================================================================ */
+.app-shell.hb-polish.visual-style-floresta_esquecida,
+.app-shell .season-visual-style-group .season-style-floresta_esquecida {
+  --hb-v26-hero:url("./style-art/silvam-argentea-arte.png");
+  --hb-v26-crest:url("./style-art/floresta_esquecida-crest.svg");
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+}
+
+/* Capas de páginas: composição preenchida e texto protegido por sombra à esquerda. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(
+  .hb-hero,.sheet-page-hero,.enemy-hub-hero,.hb-beast-hero,.hb-beast-detail-hero,
+  .hb-ms-hero,.shops-hero,.campaigns-hero,.overview-hero,.bestiary-hero,.mc-hero
+){
+  background:
+    linear-gradient(90deg,rgba(5,6,8,.9) 0%,rgba(5,6,8,.56) 29%,rgba(5,6,8,.08) 72%),
+    url("./style-art/silvam-argentea-galeria.png") center 48% / cover no-repeat,
+    linear-gradient(130deg,var(--season-surface),#050506) !important;
+  border-color:rgba(207,163,100,.56) !important;
+}
+
+/* Área de navegação: arte visível sem sacrificar os rótulos da barra lateral. */
+.app-shell.hb-polish.visual-style-floresta_esquecida .hb-sidebar-style-identity{
+  background:
+    linear-gradient(90deg,var(--season-surface) 0%,color-mix(in srgb,var(--season-surface) 78%,transparent) 72%,transparent),
+    url("./style-art/silvam-argentea-galeria.png") 62% center / cover no-repeat,
+    var(--season-surface) !important;
+}
+
+/* Arte dos perfis; sempre uma só imagem em alpha sobre a superfície do tema. */
+.app-shell.hb-polish.visual-style-floresta_esquecida :is(
+  .hb-profile-identity-cover-art,.hb-profile-banner-art
+){
+  background-image:url("./style-art/silvam-argentea-galeria.png") !important;
+  background-position:center center !important;
+  background-size:cover !important;
+  background-repeat:no-repeat !important;
+}
+
+/* Miniatura do acervo. O recorte horizontal mantém ramos e árvore legíveis. */
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida,
+.app-shell .season-visual-style-group .season-style-floresta_esquecida{
+  --hb-gallery-art:url("./style-art/silvam-argentea-galeria.png");
+  --hb-gallery-art-position:center;
+  --hb-gallery-art-size:cover;
+  --hb-preview-art:var(--hb-gallery-art);
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-preview,
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview{
+  background:
+    linear-gradient(0deg,rgba(0,0,0,.78) 0%,rgba(0,0,0,.1) 40%,transparent 72%),
+    url("./style-art/silvam-argentea-galeria.png") center center / cover no-repeat,
+    #050507 !important;
+  border-color:rgba(210,172,112,.5) !important;
+  overflow:hidden;
+}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview :is(
+  .season-style-preview-orb,.season-style-preview-glyph,.season-style-preview-lines
+){display:none !important}
+.app-shell .season-visual-style-group .season-style-floresta_esquecida .season-style-preview-caption{
+  z-index:4 !important;color:#fbf5ef !important;text-shadow:0 2px 7px #000 !important;
+}
+
+/* Inspetor: recorte calculado para seu painel mais estreito. Não exibir JPG antigo
+   nem símbolos duplicados por pseudo-elementos. */
+.app-shell .season-visual-style-group .hb-style-inspector.season-style-floresta_esquecida{
+  --hb-inspector-art:url("./style-art/silvam-argentea-inspetor.png");
+  --hb-inspector-art-position:center center;
+  --hb-inspector-art-size:cover;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art{
+  overflow:hidden;
+  background:#050507 !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::before{
+  content:"" !important;display:block !important;
+  position:absolute;inset:0 !important;z-index:1;pointer-events:none;
+  background:url("./style-art/silvam-argentea-inspetor.png") center center / cover no-repeat !important;
+  opacity:1 !important;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover :is(.hb-style-inspector-glyph,.hb-style-inspector-art-label){display:none !important}
+
+/* Capa superior e comparação: sempre recebem o arquivo específico da prévia,
+   e o filtro de leitura vem em camada acima, sem novas artes duplicadas. */
+.app-shell .hb-customization-page .hb-customization-preview-floresta_esquecida{
+  --hb-studio-art:url("./style-art/silvam-argentea-galeria.png");
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida{
+  background:
+    linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.12) 42%,rgba(0,0,0,.84) 100%),
+    url("./style-art/silvam-argentea-inspetor.png") center center / cover no-repeat,
+    #050507 !important;
+  border-color:rgba(211,171,110,.52) !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel.hb-customization-preview-floresta_esquecida .hb-v66-compare-photo{
+  display:block !important;position:absolute !important;
+  inset:0 !important;width:100% !important;height:100% !important;
+  background:
+    linear-gradient(0deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,.22) 38%,transparent 75%),
+    url("./style-art/silvam-argentea-galeria.png") center center / cover no-repeat,
+    #050507 !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel.hb-customization-preview-floresta_esquecida .hb-v66-compare-photo::before{
+  content:none !important;display:none !important;
+}
+.app-shell .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida .hb-customization-preview-symbol{display:none !important}
+
+/* Em telas pequenas a árvore continua próxima do centro, mas sem deformação. */
+@media(max-width:680px){
+  .app-shell.hb-polish.visual-style-floresta_esquecida .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero){
+    background-position:center,60% center,center !important;
+  }
+  .app-shell.hb-polish .page-content .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida{
+    background-position:center,57% center,center !important;
+  }
+}
