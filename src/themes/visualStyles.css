@@ -9778,3 +9778,537 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
     inset:2px 4px !important;background:url("./style-art/silvam-argentea-inspetor.png") center / contain no-repeat !important;
   }
 }
+
+/* ========================================================================
+   HÄXBAG V84 · ATELIÊ COESO
+   Escopo restrito à página de Customização.
+   Preserva as ilustrações, a paleta da temporada e a lógica de aplicação.
+   ======================================================================== */
+.app-shell .page-content .hb-customization-page {
+  --hb84-line: color-mix(in srgb,var(--season-primary) 22%,var(--season-line));
+  --hb84-line-strong: color-mix(in srgb,var(--season-primary) 48%,var(--season-line));
+  --hb84-panel: color-mix(in srgb,var(--season-surface) 93%,var(--season-bg));
+  --hb84-panel-soft: color-mix(in srgb,var(--season-surface-alt) 78%,var(--season-bg));
+  --hb84-muted: var(--season-muted);
+  --hb84-radius: 18px;
+  --hb84-radius-sm: 12px;
+  width:100%;max-width:1440px;min-width:0;margin:0 auto;
+  display:flex;flex-direction:column;gap:18px;
+}
+.app-shell .page-content .hb-customization-page :is(button,input,select) {font:inherit}
+.app-shell .page-content .hb-customization-page :is(button,input,select):focus-visible {
+  outline:2px solid var(--season-primary) !important;outline-offset:3px !important;
+}
+.app-shell .page-content .hb-customization-page :is(.hb-customization-hero,.hb-customization-season-bar,.hb-v66-guide,.hb-studio-panel,.hb-identity-catalog,.hb-style-inspector,.hb-studio-final-summary){min-width:0}
+
+/* Cabeçalho: resumo de temporada à esquerda e capa real à direita. */
+.app-shell .page-content .hb-customization-page .hb-customization-hero {
+  display:grid;grid-template-columns:minmax(0,1.02fr) minmax(320px,.98fr);
+  gap:clamp(18px,2.6vw,32px);align-items:stretch;
+  padding:clamp(20px,2.6vw,32px) !important;
+  border:1px solid var(--hb84-line) !important;border-radius:22px !important;
+  background:radial-gradient(ellipse at 4% 0%,color-mix(in srgb,var(--season-primary) 9%,transparent),transparent 52%),var(--hb84-panel) !important;
+  box-shadow:0 16px 40px rgba(0,0,0,.11);
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-copy {
+  min-width:0;display:flex;flex-direction:column;justify-content:center;gap:13px;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-copy h1 {
+  margin:0;font-size:clamp(30px,3.2vw,44px);line-height:1.08;letter-spacing:-.045em;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-copy>p {
+  max-width:58ch;font-size:13px;line-height:1.65;margin:0;color:var(--hb84-muted);
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-badges {
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:3px;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-badges>span {
+  display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:30px;
+  border:1px solid var(--hb84-line);border-radius:99px;padding:6px 10px;
+  background:var(--hb84-panel-soft);font-size:10px;line-height:1.2;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-steps {
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:3px;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-steps>span:nth-child(odd){
+  display:inline-flex;align-items:center;min-height:31px;padding:6px 10px;
+  border:1px solid var(--hb84-line);border-radius:8px;font-size:10px;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-jumpnav {
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:4px;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-jumpnav>a {
+  min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;
+  border:1px solid var(--hb84-line);border-radius:10px;
+  background:var(--hb84-panel-soft);text-decoration:none;font-size:11px;font-weight:700;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-hero-preview {
+  width:100%;height:auto !important;min-height:255px;aspect-ratio:2.42/1;
+  border:1px solid var(--hb84-line-strong) !important;border-radius:16px !important;
+  overflow:hidden;isolation:isolate;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 12px 24px rgba(0,0,0,.18);
+}
+.app-shell .page-content .hb-customization-page .hb-studio-preview-caption {
+  max-width:min(80%,450px);min-width:0;overflow-wrap:anywhere;
+}
+
+/* Contexto + instruções: mesma escala de cartões de todas as etapas. */
+.app-shell .page-content .hb-customization-page .hb-customization-season-bar {
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  border:1px solid var(--hb84-line);border-radius:var(--hb84-radius);padding:16px 20px;
+  background:var(--hb84-panel);
+}
+.app-shell .page-content .hb-customization-page .hb-customization-season-copy {display:grid;gap:5px;min-width:0;flex:1 1 240px}
+.app-shell .page-content .hb-customization-page .hb-customization-season-copy strong{font-size:18px;line-height:1.3}
+.app-shell .page-content .hb-customization-page .hb-customization-season-bar>label{display:grid;gap:7px;flex:0 1 300px;min-width:min(100%,220px)}
+.app-shell .page-content .hb-customization-page .hb-customization-season-bar select {
+  width:100%;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--hb84-line-strong);
+  background:var(--season-surface-alt);color:var(--season-text);
+}
+.app-shell .page-content .hb-customization-page .hb-v66-guide {
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+  padding:0 !important;border:0 !important;background:transparent !important;
+}
+.app-shell .page-content .hb-customization-page .hb-v66-guide>div {
+  display:flex;gap:11px;align-items:flex-start;min-width:0;min-height:86px;
+  padding:14px 16px;border:1px solid var(--hb84-line);border-radius:14px;
+  background:var(--hb84-panel);box-shadow:none;
+}
+.app-shell .page-content .hb-customization-page .hb-v66-guide>div>div {min-width:0}
+.app-shell .page-content .hb-customization-page .hb-v66-guide strong {display:block;margin-bottom:4px;font-size:12px}
+.app-shell .page-content .hb-customization-page .hb-v66-guide small {display:block;line-height:1.5;font-size:10px}
+.app-shell .page-content .hb-customization-page .hb-v66-guide-icon {
+  display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;
+  border:1px solid var(--hb84-line-strong);border-radius:10px;
+  background:color-mix(in srgb,var(--season-primary) 10%,transparent);color:var(--season-primary);
+}
+.app-shell .page-content .hb-customization-page .hb-customization-inline-notice {border-radius:12px}
+
+/* Painel e cabeçalhos das duas seções. */
+.app-shell .page-content .hb-customization-page .hb-studio-panel {
+  padding:clamp(16px,2.2vw,27px) !important;
+  border:1px solid var(--hb84-line) !important;border-radius:20px !important;
+  background:var(--hb84-panel) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-panel>.season-theme-heading {
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:0 0 18px;margin-bottom:16px;border-bottom:1px solid var(--hb84-line);
+}
+.app-shell .page-content .hb-customization-page .hb-studio-panel>.season-theme-heading strong {font-size:19px}
+.app-shell .page-content .hb-customization-page .season-visual-group {min-width:0}
+.app-shell .page-content .hb-customization-page .hb-customization-gallery {margin-top:23px;padding-top:24px;border-top:1px solid var(--hb84-line)}
+.app-shell .page-content .hb-customization-page .hb-studio-section-heading,
+.app-shell .page-content .hb-customization-page .hb-identity-section-heading {
+  display:grid !important;grid-template-columns:minmax(0,1fr) !important;gap:6px !important;
+  align-items:start !important;justify-content:start !important;
+  width:100%;margin:0 0 18px !important;padding:0 !important;border:0 !important;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-section-heading>span {
+  font-size:10px;font-weight:900;letter-spacing:.14em;color:var(--season-primary);
+}
+.app-shell .page-content .hb-customization-page .hb-studio-section-heading>strong {
+  font-size:clamp(21px,2.1vw,27px);line-height:1.23;letter-spacing:-.026em;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-section-heading>small {
+  max-width:80ch;font-size:12px;line-height:1.55;color:var(--hb84-muted);
+}
+
+/* Catálogo de paletas: cores da temporada sem misturar as artes. */
+.app-shell .page-content .hb-customization-page .hb-customization-current-palette {
+  border:1px solid var(--hb84-line-strong);border-radius:14px;
+  padding:12px 15px;gap:14px;min-height:90px;
+  background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-customization-current-palette>div:nth-child(2) strong{font-size:15px}
+.app-shell .page-content .hb-customization-page .hb-customization-current-palette>span{margin-left:auto}
+.app-shell .page-content .hb-customization-page .hb-studio-palette-toolbar {
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 12px;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-search,
+.app-shell .page-content .hb-customization-page .hb-style-gallery-search {
+  border:1px solid var(--hb84-line-strong);border-radius:11px;background:var(--season-bg);
+  min-height:42px;min-width:0;
+}
+.app-shell .page-content .hb-customization-page .hb-studio-search:focus-within,
+.app-shell .page-content .hb-customization-page .hb-style-gallery-search:focus-within{border-color:var(--season-primary)}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid {
+  display:grid !important;grid-template-columns:repeat(auto-fill,minmax(min(100%,178px),1fr)) !important;gap:11px !important;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option {
+  display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:8px;
+  width:100%;min-width:0;min-height:154px;padding:10px !important;
+  border:1px solid var(--hb84-line) !important;border-radius:13px !important;
+  background:var(--hb84-panel-soft) !important;box-shadow:none !important;
+  transition:transform .15s ease,border-color .15s ease,background-color .15s ease;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option .hb-customization-palette-art {
+  width:100%;height:76px;min-height:76px;flex:none;border-radius:9px;
+  overflow:hidden;display:block;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option .hb-customization-palette-name {
+  display:block;width:100%;font-size:12px;font-weight:800;line-height:1.35;overflow-wrap:anywhere;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option .hb-customization-palette-status {
+  width:100%;display:block;margin-top:auto;font-size:10px;text-align:left;
+  color:var(--hb84-muted);font-weight:750;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option.active {
+  background:color-mix(in srgb,var(--season-primary) 8%,var(--hb84-panel-soft)) !important;
+  border-color:var(--season-primary) !important;box-shadow:0 0 0 1px color-mix(in srgb,var(--season-primary) 21%,transparent) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option.active .hb-customization-palette-status {color:var(--season-primary)}
+@media(hover:hover){.app-shell .page-content .hb-customization-page .hb-customization-palette-grid button.season-theme-option:hover:not(:disabled){transform:translateY(-2px)}}
+.app-shell .page-content .hb-customization-page .hb-studio-show-all {min-height:40px;border-radius:10px}
+
+/* A identidade em uso e os filtros seguem o mesmo sistema de espaçamentos. */
+.app-shell .page-content .hb-customization-page .hb-identity-current-ribbon {
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:14px 16px;border-radius:14px;border:1px solid var(--hb84-line-strong);
+  background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-identity-current-sigil {
+  display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;border-radius:12px;
+  border:1px solid var(--hb84-line-strong);background:color-mix(in srgb,var(--season-primary) 11%,transparent);font-size:24px;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-current-copy {flex:1 1 200px;min-width:0;display:grid;gap:4px}
+.app-shell .page-content .hb-customization-page .hb-identity-current-copy strong{font-size:17px}
+.app-shell .page-content .hb-customization-page .hb-identity-tools{
+  display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin:16px 0 12px;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-tools>.hb-style-gallery-count {flex:0 0 auto}
+.app-shell .page-content .hb-customization-page .hb-identity-tools>.hb-style-gallery-search {flex:1 1 230px;max-width:400px}
+.app-shell .page-content .hb-customization-page .hb-identity-sort {flex:0 1 170px;min-width:130px}
+.app-shell .page-content .hb-customization-page .hb-identity-density {flex:0 0 170px;min-width:0}
+.app-shell .page-content .hb-customization-page .hb-customization-collections {
+  display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-collections button {
+  display:inline-flex;align-items:center;gap:8px;justify-content:center;
+  min-height:36px;padding:8px 12px;border-radius:10px;font-size:11px;font-weight:800;
+  border:1px solid var(--hb84-line);background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-customization-collections button.selected {
+  border-color:var(--season-primary);background:color-mix(in srgb,var(--season-primary) 12%,var(--hb84-panel-soft));
+}
+
+/* Inspetor: uma capa panorâmica completa em TODOS os estilos, dados abaixo.
+   Nos modos Ficha e Menu as maquetes existentes continuam independentes. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout {
+  display:flex !important;flex-direction:column !important;gap:16px !important;min-width:0;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-customization-workbench {
+  position:static !important;order:0;width:100% !important;min-width:0;max-height:none !important;overflow:visible;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-identity-catalog {
+  order:1;width:100% !important;min-width:0;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector {
+  border:1px solid var(--hb84-line-strong) !important;border-radius:var(--hb84-radius) !important;
+  background:var(--hb84-panel) !important;box-shadow:0 14px 30px rgba(0,0,0,.12) !important;
+  overflow:hidden;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.hb-identity-mode-cover {
+  display:flex !important;flex-direction:column !important;grid-template-columns:none !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-art {
+  display:block !important;position:relative;isolation:isolate;
+  width:100% !important;height:auto !important;min-height:0 !important;
+  aspect-ratio:2.72/1;border:0 !important;border-bottom:1px solid var(--hb84-line) !important;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--season-primary) 4%,#070b12),#080c12) !important;
+  overflow:hidden;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-art::before {
+  content:"" !important;display:block !important;position:absolute;z-index:1;pointer-events:none;
+  inset:11px 16px !important;border-radius:10px !important;
+  background:var(--hb-inspector-art,none) center / contain no-repeat !important;
+  filter:none !important;opacity:1 !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-art::after {
+  content:"" !important;display:block !important;position:absolute;inset:12px !important;z-index:2;
+  border:1px solid var(--hb84-line) !important;border-radius:12px !important;pointer-events:none;
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover :is(.hb-style-inspector-glyph,.hb-style-inspector-art-label,.hb-identity-art-corner){display:none !important}
+/* O banner autoral do Silvam precisa da imagem panorâmica integral. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::before {
+  inset:9px 12px !important;
+  background:url("./style-art/silvam-argentea-arte.png") center / contain no-repeat !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-copy {
+  display:grid !important;grid-template-columns:minmax(0,1.16fr) minmax(255px,.84fr) !important;
+  grid-template-areas:
+    "modes modes"
+    "status status"
+    "eyebrow tools"
+    "title tools"
+    "description palette"
+    "motto palette"
+    "choice choice"
+    "actions actions";
+  gap:10px 24px;align-items:start;padding:clamp(18px,2.4vw,26px) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-identity-preview-modes{grid-area:modes}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-v66-inspector-status{grid-area:status}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-customization-eyebrow{grid-area:eyebrow}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover h3{grid-area:title;font-size:clamp(24px,2.3vw,31px)}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover p{grid-area:description;line-height:1.55;max-width:62ch}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-motto{grid-area:motto}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-identity-inspector-tools{grid-area:tools}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-palette{grid-area:palette}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-identity-compare{grid-area:choice}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-actions{grid-area:actions}
+.app-shell .page-content .hb-customization-page .hb-identity-preview-modes {
+  display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;
+  padding:5px;border:1px solid var(--hb84-line);border-radius:12px;background:var(--season-bg);
+}
+.app-shell .page-content .hb-customization-page .hb-identity-preview-modes>button {
+  display:grid;place-items:center;min-width:0;min-height:40px;padding:8px 10px;
+  border:1px solid transparent;border-radius:9px;font-size:11px;font-weight:850;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-preview-modes>button.selected {
+  border-color:var(--hb84-line-strong);background:color-mix(in srgb,var(--season-primary) 13%,var(--season-surface-alt));
+}
+.app-shell .page-content .hb-customization-page .hb-v66-inspector-status {
+  width:100%;min-width:0;border:1px solid var(--hb84-line) !important;border-radius:12px !important;
+  padding:11px 13px !important;background:var(--hb84-panel-soft) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-inspector-tools {
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;width:100%;
+  padding:10px 0;border-bottom:1px solid var(--hb84-line);
+}
+.app-shell .page-content .hb-customization-page .hb-identity-inspector-tools>span {flex:1 1 auto}
+.app-shell .page-content .hb-customization-page .hb-identity-inspector-tools>.hb-v66-favorite-inline {
+  display:inline-flex !important;flex:0 0 auto;width:auto !important;min-width:105px !important;height:36px !important;
+  min-height:36px !important;padding:7px 12px !important;border:1px solid var(--hb84-line-strong) !important;
+  border-radius:10px !important;background:var(--hb84-panel-soft) !important;
+  font-size:11px !important;font-weight:850;white-space:nowrap;line-height:1.2;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-inspector-tools>.hb-v66-favorite-inline[aria-pressed="true"]{
+  color:var(--season-primary) !important;border-color:var(--season-primary) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-inspector-tools>div {
+  display:inline-flex;align-items:center;justify-content:flex-end;gap:7px;
+  flex:0 0 auto;margin-left:auto;
+}
+.app-shell .page-content .hb-customization-page .hb-identity-inspector-tools>div>button {
+  display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;
+  border-radius:10px;border:1px solid var(--hb84-line);background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector-palette {
+  min-width:0;display:flex;align-items:center;align-self:start;gap:8px;flex-wrap:wrap;
+  padding:14px 12px;border:1px solid var(--hb84-line);border-radius:11px;
+  background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector-palette>span {flex:0 0 22px;width:22px;height:22px;border-radius:50%}
+.app-shell .page-content .hb-customization-page .hb-style-inspector-palette>small {flex:1 1 100%;margin:0;font-size:11px}
+.app-shell .page-content .hb-customization-page .hb-style-inspector-actions{width:100%;display:flex;gap:9px;flex-wrap:wrap}
+.app-shell .page-content .hb-customization-page .hb-style-inspector-actions>button{min-height:42px;border-radius:11px}
+.app-shell .page-content .hb-customization-page .hb-style-inspector-applied{width:100%;justify-content:center;text-align:center;min-height:44px;border-radius:10px}
+
+/* Comparar: sempre duas peças equilibradas no desktop, empilhadas no celular. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare {
+  display:flex !important;flex-direction:column !important;grid-template-columns:none !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-style-inspector-art {
+  width:100% !important;height:auto !important;min-height:0 !important;
+  padding:14px !important;border-bottom:1px solid var(--hb84-line);border-right:0 !important;
+  background:var(--season-bg) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare {
+  display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:12px;width:100%;min-width:0;
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel {
+  min-width:0;aspect-ratio:2.52/1;min-height:0 !important;border-radius:12px;border:1px solid var(--hb84-line-strong);
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-photo {
+  position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;
+  background:linear-gradient(180deg,transparent 37%,rgba(0,0,0,.78) 100%),var(--hb-studio-art,none) center / contain no-repeat,#080d13 !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-photo::before {display:none !important;content:none !important}
+/* O Silvam usa a miniatura panorâmica autoral, sem o recorte lateral antigo. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel.hb-customization-preview-floresta_esquecida .hb-v66-compare-photo {
+  background:linear-gradient(180deg,transparent 37%,rgba(0,0,0,.78) 100%),url("./style-art/silvam-argentea-galeria.png") center / contain no-repeat,#050505 !important;
+}
+
+/* Galeria: todas as identidades seguem as mesmas medidas. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-catalog {
+  padding:clamp(14px,2vw,22px) !important;border:1px solid var(--hb84-line) !important;
+  border-radius:var(--hb84-radius) !important;background:var(--hb84-panel-soft) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-gallery-heading {
+  display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  padding:0 0 15px;border-bottom:1px solid var(--hb84-line);margin-bottom:15px;
+}
+.app-shell .page-content .hb-customization-page .hb-customization-gallery-heading strong{font-size:18px;line-height:1.25}
+.app-shell .page-content .hb-customization-page .hb-customization-gallery-heading small {font-size:11px;line-height:1.5}
+.app-shell .page-content .hb-customization-page .hb-identity-show-preview {
+  display:inline-flex !important;align-items:center;justify-content:center;
+  min-height:36px;padding:8px 12px;border:1px solid var(--hb84-line-strong);border-radius:10px;
+  background:var(--hb84-panel);font-size:11px;font-weight:800;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid,
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid:not(.is-compact) {
+  display:grid !important;grid-template-columns:repeat(auto-fill,minmax(min(100%,255px),1fr)) !important;
+  gap:14px !important;align-items:stretch;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry {position:relative;min-width:0;isolation:isolate}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry>.season-style-card,
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid:not(.is-compact) .season-style-card {
+  display:flex !important;flex-direction:column !important;align-items:stretch !important;justify-content:flex-start !important;
+  position:relative;gap:10px !important;width:100%;height:100%;min-height:362px !important;
+  padding:13px !important;border:1px solid var(--hb84-line) !important;border-radius:15px !important;
+  background:var(--hb84-panel) !important;box-shadow:none !important;
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry>.season-style-card.active {
+  border-color:var(--season-primary) !important;
+  background:color-mix(in srgb,var(--season-primary) 6%,var(--hb84-panel)) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry>.season-style-card.inspected {
+  border-color:var(--season-primary) !important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--season-primary) 26%,transparent) !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-signature {
+  flex:0 0 20px;display:block;max-width:calc(100% - 42px);min-height:20px;margin:0;
+  font-size:9px;font-weight:850;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-preview {
+  display:block;position:relative;flex:0 0 auto;width:100%;height:150px !important;min-height:150px;
+  margin:0;border:1px solid var(--hb84-line-strong);border-radius:11px;overflow:hidden;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-preview::after{pointer-events:none}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-preview-caption {
+  left:12px;right:42px;bottom:10px;font-size:9px;line-height:1.2;
+  white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-card-info {
+  flex:1 0 auto;display:flex;flex-direction:column;gap:6px;min-height:72px;
+  width:100%;padding:1px 2px 0;text-align:left;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-card-info strong {
+  font-size:16px !important;line-height:1.28;letter-spacing:-.02em;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-card-info small {
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-clamp:2;
+  overflow:hidden;font-size:11px;line-height:1.5;color:var(--hb84-muted);
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .hb-identity-collection-tag {
+  flex:0 0 auto;align-self:flex-start;min-height:24px;display:inline-flex;align-items:center;
+  margin:0;padding:4px 8px;border:1px solid var(--hb84-line);border-radius:7px;
+  font-size:9px;font-weight:850;letter-spacing:.07em;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .hb-style-gallery-choice {
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  margin-top:auto;padding:9px 12px;min-height:39px;border-radius:9px;
+  border:1px solid var(--hb84-line);background:var(--hb84-panel-soft);
+  color:var(--season-text);font-size:10px;letter-spacing:.085em;font-weight:900;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-card-check {
+  position:absolute !important;top:11px;right:12px;z-index:3;
+  display:grid;place-items:center;width:27px;height:27px;margin:0;border-radius:9px;
+  font-size:14px;background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .hb-style-favorite {
+  position:absolute !important;top:53px !important;right:21px !important;z-index:6;
+  display:grid;place-items:center;width:32px !important;height:32px !important;
+  padding:0 !important;border-radius:50% !important;
+  border:1px solid rgba(240,240,240,.36) !important;
+  background:rgba(5,9,16,.9) !important;color:#f1f1f1 !important;
+  font-family:inherit;font-size:22px;line-height:1;cursor:pointer;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-entry .hb-style-favorite.is-favorite {
+  color:var(--season-primary) !important;border-color:var(--season-primary) !important;
+}
+@media(hover:hover){
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-entry>.season-style-card:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 25px rgba(0,0,0,.15) !important}
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-entry .hb-style-favorite:hover{transform:scale(1.06)}
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid.is-compact {
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr)) !important;gap:10px !important;
+}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid.is-compact .season-style-card {min-height:328px !important}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid.is-compact .season-style-preview {height:122px !important;min-height:122px}
+.app-shell .page-content .hb-customization-page .hb-style-gallery-grid.is-compact .hb-style-favorite {top:53px !important}
+
+/* Resumo e barra de decisão: ação legível, sem esconder os controles. */
+.app-shell .page-content .hb-customization-page .hb-v66-decision-dock {
+  position:sticky;bottom:10px;z-index:15;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 14px;border:1px solid var(--hb84-line-strong);border-radius:14px;
+  background:color-mix(in srgb,var(--season-surface) 95%,var(--season-bg));
+  box-shadow:0 12px 26px rgba(0,0,0,.23);backdrop-filter:blur(15px);
+}
+.app-shell .page-content .hb-customization-page .hb-v66-decision-actions {margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.app-shell .page-content .hb-customization-page .hb-v66-decision-actions button{min-height:42px;border-radius:10px}
+.app-shell .page-content .hb-customization-page .hb-studio-final-summary {
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px;
+  border:1px solid var(--hb84-line) !important;border-radius:14px !important;
+  background:var(--hb84-panel-soft);
+}
+.app-shell .page-content .hb-customization-page .hb-studio-final-summary>div:nth-child(2) {flex:1 1 240px;min-width:0}
+.app-shell .page-content .hb-customization-page .hb-studio-final-summary>button{margin-left:auto;min-height:39px;border-radius:10px}
+
+@media(max-width:1000px){
+  .app-shell .page-content .hb-customization-page .hb-customization-hero{grid-template-columns:1fr !important}
+  .app-shell .page-content .hb-customization-page .hb-customization-hero-preview{min-height:240px;aspect-ratio:2.65/1}
+  .app-shell .page-content .hb-customization-page .hb-v66-guide{grid-template-columns:1fr 1fr}
+  .app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-copy{gap:10px 16px}
+}
+@media(max-width:730px){
+  .app-shell .page-content .hb-customization-page {gap:14px}
+  .app-shell .page-content .hb-customization-page .hb-v66-guide{grid-template-columns:1fr}
+  .app-shell .page-content .hb-customization-page .hb-v66-guide>div{min-height:0;padding:12px 14px}
+  .app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-copy {
+    display:flex !important;flex-direction:column !important;gap:10px !important;
+  }
+  .app-shell .page-content .hb-customization-page .hb-identity-inspector-tools>div{width:auto !important;margin-left:auto}
+  .app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare {grid-template-columns:1fr !important}
+  .app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel{aspect-ratio:2.6/1}
+  .app-shell .page-content .hb-customization-page .hb-identity-tools>.hb-style-gallery-search{max-width:none;flex:1 1 100%}
+  .app-shell .page-content .hb-customization-page .hb-identity-tools>.hb-identity-sort{flex:1 1 165px}
+  .app-shell .page-content .hb-customization-page .hb-customization-palette-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+}
+@media(max-width:530px){
+  .app-shell .page-content .hb-customization-page .hb-customization-hero{padding:17px !important}
+  .app-shell .page-content .hb-customization-page .hb-customization-hero-steps>span:nth-child(even){display:none}
+  .app-shell .page-content .hb-customization-page .hb-customization-hero-preview{min-height:176px;aspect-ratio:2.25/1}
+  .app-shell .page-content .hb-customization-page .hb-customization-season-bar{padding:14px}
+  .app-shell .page-content .hb-customization-page .hb-customization-season-bar>label{flex:1 1 100%;min-width:0}
+  .app-shell .page-content .hb-customization-page .hb-customization-current-palette{flex-wrap:wrap}
+  .app-shell .page-content .hb-customization-page .hb-customization-palette-grid{gap:8px !important}
+  .app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option{min-height:140px;padding:8px !important}
+  .app-shell .page-content .hb-customization-page .hb-customization-palette-grid .season-theme-option .hb-customization-palette-art{height:66px;min-height:66px}
+  .app-shell .page-content .hb-customization-page .hb-identity-preview-modes>button{min-height:36px;font-size:10px;padding:7px 4px}
+  .app-shell .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-cover .hb-style-inspector-art{aspect-ratio:2.1/1 !important}
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-grid,
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-grid:not(.is-compact),
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-grid.is-compact {grid-template-columns:1fr !important}
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-entry>.season-style-card{min-height:352px !important}
+  .app-shell .page-content .hb-customization-page .hb-style-gallery-entry .season-style-preview{height:156px !important;min-height:156px}
+  .app-shell .page-content .hb-customization-page .hb-v66-decision-dock{bottom:0;padding:10px}
+  .app-shell .page-content .hb-customization-page .hb-v66-decision-actions{width:100%;margin-left:0;display:grid;grid-template-columns:1fr 1fr}
+  .app-shell .page-content .hb-customization-page .hb-v66-decision-actions button{min-width:0;font-size:10px;padding:10px}
+  .app-shell .page-content .hb-customization-page .hb-studio-final-summary>button{width:100%;margin:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell .page-content .hb-customization-page :is(.season-theme-option,.season-style-card,.hb-style-favorite){transition:none !important;transform:none !important}
+}
+
+/* V84: as sete ilustrações da nova coleção seguem o mesmo enquadramento de capa.
+   Não deixe as regras antigas "right / auto 100%" ampliarem o SVG e cortarem o desenho. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector:is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar).hb-identity-mode-cover .hb-style-inspector-art::before {
+  inset:11px 16px !important;
+  background:var(--hb-inspector-art) center / contain no-repeat !important;
+}
+.app-shell .season-visual-style-group .hb-identity-selection-layout
+.hb-style-gallery-entry:is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview {
+  background:linear-gradient(0deg,rgba(5,10,17,.6) 0%,transparent 35%),var(--hb-gallery-art) center / contain no-repeat,#0b1118 !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare
+.hb-v66-compare-panel:is(.hb-customization-preview-vigilia_lunar,.hb-customization-preview-inverno_eterno,.hb-customization-preview-arcano,.hb-customization-preview-catedral_onix,.hb-customization-preview-mare_abissal,.hb-customization-preview-jardim_espectral,.hb-customization-preview-relicario_solar) .hb-v66-compare-photo {
+  background:linear-gradient(180deg,transparent 38%,rgba(4,9,15,.78) 100%),var(--hb-studio-art) center / contain no-repeat,#081318 !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page
+.hb-customization-hero-preview:is(.hb-customization-preview-vigilia_lunar,.hb-customization-preview-inverno_eterno,.hb-customization-preview-arcano,.hb-customization-preview-catedral_onix,.hb-customization-preview-mare_abissal,.hb-customization-preview-jardim_espectral,.hb-customization-preview-relicario_solar) {
+  background:linear-gradient(180deg,rgba(5,10,16,.04),rgba(5,10,16,.76)),var(--hb-studio-art) center / contain no-repeat,var(--season-bg) !important;
+}
