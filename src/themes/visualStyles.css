@@ -10312,3 +10312,260 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .hb-customization-hero-preview:is(.hb-customization-preview-vigilia_lunar,.hb-customization-preview-inverno_eterno,.hb-customization-preview-arcano,.hb-customization-preview-catedral_onix,.hb-customization-preview-mare_abissal,.hb-customization-preview-jardim_espectral,.hb-customization-preview-relicario_solar) {
   background:linear-gradient(180deg,rgba(5,10,16,.04),rgba(5,10,16,.76)),var(--hb-studio-art) center / contain no-repeat,var(--season-bg) !important;
 }
+
+
+/* ================================================================
+   HÄXBAG V85 | SETE ESTILOS | SISTEMA VISUAL DA COLEÇÃO CLÁSSICA
+   Silvam Argentea deliberadamente não faz parte deste bloco.
+   ================================================================ */
+
+.app-shell.hb-polish.visual-style-vigilia_lunar {
+  --hb-v26-hero:url("./style-art/vigilia_lunar-hero.svg");
+  --hb-v26-crest:url("./style-art/vigilia_lunar-crest.svg");
+  --hb-v85-metal:#b2a3df;
+  --hb-v85-pale:#f0e9ff;
+  --hb-v85-soft:#8275b7;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#b2a3df);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/vigilia_lunar-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-vigilia_lunar {
+  --hb-v85-gallery:url("./style-art/vigilia_lunar-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/vigilia_lunar-hero.svg");
+  --hb-v26-crest:url("./style-art/vigilia_lunar-crest.svg");
+  --hb-v85-metal:#b2a3df;
+}
+
+.app-shell.hb-polish.visual-style-inverno_eterno {
+  --hb-v26-hero:url("./style-art/inverno_eterno-hero.svg");
+  --hb-v26-crest:url("./style-art/inverno_eterno-crest.svg");
+  --hb-v85-metal:#83c9e9;
+  --hb-v85-pale:#e4f8ff;
+  --hb-v85-soft:#5c95b5;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#83c9e9);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/inverno_eterno-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-inverno_eterno {
+  --hb-v85-gallery:url("./style-art/inverno_eterno-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/inverno_eterno-hero.svg");
+  --hb-v26-crest:url("./style-art/inverno_eterno-crest.svg");
+  --hb-v85-metal:#83c9e9;
+}
+
+.app-shell.hb-polish.visual-style-arcano {
+  --hb-v26-hero:url("./style-art/arcano-hero.svg");
+  --hb-v26-crest:url("./style-art/arcano-crest.svg");
+  --hb-v85-metal:#c49fe9;
+  --hb-v85-pale:#f4e6ff;
+  --hb-v85-soft:#7f66b6;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#c49fe9);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/arcano-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-arcano {
+  --hb-v85-gallery:url("./style-art/arcano-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/arcano-hero.svg");
+  --hb-v26-crest:url("./style-art/arcano-crest.svg");
+  --hb-v85-metal:#c49fe9;
+}
+
+.app-shell.hb-polish.visual-style-catedral_onix {
+  --hb-v26-hero:url("./style-art/catedral_onix-hero.svg");
+  --hb-v26-crest:url("./style-art/catedral_onix-crest.svg");
+  --hb-v85-metal:#cf8dbb;
+  --hb-v85-pale:#ffdfef;
+  --hb-v85-soft:#8b527a;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#cf8dbb);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/catedral_onix-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-catedral_onix {
+  --hb-v85-gallery:url("./style-art/catedral_onix-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/catedral_onix-hero.svg");
+  --hb-v26-crest:url("./style-art/catedral_onix-crest.svg");
+  --hb-v85-metal:#cf8dbb;
+}
+
+.app-shell.hb-polish.visual-style-mare_abissal {
+  --hb-v26-hero:url("./style-art/mare_abissal-hero.svg");
+  --hb-v26-crest:url("./style-art/mare_abissal-crest.svg");
+  --hb-v85-metal:#5fd4cb;
+  --hb-v85-pale:#d8ffff;
+  --hb-v85-soft:#377f88;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#5fd4cb);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/mare_abissal-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-mare_abissal {
+  --hb-v85-gallery:url("./style-art/mare_abissal-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/mare_abissal-hero.svg");
+  --hb-v26-crest:url("./style-art/mare_abissal-crest.svg");
+  --hb-v85-metal:#5fd4cb;
+}
+
+.app-shell.hb-polish.visual-style-jardim_espectral {
+  --hb-v26-hero:url("./style-art/jardim_espectral-hero.svg");
+  --hb-v26-crest:url("./style-art/jardim_espectral-crest.svg");
+  --hb-v85-metal:#b9cbb9;
+  --hb-v85-pale:#f4eafa;
+  --hb-v85-soft:#8fa89b;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#b9cbb9);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/jardim_espectral-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-jardim_espectral {
+  --hb-v85-gallery:url("./style-art/jardim_espectral-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/jardim_espectral-hero.svg");
+  --hb-v26-crest:url("./style-art/jardim_espectral-crest.svg");
+  --hb-v85-metal:#b9cbb9;
+}
+
+.app-shell.hb-polish.visual-style-relicario_solar {
+  --hb-v26-hero:url("./style-art/relicario_solar-hero.svg");
+  --hb-v26-crest:url("./style-art/relicario_solar-crest.svg");
+  --hb-v85-metal:#dcb16e;
+  --hb-v85-pale:#fff0c1;
+  --hb-v85-soft:#9e733b;
+  --hb-v85-border:color-mix(in srgb,var(--season-primary) 35%,#dcb16e);
+  --sb-crest:var(--hb-v26-crest);
+  --roster-crest:var(--hb-v26-crest);
+  --hb-art-sigil:var(--hb-v26-crest);
+  --hb-v40-ornament:url("./style-art/relicario_solar-ornament-v40.svg");
+}
+.app-shell .season-visual-style-group .season-style-relicario_solar {
+  --hb-v85-gallery:url("./style-art/relicario_solar-gallery-v54.svg");
+  --hb-v26-hero:url("./style-art/relicario_solar-hero.svg");
+  --hb-v26-crest:url("./style-art/relicario_solar-crest.svg");
+  --hb-v85-metal:#dcb16e;
+}
+
+/* Coerência entre os temas modernos e o desenho-base das seis identidades clássicas. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero,.campaigns-hero,.overview-hero) {
+  border:1px solid var(--hb-v85-border) !important;
+  border-radius:15px !important;
+  background:
+    linear-gradient(90deg,var(--season-surface) 0%,color-mix(in srgb,var(--season-surface) 94%,transparent) 27%,color-mix(in srgb,var(--season-surface) 50%,transparent) 68%,transparent 100%),
+    var(--hb-v26-hero) right center / auto 100% no-repeat,
+    linear-gradient(140deg,var(--season-surface),var(--season-bg)) !important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-v85-border) 20%,transparent),0 12px 28px rgba(0,0,0,.13) !important;
+}
+/* Mesmo tipo de cartão, destaque e moldura dos clássicos, sem deformar a arte. */
+.app-shell .hb-customization-page .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview,
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview {
+  border:1px solid color-mix(in srgb,var(--hb-v85-metal) 52%,var(--season-line)) !important;
+  border-radius:10px !important;
+  background:
+    linear-gradient(0deg,rgba(5,10,16,.30),transparent 36%),
+    var(--hb-v85-gallery) center center / contain no-repeat,
+    linear-gradient(145deg,var(--season-bg),var(--season-surface-alt)) !important;
+  overflow:hidden;
+}
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview :is(.season-style-preview-orb,.season-style-preview-glyph,.season-style-preview-lines) {display:none !important}
+.app-shell .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview-caption {
+  z-index:3;
+  text-shadow:0 2px 8px rgba(0,0,0,.96);
+}
+/* Cabeçalho da ficha e cartões de personagem com o próprio emblema do tema. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-hero-emblem {
+  font-size:0 !important;
+  border-radius:13px !important;
+  border:1px solid var(--hb-v85-border) !important;
+  background:
+    var(--hb-v26-crest) center / 85% no-repeat,
+    color-mix(in srgb,var(--season-surface-alt) 84%,var(--season-bg)) !important;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hb-v85-border) 25%,transparent),0 5px 18px rgba(0,0,0,.15) !important;
+}
+/* O ícone individual do personagem/inimigo continua sendo o ícone que foi salvo na ficha. */
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-page-hero-detail {
+  position:relative;isolation:isolate;overflow:hidden;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-page-hero-detail::after {
+  content:"" !important;
+  position:absolute;top:50%;right:24px;left:auto;
+  width:118px;height:118px;transform:translateY(-50%);
+  background:var(--hb-v26-crest) center / contain no-repeat !important;
+  opacity:.13;pointer-events:none;box-shadow:none !important;
+  border:0 !important;border-radius:0 !important;z-index:0;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-page-hero-detail>* {position:relative;z-index:1}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-summary-header {
+  position:relative;isolation:isolate;overflow:hidden;
+  border:1px solid var(--hb-v85-border) !important;
+  border-radius:17px !important;
+  background:linear-gradient(145deg,var(--season-surface-alt),var(--season-surface)) !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-summary-header::after {
+  content:"";position:absolute;top:50%;right:16px;transform:translateY(-50%);
+  width:128px;height:128px;background:var(--hb-v26-crest) center / contain no-repeat;
+  opacity:.10;pointer-events:none;z-index:0;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-summary-header>* {position:relative;z-index:1}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card::before {
+  background:var(--hb-v26-crest) center / contain no-repeat !important;
+  opacity:.11 !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets :is(.sheet-summary-card,.sheet-summary-status-card,.sheet-card,.sheet-library-card,.sheet-editor-premium) {
+  border-top:1px solid color-mix(in srgb,var(--hb-v85-border) 66%,var(--season-line)) !important;
+  border-radius:13px !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets :is(.sheet-section-heading,.sheet-card-title,.inventory-heading) {
+  border-bottom-color:color-mix(in srgb,var(--hb-v85-border) 43%,var(--season-line)) !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .hb-sidebar-style-emblem {
+  background:var(--hb-v26-crest) center / 83% no-repeat,var(--season-surface-alt) !important;
+  border:1px solid var(--hb-v85-border) !important;
+}
+/* Arte do inspetor e do comparador sem cortes: uma ilustração para cada bloco. */
+.app-shell .hb-customization-page .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar).hb-style-inspector .hb-style-inspector-art::before {
+  background:var(--hb-inspector-art) center / contain no-repeat !important;
+}
+@media(max-width:720px) {
+ .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-summary-header::after {width:74px;height:74px;right:6px;opacity:.075}
+ .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-page-hero-detail::after {width:80px;height:80px;right:6px;opacity:.085}
+ .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-content :is(.hb-hero,.sheet-page-hero,.enemy-hub-hero,.shops-hero) {
+   background-size:auto,auto 88%,auto !important;
+   background-position:center,right center,center !important;
+ }
+}
+
+
+/* ================================================================
+   HÄXBAG V86 | ACABAMENTO DOS SETE ESTILOS DA COLEÇÃO
+   Base clássica da V85 preservada; nenhuma alteração em Silvam.
+   ================================================================ */
+
+.app-shell .hb-customization-page .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar) .season-style-preview {
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary) 13%,transparent),0 8px 18px rgba(0,0,0,.13) !important;
+  background-position:center center !important;
+}
+.app-shell .hb-customization-page .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar).season-style-card.active .season-style-preview,
+.app-shell .hb-customization-page .season-visual-style-group :is(.season-style-vigilia_lunar,.season-style-inverno_eterno,.season-style-arcano,.season-style-catedral_onix,.season-style-mare_abissal,.season-style-jardim_espectral,.season-style-relicario_solar).season-style-card.inspected .season-style-preview {
+  border-color:color-mix(in srgb,var(--season-primary) 58%,var(--season-line)) !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card::before {
+  background-position:right 14px center !important;
+  background-size:105px 105px !important;
+  opacity:.12 !important;
+}
+.app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-hero-emblem {
+  background-size:82% !important;
+}
+@media(max-width:570px) {
+  .app-shell.hb-polish:is(.visual-style-vigilia_lunar,.visual-style-inverno_eterno,.visual-style-arcano,.visual-style-catedral_onix,.visual-style-mare_abissal,.visual-style-jardim_espectral,.visual-style-relicario_solar) .page-sheets .sheet-roster-card::before {
+    background-size:75px 75px !important;
+    opacity:.09 !important;
+  }
+}
