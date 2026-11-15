@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../supabase'
 import './MasterChest.css'
+import KitEditor from './KitEditor'
+import { KIT_DEFINITIONS, SCARCITY_CHARGES, isKitType, kitAvailableScarcityLevels, kitDefinition, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from '../kitRules'
 
 type CharacterOption = { id: string; campaign_id: string; name: string; emoji?: string | null }
 type CurrencyOption = { id: string; name: string; symbol: string }
@@ -143,6 +145,12 @@ type ItemDraft = {
   scarcityMode: 'fixed' | 'random'
   scarcityMinLevel: string
   scarcityMaxLevel: string
+  kitType: KitType | null
+  kitBenefitMode: KitBenefitMode
+  kitSkills: string[]
+  kitUniqueEffect: string
+  kitEffect: KitEffect | null
+  kitEffectNotes: string
   moneyMode: 'fixed' | 'range'
   moneyMin: string
   moneyMax: string
@@ -172,6 +180,7 @@ const emptyDraft = (): ItemDraft => ({
   protectionTier: 'basica', protectionMode: 'resistencia', weaponClass: 'improvised',
   scarcityLevel: '1', scarcityExhausted: false,
   scarcityMode: 'fixed', scarcityMinLevel: '1', scarcityMaxLevel: '4',
+  kitType: null, kitBenefitMode: 'skills', kitSkills: [], kitUniqueEffect: '', kitEffect: null, kitEffectNotes: '',
   moneyMode: 'fixed', moneyMin: '100', moneyMax: '1000',
   cyberneticCategory: 'Outro', cyberneticLocation: '', cyberneticLoad: '0', cyberneticEffects: '',
   notifyOnDelivery: false, deliveryMessage: '',
@@ -260,9 +269,11 @@ const isArmorDraft = (draft: ItemDraft) => draft.dropType === 'item'
   && draft.categories.includes('Equipamento') && draft.equipmentType === 'armor'
 const isConsumableDraft = (draft: ItemDraft) => draft.dropType === 'item'
   && draft.categories.includes('Consumíveis') && !isArmorDraft(draft)
-const draftEffectiveWeight = (draft: ItemDraft) => isConsumableDraft(draft)
-  ? (draft.scarcityExhausted ? 0 : scarcityRules[draft.scarcityLevel].charge)
-  : asNumber(draft.weight)
+const draftEffectiveWeight = (draft: ItemDraft) => draft.categories.includes('Kits') && draft.kitType
+  ? (kitWeight(draft.kitType, Number(draft.scarcityLevel), draft.scarcityExhausted) ?? Number.NaN)
+  : isConsumableDraft(draft)
+    ? (draft.scarcityExhausted ? 0 : scarcityRules[draft.scarcityLevel].charge)
+    : asNumber(draft.weight)
 const draftEffectivePrice = (draft: ItemDraft) => isConsumableDraft(draft) && draft.scarcityExhausted ? 0 : asNumber(draft.unitPrice)
 const maybeValue = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   typeof value === 'string' && allowed.includes(value as T) ? value as T : fallback
@@ -703,6 +714,12 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
       scarcityMode: meta.scarcityMode === 'random' ? 'random' : 'fixed',
       scarcityMinLevel: String(meta.scarcityMinLevel ?? '1'),
       scarcityMaxLevel: String(meta.scarcityMaxLevel ?? '4'),
+      kitType: isKitType(meta.kitType) ? meta.kitType : null,
+      kitBenefitMode: maybeValue(meta.kitBenefitMode, ['skills','protection','three_archetype','main_and_archetype'], 'skills'),
+      kitSkills: Array.isArray(meta.kitSkills) ? meta.kitSkills.filter((entry):entry is string => typeof entry === 'string') : [],
+      kitUniqueEffect: typeof meta.kitUniqueEffect === 'string' ? meta.kitUniqueEffect : '',
+      kitEffect: maybeValue(meta.kitEffect, ['damage','resistance','combat_point',''] as const, '') || null,
+      kitEffectNotes: typeof meta.kitEffectNotes === 'string' ? meta.kitEffectNotes : '',
       moneyMode: meta.rewardMode === 'range' ? 'range' : 'fixed',
       moneyMin: String(meta.rewardMin ?? '100'), moneyMax: String(meta.rewardMax ?? '1000'),
       cyberneticCategory: typeof (meta.cyberneticData as Record<string, unknown> | undefined)?.category === 'string'
@@ -775,12 +792,22 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
     const moneyMax = Number(draft.moneyMax)
     const scarcityMin = Number(draft.scarcityMinLevel)
     const scarcityMax = Number(draft.scarcityMaxLevel)
-    const weight = isConsumable && draft.scarcityMode === 'random'
-      ? scarcityRules[String(scarcityMin) as ItemDraft['scarcityLevel']]?.charge ?? 7
-      : isConsumable ? draftEffectiveWeight(draft) : rawWeight
+    const activeChestKit = !isMoney && draft.categories.includes('Kits') && draft.kitType ? draft.kitType : null
+    const chestKitDef = kitDefinition(activeChestKit)
+    const weight = activeChestKit ? draftEffectiveWeight(draft)
+      : isConsumable && draft.scarcityMode === 'random'
+        ? scarcityRules[String(scarcityMin) as ItemDraft['scarcityLevel']]?.charge ?? 7
+        : isConsumable ? draftEffectiveWeight(draft) : rawWeight
     const randomMoney = isMoney && draft.moneyMode === 'range'
-    const randomScarcity = isConsumable && draft.scarcityMode === 'random'
+    const randomScarcity = isConsumable && draft.scarcityMode === 'random' && !activeChestKit
     const price = randomMoney ? moneyMin : isConsumable && draft.scarcityExhausted ? 0 : rawPrice
+    if (activeChestKit && chestKitDef?.family === 'consumable' && !kitAvailableScarcityLevels(activeChestKit).includes(Number(draft.scarcityLevel) as 1|2|3|4)) {setError('Nível de escassez inválido para este tipo de kit.');return}
+    if (activeChestKit && chestKitDef?.family === 'equippable') {
+      const slots=kitSlots(activeChestKit,draft.kitBenefitMode)
+      if (slots.some((_,i)=>!draft.kitSkills[i]?.trim())) {setError('Configure todas as perícias beneficiadas pelo kit.');return}
+      if (new Set(slots.map((_,i)=>draft.kitSkills[i]?.trim().toLocaleLowerCase('pt-BR'))).size !== slots.length) {setError('Escolha perícias diferentes para o kit.');return}
+      if (activeChestKit === 'equip_rare' && !draft.kitUniqueEffect.trim()) {setError('Descreva a funcionalidade única do kit raro.');return}
+    }
     if (!draft.name.trim()) { setError('Informe o nome do drop.'); return }
     if (draft.notifyOnDelivery && !draft.deliveryMessage.trim()) { setError('Escreva a mensagem que o jogador receberá ou desative a opção.'); return }
     if (draft.deliveryMessage.length > 2000) { setError('A mensagem pode ter no máximo 2.000 caracteres.'); return }
@@ -820,6 +847,14 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
         notifyOnDelivery: draft.notifyOnDelivery && Boolean(draft.deliveryMessage.trim()),
         deliveryMessage: draft.notifyOnDelivery ? draft.deliveryMessage.trim() : '',
         categories: [draft.category, ...draft.categories.filter(category => category !== draft.category)],
+        kitType: activeChestKit,
+        kitFamily: chestKitDef?.family ?? null,
+        kitBenefitMode: chestKitDef?.family === 'equippable' ? draft.kitBenefitMode : null,
+        kitSkills: chestKitDef?.family === 'equippable' ? draft.kitSkills.slice(0,kitSlots(activeChestKit!,draft.kitBenefitMode).length).map(entry=>entry.trim()) : null,
+        kitUniqueEffect: activeChestKit === 'equip_rare' ? draft.kitUniqueEffect.trim() : null,
+        kitEffect: chestKitDef?.family === 'consumable' && activeChestKit !== 'prolonged' ? draft.kitEffect : null,
+        kitEffectNotes: chestKitDef?.family === 'consumable' ? draft.kitEffectNotes.trim() : null,
+        kitDuration: activeChestKit === 'immediate' ? '1d6_rodadas' : activeChestKit === 'preparation' ? 'cena' : null,
         equipmentType: equipmentTypeForSave,
         cybernetic: equipmentTypeForSave === 'cybernetic',
         cyberneticEquipped: false,
@@ -840,7 +875,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
         weaponWeight: draft.categories.includes('Armas') ? weight : null,
         scarcityLevel: isConsumable ? (randomScarcity ? scarcityMin : Number(draft.scarcityLevel)) : null,
         scarcityDie: isConsumable ? scarcityRules[randomScarcity ? String(scarcityMin) as ItemDraft['scarcityLevel'] : draft.scarcityLevel].die : null,
-        scarcityCharge: isConsumable ? weight : null,
+        scarcityCharge: isConsumable ? (draft.scarcityExhausted ? 0 : SCARCITY_CHARGES[(randomScarcity ? scarcityMin : Number(draft.scarcityLevel)) as 1|2|3|4]) : null,
         scarcityExhausted: isConsumable && !randomScarcity ? draft.scarcityExhausted : false,
       },
     }
@@ -1472,7 +1507,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
           </section>}
           <label className="mc-infinite-toggle mc-span-2"><input type="checkbox" checked={draft.infiniteStock} onChange={event => setField('infiniteStock', event.target.checked)}/><span><strong>∞ Estoque infinito</strong><small>Este drop poderá ser entregue e sorteado quantas vezes quiser, sem consumir o estoque do Baú.</small></span></label>
           <label>Quantidade no baú <input type="number" min="1" max="999999" step="1" required disabled={draft.infiniteStock} value={draft.quantity} onChange={event => setField('quantity', event.target.value)}/>{draft.infiniteStock && <small>Quantidade de reserva: será usada somente se voltar ao estoque finito.</small>}</label>
-          {draft.dropType === 'item' && <label>{isArmorDraft(draft) ? 'Peso (kg)' : 'Peso por unidade (kg)'} <input type="number" min="0" max="100000" step="any" disabled={isConsumableDraft(draft)} value={isConsumableDraft(draft) ? String(draftEffectiveWeight(draft)) : draft.weight} onChange={event => setField('weight', event.target.value)}/></label>}
+          {draft.dropType === 'item' && <label>{isArmorDraft(draft) ? 'Peso (kg)' : 'Peso por unidade (kg)'} <input type="number" min="0" max="100000" step="any" disabled={isConsumableDraft(draft) || Boolean(draft.kitType && draft.categories.includes('Kits'))} value={draft.kitType && draft.categories.includes('Kits') ? String(draftEffectiveWeight(draft)) : isConsumableDraft(draft) ? String(draftEffectiveWeight(draft)) : draft.weight} onChange={event => setField('weight', event.target.value)}/></label>}
           {draft.dropType === 'money' && <div className="mc-random-config mc-span-2"><strong>Valor da recompensa</strong><div className="mc-random-modes" role="group" aria-label="Modo de recompensa em dinheiro"><button type="button" aria-pressed={draft.moneyMode === 'fixed'} className={draft.moneyMode === 'fixed' ? 'active' : ''} onClick={() => setField('moneyMode', 'fixed')}>Valor fixo</button><button type="button" aria-pressed={draft.moneyMode === 'range'} className={draft.moneyMode === 'range' ? 'active' : ''} onClick={() => setField('moneyMode', 'range')}>Valor aleatório (mín.–máx.)</button></div>
           {draft.moneyMode === 'range' && <div className="mc-random-fields"><label>Mínimo de moedas<input type="number" min="1" max="1000000000" step="1" required value={draft.moneyMin} onChange={event => setField('moneyMin', event.target.value)}/></label><label>Máximo de moedas<input type="number" min="1" max="1000000000" step="1" required value={draft.moneyMax} onChange={event => setField('moneyMax', event.target.value)}/></label></div>}
           <small>{draft.moneyMode === 'range' ? 'Ex.: entre 100 e 1.000 moedas por unidade. O valor é sorteado no banco na entrega, independentemente para cada personagem.' : 'Cada personagem recebe o valor fixo multiplicado pelas unidades entregues.'}</small></div>}
@@ -1490,9 +1525,30 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
           <label className="mc-span-2">Marcadores <input maxLength={250} placeholder="Ex.: chefe, missão, alquimia (separe por vírgulas)" value={draft.tags} onChange={event => setField('tags', event.target.value)}/></label>
           <label className="mc-span-2">Notas privadas do mestre <textarea rows={2} maxLength={1000} placeholder="Não serão enviadas para os inventários dos jogadores" value={draft.notes} onChange={event => setField('notes', event.target.value)}/><small>As notas são retiradas do item durante a entrega.</small></label>
         </div>
-        {draft.dropType === 'item' && (draft.categories.includes('Equipamento') || draft.categories.includes('Armas') || isConsumableDraft(draft)) && <div className="mc-extra-options">
+        {draft.dropType === 'item' && (draft.categories.includes('Equipamento') || draft.categories.includes('Armas') || draft.categories.includes('Kits') || isConsumableDraft(draft)) && <div className="mc-extra-options">
           <div className="mc-editor-section-title"><span>02</span><div><strong>Equipamento e regras</strong><small>Compatível com os campos de armas, armaduras, proteções e consumíveis das fichas</small></div></div>
           <p>Configure as regras das classificações selecionadas. Os tipos de equipamento aparecem somente em “Equipamento”.</p>
+          {draft.categories.includes('Kits') && <KitEditor
+            type={draft.kitType}
+            onTypeChange={value => {
+              setDraft(current => {
+                const definition = value ? KIT_DEFINITIONS[value] : null
+                const level = value ? normalizeKitLevel(value, Number(current.scarcityLevel)) : null
+                const cats = definition ? ['Kits', definition.family === 'consumable' ? 'Consumíveis' : 'Equipamento', ...current.categories.filter(category => !['Kits','Consumíveis','Equipamento'].includes(category))] : current.categories
+                return {...current, kitType:value, kitBenefitMode:value==='equip_rare'?'three_archetype':'skills',kitSkills:[],equipmentType:'none',categories:cats,category: definition ? 'Kits':current.category,scarcityMode:'fixed',scarcityLevel:level ? String(level) as ItemDraft['scarcityLevel'] : current.scarcityLevel,scarcityExhausted:false}
+              })
+              setEditorDirty(true)
+            }}
+            benefitMode={draft.kitBenefitMode}
+            onBenefitModeChange={value => {setDraft(current => ({...current,kitBenefitMode:value,kitSkills:[]}));setEditorDirty(true)}}
+            skills={draft.kitSkills}
+            setSkills={value => {setDraft(current => ({...current,kitSkills:typeof value==='function'?value(current.kitSkills):value}));setEditorDirty(true)}}
+            uniqueEffect={draft.kitUniqueEffect} onUniqueEffectChange={value => setField('kitUniqueEffect',value)}
+            effect={draft.kitEffect} onEffectChange={value => setField('kitEffect',value)}
+            effectNotes={draft.kitEffectNotes} onEffectNotesChange={value => setField('kitEffectNotes',value)}
+            scarcityLevel={draft.scarcityLevel} onScarcityLevelChange={value => setField('scarcityLevel',value as ItemDraft['scarcityLevel'])}
+            exhausted={draft.scarcityExhausted} onExhaustedChange={value => setField('scarcityExhausted',value)}
+          />}
           <div className="mc-editor-grid">
             {draft.categories.includes('Equipamento') && <label>Tipo de equipamento <select value={draft.equipmentType} onChange={event => setField('equipmentType', event.target.value as ItemDraft['equipmentType'])}><option value="none">Item comum</option><option value="armor">Armadura</option><option value="protection">Proteção</option><option value="cybernetic">Cibernética (CyberFlower)</option></select></label>}
             {draft.categories.includes('Equipamento') && draft.equipmentType === 'armor' && <><label>Classe de armadura <select value={draft.armorClass} onChange={event => setField('armorClass', event.target.value as ItemDraft['armorClass'])}><option value="leve">Leve</option><option value="media">Média</option><option value="pesada">Pesada</option></select></label>{draft.armorClass !== 'pesada' && <label>Tipo de dano protegido <select value={draft.armorCoverage} onChange={event => setField('armorCoverage', event.target.value as ItemDraft['armorCoverage'])}><option value="cortante_perfurante">Cortante / perfurante</option><option value="especial_bruto">Especial / bruto</option></select></label>}</>}
@@ -1505,7 +1561,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
               <small className="mc-span-2">A cibernética será entregue armazenada, sem marcar como instalada no personagem.</small>
             </>}
             {draft.categories.includes('Armas') && <label>Classe de arma <select value={draft.weaponClass} onChange={event => setField('weaponClass', event.target.value as ItemDraft['weaponClass'])}><option value="improvised">Improvisada · 1d4</option><option value="advanced">Avançada · 1d6</option><option value="special">Especial · 1d8</option><option value="black_red">Preta/Vermelha · 1d10</option><option value="mutable">Mutável · 1d12</option></select></label>}
-            {isConsumableDraft(draft) && <div className="mc-random-config mc-span-2"><strong>Escassez do consumível</strong><div className="mc-random-modes" role="group" aria-label="Modo de escassez"><button type="button" aria-pressed={draft.scarcityMode === 'fixed'} className={draft.scarcityMode === 'fixed' ? 'active' : ''} onClick={() => setField('scarcityMode', 'fixed')}>Nível fixo</button><button type="button" aria-pressed={draft.scarcityMode === 'random'} className={draft.scarcityMode === 'random' ? 'active' : ''} onClick={() => { setDraft(current => ({...current, scarcityMode: 'random', scarcityExhausted: false})); setEditorDirty(true) }}>Nível aleatório</button></div>
+            {isConsumableDraft(draft) && !draft.kitType && <div className="mc-random-config mc-span-2"><strong>Escassez do consumível</strong><div className="mc-random-modes" role="group" aria-label="Modo de escassez"><button type="button" aria-pressed={draft.scarcityMode === 'fixed'} className={draft.scarcityMode === 'fixed' ? 'active' : ''} onClick={() => setField('scarcityMode', 'fixed')}>Nível fixo</button><button type="button" aria-pressed={draft.scarcityMode === 'random'} className={draft.scarcityMode === 'random' ? 'active' : ''} onClick={() => { setDraft(current => ({...current, scarcityMode: 'random', scarcityExhausted: false})); setEditorDirty(true) }}>Nível aleatório</button></div>
               {draft.scarcityMode === 'fixed' ? <div className="mc-random-fields"><label>Escassez <select value={draft.scarcityLevel} disabled={draft.scarcityExhausted} onChange={event => setField('scarcityLevel', event.target.value as ItemDraft['scarcityLevel'])}><option value="1">Nível 1 · d12 · 7 cargas</option><option value="2">Nível 2 · d8 · 5 cargas</option><option value="3">Nível 3 · d6 · 3 cargas</option><option value="4">Nível 4 · d4 · 1 carga</option></select></label><label className="mc-checkline mc-scarcity-check"><input type="checkbox" checked={draft.scarcityExhausted} onChange={event => setField('scarcityExhausted', event.target.checked)}/>Esgotado</label></div> : <div className="mc-random-fields"><label>Nível mínimo<select value={draft.scarcityMinLevel} onChange={event => setField('scarcityMinLevel', event.target.value)}>{[1,2,3,4].map(level => <option key={level} value={level}>Nível {level}</option>)}</select></label><label>Nível máximo<select value={draft.scarcityMaxLevel} onChange={event => setField('scarcityMaxLevel', event.target.value)}>{[1,2,3,4].map(level => <option key={level} value={level}>Nível {level}</option>)}</select></label></div>}
               <small>{draft.scarcityMode === 'random' ? 'O nível é sorteado na entrega para cada personagem. O consumível recebido terá o dado e as cargas correspondentes ao nível sorteado.' : 'Consumíveis esgotados têm peso e valor zero, seguindo as regras de escassez.'}</small></div>}
           </div>

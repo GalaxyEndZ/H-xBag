@@ -9514,3 +9514,267 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
     background-position:center,57% center,center !important;
   }
 }
+
+/* ===========================================================================
+   HÄXBAG V82 — SILVAM ARGENTEA | COMPOSIÇÃO ORGANIZADA
+   Ajustes de layout sem modificar a ilustração autoral ou a paleta da campanha.
+   Requisitos: arquivos de arte fornecidos na V81.
+   =========================================================================== */
+
+/* Uma única assinatura visual no catálogo. A interface acrescenta o nome,
+   e não uma segunda imagem ou um emblema por cima da arte autoral. */
+.app-shell .season-visual-style-group .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-preview {
+  isolation:isolate;
+  background:
+    linear-gradient(0deg,rgba(1,2,4,.84) 0%,rgba(1,2,4,.10) 34%,transparent 61%),
+    url("./style-art/silvam-argentea-galeria.png") center 47% / cover no-repeat,
+    #050506 !important;
+  border:1px solid rgba(207,168,108,.64) !important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+}
+.app-shell .season-visual-style-group .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-preview :is(
+  .season-style-preview-orb,.season-style-preview-glyph,.season-style-preview-lines
+){display:none !important}
+.app-shell .season-visual-style-group .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-preview-caption{
+  z-index:4 !important;left:16px !important;right:17px !important;bottom:12px !important;
+  font-size:9px !important;letter-spacing:.075em !important;
+  color:#f4f1ec !important;text-shadow:0 2px 8px #000 !important;
+}
+.app-shell .hb-customization-page .hb-style-gallery-entry.season-style-floresta_esquecida .season-style-card {
+  border-color:color-mix(in srgb,var(--season-primary) 22%,rgba(207,168,108,.5));
+}
+
+/* Ateliê: o cartão da identidade em uso deve usar uma miniatura legível,
+   deixando a legenda sempre fora dos galhos. */
+.app-shell.hb-polish .page-content .hb-customization-page
+.hb-customization-hero-preview.hb-customization-preview-floresta_esquecida{
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:260px;
+  background:
+    linear-gradient(180deg,rgba(2,3,5,.14),rgba(2,3,5,.03) 38%,rgba(2,3,5,.90) 100%),
+    url("./style-art/silvam-argentea-galeria.png") center 43% / cover no-repeat,
+    #050506 !important;
+  border:1px solid rgba(207,168,108,.58) !important;
+}
+.app-shell .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida .hb-studio-preview-caption{
+  left:24px;right:24px;bottom:23px;gap:4px;
+  max-width:calc(100% - 48px);
+}
+.app-shell .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida .hb-studio-preview-caption strong{
+  font-size:clamp(20px,2vw,27px);letter-spacing:-.025em;
+}
+.app-shell .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida .hb-customization-preview-symbol{
+  display:none !important;
+}
+
+/* No desktop o conteúdo da Customização ganha duas áreas proporcionais,
+   sem deixar o painel da arte comprimido. Só vale quando Silvam é o estilo ativo. */
+@media(min-width:1050px){
+  .app-shell.hb-polish.visual-style-floresta_esquecida .hb-customization-page .hb-customization-hero{
+    grid-template-columns:minmax(0,1fr) minmax(370px,1.08fr);
+    gap:clamp(20px,2.3vw,36px);
+  }
+}
+
+/* Inspetor do Silvam: capa panorâmica com proporção consistente. A imagem
+   é a mesma obra da V81; a moldura e o conteúdo vivem em áreas separadas. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover{
+  overflow:hidden;border-color:color-mix(in srgb,var(--season-line) 56%,rgba(199,155,98,.7)) !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art{
+  position:relative;min-width:0;isolation:isolate;overflow:hidden;
+  background:#050506 !important;
+  border-color:color-mix(in srgb,var(--season-line) 48%,rgba(199,155,98,.5));
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::before{
+  content:"" !important;display:block !important;position:absolute;inset:0 !important;
+  pointer-events:none;z-index:1;
+  background:url("./style-art/silvam-argentea-inspetor.png") center 47% / cover no-repeat !important;
+  filter:none !important;opacity:1 !important;border-radius:0;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::after{
+  content:"";display:block;inset:12px !important;z-index:2;
+  border:1px solid rgba(203,165,105,.34) !important;
+  border-radius:12px !important;box-shadow:none !important;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover :is(.hb-style-inspector-glyph,.hb-style-inspector-art-label){
+  display:none !important;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-copy{
+  min-width:0;gap:11px;padding:clamp(17px,2vw,25px);
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-copy h3{
+  margin:0;line-height:1.17;letter-spacing:-.03em;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-copy p{
+  margin:0;max-width:56ch;line-height:1.58;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-identity-inspector-tools{
+  gap:8px;flex-wrap:wrap;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-identity-inspector-tools>.hb-v66-favorite-inline{
+  display:inline-flex !important;align-items:center;justify-content:center;
+  width:auto !important;height:auto !important;min-width:0 !important;
+  padding:8px 12px !important;border-radius:999px !important;
+  font-size:11px !important;white-space:nowrap;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-identity-inspector-tools>div{
+  display:flex;gap:7px;align-items:center;margin-left:auto;flex:0 0 auto;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-actions{
+  display:flex;gap:9px;align-items:stretch;
+}
+.app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida .hb-style-inspector-actions button{
+  min-height:42px;white-space:normal;
+}
+@media(min-width:931px){
+  .app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+  .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover{
+    grid-template-columns:minmax(0,1.13fr) minmax(300px,.87fr) !important;
+  }
+  .app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+  .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art{
+    width:100%;min-height:360px !important;height:100% !important;
+    border-right:1px solid rgba(207,168,108,.26);border-bottom:0;
+  }
+}
+
+/* Comparador: a V71 empilhava dois cartões muito estreitos em uma metade
+   do inspetor. Aqui ambos passam a usar toda a largura disponível. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.hb-identity-mode-compare{
+  display:flex !important;flex-direction:column !important;
+  grid-template-columns:none !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.hb-identity-mode-compare .hb-style-inspector-art{
+  display:block !important;position:relative;
+  width:100% !important;height:auto !important;min-height:0 !important;
+  padding:14px !important;flex:0 0 auto;
+  overflow:hidden;background:var(--season-bg) !important;
+  border-right:0 !important;border-bottom:1px solid var(--hb-studio-rule);
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-style-inspector-art::before,
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-style-inspector-art::after{
+  content:none !important;display:none !important;
+}
+.app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare{
+  position:relative;z-index:5;display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:12px;width:100%;min-width:0;min-height:0;
+}
+.app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel{
+  position:relative;isolation:isolate;min-height:0 !important;min-width:0;
+  aspect-ratio:2.18 / 1;
+  border-radius:13px;overflow:hidden;
+}
+.app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-photo{
+  position:absolute !important;inset:0 !important;display:block !important;
+  width:100% !important;height:100% !important;z-index:0;
+  pointer-events:none;
+}
+.app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-photo::before{
+  content:none !important;display:none !important;
+}
+/* O Silvam tem uma versão panorâmica própria para o comparador. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-style-inspector.hb-identity-mode-compare
+.hb-v66-compare-panel.hb-customization-preview-floresta_esquecida .hb-v66-compare-photo{
+  background:
+    linear-gradient(0deg,rgba(0,0,0,.88),transparent 50%),
+    url("./style-art/silvam-argentea-galeria.png") center 46% / cover no-repeat,
+    #040405 !important;
+}
+.app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel>div{
+  z-index:2;left:0;right:0;bottom:0;display:grid;gap:4px;
+  padding:12px 15px;
+}
+@media(max-width:660px){
+  .app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare{
+    grid-template-columns:minmax(0,1fr) !important;gap:9px;
+  }
+  .app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel{
+    aspect-ratio:2.4/1;
+  }
+}
+@media(max-width:530px){
+  .app-shell .hb-customization-page .hb-customization-hero-preview.hb-customization-preview-floresta_esquecida{
+    min-height:220px;
+  }
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art{
+    min-height:224px !important;
+  }
+  .app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-style-inspector-art{padding:9px !important}
+  .app-shell .hb-customization-page .hb-style-inspector.hb-identity-mode-compare .hb-v66-compare-panel>div{padding:10px 12px}
+}
+
+
+
+/* V82.1 · O Silvam tem proporção 2048:714. No desktop, a capa usa
+   uma faixa panorâmica própria em vez de cortar a árvore dentro de meia tela. */
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover{
+  display:flex !important;flex-direction:column !important;
+  grid-template-columns:none !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art{
+  position:relative;width:100% !important;height:auto !important;min-height:0 !important;
+  aspect-ratio:2.75 / 1;flex:0 0 auto;
+  border-right:0 !important;border-bottom:1px solid rgba(207,168,108,.28) !important;
+  background:#050506 !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::before{
+  content:"" !important;display:block !important;
+  inset:4px 12px !important;
+  background:url("./style-art/silvam-argentea-arte.png") center center / contain no-repeat !important;
+}
+.app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+.hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::after{
+  inset:10px !important;border-radius:10px !important;
+}
+@media(min-width:850px){
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-copy{
+    display:grid;grid-template-columns:minmax(0,1.12fr) minmax(270px,.88fr);
+    grid-template-areas:
+      "modes modes"
+      "status status"
+      "eyebrow tools"
+      "title tools"
+      "description palette"
+      "motto palette"
+      "choice choice"
+      "actions actions";
+    column-gap:clamp(16px,2.4vw,32px);row-gap:11px;
+    padding:clamp(18px,2.5vw,27px);
+    align-items:start;
+  }
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-identity-preview-modes{grid-area:modes}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-v66-inspector-status{grid-area:status}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-customization-eyebrow{grid-area:eyebrow}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover h3{grid-area:title}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover p{grid-area:description}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-motto{grid-area:motto}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-identity-inspector-tools{grid-area:tools;align-self:stretch}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-palette{grid-area:palette;align-self:start}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-identity-compare{grid-area:choice}
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-actions{grid-area:actions}
+}
+@media(max-width:849px){
+  .app-shell .hb-customization-page .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-copy{
+    display:flex;flex-direction:column;gap:10px;
+  }
+}
+@media(max-width:530px){
+  .app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+  .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art{
+    aspect-ratio:1.95/1;min-height:180px !important;
+  }
+  .app-shell.hb-polish .page-content .hb-customization-page .hb-identity-selection-layout
+  .hb-style-inspector.season-style-floresta_esquecida.hb-identity-mode-cover .hb-style-inspector-art::before{
+    inset:2px 4px !important;background:url("./style-art/silvam-argentea-inspetor.png") center / contain no-repeat !important;
+  }
+}

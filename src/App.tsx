@@ -22,6 +22,8 @@ import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
+import KitEditor from './components/KitEditor'
+import { KIT_DEFINITIONS, KIT_MAIN_SKILLS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier } from './conditionEngine'
 
 /** A central de navegação opera somente sobre registros já carregados e autorizados. */
@@ -1389,6 +1391,41 @@ const resetCreatureFilters = () => {
   const [shopItemWeaponClass, setShopItemWeaponClass] = useState('improvised')
   const [shopItemScarcityLevel, setShopItemScarcityLevel] = useState<'1' | '2' | '3' | '4'>('1')
   const [shopItemScarcityExhausted, setShopItemScarcityExhausted] = useState(false)
+  const [shopKitType, setShopKitType] = useState<KitType | null>(null)
+  const [shopKitBenefitMode, setShopKitBenefitMode] = useState<KitBenefitMode>('skills')
+  const [shopKitSkills, setShopKitSkills] = useState<string[]>([])
+  const [shopKitUniqueEffect, setShopKitUniqueEffect] = useState('')
+  const [shopKitEffect, setShopKitEffect] = useState<KitEffect | null>(null)
+  const [shopKitEffectNotes, setShopKitEffectNotes] = useState('')
+  const activeShopKitType = shopItemCategories.includes('Kits') ? shopKitType : null
+  const activeShopKitDef = kitDefinition(activeShopKitType)
+  const activeShopKitWeight = kitWeight(activeShopKitType, Number(shopItemScarcityLevel), shopItemScarcityExhausted)
+  function setShopKitTypeWithCategory(type: KitType | null) {
+    setShopKitType(type)
+    if (type) setShopItemEquipmentType('none')
+    setShopKitBenefitMode(type === 'equip_rare' ? 'three_archetype' : 'skills')
+    setShopKitSkills([])
+    if (!type) return
+    const def = KIT_DEFINITIONS[type]
+    setShopItemCategories(['Kits',def.family === 'consumable' ? 'Consumíveis' : 'Equipamento',...shopItemCategories.filter(entry => !['Kits','Consumíveis','Equipamento'].includes(entry))])
+    setShopItemCategory('Kits')
+    setShopItemScarcityExhausted(false)
+    if (def.family === 'consumable') {
+      const level = normalizeKitLevel(type, Number(shopItemScarcityLevel))
+      if (level) setShopItemScarcityLevel(String(level) as '1'|'2'|'3'|'4')
+    }
+  }
+  const shopKitFields = shopItemCategories.includes('Kits') ? <KitEditor
+    type={activeShopKitType} onTypeChange={setShopKitTypeWithCategory}
+    benefitMode={shopKitBenefitMode} onBenefitModeChange={mode => {setShopKitBenefitMode(mode);setShopKitSkills([])}}
+    skills={shopKitSkills} setSkills={setShopKitSkills}
+    uniqueEffect={shopKitUniqueEffect} onUniqueEffectChange={setShopKitUniqueEffect}
+    effect={shopKitEffect} onEffectChange={setShopKitEffect}
+    effectNotes={shopKitEffectNotes} onEffectNotesChange={setShopKitEffectNotes}
+    scarcityLevel={shopItemScarcityLevel} onScarcityLevelChange={level => setShopItemScarcityLevel(level as '1'|'2'|'3'|'4')}
+    exhausted={shopItemScarcityExhausted} onExhaustedChange={setShopItemScarcityExhausted}
+  /> : null
+
 
   const [shopLoading, setShopLoading] = useState(false)
   const [shopPurchaseLoading, setShopPurchaseLoading] = useState<string | null>(null)
@@ -2149,6 +2186,54 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [newProtectionMode, setNewProtectionMode] = useState<'resistencia' | 'sanidade'>('resistencia')
   const [newScarcityLevel, setNewScarcityLevel] = useState<'1' | '2' | '3' | '4'>('1')
   const [newScarcityExhausted, setNewScarcityExhausted] = useState(false)
+  // Kits: separate equippable and consumable rules without changing legacy items.
+  const [newKitType, setNewKitType] = useState<KitType | null>(null)
+  const [newKitBenefitMode, setNewKitBenefitMode] = useState<KitBenefitMode>('skills')
+  const [newKitSkills, setNewKitSkills] = useState<string[]>([])
+  const [newKitUniqueEffect, setNewKitUniqueEffect] = useState('')
+  const [newKitEffect, setNewKitEffect] = useState<KitEffect | null>(null)
+  const [newKitEffectNotes, setNewKitEffectNotes] = useState('')
+  const activeKitType = newItemCategories.includes('Kits') ? newKitType : null
+  const activeKitDefinition = kitDefinition(activeKitType)
+  const activeKitWeight = kitWeight(activeKitType, Number(newScarcityLevel), newScarcityExhausted)
+  function setKitTypeWithCategory(type: KitType | null) {
+    setNewKitType(type)
+    if (type) setNewEquipmentType('none')
+    setNewKitBenefitMode(type === 'equip_rare' ? 'three_archetype' : 'skills')
+    setNewKitSkills([])
+    if (!type) return
+    const definition = KIT_DEFINITIONS[type]
+    const next = Array.from(new Set([
+      'Kits', ...(definition.family === 'consumable' ? ['Consumíveis'] : ['Equipamento']),
+      ...newItemCategories.filter(entry => entry !== 'Kits' && entry !== 'Consumíveis' && entry !== 'Equipamento'),
+    ]))
+    setNewItemCategories(next)
+    setNewItemCategory('Kits')
+    setNewScarcityExhausted(false)
+    if (definition.family === 'consumable') {
+      const level = normalizeKitLevel(type, Number(newScarcityLevel))
+      if (level !== null) setNewScarcityLevel(String(level) as '1' | '2' | '3' | '4')
+    }
+  }
+  const kitEditorFields = newItemCategories.includes('Kits') ? <KitEditor
+    type={activeKitType}
+    onTypeChange={setKitTypeWithCategory}
+    benefitMode={newKitBenefitMode}
+    onBenefitModeChange={mode => { setNewKitBenefitMode(mode); setNewKitSkills([]) }}
+    skills={newKitSkills}
+    setSkills={setNewKitSkills}
+    uniqueEffect={newKitUniqueEffect}
+    onUniqueEffectChange={setNewKitUniqueEffect}
+    effect={newKitEffect}
+    onEffectChange={setNewKitEffect}
+    effectNotes={newKitEffectNotes}
+    onEffectNotesChange={setNewKitEffectNotes}
+    scarcityLevel={newScarcityLevel}
+    onScarcityLevelChange={value => setNewScarcityLevel(value as '1'|'2'|'3'|'4')}
+    exhausted={newScarcityExhausted}
+    onExhaustedChange={setNewScarcityExhausted}
+  /> : null
+
 
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [emojiPickerItem, setEmojiPickerItem] = useState<Item | null>(null)
@@ -3893,10 +3978,20 @@ async function saveShopItem() {
 
   const price = Number(shopItemPrice.replace(',', '.'))
   const automaticWeight = getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass)
-  const weight = automaticWeight ?? Number(shopItemWeight.replace(',', '.'))
+  const weight = activeShopKitType ? (activeShopKitWeight ?? Number.NaN) : automaticWeight ?? Number(shopItemWeight.replace(',', '.'))
   const stockText = shopItemStock.trim()
   const stock = stockText === '' ? null : Number(stockText)
 
+  if (activeShopKitType && activeShopKitDef?.family === 'consumable' && !kitAvailableScarcityLevels(activeShopKitType).includes(Number(shopItemScarcityLevel) as 1|2|3|4)) {
+    setError('O nível de escassez não existe para este tipo de kit.')
+    return
+  }
+  if (activeShopKitType && activeShopKitDef?.family === 'equippable') {
+    const slots = kitSlots(activeShopKitType, shopKitBenefitMode)
+    if (slots.some((_, i) => !shopKitSkills[i]?.trim())) {setError('Configure todas as perícias do kit.');return}
+    if (new Set(slots.map((_, i) => shopKitSkills[i]?.trim().toLocaleLowerCase('pt-BR'))).size !== slots.length) {setError('Escolha perícias diferentes para o kit.');return}
+    if (activeShopKitType === 'equip_rare' && !shopKitUniqueEffect.trim()) {setError('Descreva a funcionalidade única do kit raro.');return}
+  }
   if (!Number.isFinite(price) || price < 0) {
     setError('Informe um preço válido, igual ou maior que zero.')
     return
@@ -3936,6 +4031,14 @@ async function saveShopItem() {
       icon: shopItemEmoji.trim() || '📦',
       rarity: shopItemRarity,
       categories: shopItemCategories.length ? shopItemCategories : [shopItemCategory],
+      kitType: activeShopKitType,
+      kitFamily: activeShopKitDef?.family ?? null,
+      kitBenefitMode: activeShopKitDef?.family === 'equippable' ? shopKitBenefitMode : null,
+      kitSkills: activeShopKitDef?.family === 'equippable' ? shopKitSkills.slice(0,kitSlots(activeShopKitType!,shopKitBenefitMode).length).map(entry => entry.trim()) : null,
+      kitUniqueEffect: activeShopKitType === 'equip_rare' ? shopKitUniqueEffect.trim() : null,
+      kitEffect: activeShopKitDef?.family === 'consumable' && activeShopKitType !== 'prolonged' ? shopKitEffect : null,
+      kitEffectNotes: activeShopKitDef?.family === 'consumable' ? shopKitEffectNotes.trim() : null,
+      kitDuration: activeShopKitType === 'immediate' ? '1d6_rodadas' : activeShopKitType === 'preparation' ? 'cena' : null,
       equipmentType: isCyberFlowerSystem ? shopEquipmentTypeForSave : (
   shopEquipmentTypeForSave === 'cybernetic' ? 'none' : shopEquipmentTypeForSave
 ),
@@ -4033,6 +4136,12 @@ cyberneticData: isCyberFlowerSystem && shopEquipmentTypeForSave === 'cybernetic'
     setShopItemWeaponClass('improvised')
     setShopItemScarcityLevel('1')
     setShopItemScarcityExhausted(false)
+    setShopKitType(null)
+    setShopKitBenefitMode('skills')
+    setShopKitSkills([])
+    setShopKitUniqueEffect('')
+    setShopKitEffect(null)
+    setShopKitEffectNotes('')
     setShowShopItemForm(false)
   } catch (err) {
     const dbError = err as { message?: string; code?: string; details?: string; hint?: string }
@@ -4086,6 +4195,12 @@ setShopCyberneticEffects(
   setShopItemWeaponClass(typeof item.metadata?.weaponClass === 'string' ? item.metadata.weaponClass : 'improvised')
   setShopItemScarcityLevel(['1', '2', '3', '4'].includes(String(item.metadata?.scarcityLevel ?? '1')) ? String(item.metadata?.scarcityLevel ?? '1') as '1' | '2' | '3' | '4' : '1')
   setShopItemScarcityExhausted(item.metadata?.scarcityExhausted === true)
+  setShopKitType(isKitType(item.metadata?.kitType) ? item.metadata.kitType : null)
+  setShopKitBenefitMode(['skills','protection','three_archetype','main_and_archetype'].includes(String(item.metadata?.kitBenefitMode)) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
+  setShopKitSkills(Array.isArray(item.metadata?.kitSkills) ? item.metadata.kitSkills.filter((entry):entry is string => typeof entry === 'string') : [])
+  setShopKitUniqueEffect(typeof item.metadata?.kitUniqueEffect === 'string' ? item.metadata.kitUniqueEffect : '')
+  setShopKitEffect(['damage','resistance','combat_point'].includes(String(item.metadata?.kitEffect)) ? item.metadata?.kitEffect as KitEffect : null)
+  setShopKitEffectNotes(typeof item.metadata?.kitEffectNotes === 'string' ? item.metadata.kitEffectNotes : '')
   setShopItemWeight(String(item.weight))
   setShopItemPrice(String(item.unit_price))
   setShopItemCurrencyId(item.currency_id ?? '')
@@ -6312,6 +6427,11 @@ async function deleteCharacter(character: Character) {
     const roll = Math.floor(Math.random() * die) + 1
     const exhausted = roll === 1 && currentLevel === 4
     const nextLevel = roll === 1 && currentLevel < 4 ? currentLevel + 1 : currentLevel
+    const itemKitType = isKitType(metadata.kitType) ? metadata.kitType : null
+    const weightAfterUse = itemKitType ? kitWeight(itemKitType, nextLevel, exhausted) : null
+    // Duration roll is independent of the scarcity die. It records an immediate kit's
+    // number of rounds but does NOT invent a numeric combat bonus.
+    const durationRoll = itemKitType === 'immediate' ? Math.floor(Math.random() * 6) + 1 : null
     const nextMetadata = {
       ...metadata,
       scarcityLevel: nextLevel,
@@ -6321,6 +6441,7 @@ async function deleteCharacter(character: Character) {
       scarcityLastDie: `d${die}`,
       scarcityUses: (Number(metadata.scarcityUses) || 0) + 1,
       scarcityExhausted: exhausted,
+      ...(itemKitType === 'immediate' ? {kitLastDurationRounds: durationRoll} : {}),
     }
 
     setUsingScarcityItemId(item.id)
@@ -6328,7 +6449,7 @@ async function deleteCharacter(character: Character) {
       .from('inventory_items')
 .update({
   metadata: nextMetadata,
-  weight: nextMetadata.scarcityCharge,
+  weight: weightAfterUse ?? nextMetadata.scarcityCharge,
   ...(exhausted ? { unit_price: 0 } : {}),
 })
       .eq('id', item.id)
@@ -6350,6 +6471,8 @@ async function deleteCharacter(character: Character) {
       : roll === 1
         ? `${item.name}: saiu 1 no d${die}. Escassez avançou para o nível ${nextLevel} (${nextMetadata.scarcityDie}).`
         : `${item.name}: ${roll} no d${die}. O nível de escassez permanece em ${currentLevel}.`)
+    if (durationRoll !== null) setNotice(`${item.name}: escassez ${roll} no d${die}; buff por ${durationRoll} rodada(s). O valor do bônus é definido pelo mestre.`)
+    else if (itemKitType === 'preparation') setNotice(`${item.name}: escassez ${roll} no d${die}; efeito por uma cena. O valor do bônus é definido pelo mestre.`)
   }
 
   function getAutomaticItemWeight(
@@ -6391,6 +6514,12 @@ async function deleteCharacter(character: Character) {
     setNewProtectionMode('resistencia')
     setNewScarcityLevel('1')
     setNewScarcityExhausted(false)
+    setNewKitType(null)
+    setNewKitBenefitMode('skills')
+    setNewKitSkills([])
+    setNewKitUniqueEffect('')
+    setNewKitEffect(null)
+    setNewKitEffectNotes('')
     setNewItemRarity('comum')
   }
 
@@ -6405,6 +6534,12 @@ async function deleteCharacter(character: Character) {
     setNewItemRarity(typeof item.metadata?.rarity === 'string' ? item.metadata.rarity : 'comum')
     setNewScarcityLevel(['1', '2', '3', '4'].includes(String(item.metadata?.scarcityLevel ?? '1')) ? String(item.metadata?.scarcityLevel ?? '1') as '1' | '2' | '3' | '4' : '1')
     setNewScarcityExhausted(item.metadata?.scarcityExhausted === true)
+    setNewKitType(isKitType(item.metadata?.kitType) ? item.metadata.kitType : null)
+    setNewKitBenefitMode(['skills','protection','three_archetype','main_and_archetype'].includes(String(item.metadata?.kitBenefitMode)) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
+    setNewKitSkills(Array.isArray(item.metadata?.kitSkills) ? item.metadata.kitSkills.filter((entry): entry is string => typeof entry === 'string') : [])
+    setNewKitUniqueEffect(typeof item.metadata?.kitUniqueEffect === 'string' ? item.metadata.kitUniqueEffect : '')
+    setNewKitEffect(['damage','resistance','combat_point'].includes(String(item.metadata?.kitEffect)) ? item.metadata?.kitEffect as KitEffect : null)
+    setNewKitEffectNotes(typeof item.metadata?.kitEffectNotes === 'string' ? item.metadata.kitEffectNotes : '')
     setNewItemCategories(Array.isArray(item.metadata?.categories) ? item.metadata.categories.filter((value): value is string => typeof value === 'string') : [item.category])
     setNewWeaponClass(typeof item.metadata?.weaponClass === 'string' ? item.metadata.weaponClass : 'improvised')
     setNewEquipmentType(
@@ -6455,10 +6590,36 @@ setNewCyberneticEffects(
     const quantity = Number(newItemQuantity)
 const chargeByLevel: Record<number, number> = { 1: 7, 2: 5, 3: 3, 4: 1 }
 
-const weight = newItemCategories.includes('Consumíveis')
-  ? (newScarcityExhausted ? 0 : chargeByLevel[Number(newScarcityLevel)] ?? 1)
-  : Number(newItemWeight.replace(',', '.'))
+const weight = activeKitType
+  ? (activeKitWeight ?? Number.NaN)
+  : newItemCategories.includes('Consumíveis')
+    ? (newScarcityExhausted ? 0 : chargeByLevel[Number(newScarcityLevel)] ?? 1)
+    : Number(newItemWeight.replace(',', '.'))
 
+    if (activeKitType && activeKitDefinition?.family === 'consumable' && !kitAvailableScarcityLevels(activeKitType).includes(Number(newScarcityLevel) as 1 | 2 | 3 | 4)) {
+      setError('Este nível de escassez não existe para o tipo de kit selecionado.')
+      return
+    }
+    if (activeKitType && activeKitDefinition?.family === 'equippable') {
+      const slots = kitSlots(activeKitType, newKitBenefitMode)
+      if (slots.some((_, index) => !newKitSkills[index]?.trim())) {
+        setError('Preencha todas as perícias beneficiadas pelo kit ou escolha a opção de proteção moderada.')
+        return
+      }
+      if (activeKitType === 'equip_rare' && !newKitUniqueEffect.trim()) {
+        setError('Descreva a funcionalidade única do kit equipável raro.')
+        return
+      }
+      const chosen = slots.map((_, index) => newKitSkills[index]?.trim().toLocaleLowerCase('pt-BR'))
+      if (new Set(chosen).size !== chosen.length) {
+        setError('Um kit deve beneficiar perícias diferentes.')
+        return
+      }
+      if (slots.some((slot,index) => slot.group === 'main' && !KIT_MAIN_SKILLS.includes(newKitSkills[index]?.trim() as typeof KIT_MAIN_SKILLS[number]))) {
+        setError('Selecione uma das seis perícias principais para o kit raro.')
+        return
+      }
+    }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
       setError('A quantidade deve ser um número inteiro entre 1 e 999.')
       return
@@ -6488,6 +6649,15 @@ const weight = newItemCategories.includes('Consumíveis')
   icon: newItemEmoji,
   rarity: newItemRarity,
   categories: newItemCategories.length ? newItemCategories : [newItemCategory],
+  kitType: activeKitType,
+  kitFamily: activeKitDefinition?.family ?? null,
+  kitBenefitMode: activeKitDefinition?.family === 'equippable' ? newKitBenefitMode : null,
+  kitSkills: activeKitDefinition?.family === 'equippable' ? newKitSkills.slice(0, kitSlots(activeKitType!, newKitBenefitMode).length).map(skill => skill.trim()) : null,
+  kitUniqueEffect: activeKitType === 'equip_rare' ? newKitUniqueEffect.trim() : null,
+  kitEffect: activeKitDefinition?.family === 'consumable' && activeKitType !== 'prolonged' ? newKitEffect : null,
+  kitEffectNotes: activeKitDefinition?.family === 'consumable' ? newKitEffectNotes.trim() : null,
+  kitDuration: activeKitType === 'immediate' ? '1d6_rodadas' : activeKitType === 'preparation' ? 'cena' : null,
+
   equipmentType: isCyberFlowerSystem ? itemEquipmentTypeForSave : (
   itemEquipmentTypeForSave === 'cybernetic' ? 'none' : itemEquipmentTypeForSave
 ),
@@ -14131,6 +14301,7 @@ disabled={
                                 if (category === 'Alimentos' && event.target.checked && !next.includes('Consumíveis')) next = [...next, 'Consumíveis']
                                 if (category === 'Consumíveis' && !event.target.checked) next = next.filter(value => value !== 'Alimentos')
                                 setNewItemCategories(next)
+                                if (!next.includes('Kits')) setNewKitType(null)
                                 if (next.length) setNewItemCategory(next[0])
                                 const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
                                 if (automaticWeight !== null) setNewItemWeight(String(automaticWeight))
@@ -14143,7 +14314,8 @@ disabled={
                         {!newItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
                       </section>
 
-                      {newItemCategories.includes('Consumíveis') && (
+                      {kitEditorFields}
+                      {newItemCategories.includes('Consumíveis') && !activeKitType && (
                         <section className="scarcity-editor-card">
                           <div className="scarcity-editor-heading">
                             <span className="scarcity-editor-icon">⌛</span>
@@ -14316,20 +14488,17 @@ disabled={
     max="100000"
     step="0.1"
     value={
-      newItemCategories.includes('Consumíveis')
-        ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
-        : newItemWeight
+      activeKitType ? (activeKitWeight === null ? '' : String(activeKitWeight)) : newItemCategories.includes('Consumíveis') ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]) : newItemWeight
     }
     onChange={(event) => setNewItemWeight(event.target.value)}
     disabled={
-      newItemCategories.includes('Consumíveis') ||
+      Boolean(activeKitType) || newItemCategories.includes('Consumíveis') ||
       getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
     }
     required
   />
   <small>
-    {newItemCategories.includes('Consumíveis')
-      ? 'Peso definido automaticamente pela carga restante do consumível.'
+    {activeKitType ? 'Peso fixado pela tabela deste tipo de kit e nível de escassez.' : newItemCategories.includes('Consumíveis') ? 'Peso definido automaticamente pela carga restante do consumível.'
       : getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
         ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
         : 'Informe o peso por unidade deste item.'}
@@ -15384,6 +15553,12 @@ style={{cursor:'pointer'}}>
         setShopItemWeaponClass('improvised')
         setShopItemScarcityLevel('1')
         setShopItemScarcityExhausted(false)
+        setShopKitType(null)
+        setShopKitBenefitMode('skills')
+        setShopKitSkills([])
+        setShopKitUniqueEffect('')
+        setShopKitEffect(null)
+        setShopKitEffectNotes('')
         setShowShopItemForm(value => !value)
       }}
     >
@@ -15541,6 +15716,7 @@ style={{cursor:'pointer'}}>
                                 if (category === 'Alimentos' && event.target.checked && !next.includes('Consumíveis')) next = [...next, 'Consumíveis']
                                 if (category === 'Consumíveis' && !event.target.checked) next = next.filter(value => value !== 'Alimentos')
                                         setShopItemCategories(next)
+                                        if (!next.includes('Kits')) setShopKitType(null)
                                         if (next.length) setShopItemCategory(next[0])
                                         const automaticWeight = getAutomaticItemWeight(next, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass)
                                         if (automaticWeight !== null) setShopItemWeight(String(automaticWeight))
@@ -15553,6 +15729,7 @@ style={{cursor:'pointer'}}>
                                 {!shopItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
                               </section>
 
+                              {shopKitFields}
                               <div className="item-rarity-field">
                                 <label htmlFor="shop-item-rarity">Raridade</label>
                                 <select id="shop-item-rarity" value={shopItemRarity} onChange={event => setShopItemRarity(event.target.value)}>
@@ -15656,7 +15833,7 @@ style={{cursor:'pointer'}}>
                                 <div className="equipment-rules-preview"><strong>Configuração da arma</strong><p>Dano extra: {{improvised:'1d4',advanced:'1d6',special:'1d8',black_red:'1d10',mutable:'1d12'}[shopItemWeaponClass]}</p><p>Carga: {{improvised:0.5,advanced:1,special:1,black_red:1.5,mutable:2}[shopItemWeaponClass]} kg</p></div>
                               </>}
 
-                              {shopItemCategories.includes('Consumíveis') && <section className="scarcity-editor-card"><div className="scarcity-editor-heading"><span className="scarcity-editor-icon">⌛</span><div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div></div><label>Nível inicial de escassez<select value={shopItemScarcityLevel} onChange={event => setShopItemScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}><option value="1">Nível 1 — d12</option><option value="2">Nível 2 — d8</option><option value="3">Nível 3 — d6</option><option value="4">Nível 4 — d4</option></select></label><div className="scarcity-level-preview"><div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[shopItemScarcityLevel]}</strong></div><div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[shopItemScarcityLevel]}</strong></div></div><p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p><label className="scarcity-exhausted-toggle"><input type="checkbox" checked={shopItemScarcityExhausted} onChange={event => setShopItemScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label></section>}
+                              {shopItemCategories.includes('Consumíveis') && !activeShopKitType && <section className="scarcity-editor-card"><div className="scarcity-editor-heading"><span className="scarcity-editor-icon">⌛</span><div><strong>Sistema de escassez</strong><p>Define a chance de o consumível se esgotar conforme é utilizado.</p></div></div><label>Nível inicial de escassez<select value={shopItemScarcityLevel} onChange={event => setShopItemScarcityLevel(event.target.value as '1' | '2' | '3' | '4')}><option value="1">Nível 1 — d12</option><option value="2">Nível 2 — d8</option><option value="3">Nível 3 — d6</option><option value="4">Nível 4 — d4</option></select></label><div className="scarcity-level-preview"><div><span>Dado ao usar</span><strong>{{ '1': 'd12', '2': 'd8', '3': 'd6', '4': 'd4' }[shopItemScarcityLevel]}</strong></div><div><span>Carga</span><strong>{{ '1': 7, '2': 5, '3': 3, '4': 1 }[shopItemScarcityLevel]}</strong></div></div><p className="scarcity-editor-note">Ao usar, role o dado indicado. Resultado 1 aumenta um nível; no nível 4, resultado 1 esgota o item.</p><label className="scarcity-exhausted-toggle"><input type="checkbox" checked={shopItemScarcityExhausted} onChange={event => setShopItemScarcityExhausted(event.target.checked)} /><span><strong>Item esgotado</strong><small>Marque para impedir novas rolagens. Desmarque para reativar o consumível.</small></span></label></section>}
 
                             </div>
 
@@ -15712,12 +15889,12 @@ style={{cursor:'pointer'}}>
                                     type="number"
                                     min="0"
                                     step="0.01"
-                                    value={shopItemWeight}
+                                    value={activeShopKitType ? (activeShopKitWeight === null ? '' : String(activeShopKitWeight)) : shopItemWeight}
                                     onChange={event => setShopItemWeight(event.target.value)}
-                                    disabled={getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass) !== null}
+                                    disabled={Boolean(activeShopKitType) || getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass) !== null}
                                     style={inputStyle}
                                   />
-                                  <small style={{ color: 'var(--season-muted, #aaa)' }}>{getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass) !== null ? 'Peso definido automaticamente pelas regras do equipamento.' : 'Informe o peso por unidade deste item.'}</small>
+                                  <small style={{ color: 'var(--season-muted, #aaa)' }}>{activeShopKitType ? 'Peso definido pelo tipo de kit e nível de escassez.' : getAutomaticItemWeight(shopItemCategories, shopItemEquipmentType, shopItemArmorClass, shopItemWeaponClass) !== null ? 'Peso definido automaticamente pelas regras do equipamento.' : 'Informe o peso por unidade deste item.'}</small>
                                 </label>
                               </div>
                             </div>
@@ -16984,6 +17161,7 @@ style={{cursor:'pointer'}}>
                               <input type="checkbox" checked={newItemCategories.includes(category)} onChange={event => {
                                 const next = event.target.checked ? [...newItemCategories, category] : newItemCategories.filter(value => value !== category)
                                 setNewItemCategories(next)
+                                if (!next.includes('Kits')) setNewKitType(null)
                                 if (next.length) setNewItemCategory(next[0])
                                 const automaticWeight = getAutomaticItemWeight(next, newEquipmentType, newArmorClass, newWeaponClass)
                                 if (automaticWeight !== null) setNewItemWeight(String(automaticWeight))
@@ -16996,7 +17174,8 @@ style={{cursor:'pointer'}}>
                         {!newItemCategories.length && <p className="item-classifications-hint">Selecione pelo menos uma classificação.</p>}
                       </section>
 
-                      {newItemCategories.includes('Consumíveis') && (
+                      {kitEditorFields}
+                      {newItemCategories.includes('Consumíveis') && !activeKitType && (
                         <section className="scarcity-editor-card">
                           <div className="scarcity-editor-heading">
                             <span className="scarcity-editor-icon">⌛</span>
@@ -17142,20 +17321,17 @@ style={{cursor:'pointer'}}>
   max="100000"
   step="0.1"
   value={
-    newItemCategories.includes('Consumíveis')
-      ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel])
-      : newItemWeight
+    activeKitType ? (activeKitWeight === null ? '' : String(activeKitWeight)) : newItemCategories.includes('Consumíveis') ? String(newScarcityExhausted ? 0 : ({ '1': 7, '2': 5, '3': 3, '4': 1 } as Record<string, number>)[newScarcityLevel]) : newItemWeight
   }
   onChange={(event) => setNewItemWeight(event.target.value)}
   disabled={
-    newItemCategories.includes('Consumíveis') ||
+    Boolean(activeKitType) || newItemCategories.includes('Consumíveis') ||
     getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
   }
   required
 />
 <small>
-  {newItemCategories.includes('Consumíveis')
-    ? 'Peso definido automaticamente pela carga restante do consumível.'
+  {activeKitType ? 'Peso fixado pela tabela deste tipo de kit e nível de escassez.' : newItemCategories.includes('Consumíveis') ? 'Peso definido automaticamente pela carga restante do consumível.'
     : getAutomaticItemWeight(newItemCategories, newEquipmentType, newArmorClass, newWeaponClass) !== null
       ? 'Peso definido automaticamente pela classificação e bloqueado para manter as regras do equipamento.'
       : 'Informe o peso por unidade deste item.'}
@@ -17676,6 +17852,37 @@ style={{cursor:'pointer'}}>
           setItems(current=>current.map(entry=>entry.id===selectedItemDetails.id?data as Item:entry));setSelectedItemDetails(data as Item);setNotice(nextEquipped?(isWeapon?'Arma equipada.':equipmentType==='armor'?'Armadura equipada.':'Proteção equipada.'):'Equipamento desativado.');
         }}>{selectedItemDetails.metadata?.equipped===true?'✓ Equipado · Desequipar':(Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Armas'))?'⚔ Equipar arma':'Equipar item'}</button>}
 
+        {isKitType(selectedItemDetails.metadata?.kitType) && (() => {
+          const type = selectedItemDetails.metadata.kitType
+          const definition = KIT_DEFINITIONS[type]
+          const mode = (selectedItemDetails.metadata?.kitBenefitMode ?? 'skills') as KitBenefitMode
+          const skills = Array.isArray(selectedItemDetails.metadata?.kitSkills) ? selectedItemDetails.metadata.kitSkills.filter((entry): entry is string => typeof entry === 'string') : []
+          const description = typeof selectedItemDetails.metadata?.kitUniqueEffect === 'string' ? selectedItemDetails.metadata.kitUniqueEffect : ''
+          const effect = selectedItemDetails.metadata?.kitEffect as KitEffect | null
+          const rounds = Number(selectedItemDetails.metadata?.kitLastDurationRounds) || null
+          return <section className="hb-kit-detail">
+            <h3>🧰 {definition.name}</h3>
+            <p>{definition.description}</p>
+            {definition.family === 'equippable' && <>
+              {type === 'equip_standard' && mode === 'protection' ? <p>Benefício: proteção moderada.</p> : <ul>{skills.map((skill,i) => <li key={`${i}-${skill}`}>{skill}</li>)}</ul>}
+              {type === 'equip_rare' && description && <p>Funcionalidade única: {description}</p>}
+              <p>As perícias escolhidas são registradas sem inventar um valor de bônus.</p>
+              <button type="button" className="secondary-button" onClick={async () => {
+                const equipped = selectedItemDetails.metadata?.equipped !== true
+                const {data,error} = await supabase.from('inventory_items').update({metadata:{...(selectedItemDetails.metadata||{}),equipped}}).eq('id',selectedItemDetails.id).eq('character_id',selectedItemDetails.character_id).select('id,character_id,name,description,category,quantity,weight,metadata,unit_price,currency_id').maybeSingle()
+                if(error || !data){setError('Não foi possível alterar o kit equipado.');return}
+                setItems(current => current.map(item=>item.id===data.id?data as Item:item))
+                setSelectedItemDetails(data as Item)
+              }}>{selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '○ Equipar kit'}</button>
+            </>}
+            {definition.family === 'consumable' && <>
+              <p>Efeito: {type === 'prolonged' ? 'A definir pelo mestre' : kitEffectLabel(effect)}</p>
+              <p>Duração: {type === 'immediate' ? (rounds ? `${rounds} rodada(s) na última utilização` : 'Até 1d6 rodadas') : type === 'preparation' ? 'Uma cena' : 'Não especificada'}</p>
+              {typeof selectedItemDetails.metadata?.kitEffectNotes === 'string' && selectedItemDetails.metadata.kitEffectNotes && <p>{selectedItemDetails.metadata.kitEffectNotes}</p>}
+              <p>Os valores numéricos do buff ainda não foram definidos nas regras.</p>
+            </>}
+          </section>
+        })()}
         {((Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Consumíveis')) || selectedItemDetails.category === 'Consumíveis') && (() => {
           const level = Math.min(4, Math.max(1, Number(selectedItemDetails.metadata?.scarcityLevel) || 1))
           const die = ({ 1: 'd12', 2: 'd8', 3: 'd6', 4: 'd4' } as Record<number, string>)[level]

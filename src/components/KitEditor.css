@@ -1,0 +1,23 @@
+.hb-kit-editor{grid-column:1/-1;display:grid;gap:13px;padding:clamp(14px,2vw,22px);border-radius:15px;border:1px solid color-mix(in srgb,var(--season-primary,#d5b989) 28%,var(--season-line,#343942));background:linear-gradient(140deg,color-mix(in srgb,var(--season-primary,#d5b989) 7%,var(--season-surface,#161a20)),var(--season-surface-alt,#10151b));min-width:0}
+.hb-kit-editor-head{display:flex;align-items:center;gap:12px}
+.hb-kit-editor-head strong{display:block;color:var(--season-text,#f3f4f6);font-size:15px}
+.hb-kit-editor-head p{color:var(--season-muted,#a5adb4);font-size:12px;margin:3px 0 0;line-height:1.5}
+.hb-kit-editor-emblem{display:grid;place-items:center;width:40px;height:40px;flex:0 0 40px;border-radius:12px;border:1px solid color-mix(in srgb,var(--season-primary,#d5b989) 34%,transparent);background:color-mix(in srgb,var(--season-primary,#d5b989) 11%,transparent);font-size:20px}
+.hb-kit-editor label{display:grid;gap:6px;min-width:0;color:var(--season-text,#fff);font-size:12px;font-weight:700}
+.hb-kit-editor :is(input:not([type="checkbox"]),select,textarea){max-width:100%;width:100%;box-sizing:border-box;border:1px solid var(--season-line,#41464d);border-radius:9px;background:var(--season-bg,#090e13);color:var(--season-text,#f0f2f5);padding:10px 11px;min-height:40px;font:inherit;font-weight:500}
+.hb-kit-editor textarea{resize:vertical;line-height:1.5}
+.hb-kit-editor :is(input,select,textarea):focus-visible{outline:2px solid var(--season-primary,#d5b989);outline-offset:2px}
+.hb-kit-summary{display:grid;gap:5px;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--season-primary,#d5b989) 23%,var(--season-line,#41464d));background:color-mix(in srgb,var(--season-bg,#080f17) 70%,transparent)}
+.hb-kit-summary strong{color:var(--season-primary,#d5b989);font-size:13px}
+.hb-kit-summary p{margin:0;font-size:12px;line-height:1.55;color:var(--season-muted,#a5adb4)}
+.hb-kit-summary span{font-size:12px;color:var(--season-text,#fff)}
+.hb-kit-skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px}
+.hb-kit-scarcity-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px}
+.hb-kit-editor .hb-kit-scarcity-check{display:flex;align-items:center;gap:8px;padding:11px 0;white-space:nowrap;cursor:pointer}
+.hb-kit-editor .hb-kit-scarcity-check input{accent-color:var(--season-primary,#d5b989)}
+.hb-kit-editor-note{margin:0;color:var(--season-muted,#a5adb4);font-size:11px;line-height:1.55}
+.hb-kit-detail{margin:14px 0;padding:16px;display:grid;gap:9px;border-radius:13px;border:1px solid var(--season-line,#42464b);background:var(--season-surface-alt,#11171d)}
+.hb-kit-detail h3{font-size:15px;margin:0;color:var(--season-primary,#d5b989)}
+.hb-kit-detail p,.hb-kit-detail li{margin:0;color:var(--season-muted,#a8aeba);font-size:12px;line-height:1.5}
+.hb-kit-detail ul{margin:0;padding-left:20px}
+@media(max-width:560px){.hb-kit-scarcity-row{grid-template-columns:1fr}.hb-kit-editor{padding:13px}}
