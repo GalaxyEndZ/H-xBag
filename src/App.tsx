@@ -13,6 +13,7 @@ import './themes/seasonThemes-enhanced.css'
 import './themes/visualStyles.css'
 import './themes/rosterCrestFix.css'
 import './themes/sheetsRefined.css'
+import './themes/bestiaryRefined.css'
 import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
@@ -28,6 +29,19 @@ import KitEditor from './components/KitEditor'
 import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
+
+/** Marcador decorativo usado apenas nas prévias sem retrato do Bestiário. */
+function bestiaryCategorySymbol(category: string): string {
+  const kind = category.toLocaleLowerCase('pt-BR')
+  if (kind.startsWith('oni ') || kind.includes('demônio')) return '♜'
+  if (kind.includes('morto-vivo')) return '☠'
+  if (kind.includes('espírito')) return '✧'
+  if (kind.includes('fera')) return '♞'
+  if (kind.includes('humanoide')) return '♟'
+  if (kind.includes('chefe')) return '♛'
+  if (kind.includes('monstro')) return '⚔'
+  return '◇'
+}
 
 /** A central de navegação opera somente sobre registros já carregados e autorizados. */
 type HaxQuickCommand = {
@@ -15183,11 +15197,18 @@ style={{cursor:'pointer'}}>
             <span className="hb-beast-result-count">{filteredCreatures.length} {filteredCreatures.length === 1 ? 'criatura' : 'criaturas'}</span>
           </div>
 
+          <div className="hb-beast-filter-head">
+            <div><span className="hb-kicker">FERRAMENTAS DE CONSULTA</span><p>Encontre registros por nome, categoria e nível de ameaça.</p></div>
+            {creatureFiltersActive && <button type="button" className="hb-beast-reset" onClick={resetCreatureFilters}>✕ Limpar filtros</button>}
+          </div>
           <div className="bestiary-toolbar hb-bestiary-toolbar hb-beast-toolbar">
-            <label className="hb-beast-search">
-              <span aria-hidden="true">⌕</span>
-              <input type="search" aria-label="Pesquisar criaturas" placeholder="Pesquisar no bestiário..." value={creatureSearch} onChange={event => setCreatureSearch(event.target.value)}/>
-            </label>
+            <div className="hb-beast-search-wrap">
+              <label className="hb-beast-search">
+                <span aria-hidden="true">⌕</span>
+                <input type="search" aria-label="Pesquisar criaturas" placeholder="Pesquisar no bestiário..." value={creatureSearch} onChange={event => setCreatureSearch(event.target.value)}/>
+              </label>
+              {creatureSearch && <button type="button" className="hb-beast-search-clear" aria-label="Limpar pesquisa" title="Limpar pesquisa" onClick={() => setCreatureSearch('')}>×</button>}
+            </div>
             <label className="hb-beast-filter"><span>Ameaça</span><select aria-label="Filtrar por nível de ameaça" value={creatureThreatFilter} onChange={event => setCreatureThreatFilter(event.target.value)}>{creatureThreatLevels.map(level => <option key={level} value={level}>{level === 'Todas' ? 'Todas as ameaças' : level}</option>)}</select></label>
             {isMaster && <label className="hb-beast-filter"><span>Visibilidade</span><select aria-label="Filtrar por visibilidade" value={creatureVisibilityFilter} onChange={event => setCreatureVisibilityFilter(event.target.value as 'all' | 'visible' | 'hidden')}><option value="all">Todos os registros</option><option value="visible">Revelados</option><option value="hidden">Ocultos</option></select></label>}
             <label className="hb-beast-filter"><span>Ordenar</span><select aria-label="Ordenar criaturas" value={creatureSortOrder} onChange={event => setCreatureSortOrder(event.target.value as 'name' | 'threat' | 'recent')}><option value="name">Nome A–Z</option><option value="threat">Maior ameaça</option><option value="recent">Mais recentes</option></select></label>
@@ -15199,7 +15220,10 @@ style={{cursor:'pointer'}}>
                 {category}<span>{category === 'Todas' ? accessibleCreatures.length : accessibleCreatures.filter(creature => creature.category === category).length}</span>
               </button>
             ))}
-            {creatureFiltersActive && <button type="button" className="hb-beast-clear" onClick={resetCreatureFilters}>✕ Limpar filtros</button>}
+          </div>
+          <div className="hb-beast-results-note" role="status" aria-live="polite">
+            <span><b>{filteredCreatures.length}</b> {filteredCreatures.length === 1 ? 'registro encontrado' : 'registros encontrados'}</span>
+            <span>{isMaster ? 'Os registros ocultos são visíveis apenas ao mestre.' : 'Somente criaturas reveladas estão disponíveis.'}</span>
           </div>
 
           {creaturesLoading ? (
@@ -15218,7 +15242,7 @@ style={{cursor:'pointer'}}>
                 const imageSrc = creature.image_display_url || (creature.image_url?.startsWith('http') ? creature.image_url : '')
                 return <article key={creature.id} className={`bestiary-creature-card hb-bestiary-card hb-beast-card ${creature.is_hidden ? 'is-hidden' : ''}`} role="button" tabIndex={0} aria-label={`Abrir registro de ${creature.name}`} onClick={() => setSelectedCreatureId(creature.id)} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setSelectedCreatureId(creature.id) } }}>
                   <div className="hb-beast-card-media">
-                    {imageSrc ? <img src={imageSrc} alt="" className="bestiary-creature-image" loading="lazy"/> : <div className="bestiary-creature-placeholder"><span aria-hidden="true">♞</span></div>}
+                    {imageSrc ? <img src={imageSrc} alt="" className="bestiary-creature-image" loading="lazy"/> : <div className="bestiary-creature-placeholder"><span aria-hidden="true">{bestiaryCategorySymbol(creature.category)}</span></div>}
                     <div className="hb-beast-card-shade"/>
                     <div className="hb-beast-card-top">
                       <span className={`hb-beast-threat hb-beast-threat-${creatureThreatTone(creature.threat_level)}`}>✦ {creature.threat_level}</span>
@@ -15229,6 +15253,7 @@ style={{cursor:'pointer'}}>
                   <div className="bestiary-creature-info hb-beast-card-body">
                     <h3>{creature.name}</h3>
                     <p className="hb-beast-card-description">{creature.description?.trim() || 'Nenhuma descrição registrada para esta criatura.'}</p>
+                    <div className="hb-beast-card-resources-label">RECURSOS</div>
                     <div className="hb-beast-card-resources" aria-label="Recursos da criatura">
                       <span><small>PV</small><strong>{creature.pv ?? '—'}</strong></span>
                       <span><small>PS</small><strong>{creature.ps ?? '—'}</strong></span>
@@ -15268,7 +15293,7 @@ style={{cursor:'pointer'}}>
                 <section className="hb-beast-form-section">
                   <div className="hb-beast-form-heading"><span>02</span><div><h3>Retrato</h3><p>PNG, JPG ou WebP, até 5 MB. A imagem é exibida nos cartões e na ficha.</p></div></div>
                   <div className="hb-beast-upload-row">
-                    <div className="hb-beast-upload-preview">{(creatureImagePreview || creatureStoredImagePreview || creatureImageUrl) ? <img src={creatureImagePreview || creatureStoredImagePreview || creatureImageUrl} alt="Pré-visualização da criatura"/> : <span aria-hidden="true">♞</span>}</div>
+                    <div className="hb-beast-upload-preview">{(creatureImagePreview || creatureStoredImagePreview || creatureImageUrl) ? <img src={creatureImagePreview || creatureStoredImagePreview || creatureImageUrl} alt="Pré-visualização da criatura"/> : <span aria-hidden="true">{bestiaryCategorySymbol(creatureCategory)}</span>}</div>
                     <label className="hb-beast-upload-label">Selecionar imagem<input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => { const file = event.target.files?.[0] ?? null; if (file && file.size > 5 * 1024 * 1024) { setError('A imagem deve ter no máximo 5 MB.'); setCreatureImageFile(null); event.target.value = ''; return } setCreatureImageFile(file) }}/><small>{creatureImageFile?.name || (creatureStoredImagePreview ? 'Imagem atual preservada' : 'Nenhuma imagem selecionada')}</small></label>
                   </div>
                 </section>
@@ -15290,7 +15315,7 @@ style={{cursor:'pointer'}}>
           <div className="bestiary-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedCreatureId(null) }}>
             <div className="bestiary-modal bestiary-detail-modal hb-beast-detail" role="dialog" aria-modal="true" aria-labelledby="hb-beast-detail-title">
               <div className="hb-beast-detail-hero">
-                {selectedCreature.image_display_url || selectedCreature.image_url?.startsWith('http') ? <img src={selectedCreature.image_display_url || selectedCreature.image_url || ''} alt=""/> : <div className="hb-beast-detail-placeholder" aria-hidden="true">♞</div>}
+                {selectedCreature.image_display_url || selectedCreature.image_url?.startsWith('http') ? <img src={selectedCreature.image_display_url || selectedCreature.image_url || ''} alt=""/> : <div className="hb-beast-detail-placeholder" aria-hidden="true">{bestiaryCategorySymbol(selectedCreature.category)}</div>}
                 <div className="hb-beast-detail-shade"/>
                 <div className="hb-beast-detail-identity"><span className={`hb-beast-threat hb-beast-threat-${creatureThreatTone(selectedCreature.threat_level)}`}>✦ {selectedCreature.threat_level}</span><span className="hb-beast-detail-category">{selectedCreature.category}</span><h2 id="hb-beast-detail-title">{selectedCreature.name}</h2><p>{isMaster ? (selectedCreature.is_hidden ? '◌ Registro oculto dos jogadores' : '◉ Registro revelado aos jogadores') : '◉ Registro do bestiário'}</p></div>
                 <button type="button" className="hb-beast-detail-close" onClick={() => setSelectedCreatureId(null)} aria-label="Fechar detalhes">×</button>
