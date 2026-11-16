@@ -10509,6 +10509,21 @@ counterAttackDT
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♙</span><span className="hb-sidebar-nav-name">Meu perfil</span>
             </button>
           </div>
+          <div className="hb-sidebar-nav-group">
+            <span className="hb-sidebar-group-title">COMUNIDADE</span>
+            <a
+              className="nav-link hb-sidebar-discord-link"
+              href="https://discord.gg/bjfzDeuND"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setSidebarMobileOpen(false)}
+              aria-label="Entrar no Discord do HäxBag (abre em nova aba)"
+            >
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span>
+              <span className="hb-sidebar-nav-name">Discord do HäxBag</span>
+              <span className="hb-sidebar-discord-external" aria-hidden="true">↗</span>
+            </a>
+          </div>
         </nav>
 
         <div className="sidebar-bottom hb-sidebar-footer">
@@ -11780,6 +11795,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .hb-polish .hb-sidebar-nav .nav-count{margin-left:auto;padding:4px 7px;border-radius:7px;font-size:10px;font-weight:800;background:color-mix(in srgb,var(--season-primary,#d6a37d) 10%,var(--season-surface-alt,#211d23))}
 .hb-polish .hb-sidebar-nav-flair{margin-left:auto;color:var(--season-primary,#d6a37d);font-size:8px;letter-spacing:.04em;font-weight:850}
 .hb-polish .hb-sidebar-nav .nav-link:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.hb-polish .hb-sidebar-nav a.hb-sidebar-discord-link{display:flex;align-items:center;text-decoration:none;cursor:pointer;transition:background .18s,color .18s}
+.hb-polish .hb-sidebar-nav a.hb-sidebar-discord-link:hover{color:var(--season-text,#f4efea);background:color-mix(in srgb,var(--season-primary,#d6a37d) 11%,transparent)}
+.hb-polish .hb-sidebar-discord-external{margin-left:auto;color:var(--season-primary,#d6a37d);font-size:16px;font-weight:800;opacity:.8;transition:transform .18s,opacity .18s}
+.hb-polish .hb-sidebar-discord-link:hover .hb-sidebar-discord-external{transform:translate(2px,-2px);opacity:1}
+.hb-polish .hb-sidebar-discord-link:focus-visible{outline:2px solid var(--season-primary,#d6a37d);outline-offset:2px}
 .hb-polish .hb-sidebar-footer{display:grid;gap:12px;margin-top:auto}
 .hb-polish .hb-sidebar-invite{padding:14px;border-radius:15px;background:linear-gradient(135deg,color-mix(in srgb,var(--season-primary,#d6a37d) 10%,var(--season-surface,#1d1820)),var(--season-surface,#1d1820))}
 .hb-polish .hb-sidebar-invite-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
