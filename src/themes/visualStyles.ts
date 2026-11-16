@@ -12,7 +12,7 @@ export const visualStyles = {
   },
   japanese: {
     label: 'Kisatsutai',
-    symbol: '幻',
+    symbol: '✧',
     signature: 'TRADIÇÃO E LÂMINAS',
     description: 'Gravuras japonesas, flores de cerejeira, tinta sumi-e e ondas seigaiha.',
   },
@@ -36,7 +36,7 @@ export const visualStyles = {
   },
   vale_fantasma: {
     label: 'Vale dos Corvos',
-    symbol: '✧',
+    symbol: '幻',
     signature: 'TUDO ESTÁ NORMAL',
     description: 'Tinta, lua pálida e névoa sobre o vale.',
   },

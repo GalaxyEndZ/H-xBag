@@ -305,6 +305,19 @@ export const seasonThemes = {
     line: '#71345f',
     onPrimary: '#1a0816',
   },
+  silvam_argentea: {
+    label: 'Silvam Argentea',
+    // Prata, ouro-champanhe, verde-sálvia e superfícies grafite.
+    // Paleta de temporada independente da identidade visual homônima.
+    primary: '#D9BD8B',
+    secondary: '#97B59B',
+    glow: 'rgba(215, 182, 123, .22)',
+    bg: '#080B0B',
+    surface: '#121819',
+    surfaceAlt: '#1D2727',
+    line: '#536159',
+    onPrimary: '#17140D',
+  },
   tempestade_eletrica: {
     label: 'Tempestade Elétrica',
     primary: '#4856D8',

@@ -83,3 +83,114 @@
   .app-shell .season-theme-option {transition:none;}
   .app-shell .season-theme-option:hover:not(:disabled){transform:none;}
 }
+
+
+/* ==========================================================================
+   HÄXBAG V104 | PALETA DE TEMPORADA «SILVAM ARGENTEA»
+   Paleta independente do estilo visual/brasão de Silvam Argentea.
+   Ouro acetinado + prata + verde-sálvia sobre grafite florestal.
+   A decoração é CSS; não altera imagens, SVGs ou posições de arte.
+   ========================================================================= */
+.app-shell.theme-silvam_argentea {
+  --silvam-silver: #D5DDDA;
+  --silvam-gold: #D9BD8B;
+  --silvam-sage: #97B59B;
+  --silvam-ink: #080B0B;
+  --season-text: #E5E9E6;
+  --theme-text-soft: #C4CFC8;
+  background-color: var(--season-bg);
+  background-image:
+    radial-gradient(ellipse at 86% -6%, rgba(169,141,91,.12), transparent 37%),
+    radial-gradient(ellipse at 5% 88%, rgba(87,128,104,.11), transparent 42%),
+    linear-gradient(150deg,#080B0B 0%,#0B1111 52%,#080B0B 100%);
+}
+
+/* Camadas da navegação em preto-azulado e filigrana dourada discreta. */
+.app-shell.theme-silvam_argentea .sidebar,
+.app-shell.theme-silvam_argentea .hb-sidebar {
+  background:
+    radial-gradient(ellipse at 6% 0%, rgba(217,189,139,.095), transparent 42%),
+    linear-gradient(180deg, #111817, #0B100F) !important;
+  border-right-color: rgba(213,188,144,.3) !important;
+}
+.app-shell.theme-silvam_argentea .topbar {
+  background:linear-gradient(115deg,rgba(22,29,28,.96),rgba(10,14,14,.98)) !important;
+  border-bottom-color:rgba(213,188,144,.34) !important;
+}
+.app-shell.theme-silvam_argentea :is(.nav-link.active,.hb-sidebar .nav-link.active) {
+  border-color:rgba(217,189,139,.48) !important;
+  background:linear-gradient(90deg,rgba(217,189,139,.13),rgba(137,169,144,.045)) !important;
+  color:var(--silvam-gold) !important;
+  box-shadow:inset 3px 0 0 var(--silvam-gold),0 4px 16px rgba(0,0,0,.11);
+}
+
+/* Superfícies e molduras, sem substituir artes próprias dos estilos visuais. */
+.app-shell.theme-silvam_argentea .page-content :is(
+  .card,.panel,.hb-panel,.sheet-card,.sheet-summary-card,
+  .sheet-library-card,.sheet-roster-card,.enemy-hub-card,.shop-item-card,
+  .season-theme-panel,.campaign-card
+) {
+  border-color:color-mix(in srgb,var(--silvam-gold) 28%,var(--season-line)) !important;
+  box-shadow:inset 0 1px 0 rgba(229,237,231,.034),0 12px 24px rgba(0,0,0,.12);
+}
+.app-shell.theme-silvam_argentea .page-content :is(
+  .sheet-card-title,.sheet-section-heading,.hb-panel-heading,.inventory-heading
+) {
+  border-bottom-color:rgba(217,189,139,.26);
+}
+.app-shell.theme-silvam_argentea .page-content :is(h1,h2,h3),
+.app-shell.theme-silvam_argentea .hb-sidebar-brand-copy strong {
+  color:var(--silvam-silver);
+}
+.app-shell.theme-silvam_argentea :is(.eyebrow,.hb-kicker,.sheet-page-eyebrow) {
+  color:var(--silvam-gold);
+}
+
+/* Botões principais com contraste alto: texto escuro no ouro suave. */
+.app-shell.theme-silvam_argentea :is(button.primary-button,.primary-button) {
+  background:linear-gradient(125deg,#E4CDA0,#C5A46D) !important;
+  border-color:#E5CD9E !important;
+  color:var(--season-on-primary) !important;
+  text-shadow:none !important;
+  box-shadow:0 5px 19px rgba(185,150,91,.17);
+}
+.app-shell.theme-silvam_argentea :is(button.primary-button,.primary-button):hover:not(:disabled) {
+  filter:brightness(1.055);
+  box-shadow:0 8px 22px rgba(185,150,91,.25);
+}
+.app-shell.theme-silvam_argentea :is(
+  input:not([type="checkbox"]),select,textarea
+):focus-visible {
+  outline-color:var(--silvam-gold);
+  border-color:var(--silvam-gold) !important;
+  box-shadow:0 0 0 3px rgba(217,189,139,.13);
+}
+
+/* Indicadores da temporada: metal prateado e pontos de sálvia. */
+.app-shell.theme-silvam_argentea :is(
+  .sheet-summary-attributes article strong,.sheet-summary-season,
+  .hb-customization-current-palette strong
+) { color:var(--silvam-silver); }
+.app-shell.theme-silvam_argentea :is(
+  .season-theme-panel,.hb-customization-current-palette
+) {
+  border-color:rgba(217,189,139,.42) !important;
+  background:
+    radial-gradient(circle at 98% 3%,rgba(151,181,155,.085),transparent 45%),
+    linear-gradient(140deg,#192220,#101514) !important;
+}
+.app-shell.theme-silvam_argentea .season-theme-panel .season-theme-heading {
+  border-bottom-color:rgba(217,189,139,.3);
+}
+.app-shell.theme-silvam_argentea .hb-customization-page .hb-customization-palette-grid .season-theme-option.active {
+  border-color:var(--silvam-gold) !important;
+  box-shadow:inset 0 0 0 1px rgba(217,189,139,.23),0 8px 24px rgba(0,0,0,.20);
+}
+.app-shell.theme-silvam_argentea ::selection {
+  background:rgba(217,189,139,.42);
+  color:#07100C;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .app-shell.theme-silvam_argentea :is(.primary-button,.nav-link) {transition:none !important;}
+}
