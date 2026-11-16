@@ -113,3 +113,23 @@ export function applyConditionModifier(base: number, modifiers: ConditionModifie
   const percent = conditionModifier(modifiers, `percent:${target}`, key)
   return Math.round(base * (1 + percent / 100) + fixed)
 }
+
+/** Retorna a perícia efetiva sem aplicar o modificador genérico (*) duas vezes.
+ *  Mantém compatibilidade com efeitos antigos salvos apenas pelo nome da perícia. */
+export function effectiveConditionSkill(base:number, modifiers:ConditionModifiers, target:'extra_skill'|'archetype_skill', key:string, name?:string):number {
+  const full=normalize(key)
+  const short=normalize(name||key.split(':').slice(1).join(':')||key)
+  const hasExact=Object.prototype.hasOwnProperty.call(modifiers,`${target}:${full}`)||Object.prototype.hasOwnProperty.call(modifiers,`percent:${target}:${full}`)
+  const legacy=short!==full&&(Object.prototype.hasOwnProperty.call(modifiers,`${target}:${short}`)||Object.prototype.hasOwnProperty.call(modifiers,`percent:${target}:${short}`))
+  return applyConditionModifier(base,modifiers,target,!hasExact&&legacy?short:key)
+}
+
+/** Uma condição com bônus positivo específico pode disponibilizar uma perícia
+ *  ainda não aprendida, sem alterar o treinamento permanente da ficha.
+ *  Modificadores genéricos (*) não criam automaticamente todas as perícias. */
+export function isConditionGrantedSkill(modifiers:ConditionModifiers,target:'extra_skill'|'archetype_skill',key:string,name?:string):boolean {
+  const full=normalize(key)
+  const short=normalize(name||key.split(':').slice(1).join(':')||key)
+  const specific=Number(modifiers[`${target}:${full}`]||0)+(short!==full?Number(modifiers[`${target}:${short}`]||0):0)
+  return specific>0&&effectiveConditionSkill(0,modifiers,target,key,name)>0
+}

@@ -24,7 +24,7 @@ import { ConditionsPanel, CharacterConditions, EnemyConditions } from './Conditi
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
 import { KIT_DEFINITIONS, KIT_MAIN_SKILLS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
-import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier } from './conditionEngine'
+import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
 
 /** A central de navegação opera somente sobre registros já carregados e autorizados. */
 type HaxQuickCommand = {
@@ -233,7 +233,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
     const listed = match[2].split(/,|\s+e\s+/i).map(x => x.trim().toLocaleLowerCase('pt-BR'))
     return listed.includes(skillName.toLocaleLowerCase('pt-BR')) ? [{name: kit.name, bonus: Number(match[1])}] : []
   })
-  const levels: TrainingLevel[] = ['completo', 'avancado', 'medio', 'leve']
+  const levels: (TrainingLevel | 'condicao')[] = ['completo', 'avancado', 'medio', 'leve', 'condicao']
   const generalGroups = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
   const sections = [
     { id: 'arquetipo', icon: '✦', title: 'Perícias de Arquétipo', subtitle: 'Treinamentos vinculados aos arquétipos', accepts: (group: string) => !generalGroups.has(group) },
@@ -243,12 +243,15 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
     entries.flatMap(skill => {
       const key = `${group}:${skill.name}`
       const level = trainings[key] as TrainingLevel | undefined
-      return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
-        ? [{ key, group, name: skill.name, level }] : []
+      const target = generalGroups.has(group) ? 'extra_skill' : 'archetype_skill'
+      const trained = Boolean(level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level))
+      const granted = !forEnemy && !trained && isConditionGrantedSkill(modifiers, target, key, skill.name)
+      return trained ? [{ key, group, name: skill.name, level: level as TrainingLevel | 'condicao' }]
+        : granted ? [{ key, group, name: skill.name, level: 'condicao' as const }] : []
     })
   )
   const displayedSkills = searchTerm
-    ? allSkills.filter(skill => normalizeSkillQuery(`${skill.name} ${skill.group} ${TRAINING_LABELS[skill.level]}`).includes(searchTerm))
+    ? allSkills.filter(skill => normalizeSkillQuery(`${skill.name} ${skill.group} ${(skill.level === 'condicao' ? 'Temporária por condição' : TRAINING_LABELS[skill.level])}`).includes(searchTerm))
     : allSkills
   return (
     <section className="hb-trained-skills" id={forEnemy ? 'inimigo-pericias-extras' : 'ficha-pericias-extras'} aria-labelledby={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>
@@ -256,8 +259,8 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
         <div className="hb-trained-skills-icon" aria-hidden="true">✧</div>
         <div>
           <span className="hb-trained-skills-eyebrow">DESENVOLVIMENTO DO PERSONAGEM</span>
-          <h3 id={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>Perícias treinadas</h3>
-          <p>Treinamentos organizados por origem e nível. Os bônus refletem os dados atuais da ficha.</p>
+          <h3 id={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>Perícias treinadas e concedidas</h3>
+          <p>Treinamentos permanentes e perícias temporariamente concedidas por condições ativas.</p>
         </div>
         <span className="hb-trained-skills-total">{allSkills.length} {allSkills.length === 1 ? 'perícia' : 'perícias'}</span>
       </div>
@@ -288,8 +291,8 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
                   return (
                     <div className="hb-trained-skills-tier" key={level}>
                       <div className="hb-trained-skills-tier-head">
-                        <strong>{TRAINING_LABELS[level]}</strong>
-                        <span className="hb-trained-skills-bonus">+{KISATSUTAI_TRAINING[level]}</span>
+                        <strong>{level === 'condicao' ? 'Concedidas por condições' : TRAINING_LABELS[level]}</strong>
+                        <span className="hb-trained-skills-bonus">{level === 'condicao' ? 'Temporárias' : `+${KISATSUTAI_TRAINING[level]}`}</span>
                         <span className="hb-trained-skills-tier-count">{entries.length} {entries.length === 1 ? 'perícia' : 'perícias'}</span>
                       </div>
                       {entries.length > 0 ? (
@@ -297,9 +300,9 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
                           {entries.map(skill => (
                             <li key={skill.key} className="hb-trained-skills-item">
                               {(() => {
-                                const base = KISATSUTAI_TRAINING[level]
+                                const base = level === 'condicao' ? 0 : KISATSUTAI_TRAINING[level]
                                 const target = section.id === 'arquetipo' ? 'archetype_skill' : 'extra_skill'
-                                const conditioned = applyConditionModifier(applyConditionModifier(base, modifiers, target, skill.key), modifiers, target, skill.name)
+                                const conditioned = effectiveConditionSkill(base, modifiers, target, skill.key, skill.name)
                                 const pendingBonus = pending?.skill === skill.name ? pending.bonus : 0
                                 const kitEntries = getKitBonus(skill.name)
                                 const kitBonus = kitEntries.reduce((sum, kit) => sum + kit.bonus, 0)
@@ -317,7 +320,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], modifiers = 
                                       <strong className="hb-trained-skills-item-bonus">{total >= 0 ? '+' : ''}{total}</strong>
                                     </span>
                                     <span className="hb-trained-skills-item-breakdown">
-                                      <span className="hb-trained-skills-chip is-base" title="Treinamento base">Base {base >= 0 ? '+' : ''}{base}</span>
+                                      {level === 'condicao' ? <span className="hb-trained-skills-chip is-condition" title="Perícia concedida enquanto a condição estiver ativa">Temporária</span> : <span className="hb-trained-skills-chip is-base" title="Treinamento base">Base {base >= 0 ? '+' : ''}{base}</span>}
                                       {conditionDelta !== 0 && <span className="hb-trained-skills-chip is-condition" title="Efeito de condições ativas">Condições {conditionDelta > 0 ? '+' : ''}{conditionDelta}</span>}
                                       {pendingBonus !== 0 && <span className="hb-trained-skills-chip is-prep" title="Bônus de ações complexas">Preparo {pendingBonus > 0 ? '+' : ''}{pendingBonus}</span>}
                                       {kitEntries.map(kit => <span key={kit.name} className="hb-trained-skills-chip is-kit" title={kit.name}>Kit {kit.bonus > 0 ? '+' : ''}{kit.bonus}</span>)}
@@ -9767,9 +9770,11 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               groupSkills.flatMap(skill => {
                                 const key = `${group}:${skill.name}`
                                 const level = trainings[key] as TrainingLevel | undefined
-                                return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level)
-                                  ? [{ key, name: skill.name, group, bonus: KISATSUTAI_TRAINING[level] }]
-                                  : []
+                                const target = ['Sociais','Conhecimentos Gerais','Naturais'].includes(group) ? 'extra_skill' : 'archetype_skill'
+                                const trained = Boolean(level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level))
+                                return trained ? [{ key, name: skill.name, group, bonus: KISATSUTAI_TRAINING[level as TrainingLevel], temporary: false }]
+                                  : (!forEnemy && isConditionGrantedSkill(conditionModifiers, target, key, skill.name))
+                                    ? [{ key, name: skill.name, group, bonus: 0, temporary: true }] : []
                               })
                             )
                             const selected = available.find(skill => skill.key === selectedSkillTest)
@@ -9791,17 +9796,17 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <label className="combat-skill-test-field"><span>Atributo principal</span><select aria-label="Atributo para o teste de perícia" value={testAttribute.key} onChange={event => setSelectedSkillAttribute(event.target.value)}>
                                   {testAttributes.map(attribute => <option key={attribute.key} value={attribute.key}>{attribute.label} ({attribute.value >= 0 ? '+' : ''}{attribute.value})</option>)}
                                 </select></label>
-                                <label className="combat-skill-test-field"><span>Perícia treinada</span><select aria-label="Perícia para o teste" value={selected?.key || ''} onChange={event => setSelectedSkillTest(event.target.value)}>
+                                <label className="combat-skill-test-field"><span>Perícia disponível</span><select aria-label="Perícia para o teste" value={selected?.key || ''} onChange={event => setSelectedSkillTest(event.target.value)}>
                                   <option value="">Selecionar perícia...</option>
-                                  {available.map(skill => <option key={skill.key} value={skill.key}>{skill.name} · {skill.group} (+{skill.bonus})</option>)}
+                                  {available.map(skill => <option key={skill.key} value={skill.key}>{skill.name} · {skill.group} ({skill.temporary ? 'concedida por condição' : `+${skill.bonus}`})</option>)}
                                 </select></label>
                                 <button type="button" disabled={!selected} onClick={() => {
                                   if (!selected) return
-                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill', selected.key)
+                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key)
                                   const roll = rollAttributeDice(testDiceCount + conditionDiceBonus, testAttribute.key === 'agility')
                                   const attributeConditionBonus = applyConditionModifier(testAttribute.value, conditionModifiers, 'status', testAttribute.key) - testAttribute.value
-                                  const skillGroup = selected.group === 'Perícias de Arquétipo' ? 'archetype_skill' : 'extra_skill'
-                                  const trainedSkillBonus = applyConditionModifier(selected.bonus, conditionModifiers, skillGroup, selected.key)
+                                  const skillGroup = ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill'
+                                  const trainedSkillBonus = effectiveConditionSkill(selected.bonus, conditionModifiers, skillGroup, selected.key, selected.name)
                                   const skillConditionBonus = trainedSkillBonus - selected.bonus
                                   const conditionTotal = attributeConditionBonus + skillConditionBonus
                                   const preparationBonus = complexPending?.skill===selected.name ? complexPending.bonus : 0
@@ -9814,8 +9819,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   setCombatActionResult(`Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus})${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''} = ${total}.`)
                                 }}>🎲 Rolar teste</button>
                               </div>
-                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Treinamento: {selected ? `+${selected.bonus}` : 'selecione uma perícia'}</small>
-                              {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia treinada. Distribua treinamentos em Editar ficha para habilitar os testes.</small>}
+                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Perícia: {selected ? `+${effectiveConditionSkill(selected.bonus, conditionModifiers, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key, selected.name)}` : 'selecione uma perícia'}</small>
+                              {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia disponível. Treine uma perícia ou receba uma por condição ativa.</small>}
                             </div>
                           })()}
                           {isKisatsutaiSystem && complexActionsOpen && (() => {
@@ -9823,7 +9828,11 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             const skills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
                               const key = `${group}:${skill.name}`
                               const level = trainings[key] as TrainingLevel | undefined
-                              return level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level) ? [{key, label: `${skill.name} · ${group}`, bonus: KISATSUTAI_TRAINING[level]}] : []
+                              const target = ['Sociais','Conhecimentos Gerais','Naturais'].includes(group) ? 'extra_skill' : 'archetype_skill'
+                              const trained = Boolean(level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level))
+                              return trained ? [{key, label: `${skill.name} · ${group}`, name: skill.name, bonus: KISATSUTAI_TRAINING[level as TrainingLevel]}]
+                                : (!forEnemy && isConditionGrantedSkill(conditionModifiers, target, key, skill.name))
+                                  ? [{key, label: `${skill.name} · ${group} (condição)`, name: skill.name, bonus: 0}] : []
                             }))
                             const archetypeSkills = skills.filter(skill => !['Sociais', 'Conhecimentos Gerais', 'Naturais'].includes(skill.key.split(':')[0]))
                             const chosen = archetypeSkills.find(skill => skill.key === complexSkill)
@@ -9887,7 +9896,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <label><span>2 · 📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
-                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=applyConditionModifier(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
+                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
                               </div>
                               <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {complexMainSkill || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
