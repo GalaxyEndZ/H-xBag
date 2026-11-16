@@ -28,6 +28,8 @@ import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
 import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
+import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
+import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, consumeComplexBonus, type ComplexPreparation } from './complexActionRules'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
 
 /** Marcador decorativo usado apenas nas prévias sem retrato do Bestiário. */
@@ -239,7 +241,7 @@ function SheetSectionNav({ sections, label }: { sections: Array<[string, string,
 }
 
 /** Exibição de treinamentos sem alterar os dados persistidos da ficha. */
-function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitItems = [], modifiers = {}, pending = null }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[]; equippedKitItems?: {name:string;character_id:string;metadata?:Record<string,any>|null}[]; modifiers?: Record<string, number>; pending?: {skill:string;bonus:number}|null }) {
+function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitItems = [], modifiers = {}, pending = null }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[]; equippedKitItems?: {name:string;character_id:string;metadata?:Record<string,any>|null}[]; modifiers?: Record<string, number>; pending?: Record<string,number>|null }) {
   const [skillSearch, setSkillSearch] = useState('')
   const normalizeSkillQuery = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
   const searchTerm = normalizeSkillQuery(skillSearch)
@@ -320,7 +322,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
                                 const base = level === 'condicao' ? 0 : KISATSUTAI_TRAINING[level]
                                 const target = section.id === 'arquetipo' ? 'archetype_skill' : 'extra_skill'
                                 const conditioned = effectiveConditionSkill(base, modifiers, target, skill.key, skill.name)
-                                const pendingBonus = pending?.skill === skill.name ? pending.bonus : 0
+                                const pendingBonus = pending?.[skill.key] ?? 0
                                 const kitEntries = [...getKitBonus(skill.name), ...equippedKitSkillBonuses(equippedKitItems,equippedKitItems[0]?.character_id||'',skill.key)]
                                 const kitBonus = kitEntries.reduce((sum, kit) => sum + kit.bonus, 0)
                                 const conditionDelta = conditioned - base
@@ -1948,11 +1950,17 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [complexActionsOpen, setComplexActionsOpen] = useState(false)
   const [complexSkill, setComplexSkill] = useState('')
   const [complexResult, setComplexResult] = useState('')
-  const [complexUsed, setComplexUsed] = useState<Record<string, number>>({})
-  const [complexSceneCount, setComplexSceneCount] = useState(0)
+  const [complexPreparations, setComplexPreparations] = useState<ComplexPreparation[]>([])
+  const complexSceneCount = complexPreparations.length
   const [complexAttribute, setComplexAttribute] = useState('intelligence')
   const [complexMainSkill, setComplexMainSkill] = useState('')
-  const [complexPending, setComplexPending] = useState<{skill: string; bonus: number} | null>(null)
+  // Preparações são temporárias e não podem ser usadas por outra ficha ou temporada.
+  useEffect(() => {
+    setComplexPreparations([])
+    setComplexSkill('')
+    setComplexMainSkill('')
+    setComplexResult('')
+  }, [selectedCharacterId, selectedSeasonId])
   const [selectedSkillAttribute, setSelectedSkillAttribute] = useState<string>('strength')
   const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
   const [blockIncomingDamage, setBlockIncomingDamage] = useState('')
@@ -3638,41 +3646,52 @@ async function deleteEnemy(enemy: CampaignEnemy) {
 
 
 
-function adjustEnemyWallet(currencyId: string, adjustment: number, description: string) {
-  if (!selectedEnemyId || !isMaster || !Number.isFinite(adjustment) || !currencyId) return
+function adjustEnemyWallet(currencyId: string, adjustment: number, description: string): boolean {
+  if (!selectedEnemyId || !isMaster || !currencyId) return false
+  if (!isValidCurrencyAmount(Math.abs(adjustment))) {
+    setError('Informe uma quantidade entre 0 e 100.000.000.'); return false
+  }
   const wallet = readEnemySheet('wallet', {}) as Record<string, any>
   const balances: Record<string, number> = { ...(wallet.balances || {}) }
-  const current = Math.max(0, Number(balances[currencyId]) || 0)
-  if (current + adjustment < 0) { setError('Saldo insuficiente para esta movimentação.'); return }
-  balances[currencyId] = Math.round((current + adjustment) * 1e8) / 1e8
+  const current = Number(balances[currencyId]) || 0
+  if (current + adjustment < 0) { setError('Saldo insuficiente para esta movimentação.'); return false }
+  if (!fitsCurrencyBalance(current, adjustment)) {
+    setError('Limite de 100.000.000 por tipo de moeda atingido.'); return false
+  }
+  balances[currencyId] = roundCurrency(current + adjustment)
   const history = Array.isArray(wallet.history) ? wallet.history : []
   writeEnemySheet('wallet', { ...wallet, balances, history: [{
     id: crypto.randomUUID(), at: new Date().toISOString(),
     currencyId, amount: adjustment, description: description || 'Ajuste de saldo',
   }, ...history].slice(0, 200) })
   setNotice('Carteira do inimigo atualizada.')
+  return true
 }
-function convertEnemyWallet(fromId: string, toId: string, amount: number) {
+function convertEnemyWallet(fromId: string, toId: string, amount: number): boolean {
   const currencies = selectedCampaign?.currency_config?.currencies ?? []
   const from = currencies.find(entry => entry.id === fromId)
   const to = currencies.find(entry => entry.id === toId)
-  if (!from || !to || fromId === toId || !Number.isFinite(amount) || amount <= 0) {
-    setError('Selecione duas moedas diferentes e uma quantia válida.'); return
+  if (!from || !to || fromId === toId || !isValidCurrencyAmount(amount)) {
+    setError('Escolha duas moedas diferentes e uma quantia entre 0 e 100.000.000.'); return false
   }
   const wallet = readEnemySheet('wallet', {}) as Record<string, any>
   const balances: Record<string, number> = { ...(wallet.balances || {}) }
   const available = Number(balances[fromId]) || 0
-  if (amount > available) { setError('Saldo insuficiente para a conversão.'); return }
-  const received = amount * from.conversionRate / to.conversionRate
-  if (!Number.isFinite(received)) { setError('Taxa de conversão inválida.'); return }
-  balances[fromId] = Math.round((available - amount) * 1e8) / 1e8
-  balances[toId] = Math.round(((Number(balances[toId]) || 0) + received) * 1e8) / 1e8
+  if (amount > available) { setError('Saldo insuficiente para a conversão.'); return false }
+  const received = calculateCurrencyExchange(amount, from.conversionRate, to.conversionRate)
+  if (received === null) { setError('Taxa de conversão ou valor inválido.'); return false }
+  if (!fitsCurrencyBalance(Number(balances[toId]) || 0, received)) {
+    setError('Conversão cancelada: o destino ultrapassaria 100.000.000 moedas.'); return false
+  }
+  balances[fromId] = roundCurrency(available - amount)
+  balances[toId] = roundCurrency((Number(balances[toId]) || 0) + received)
   const history = Array.isArray(wallet.history) ? wallet.history : []
   writeEnemySheet('wallet', { ...wallet, balances, history: [{
     id: crypto.randomUUID(), at: new Date().toISOString(), currencyId: fromId,
     amount: -amount, description: `Conversão de ${from.symbol} ${amount} para ${to.symbol} ${received.toFixed(2)}`,
   }, ...history].slice(0, 200) })
   setNotice('Conversão registrada na carteira do inimigo.')
+  return true
 }
 
 async function saveEnemyNameFromSheet() {
@@ -4741,8 +4760,19 @@ async function handleCurrencyAdjustment(action: 'add' | 'remove') {
 
   const amount = Number(currencyAmount.replace(',', '.'))
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    setError('Informe um valor válido e maior que zero.')
+  if (!isValidCurrencyAmount(amount)) {
+    setError('Informe um valor maior que zero e de até 100.000.000 moedas.')
+    return
+  }
+
+  const currentBalance = Number(currencyBalances[currency.id]) || 0
+  const signedAmount = action === 'add' ? amount : -amount
+  if (signedAmount < 0 && currentBalance < amount) {
+    setError('Saldo insuficiente para retirar essa quantidade.')
+    return
+  }
+  if (!fitsCurrencyBalance(currentBalance, signedAmount)) {
+    setError('Limite de 100.000.000 por tipo de moeda atingido.')
     return
   }
 
@@ -4804,8 +4834,18 @@ async function handleCurrencyConversion() {
     return
   }
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    setError('Informe um valor válido e maior que zero.')
+  if (!isValidCurrencyAmount(amount)) {
+    setError('Informe uma quantidade entre 0 e 100.000.000 moedas.')
+    return
+  }
+
+  const received = calculateCurrencyExchange(amount, fromCurrency.conversionRate, toCurrency.conversionRate)
+  if (received === null) {
+    setError('Taxa de conversão ou valor inválido.')
+    return
+  }
+  if (!fitsCurrencyBalance(Number(currencyBalances[toCurrency.id]) || 0, received)) {
+    setError('Conversão cancelada: o saldo de destino ultrapassaria 100.000.000 moedas.')
     return
   }
 
@@ -8205,11 +8245,16 @@ const attribute =
   kind === 'Disparo' ? agility :
   defense
 
-  const bonus =
+  const primaryKeys = kind === 'Ataque bruto' || kind === 'Ataque ágil' ? ['combat']
+    : kind === 'Ataque especial' || kind === 'Tiro' || kind === 'Disparo' ? ['ability']
+    : kind === 'Bloqueio' ? ['vigor','resistance'] : ['dexterity']
+  const baseBonus =
     kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
     (kind === 'Ataque especial' || kind === 'Tiro' || kind === 'Disparo') ? ability :
     kind === 'Bloqueio' ? vigor + resistance :
     armorDexterity
+  const preparationBonus = forEnemy ? 0 : primaryKeys.reduce((sum,key) => sum + pendingComplexBonus(complexPreparations,key),0)
+  const bonus = baseBonus + preparationBonus
 
   const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
   const diceGroup = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
@@ -8221,14 +8266,12 @@ const attribute =
 
   const dice = roll.rolls
   const highest = roll.result
-  const preparationBonus = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') && (complexPending?.skill === ((kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate')) ? (complexPending?.bonus || 0) : 0
   const conditionAttributeKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
   const conditionCombatKey = (kind.startsWith('Ataque') || kind === 'Tiro' || kind === 'Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
   const attributeBase = kind === 'Ataque bruto' ? strength : kind === 'Ataque ágil' || kind === 'Esquiva' || kind === 'Disparo' ? agility : kind === 'Ataque especial' ? breathing : kind === 'Tiro' ? intellect : defense
   const conditionBonus = applyConditionModifier(attributeBase, conditionModifiers, 'status', conditionAttributeKey) - attributeBase
-  const combatConditionBonus = applyConditionModifier(bonus, conditionModifiers, 'combat_points', conditionCombatKey) - bonus
-  const total = highest + bonus + preparationBonus + conditionBonus + combatConditionBonus
-  if ((kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') && complexPending && preparationBonus) setComplexPending(null)
+  const combatConditionBonus = applyConditionModifier(baseBonus, conditionModifiers, 'combat_points', conditionCombatKey) - baseBonus
+  const total = highest + bonus + conditionBonus + combatConditionBonus
 
   const diceDescriptionBase = roll.hasDisadvantage
     ? `${dice.length}D20 = [${dice.join(', ')}] (desvantagem) → ${highest}`
@@ -8283,10 +8326,13 @@ const attribute =
       (kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate'
 
     setCombatActionResult(
-      `${kind}: ${diceDescription} + ${bonusName} (${bonus})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
+      `${kind}: ${diceDescription} + ${bonusName} (${bonus}) = ${total}.`
     )
   }
 
+  if (!forEnemy && preparationBonus > 0) {
+    setComplexPreparations(previous => primaryKeys.reduce((all,key) => consumeComplexBonus(all,key), previous))
+  }
   return total
 }
               const applyBlockedDamage = () => {
@@ -8811,7 +8857,6 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                             kitNames={forEnemy ? [] : items.filter(item => item.character_id === selectedCharacterId).map(item => item.name)}
                             equippedKitItems={forEnemy ? [] : items.filter(item => item.character_id === selectedCharacterId)}
                             modifiers={forEnemy ? {} : conditionModifiers}
-                            pending={forEnemy ? null : complexPending}
                           />
                         )}
                         {(() => {
@@ -9679,7 +9724,9 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 const diceCount = Math.max(1, Math.floor(1 + breathing))
                                 const rolls = Array.from({ length: diceCount }, () => Math.floor(Math.random() * 20) + 1)
                                 const best = Math.max(...rolls)
-                                const total = best + vigor
+                                const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'vigor')
+                                const total = best + vigor + preparationBonus
+                                if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'vigor'))
                                 const success = total >= dt
                                 const recovery = Math.floor(value / (success ? 4 : 8))
                                 const applied = Math.min(recovery, Math.max(0, value - current))
@@ -9696,7 +9743,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o {forEnemy && isKisatsutaiSystem ? 'teste de Sangue' : 'teste de Respiração'}.</small> : <>
                                   <small style={{display:'block',marginTop:5,opacity:.8}}>{1 + breathing}d20 · maior resultado + Vigor ({vigor})</small>
                                   <button type="button" onClick={runBreathingTest} style={{marginTop:9,padding:'8px 12px',borderRadius:9,border:'1px solid rgba(117,201,238,.55)',background:'rgba(117,201,238,.16)',color:'inherit',fontWeight:700,cursor:'pointer'}}>Rolar teste</button>
-                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {vigor} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} {sheetResourceUnit} ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} {sheetResourceUnit}</strong></div></div>}
+                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {breathingTestResult.total - breathingTestResult.best} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} {sheetResourceUnit} ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} {sheetResourceUnit}</strong></div></div>}
                                 </>}
                               </div>
                             })()}
@@ -9705,7 +9752,16 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                         <div className="sheet-section-heading" id={forEnemy ? 'inimigo-atributos' : 'ficha-atributos'}><span className="sheet-section-symbol" aria-hidden="true">✦</span><div><span className="sheet-section-kicker">CAPACIDADES</span><h3>Atributos</h3><p>Valores efetivos considerando progressão e bônus.</p></div></div>
                         <div className="sheet-summary-attributes">{[['Força',strength],['Agilidade',agility],['Defesa',defense],[sheetResourceName,breathing],['Intelecto',intellect]].map(([label,value])=><article key={String(label)}><span>{label}</span><strong>{value}</strong></article>)}</div>
                         <div className="sheet-summary-grid">
-                          <article className="sheet-summary-card sheet-skills-card" id={forEnemy ? 'inimigo-pericias' : 'ficha-pericias'}><div className="sheet-card-title"><span className="sheet-card-title-icon">✧</span><div><span>ESPECIALIZAÇÃO</span><h3>Perícias</h3></div></div><div className="sheet-summary-values">{[['Vigor',vigor],['Mental',mental],['Combate',combat],['Destreza',dexterity],['Resistência',resistance],['Habilidade',ability]].map(([label,value])=><div key={String(label)} className={String(label)==='Destreza'?'sheet-dexterity-with-armor':''}><span>{label}</span><strong>{String(label)==='Destreza' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value}</> : value}</strong></div>)}</div></article>
+                          <article className="sheet-summary-card sheet-skills-card" id={forEnemy ? 'inimigo-pericias' : 'ficha-pericias'}><div className="sheet-card-title"><span className="sheet-card-title-icon">✧</span><div><span>ESPECIALIZAÇÃO</span><h3>Perícias</h3></div></div><div className="sheet-summary-values">{([
+                            ['vigor','Vigor',vigor], ['mental','Mental',mental], ['combat','Combate',combat],
+                            ['dexterity','Destreza',dexterity], ['resistance','Resistência',resistance], ['ability','Habilidade',ability],
+                          ] as const).map(([key,label,value]) => {
+                            const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,key)
+                            return <div key={key} className={key==='dexterity'?'sheet-dexterity-with-armor':''} title={preparationBonus ? `Bônus de Ação Complexa pendente: +${preparationBonus} (próximo teste)` : undefined}>
+                              <span>{label}{preparationBonus > 0 && <small style={{display:'block',fontSize:10,color:'var(--season-primary)',fontWeight:700}}>Preparo +{preparationBonus}</small>}</span>
+                              <strong>{key==='dexterity' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value + preparationBonus}</> : value + preparationBonus}</strong>
+                            </div>
+                          })}</div></article>
 <article className="sheet-summary-card sheet-combat-card" id={forEnemy ? 'inimigo-combate' : 'ficha-combate'}>
   <div className="sheet-card-title"><span className="sheet-card-title-icon">⚔</span><div><span>PREPARAÇÃO</span><h3>Combate</h3></div></div>
   <div className="sheet-summary-values">
@@ -9772,7 +9828,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             {isKisatsutaiSystem && <button type="button" className="combat-action-card" aria-expanded={skillTestOpen} onClick={() => setSkillTestOpen(open => !open)}>
                               <span className="combat-action-icon">✧</span>
                               <strong>Teste de Perícia</strong>
-                              <small>{skillTestOpen ? 'Fechar teste' : 'Escolher perícia e atributo'}</small>
+                              <small>{skillTestOpen ? 'Fechar teste' : 'Com perícia ou somente atributo'}</small>
                             </button>}
                             {isKisatsutaiSystem && <button type="button" className="combat-action-card" aria-expanded={complexActionsOpen} aria-controls="haxbag-complex-actions" onClick={() => setComplexActionsOpen(open => !open)}>
                               <span className="combat-action-icon">🧠</span>
@@ -9799,6 +9855,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               })
                             )
                             const selected = available.find(skill => skill.key === selectedSkillTest)
+                            const withoutSkill = selectedSkillTest === '__no_skill__'
                             const testAttributes = [
                               { key: 'strength', label: 'Força', value: strength },
                               { key: 'agility', label: 'Agilidade', value: agility },
@@ -9812,37 +9869,37 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               ? `${2 - testDiceCount}D20 (desvantagem)`
                               : `${testDiceCount}D20 (maior dado)`
                             return skillTestOpen && <div className="combat-skill-test">
-                              <div className="combat-skill-test-heading"><strong>✧ Teste de Perícia</strong><small>Escolha uma perícia e um atributo principal. O atributo define a quantidade de D20; o treinamento soma ao maior resultado.</small></div>
+                              <div className="combat-skill-test-heading"><strong>✧ Teste de Perícia</strong><small>Escolha uma perícia ou "Sem perícia". O atributo define a quantidade de D20; treinamento só conta com uma perícia escolhida.</small></div>
                               <div className="combat-skill-test-controls">
                                 <label className="combat-skill-test-field"><span>Atributo principal</span><select aria-label="Atributo para o teste de perícia" value={testAttribute.key} onChange={event => setSelectedSkillAttribute(event.target.value)}>
                                   {testAttributes.map(attribute => <option key={attribute.key} value={attribute.key}>{attribute.label} ({attribute.value >= 0 ? '+' : ''}{attribute.value})</option>)}
                                 </select></label>
-                                <label className="combat-skill-test-field"><span>Perícia disponível</span><select aria-label="Perícia para o teste" value={selected?.key || ''} onChange={event => setSelectedSkillTest(event.target.value)}>
+                                <label className="combat-skill-test-field"><span>Perícia disponível</span><select aria-label="Perícia para o teste" value={withoutSkill ? '__no_skill__' : (selected?.key || '')} onChange={event => setSelectedSkillTest(event.target.value)}>
                                   <option value="">Selecionar perícia...</option>
+                                  <option value="__no_skill__">Sem perícia — somente atributo</option>
                                   {available.map(skill => <option key={skill.key} value={skill.key}>{skill.name} · {skill.group} ({skill.temporary ? 'concedida por condição' : `+${skill.bonus}`})</option>)}
                                 </select></label>
-                                <button type="button" disabled={!selected} onClick={() => {
-                                  if (!selected) return
-                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + conditionModifier(conditionRules.dice, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key)
+                                <button type="button" disabled={!selected && !withoutSkill} onClick={() => {
+                                  if (!selected && !withoutSkill) return
+                                  const skillGroup = selected ? (['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill') : null
+                                  const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + (selected && skillGroup ? conditionModifier(conditionRules.dice, skillGroup, selected.key) : 0)
                                   const roll = rollAttributeDice(testDiceCount + conditionDiceBonus, testAttribute.key === 'agility')
                                   const attributeConditionBonus = applyConditionModifier(testAttribute.value, conditionModifiers, 'status', testAttribute.key) - testAttribute.value
-                                  const skillGroup = ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill'
-                                  const trainedSkillBonus = effectiveConditionSkill(selected.bonus, conditionModifiers, skillGroup, selected.key, selected.name)
-                                  const skillConditionBonus = trainedSkillBonus - selected.bonus
+                                  const skillConditionBonus = selected && skillGroup ? effectiveConditionSkill(selected.bonus, conditionModifiers, skillGroup, selected.key, selected.name) - selected.bonus : 0
                                   const conditionTotal = attributeConditionBonus + skillConditionBonus
-                                  const preparationBonus = complexPending?.skill===selected.name ? complexPending.bonus : 0
-                                  const equippedBonus=equippedKitSkillBonuses(items,selectedCharacterId,selected.key).reduce((sum,kit)=>sum+kit.bonus,0)
-                                  const total = roll.result + selected.bonus + conditionTotal + preparationBonus + equippedBonus
-                                  if(preparationBonus)setComplexPending(null)
+                                  const equippedBonus = selected ? equippedKitSkillBonuses(items, selectedCharacterId, selected.key).reduce((sum,kit)=>sum+kit.bonus,0) : 0
+                                  const total = roll.result + (selected?.bonus ?? 0) + conditionTotal + equippedBonus
                                   const diceDescription = roll.hasDisadvantage
                                     ? `${roll.rolls.length}D20 [${roll.rolls.join(', ')}] (desvantagem: ${roll.result})`
                                     : `${roll.effectiveDiceCount}D20 [${roll.rolls.join(', ')}] (maior: ${roll.result})`
                                   setBlockDamageReduction(null)
-                                  setCombatActionResult(`Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus})${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}${equippedBonus ? ` + Kits (+${equippedBonus})` : ''}${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`)
+                                  setCombatActionResult(selected
+                                    ? `Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus})${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}${equippedBonus ? ` + Kits (+${equippedBonus})` : ''} = ${total}.`
+                                    : `Teste sem perícia — ${testAttribute.label} (${testAttribute.value}): ${diceDescription}${conditionTotal ? ` + Condições do atributo (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''} = ${total}.`)
                                 }}>🎲 Rolar teste</button>
                               </div>
-                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Perícia: {selected ? `+${effectiveConditionSkill(selected.bonus, conditionModifiers, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key, selected.name) + equippedKitSkillBonuses(items,selectedCharacterId,selected.key).reduce((sum,kit)=>sum+kit.bonus,0)}` : 'selecione uma perícia'}</small>
-                              {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia disponível. Treine uma perícia ou receba uma por condição ativa.</small>}
+                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Perícia: {selected ? `+${effectiveConditionSkill(selected.bonus, conditionModifiers, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key, selected.name) + equippedKitSkillBonuses(items,selectedCharacterId,selected.key).reduce((sum,kit)=>sum+kit.bonus,0)}` : withoutSkill ? 'nenhuma (somente atributo)' : 'selecione uma perícia'}</small>
+                              {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia treinada. Você ainda pode selecionar "Sem perícia" e rolar usando só o atributo.</small>}
                             </div>
                           })()}
                           {isKisatsutaiSystem && complexActionsOpen && (() => {
@@ -9856,17 +9913,17 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 : (!forEnemy && isConditionGrantedSkill(conditionModifiers, target, key, skill.name))
                                   ? [{key, label: `${skill.name} · ${group} (condição)`, name: skill.name, bonus: 0}] : []
                             }))
-                            const archetypeSkills = skills.filter(skill => !['Sociais', 'Conhecimentos Gerais', 'Naturais'].includes(skill.key.split(':')[0]))
-                            const chosen = archetypeSkills.find(skill => skill.key === complexSkill)
-                            const result = Number(complexResult)
-                            const complexBonus = result >= 35 ? 5 : result >= 30 ? 4 : result >= 25 ? 3 : result >= 20 ? 2 : result >= 15 ? 1 : 0
-                            const validResult = complexResult.trim() !== '' && Number.isFinite(result) && Number.isInteger(result) && result >= 0
-                            const alreadyUsed = Boolean(chosen && complexUsed[chosen.key] > 0)
-                            const savedBonus = chosen ? complexUsed[`${chosen.key}:bonus`] : undefined
-                            const remainingPreparations = Math.max(0, 3 - complexSceneCount)
-                            const canPrepare = Boolean(chosen && complexMainSkill && validResult && complexBonus > 0 && !alreadyUsed && remainingPreparations > 0)
-                            const canRepeat = Boolean(chosen && complexMainSkill && alreadyUsed && remainingPreparations > 0)
-                            const actionHint = remainingPreparations === 0 ? 'Limite da cena atingido. Inicie uma nova cena para continuar.' : !chosen ? 'Escolha uma perícia de arquétipo treinada.' : !complexMainSkill ? 'Escolha a perícia principal que receberá o bônus.' : !validResult ? 'Informe um resultado inteiro e não negativo.' : complexBonus === 0 ? 'O resultado precisa ser pelo menos 15 para gerar bônus.' : alreadyUsed ? 'Esta perícia já foi preparada nesta cena. Use Repetir preparo.' : 'Tudo pronto para preparar a ação.'
+                            const extraGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais']
+                            const extraSkills = skills.filter(skill => extraGroups.includes(skill.key.split(':')[0]))
+                            const chosen = extraSkills.find(skill => skill.key === complexSkill)
+                            const targetSkill = COMPLEX_MAIN_SKILLS.find(skill => skill.key === complexMainSkill)
+                            const result = complexResult.trim() ? Number(complexResult) : Number.NaN
+                            const validResult = Number.isInteger(result) && result >= 0
+                            const complexBonus = validResult ? complexBonusFromResult(result) : 0
+                            const remainingPreparations = Math.max(0, MAX_COMPLEX_ACTIONS_PER_SCENE - complexSceneCount)
+                            const actionError = complexPreparationError(complexPreparations,chosen?.key || '',targetSkill?.key || '',result)
+                            const canPrepare = !actionError
+                            const actionHint = actionError || 'Pronto para preparar: a perícia extra e a beneficiada só podem participar uma vez por cena.'
                             const thresholds = [{label:'15–19',bonus:1},{label:'20–24',bonus:2},{label:'25–29',bonus:3},{label:'30–34',bonus:4},{label:'35+',bonus:5}]
                             return <div id="haxbag-complex-actions" className="combat-skill-test hax-complex-panel">
                               <style>{`
@@ -9900,40 +9957,50 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 .hax-complex-note{opacity:.75;font-size:.78rem;line-height:1.5}
                                 .hax-complex-empty{border:1px dashed var(--border-color,rgba(150,170,190,.35));border-radius:12px;padding:14px;display:flex;gap:11px;align-items:center;background:rgba(120,145,175,.035)}
                                 .hax-complex-empty span{font-size:1.3rem}.hax-complex-empty div{display:grid;gap:3px}.hax-complex-empty small{opacity:.7}
-                                .hax-complex-footer{padding-top:11px;border-top:1px solid var(--border-color,rgba(150,170,190,.17))}
+                                .hax-complex-footer{padding-top:11px;border-top:1px solid var(--border-color,rgba(150,170,190,.17))}.hax-complex-history{display:grid;gap:8px;border-top:1px solid var(--border-color,rgba(150,170,190,.17));padding-top:12px}.hax-complex-history ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}.hax-complex-history li{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;background:rgba(120,145,175,.075);font-size:.79rem;flex-wrap:wrap}.hax-complex-history li span{flex:1 1 180px}.hax-complex-history li small{opacity:.7}
                                 @media(max-width:680px){.hax-complex-overview{grid-template-columns:repeat(3,minmax(0,1fr))}.hax-complex-stat{padding:9px}.hax-complex-stat strong{font-size:1rem}.hax-complex-fields{grid-template-columns:1fr}.hax-complex-panel{padding:14px;gap:12px}.hax-complex-scale{gap:5px}.hax-complex-tier{padding:10px 3px;min-height:58px}.hax-complex-tier strong{font-size:1.05rem}.hax-complex-buttons button{flex:1 1 145px}}
                               `}</style>
                               <div className="hax-complex-head">
-                                <div><strong>🧠 Ações Complexas</strong><small>Escolha atributo, perícia de arquétipo e perícia principal beneficiada. Máximo de 3 preparações por cena.</small></div>
-                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/3 nesta cena</span>
+                                <div><strong>🧠 Ações Complexas</strong><small>Use uma perícia extra para preparar um bônus em uma das seis perícias principais. Cada origem e cada destino só podem ser escolhidos uma vez por cena.</small></div>
+                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/{MAX_COMPLEX_ACTIONS_PER_SCENE} nesta cena</span>
                               </div>
                               <div className="hax-complex-overview">
-                                <div className="hax-complex-stat"><small>Preparações usadas</small><strong>{complexSceneCount} / 3</strong></div>
+                                <div className="hax-complex-stat"><small>Preparações usadas</small><strong>{complexSceneCount} / {MAX_COMPLEX_ACTIONS_PER_SCENE}</strong></div>
                                 <div className="hax-complex-stat"><small>Restantes</small><strong>{remainingPreparations}</strong></div>
                                 <div className="hax-complex-stat"><small>Bônus atual</small><strong>{validResult && complexBonus > 0 ? `+${complexBonus}` : '—'}</strong></div>
                               </div>
-                              <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={3}><span style={{width:`${complexSceneCount / 3 * 100}%`}} /></div>
+                              <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={MAX_COMPLEX_ACTIONS_PER_SCENE}><span style={{width:`${complexSceneCount / MAX_COMPLEX_ACTIONS_PER_SCENE * 100}%`}} /></div>
                               <div className="hax-complex-fields">
                                 <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Respiração</option></select></label>
-                                <label><span>2 · 📚 Perícia de arquétipo</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia...</option>{archetypeSkills.map(skill => <option key={skill.key} value={skill.key}>{skill.label} (+{skill.bonus})</option>)}</select></label>
-                                <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={complexMainSkill} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione...</option>{['Vigor','Resistência','Combate','Destreza','Mental','Habilidade'].map(skill=><option key={skill} value={skill}>{skill}</option>)}</select></label>
+                                <label><span>2 · 📚 Perícia extra utilizada</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia extra...</option>{extraSkills.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key)}>{skill.label} (+{skill.bonus}){complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key) ? ' · Já usada nesta cena' : ''}</option>)}</select></label>
+                                <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={targetSkill?.key || ''} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione uma das seis perícias...</option>{COMPLEX_MAIN_SKILLS.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.targetSkillKey === skill.key)}>{skill.label}{complexPreparations.some(preparation => preparation.targetSkillKey === skill.key) ? ' · Já beneficiada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
-                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
+                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=effectiveConditionSkill(chosen.bonus,conditionModifiers,'extra_skill',chosen.key,chosen.name);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia Extra ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
                               </div>
-                              <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {complexMainSkill || 'Destino não selecionado'}</span></div>
+                              <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {targetSkill?.label || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
                               <div className="hax-complex-status">
-                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>{alreadyUsed ? 'Perícia já utilizada: repita para restaurar o bônus original.' : 'Selecione as três opções e informe o resultado do teste (mínimo 15 para receber bônus).'}</small></div>
-                                {complexPending && <span className="hax-complex-pill">🎯 Pendente: +{complexPending.bonus} · {complexPending.skill}</span>}
+                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>O bônus aparece entre as seis perícias principais e vale apenas para o próximo teste que utilizar a perícia escolhida.</small></div>
+                                {complexPreparations.filter(preparation => !preparation.consumed).map(preparation => <span key={preparation.targetSkillKey} className="hax-complex-pill">🎯 +{preparation.bonus} · {preparation.targetSkillLabel} (pendente)</span>)}
                               </div>
-                              <div className={`hax-complex-guide${canPrepare || canRepeat ? ' ready' : ''}`} role="status">{canPrepare || canRepeat ? '✓' : 'ℹ️'} {actionHint}</div>
+                              <div className={`hax-complex-guide${canPrepare ? ' ready' : ''}`} role="status">{canPrepare ? '✓' : 'ℹ️'} {actionHint}</div>
                               <div className="hax-complex-buttons">
-                                <button type="button" disabled={!canPrepare} onClick={() => {if(!chosen || !canPrepare)return;setComplexUsed(old => ({...old,[chosen.key]:1,[`${chosen.key}:bonus`]:complexBonus}));setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill,bonus:complexBonus});setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para a próxima ação de ${complexMainSkill}. Preparo realizado (1 ação).`)}}>🎯 Preparar ação</button>
-                                <button type="button" disabled={!canRepeat} onClick={() => {if(!chosen || !canRepeat)return;const bonus = savedBonus ?? 0;setComplexSceneCount(count=>count+1);setComplexPending({skill:complexMainSkill||chosen.label,bonus});setCombatActionResult(`Ação Complexa repetida — ${chosen.label}. Uma ação gasta; bônus anterior +${bonus} para ${complexMainSkill || chosen.label} restaurado.`)}}>🔁 Repetir preparo</button>
-                                <button type="button" className="secondary-button" onClick={() => {setComplexUsed({});setComplexSceneCount(0);setComplexPending(null);setComplexResult('')}}>↺ Nova cena</button>
+                                <button type="button" disabled={!canPrepare} onClick={() => {
+                                  if (!chosen || !targetSkill || !validResult || actionError) return
+                                  const preparation: ComplexPreparation = {
+                                    sourceSkillKey: chosen.key, sourceSkillLabel: chosen.label,
+                                    targetSkillKey: targetSkill.key, targetSkillLabel: targetSkill.label,
+                                    bonus: complexBonus, consumed: false,
+                                  }
+                                  setComplexPreparations(previous => complexPreparationError(previous,chosen.key,targetSkill.key,result) ? previous : [...previous,preparation])
+                                  setComplexSkill('');setComplexMainSkill('');setComplexResult('')
+                                  setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para ${targetSkill.label} (perícia principal). Uma ação de preparo utilizada.`)
+                                }}>🎯 Preparar ação</button>
+                                <button type="button" className="secondary-button" onClick={() => {setComplexPreparations([]);setComplexSkill('');setComplexMainSkill('');setComplexResult('')}}>↺ Nova cena</button>
                               </div>
-                              {archetypeSkills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia de arquétipo disponível</strong><small>Treine uma Perícia de Arquétipo na ficha para habilitar o preparo.</small></div></div>}
-                              <small className="hax-complex-note hax-complex-footer">💡 Limite de 3 preparações por cena, incluindo repetições. Reinicie somente ao começar uma nova cena. O bônus pendente é aplicado à próxima ação compatível com a perícia principal escolhida.</small>
+                              {complexPreparations.length > 0 && <div className="hax-complex-history"><strong>Preparações desta cena</strong><ul>{complexPreparations.map(preparation => <li key={preparation.sourceSkillKey}><span>{preparation.sourceSkillLabel} → {preparation.targetSkillLabel}</span><strong>+{preparation.bonus}</strong><small>{preparation.consumed ? 'Usado' : 'Pendente'}</small></li>)}</ul></div>}
+                              {extraSkills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia extra disponível</strong><small>Treine ou receba uma Perícia Geral (extra) na ficha para habilitar o preparo.</small></div></div>}
+                              <small className="hax-complex-note hax-complex-footer">💡 Até três preparações por cena. Cada perícia extra pode preparar uma ação uma única vez; cada perícia beneficiada pode receber no máximo um bônus. O bônus é consumido ao rolar o teste dessa perícia. Apenas “Nova cena” libera os usos.</small>
                             </div>
                           })()}
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
@@ -9996,11 +10063,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const diceCount = 1
                                   const rolls = Array.from({ length: diceCount }, () => rollD20())
                                   const highest = Math.max(...rolls)
-                                  const total = highest + armorDexterity
+                                  const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'dexterity')
+                                  const total = highest + armorDexterity + preparationBonus
+                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'dexterity'))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Iniciativa: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Destreza de armadura (${armorDexterity}) = ${total}.`
+                                    `Iniciativa: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Destreza de armadura (${armorDexterity})${preparationBonus ? ` + Preparo Destreza (+${preparationBonus})` : ''} = ${total}.`
                                   )
                                   void persistRenderInitiative(total)
                                 }}
@@ -10016,11 +10085,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 onClick={() => {
                                   const diceCount = 1 + Math.floor(strength)
                                   const roll = rollSheetAttributeDice(diceCount)
-                                  const total = roll.result + vigor
+                                  const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'vigor')
+                                  const total = roll.result + vigor + preparationBonus
+                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'vigor'))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Manobra de Luta: ${roll.description} + Vigor (${vigor}) = ${total}.`
+                                    `Manobra de Luta: ${roll.description} + Vigor (${vigor})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
                                   )
                                 }}
                               >
@@ -10035,11 +10106,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 onClick={() => {
                                   const diceCount = 1 + Math.floor(defense)
                                   const roll = rollSheetAttributeDice(diceCount)
-                                  const total = roll.result + resistance
+                                  const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'resistance')
+                                  const total = roll.result + resistance + preparationBonus
+                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'resistance'))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Resistência Física: ${roll.description} + Respiração (${resistance}) = ${total}.`
+                                    `Resistência Física: ${roll.description} + Resistência (${resistance})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
                                   )
                                 }}
                               >
@@ -10054,11 +10127,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 onClick={() => {
                                   const diceCount = 1 + Math.floor(intellect)
                                   const roll = rollSheetAttributeDice(diceCount)
-                                  const total = roll.result + mental
+                                  const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'mental')
+                                  const total = roll.result + mental + preparationBonus
+                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'mental'))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Teste de Sanidade: ${roll.description} + Mental (${mental}) = ${total}.`
+                                    `Teste de Sanidade: ${roll.description} + Mental (${mental})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
                                   )
                                 }}
                               >
@@ -13360,8 +13435,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 const conversionValue = Number(enemyWalletConversionAmount.replace(',', '.'))
                 const from = currencies.find(entry => entry.id === fromId)
                 const to = currencies.find(entry => entry.id === toId)
-                const conversionResult = from && to && conversionValue > 0 && from.conversionRate > 0 && to.conversionRate > 0
-                  ? conversionValue * from.conversionRate / to.conversionRate : null
+                const conversionResult = from && to && fromId !== toId
+                  ? calculateCurrencyExchange(conversionValue, from.conversionRate, to.conversionRate) : null
+                const enemyDestinationFits = conversionResult !== null && fitsCurrencyBalance(Number(balances[toId]) || 0, conversionResult)
                 const history: Array<Record<string, any>> = Array.isArray(wallet.history) ? wallet.history : []
                 const amount = Number(enemyWalletAmount.replace(',', '.'))
                 const formatMoney = (value: number) => value.toLocaleString('pt-BR', {maximumFractionDigits:8})
@@ -13394,21 +13470,21 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <div className="currency-conversion-panel" style={{display:'grid',gap:16,marginBottom:20,padding:20,borderRadius:18,border:'1px solid var(--season-line,rgba(255,255,255,.12))',background:'var(--season-surface-alt,rgba(255,255,255,.035))'}}>
                       <div><h4 style={{margin:'0 0 5px',fontSize:16}}>⇄ Converter moedas</h4><p style={{margin:0,fontSize:12,opacity:.7}}>Converta seus saldos entre as moedas da campanha.</p></div>
                       <div className="form-row">
-                        <label style={labelStyle}>MOEDA DE ORIGEM<select style={inputStyle} value={fromId} onChange={event=>setEnemyWalletFrom(event.target.value)}>{currencies.map(currency=><option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
-                        <label style={labelStyle}>MOEDA DE DESTINO<select style={inputStyle} value={toId} onChange={event=>setEnemyWalletTo(event.target.value)}>{currencies.map(currency=><option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
+                        <label style={labelStyle}>MOEDA DE ORIGEM<select style={inputStyle} value={fromId} onChange={event=>{const id=event.target.value;setEnemyWalletFrom(id);if(id===toId)setEnemyWalletTo(currencies.find(currency=>currency.id!==id)?.id||'')}}>{currencies.filter(currency=>currency.id!==toId).map(currency=><option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
+                        <label style={labelStyle}>MOEDA DE DESTINO<select style={inputStyle} value={toId} onChange={event=>{const id=event.target.value;setEnemyWalletTo(id);if(id===fromId)setEnemyWalletFrom(currencies.find(currency=>currency.id!==id)?.id||'')}}>{currencies.filter(currency=>currency.id!==fromId).map(currency=><option key={currency.id} value={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
                       </div>
-                      <label style={labelStyle}>QUANTIDADE<input style={inputStyle} type="number" min="0" step="any" value={enemyWalletConversionAmount} onChange={event=>setEnemyWalletConversionAmount(event.target.value)}/></label>
-                      <p style={{margin:0,fontSize:13}}>{conversionResult===null?'Informe uma quantidade para visualizar a conversão.':`Você receberá ${to?.symbol||''} ${formatMoney(conversionResult)}`}</p>
-                      <button type="button" className="primary-button" disabled={!conversionResult || fromId===toId || conversionValue > (Number(balances[fromId])||0)} onClick={()=>{convertEnemyWallet(fromId,toId,conversionValue);setEnemyWalletConversionAmount('')}}>⇄ Converter moedas</button>
+                      <label style={labelStyle}>QUANTIDADE<input style={inputStyle} type="number" min="0.01" max={MAX_CURRENCY_BALANCE} step="any" value={enemyWalletConversionAmount} onChange={event=>setEnemyWalletConversionAmount(event.target.value)}/></label>
+                      <p style={{margin:0,fontSize:13}}>{fromId===toId?'Escolha duas moedas diferentes.':conversionResult===null?'Informe uma quantidade válida para visualizar a conversão.':!enemyDestinationFits?'O saldo de destino excederia o limite de 100.000.000.':`Você receberá ${to?.symbol||''} ${formatMoney(conversionResult)}`}</p>
+                      <button type="button" className="primary-button" disabled={!enemyDestinationFits || fromId===toId || conversionValue > (Number(balances[fromId])||0)} onClick={()=>{if(convertEnemyWallet(fromId,toId,conversionValue))setEnemyWalletConversionAmount('')}}>⇄ Converter moedas</button>
                     </div>
                     <div className="currency-actions" style={{display:'grid',gap:14,padding:20,borderRadius:18,border:'1px solid var(--season-line,rgba(255,255,255,.12))',background:'var(--season-surface-alt,rgba(255,255,255,.035))'}}>
                       <div><h4 style={{margin:'0 0 5px',fontSize:16}}>Movimentar saldo</h4><p style={{margin:0,fontSize:12,opacity:.7}}>Adicione ou retire moedas desta carteira.</p></div>
                       <label style={labelStyle}>MOEDA<select style={inputStyle} value={selectedId} onChange={event=>setEnemyWalletCurrency(event.target.value)}>{currencies.map(currency=><option value={currency.id} key={currency.id}>{currency.name} ({currency.symbol})</option>)}</select></label>
-                      <label style={labelStyle}>QUANTIDADE<input style={inputStyle} type="number" min="0" step="any" value={enemyWalletAmount} onChange={event=>setEnemyWalletAmount(event.target.value)}/></label>
+                      <label style={labelStyle}>QUANTIDADE<input style={inputStyle} type="number" min="0.01" max={MAX_CURRENCY_BALANCE} step="any" value={enemyWalletAmount} onChange={event=>setEnemyWalletAmount(event.target.value)}/></label>
                       <label style={labelStyle}>DESCRIÇÃO<input style={inputStyle} value={enemyWalletDescription} maxLength={150} onChange={event=>setEnemyWalletDescription(event.target.value)} placeholder="Recompensa, compra, saque..."/></label>
                       <div className="currency-buttons" style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10}}>
-                        <button type="button" className="primary-button currency-action-add" disabled={!selectedId || !(amount>0) || !Number.isFinite(amount)} onClick={()=>{adjustEnemyWallet(selectedId,amount,enemyWalletDescription);setEnemyWalletAmount('');setEnemyWalletDescription('')}}>+ Adicionar</button>
-                        <button type="button" className="secondary-button currency-action-remove" disabled={!selectedId || !(amount>0) || !Number.isFinite(amount) || amount>(Number(balances[selectedId])||0)} onClick={()=>{adjustEnemyWallet(selectedId,-amount,enemyWalletDescription);setEnemyWalletAmount('');setEnemyWalletDescription('')}}>− Retirar</button>
+                        <button type="button" className="primary-button currency-action-add" disabled={!selectedId || !isValidCurrencyAmount(amount) || !fitsCurrencyBalance(Number(balances[selectedId])||0,amount)} onClick={()=>{if(adjustEnemyWallet(selectedId,amount,enemyWalletDescription)){setEnemyWalletAmount('');setEnemyWalletDescription('')}}}>+ Adicionar</button>
+                        <button type="button" className="secondary-button currency-action-remove" disabled={!selectedId || !isValidCurrencyAmount(amount) || amount>(Number(balances[selectedId])||0)} onClick={()=>{if(adjustEnemyWallet(selectedId,-amount,enemyWalletDescription)){setEnemyWalletAmount('');setEnemyWalletDescription('')}}}>− Retirar</button>
                       </div>
                     </div>
                   </> : <div className="currency-history-page" style={{padding:20,borderRadius:18}}>
@@ -14851,7 +14927,7 @@ style={{cursor:'pointer'}}>
           MOEDA DE ORIGEM
           <select
             value={conversionFromId}
-            onChange={event => setConversionFromId(event.target.value)}
+            onChange={event => { const id = event.target.value; setConversionFromId(id); if (id === conversionToId) setConversionToId('') }}
             style={{
               width: '100%',
               minHeight: 46,
@@ -14863,7 +14939,7 @@ style={{cursor:'pointer'}}>
             }}
           >
             <option value="">Selecione</option>
-            {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
+            {(selectedCampaign?.currency_config?.currencies ?? []).filter(currency => currency.id !== conversionToId).map(currency => (
               <option key={currency.id} value={currency.id}>
                 {currency.name} ({currency.symbol})
               </option>
@@ -14875,7 +14951,7 @@ style={{cursor:'pointer'}}>
           MOEDA DE DESTINO
           <select
             value={conversionToId}
-            onChange={event => setConversionToId(event.target.value)}
+            onChange={event => { const id = event.target.value; setConversionToId(id); if (id === conversionFromId) setConversionFromId('') }}
             style={{
               width: '100%',
               minHeight: 46,
@@ -14887,7 +14963,7 @@ style={{cursor:'pointer'}}>
             }}
           >
             <option value="">Selecione</option>
-            {(selectedCampaign?.currency_config?.currencies ?? []).map(currency => (
+            {(selectedCampaign?.currency_config?.currencies ?? []).filter(currency => currency.id !== conversionFromId).map(currency => (
               <option key={currency.id} value={currency.id}>
                 {currency.name} ({currency.symbol})
               </option>
@@ -14900,6 +14976,7 @@ style={{cursor:'pointer'}}>
           <input
             type="number"
             min="0.01"
+            max={MAX_CURRENCY_BALANCE}
             step="any"
             value={conversionAmount}
             onChange={event => setConversionAmount(event.target.value)}
@@ -14926,9 +15003,10 @@ style={{cursor:'pointer'}}>
           currency => currency.id === conversionToId,
         )
         const amount = Number(conversionAmount.replace(',', '.'))
-        const received = from && to && Number.isFinite(amount) && amount > 0
-          ? amount * from.conversionRate / to.conversionRate
+        const received = from && to && from.id !== to.id
+          ? calculateCurrencyExchange(amount, from.conversionRate, to.conversionRate)
           : null
+        const destinationFits = received !== null && to && fitsCurrencyBalance(Number(currencyBalances[to.id]) || 0, received)
 
         return (
           <div style={{
@@ -14937,7 +15015,7 @@ style={{cursor:'pointer'}}>
             background: 'var(--season-surface,rgba(0,0,0,.13))',
             fontSize: 13,
           }}>
-            {received !== null && from && to ? (
+            {received !== null && from && to && destinationFits ? (
               <>
                 <span style={{ color: 'var(--season-muted,#aaa)' }}>Você receberá aproximadamente:</span>
                 <strong style={{ display: 'block', marginTop: 5, fontSize: 20 }}>
@@ -14946,7 +15024,7 @@ style={{cursor:'pointer'}}>
               </>
             ) : (
               <span style={{ color: 'var(--season-muted,#aaa)' }}>
-                Selecione as moedas e informe uma quantidade para visualizar a conversão.
+                {from?.id === to?.id && from ? 'Escolha duas moedas diferentes.' : received !== null && !destinationFits ? 'Essa conversão ultrapassaria o limite de 100.000.000 da moeda de destino.' : 'Selecione duas moedas diferentes e uma quantidade válida para visualizar a conversão.'}
               </span>
             )}
           </div>
@@ -14977,7 +15055,16 @@ style={{cursor:'pointer'}}>
           !conversionToId ||
           conversionFromId === conversionToId ||
           !conversionAmount ||
-          Number(conversionAmount.replace(',', '.')) <= 0
+          !isValidCurrencyAmount(Number(conversionAmount.replace(',', '.'))) ||
+          (() => {
+            const currencies = selectedCampaign?.currency_config?.currencies ?? []
+            const from = currencies.find(currency => currency.id === conversionFromId)
+            const to = currencies.find(currency => currency.id === conversionToId)
+            if (!from || !to || from.id === to.id) return true
+            const amount = Number(conversionAmount.replace(',', '.'))
+            const received = calculateCurrencyExchange(amount, from.conversionRate, to.conversionRate)
+            return received === null || !fitsCurrencyBalance(Number(currencyBalances[to.id]) || 0, received) || amount > (Number(currencyBalances[from.id]) || 0)
+          })()
         }
         onClick={() => void handleCurrencyConversion()}
       >
@@ -15008,6 +15095,7 @@ style={{cursor:'pointer'}}>
           <input
             type="number"
             min="0.01"
+            max={MAX_CURRENCY_BALANCE}
             step="0.01"
             value={currencyAmount}
             onChange={event => setCurrencyAmount(event.target.value)}
