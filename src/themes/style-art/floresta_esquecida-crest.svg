@@ -1,28 +1,86 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Emblema Silvam Argentea — árvore prateada e runas douradas">
-<defs>
-  <linearGradient id="metal" x1="0" y1="0" x2=".5" y2="1"><stop stop-color="#fafafa"/><stop offset=".65" stop-color="#d3d5d7"/><stop offset="1" stop-color="#8c969c"/></linearGradient>
-  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0c9"/><stop offset=".43" stop-color="#cda16a"/><stop offset="1" stop-color="#8a6041"/></linearGradient>
-  <g id="leaf" fill="url(#metal)" stroke="#e8eaeb" stroke-opacity=".3" stroke-width=".5"><path d="M0 0 Q-15-4 -22-16 Q-6-19 0 0Z"/></g>
-</defs>
-<!-- Ornamental shield, restrained enough for a 32px icon. -->
-<path d="M128 13C159 27 193 29 221 31V135C221 181 174 217 128 242C82 217 35 181 35 135V31C63 29 97 27 128 13Z" fill="#050607" fill-opacity=".88" stroke="url(#gold)" stroke-width="3.7"/>
-<path d="M128 24C161 37 188 38 208 39V135C208 171 169 205 128 229C87 205 48 171 48 135V39C68 38 95 37 128 24Z" fill="none" stroke="#bd9a6c" stroke-opacity=".65" stroke-width="1.1"/>
-<path d="M128 22l5 8-5 8-5-8Z" fill="url(#gold)"/>
-<!-- Golden orbital crescent/ring behind the tree. -->
-<path d="M62 110A71 71 0 0 1 194 75M63 130A69 69 0 0 0 83 173" fill="none" stroke="url(#gold)" stroke-width="1.5" stroke-linecap="round"/>
-<path d="M181 56l2 7 7 2-7 2-2 7-2-7-7-2 7-2Z" fill="#dfb579"/>
-<!-- Trunk, low branches, root system. -->
-<g fill="none" stroke="url(#metal)" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M128 185C127 164 126 144 126 124C125 104 133 91 140 74" stroke-width="13"/>
-  <path d="M127 148C112 127 90 125 76 116M129 139C144 116 164 111 181 102M130 110C113 92 106 79 95 68M137 90C151 80 163 71 167 56" stroke-width="6.7"/>
-  <path d="M102 132C88 132 74 137 62 131M153 120C171 131 184 129 193 125M113 102C101 103 88 94 78 86M149 81C162 92 179 88 187 82" stroke-width="3.4"/>
-  <path d="M128 181C114 190 102 194 85 200M131 181C146 190 154 193 174 198M126 183C122 198 118 204 111 214M132 183C137 198 142 205 151 211" stroke-width="3.2"/>
-</g>
-<g fill="url(#metal)">
-  <path d="M76 116q-18-4-20-18q18-1 20 18ZM86 120q-14 1-19 13q18 2 19-13ZM95 67q-17-12-22-27q20 4 22 27ZM108 98q-17-8-17-22q18 5 17 22Z"/>
-  <path d="M142 72q-11-15-3-29q13 14 3 29ZM164 66q3-17 18-22q2 17-18 22ZM179 102q13-12 28-10q-7 17-28 10ZM167 122q18-7 29 5q-15 12-29-5Z"/>
-  <path d="M77 86q-17-14-28-9q6 18 28 9ZM60 130q-14-13-27-9q6 16 27 9ZM185 80q12-19 26-17q-2 18-26 17ZM190 126q19-10 29 0q-14 12-29 0Z"/>
-</g>
-<path d="M128 216l4 5-4 5-4-5Z" fill="url(#gold)"/>
-<path d="M94 229h68" stroke="#cda16a" stroke-opacity=".5" stroke-width="1"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Emblema Silvam Argentea — brasão de libélula prateada">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#fcfcfc"/>
+      <stop offset="0.45" stop-color="#d8dde0"/>
+      <stop offset="1" stop-color="#9aa5ac"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff0c8"/>
+      <stop offset="0.5" stop-color="#dbb078"/>
+      <stop offset="1" stop-color="#8c6040"/>
+    </linearGradient>
+    <radialGradient id="mist" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#12353a" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#020304" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Shield -->
+  <path d="M128 13C159 27 193 29 221 31V135C221 181 174 217 128 242C82 217 35 181 35 135V31C63 29 97 27 128 13Z"
+        fill="#050607" fill-opacity="0.94" stroke="url(#gold)" stroke-width="3.8"/>
+  <path d="M128 24C161 37 188 38 208 39V135C208 171 169 205 128 229C87 205 48 171 48 135V39C68 38 95 37 128 24Z"
+        fill="url(#mist)" stroke="#c19a70" stroke-opacity="0.55" stroke-width="1.05"/>
+
+  <!-- Ornaments -->
+  <path d="M70 70C87 58 103 52 119 50" fill="none" stroke="url(#gold)" stroke-width="1.5" stroke-linecap="round" opacity="0.9"/>
+  <path d="M186 75C171 60 154 51 136 47" fill="none" stroke="url(#gold)" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/>
+  <path d="M173 42l2.2 7 7 2.2-7 2.2-2.2 7-2.2-7-7-2.2 7-2.2Z" fill="url(#gold)" opacity="0.95"/>
+  <path d="M128 210c-16 0-29-2-41-6" fill="none" stroke="#b98e64" stroke-width="1" opacity="0.5"/>
+  <path d="M128 210c16 0 29-2 41-6" fill="none" stroke="#b98e64" stroke-width="1" opacity="0.5"/>
+
+  <!-- Crescent moon -->
+  <g opacity="0.95" filter="url(#softGlow)">
+    <path d="M174 88c-1.5-15.5-12.1-28.3-26.3-33.6 4.2-2 9-3.2 14-3.2 18.2 0 33 14.8 33 33 0 13.2-7.8 24.5-19 29.8 5-6.8 8-15.3 8.3-24z"
+          fill="none" stroke="url(#gold)" stroke-width="2"/>
+  </g>
+
+  <!-- Laurel/leaf accents -->
+  <g stroke="url(#metal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9">
+    <path d="M68 166c9 2 16 8 20 18"/>
+    <path d="M188 166c-9 2-16 8-20 18"/>
+    <path d="M68 166c-7-2-12-7-15-13"/>
+    <path d="M188 166c7-2 12-7 15-13"/>
+  </g>
+  <g fill="url(#metal)" opacity="0.88">
+    <path d="M86 182c-10-1-14-6-16-12 10 0 15 4 16 12Z"/>
+    <path d="M76 171c-8 0-14-3-18-8 8-1 16 1 18 8Z"/>
+    <path d="M170 182c10-1 14-6 16-12-10 0-15 4-16 12Z"/>
+    <path d="M180 171c8 0 14-3 18-8-8-1-16 1-18 8Z"/>
+  </g>
+
+  <!-- Dragonfly -->
+  <g filter="url(#shadow)">
+    <!-- upper wings -->
+    <path d="M126 108C100 76 77 69 58 75c8 16 28 30 61 40 4-2 6-4 7-7 1-2 1-4 0-8Z" fill="url(#metal)" opacity="0.97"/>
+    <path d="M130 108c26-32 49-39 68-33-8 16-28 30-61 40-4-2-6-4-7-7-1-2-1-4 0-8Z" fill="url(#metal)" opacity="0.97"/>
+    <!-- lower wings -->
+    <path d="M124 122c-24 13-42 31-49 49 20-2 39-14 56-37 0-4-1-7-3-9l-4-3Z" fill="url(#metal)" opacity="0.9"/>
+    <path d="M132 122c24 13 42 31 49 49-20-2-39-14-56-37 0-4 1-7 3-9l4-3Z" fill="url(#metal)" opacity="0.9"/>
+    <!-- body -->
+    <ellipse cx="128" cy="112" rx="9" ry="12" fill="#e8ecef"/>
+    <ellipse cx="128" cy="96" rx="6.7" ry="6.7" fill="#f7f8f9"/>
+    <path d="M128 123c-1 17-1 29-1 43 0 19 1 31 1 43" fill="none" stroke="url(#metal)" stroke-width="6" stroke-linecap="round"/>
+    <path d="M128 154l-8 11M128 154l8 11M128 178l-7 9M128 178l7 9" fill="none" stroke="#b8c0c6" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M128 91v29" stroke="#f5f7f8" stroke-width="2" opacity="0.75"/>
+  </g>
+
+  <!-- Fine inner wing veins for readability -->
+  <g stroke="#eef1f3" stroke-opacity="0.45" stroke-width="1.1" stroke-linecap="round">
+    <path d="M96 92c8 9 16 16 25 22"/>
+    <path d="M159 92c-8 9-16 16-25 22"/>
+    <path d="M96 149c9-4 18-11 28-22"/>
+    <path d="M160 149c-9-4-18-11-28-22"/>
+  </g>
+
+  <!-- Bottom rune -->
+  <path d="M128 220l4 5-4 5-4-5Z" fill="url(#gold)"/>
+  <path d="M112 230h32" stroke="#cda16a" stroke-opacity="0.5" stroke-width="1"/>
 </svg>
