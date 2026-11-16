@@ -1,80 +1,84 @@
-/* HäxBag V93 — Kisatsutai: brasão inteiro no cartão de personagem.
-   Importado DEPOIS do visualStyles.css para neutralizar regras antigas.
-   Não altera o ícone do personagem nem o botão de favorito. */
+/* HäxBag V97 — Brasões dos personagens corrigidos na fonte.
+   O emblema real acompanha a identidade visual aplicada à temporada;
+   o nome da campanha e o emoji do personagem são independentes.
+   Importado após visualStyles.css. */
 
-.app-shell.hb-polish.visual-style-japanese .page-sheets {
-  --roster-crest: url("./style-art/kisatsutai-crest.svg");
+/* O círculo legado (::before) é incompatível com a arte: aparecia cortado no
+   canto superior. Desligá-lo somente nos cartões que possuem o novo brasão. */
+.app-shell.hb-polish .page-sheets .sheet-roster-grid
+.sheet-roster-card.hb-has-style-crest {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
 }
 
-/* Remove o arco genérico, que estava aparecendo cortado no canto.
-   A marca-d'água é o SVG inteiro, alinhado e sem rotação. */
-.app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-card::before {
-  content: "" !important;
+.app-shell.hb-polish .page-sheets .sheet-roster-grid
+.sheet-roster-card.hb-has-style-crest::before {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+/* Marca-d'água SVG inteira, em posição fixa e abaixo dos textos e botões.
+   A variável --roster-crest já é escolhida pelo visualStyles.css para cada
+   identidade; não é derivada do nome da campanha. */
+.app-shell.hb-polish .page-sheets .sheet-roster-grid
+.sheet-roster-card.hb-has-style-crest > .hb-roster-style-crest {
   display: block !important;
   position: absolute !important;
-  top: 60px !important;
-  right: 13px !important;
-  bottom: auto !important;
-  left: auto !important;
-  inset: 60px 13px auto auto !important;
-  width: 132px !important;
-  height: 132px !important;
-  box-sizing: border-box !important;
+  inset: 68px 17px auto auto !important;
+  width: 122px !important;
+  height: 122px !important;
+  min-width: 0 !important;
   padding: 0 !important;
+  margin: 0 !important;
+  background: var(--roster-crest, var(--hb-v26-crest, none)) center center / contain no-repeat !important;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   transform: none !important;
   filter: none !important;
-  background: url("./style-art/kisatsutai-crest.svg") center center / contain no-repeat !important;
-  opacity: .44 !important;
-  z-index: 0 !important;
+  opacity: .25 !important;
   pointer-events: none !important;
+  z-index: 0 !important;
 }
 
-/* O símbolo fica atrás das informações, sem tapar o botão de favorito. */
-.app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-card {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-.app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-card > :not(.sheet-roster-card-accent) {
+/* Outros elementos sempre acima da marca-d'água. */
+.app-shell.hb-polish .page-sheets .sheet-roster-grid
+.sheet-roster-card.hb-has-style-crest > :not(.hb-roster-style-crest):not(.sheet-roster-card-accent) {
   position: relative;
   z-index: 1;
 }
-.app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-card > .sheet-roster-card-accent {
+.app-shell.hb-polish .page-sheets .sheet-roster-grid
+.sheet-roster-card.hb-has-style-crest > .sheet-roster-card-accent {
   z-index: 2;
 }
 
-/* A lista compacta recebe uma versão menor, sem competir com o conteúdo. */
-.app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-grid.is-list .sheet-roster-card::before {
-  top: 50% !important;
-  right: 68px !important;
-  bottom: auto !important;
-  left: auto !important;
-  inset: 50% 68px auto auto !important;
-  width: 86px !important;
-  height: 86px !important;
+/* No modo Lista, o emblema fica menor para não competir com os controles. */
+.app-shell.hb-polish .page-sheets .sheet-roster-grid.is-list
+.sheet-roster-card.hb-has-style-crest > .hb-roster-style-crest {
+  inset: 50% 92px auto auto !important;
+  width: 78px !important;
+  height: 78px !important;
   transform: translateY(-50%) !important;
-  opacity: .12 !important;
+  opacity: .13 !important;
 }
 
 @media (max-width: 570px) {
-  .app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-card::before {
-    top: 69px !important;
-    right: 11px !important;
-    inset: 69px 11px auto auto !important;
-    width: 105px !important;
-    height: 105px !important;
-    opacity: .35 !important;
+  .app-shell.hb-polish .page-sheets .sheet-roster-grid
+  .sheet-roster-card.hb-has-style-crest > .hb-roster-style-crest {
+    inset: 72px 16px auto auto !important;
+    width: 112px !important;
+    height: 112px !important;
+    opacity: .26 !important;
   }
-  .app-shell.hb-polish.visual-style-japanese .page-sheets .sheet-roster-grid.is-list .sheet-roster-card::before {
-    top: 50% !important;
-    right: 12px !important;
-    inset: 50% 12px auto auto !important;
+  .app-shell.hb-polish .page-sheets .sheet-roster-grid.is-list
+  .sheet-roster-card.hb-has-style-crest > .hb-roster-style-crest {
+    inset: 50% 14px auto auto !important;
+    width: 64px !important;
+    height: 64px !important;
     transform: translateY(-50%) !important;
-    width: 68px !important;
-    height: 68px !important;
     opacity: .10 !important;
   }
 }

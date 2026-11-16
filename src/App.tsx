@@ -14064,8 +14064,9 @@ disabled={
                       const player = character.current_player_id ? campaignMembers.find(member => member.user_id === character.current_player_id) : undefined
                       const characterRoleText = character.current_player_id ? (player?.display_name || (isMine ? 'Você' : 'Jogador atribuído')) : 'Sem jogador atribuído'
                       const rank = characterRanks[character.id] || 'Não definida'
-                      return <article className={`sheet-library-card sheet-roster-card${isFavorite ? ' is-favorite' : ''}${selectedCharacterId === character.id ? ' is-current' : ''}`} key={character.id}>
+                      return <article className={`sheet-library-card sheet-roster-card hb-has-style-crest${isFavorite ? ' is-favorite' : ''}${selectedCharacterId === character.id ? ' is-current' : ''}`} key={character.id}>
                         <div className="sheet-roster-card-accent" aria-hidden="true" />
+                        <span className="hb-roster-style-crest" aria-hidden="true" />
                         <div className="sheet-library-top sheet-roster-card-top">
                           <button type="button" className="sheet-library-avatar sheet-library-avatar-edit" onClick={() => openCharacterEmojiPicker(character)} title={`Alterar emoji de ${character.name}`} aria-label={`Alterar emoji de ${character.name}`}>{character.emoji || '⚔️'}</button>
                           <div className="sheet-roster-card-top-actions">
