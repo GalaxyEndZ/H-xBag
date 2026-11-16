@@ -4210,7 +4210,7 @@ setShopCyberneticEffects(
   setShopKitType(isKitType(item.metadata?.kitType) ? item.metadata.kitType : null)
   setShopKitBenefitMode(['skills','protection','three_archetype','main_and_archetype'].includes(String(item.metadata?.kitBenefitMode)) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
   setShopKitSkills(Array.isArray(item.metadata?.kitSkills) ? item.metadata.kitSkills.filter((entry):entry is string => typeof entry === 'string') : [])
-  setShopKitSkillBonus(Number.isInteger(Number(item.metadata?.kitSkillBonus)) && Number(item.metadata?.kitSkillBonus)>0 ? String(item.metadata.kitSkillBonus) : '')
+  setShopKitSkillBonus(Number.isInteger(Number(item.metadata?.kitSkillBonus)) && Number(item.metadata?.kitSkillBonus)>0 ? String(item.metadata?.kitSkillBonus) : '')
   setShopKitUniqueEffect(typeof item.metadata?.kitUniqueEffect === 'string' ? item.metadata.kitUniqueEffect : '')
   setShopKitEffect(['damage','resistance','combat_point'].includes(String(item.metadata?.kitEffect)) ? item.metadata?.kitEffect as KitEffect : null)
   setShopKitEffectNotes(typeof item.metadata?.kitEffectNotes === 'string' ? item.metadata.kitEffectNotes : '')
@@ -6551,7 +6551,7 @@ async function deleteCharacter(character: Character) {
     setNewKitType(isKitType(item.metadata?.kitType) ? item.metadata.kitType : null)
     setNewKitBenefitMode(['skills','protection','three_archetype','main_and_archetype'].includes(String(item.metadata?.kitBenefitMode)) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
     setNewKitSkills(Array.isArray(item.metadata?.kitSkills) ? item.metadata.kitSkills.filter((entry): entry is string => typeof entry === 'string') : [])
-    setNewKitSkillBonus(Number.isInteger(Number(item.metadata?.kitSkillBonus)) && Number(item.metadata?.kitSkillBonus)>0 ? String(item.metadata.kitSkillBonus) : '')
+    setNewKitSkillBonus(Number.isInteger(Number(item.metadata?.kitSkillBonus)) && Number(item.metadata?.kitSkillBonus)>0 ? String(item.metadata?.kitSkillBonus) : '')
     setNewKitUniqueEffect(typeof item.metadata?.kitUniqueEffect === 'string' ? item.metadata.kitUniqueEffect : '')
     setNewKitEffect(['damage','resistance','combat_point'].includes(String(item.metadata?.kitEffect)) ? item.metadata?.kitEffect as KitEffect : null)
     setNewKitEffectNotes(typeof item.metadata?.kitEffectNotes === 'string' ? item.metadata.kitEffectNotes : '')
@@ -7995,7 +7995,7 @@ useEffect(() => {
                     // Kits equipados concedem somente os bônus explícitos, sem alterar pontos salvos.
                     const equippedMainKitBonus = (key:'vigor'|'mental'|'combat'|'dexterity'|'resistance'|'ability') => {
                       const names={vigor:'VIGOR',mental:'MENTAL',combat:'COMBATE',dexterity:'DESTREZA',resistance:'RESISTÊNCIA',ability:'HABILIDADE'}
-                      return forEnemy ? 0 : equippedKitSkillBonuses(renderInventoryItems,renderSubjectId,names[key]).reduce((sum,kit)=>sum+kit.bonus,0)
+                      return forEnemy ? 0 : equippedKitSkillBonuses(renderInventoryItems,renderSubjectId ?? '',names[key]).reduce((sum,kit)=>sum+kit.bonus,0)
                     }
                     const dexterity = applyConditionModifier(Math.min(maxSkillLevel, num('skills.dexterity')), conditionModifiers, 'main_skill', 'dexterity') + equippedMainKitBonus('dexterity')
                     const intellectChoiceConfig = skillPointConfig?.intellectChoice
