@@ -9264,7 +9264,7 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell.hb-polish.visual-style-floresta_esquecida,
 .app-shell .season-visual-style-group .season-style-floresta_esquecida {
   --hb-v26-hero: url("./style-art/silvam-argentea-banner.jpg");
-  --hb-v26-crest: url("./style-art/floresta_esquecida-crest.svg");
+  --hb-v26-crest: url("./style-art/floresta_esquecida-crest.png");
   --hb-v26-ink: #dfd8d1;
   --hb-v26-edge: color-mix(in srgb, #d1ac75 55%, var(--season-line));
   --hb-v26-soft: rgba(213,174,118,.09);
@@ -9401,7 +9401,7 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell.hb-polish.visual-style-floresta_esquecida,
 .app-shell .season-visual-style-group .season-style-floresta_esquecida {
   --hb-v26-hero:url("./style-art/silvam-argentea-arte.png");
-  --hb-v26-crest:url("./style-art/floresta_esquecida-crest.svg");
+  --hb-v26-crest:url("./style-art/floresta_esquecida-crest.png");
   --sb-crest:var(--hb-v26-crest);
   --roster-crest:var(--hb-v26-crest);
   --hb-art-sigil:var(--hb-v26-crest);
@@ -10648,7 +10648,7 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
 .app-shell.hb-polish.visual-style-floresta_esquecida,
 .app-shell .season-visual-style-group .season-style-floresta_esquecida{
   --hb-v26-hero:url("./style-art/silvam-argentea-arte.png");
-  --hb-v26-crest:url("./style-art/floresta_esquecida-crest.svg");
+  --hb-v26-crest:url("./style-art/floresta_esquecida-crest.png");
   --hb-gallery-art:url("./style-art/silvam-argentea-galeria.png");
   --hb-inspector-art:url("./style-art/silvam-argentea-inspetor.png");
   --hb-studio-art:url("./style-art/silvam-argentea-galeria.png");
