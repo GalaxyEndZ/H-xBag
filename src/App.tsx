@@ -23,6 +23,7 @@ import DiceTower from './components/DiceTower'
 import MasterChest from './components/MasterChest'
 import CampaignMissions from './components/CampaignMissions'
 import MasterCombatConsole from './components/MasterCombatConsole'
+import { calculateSheetDefenses, calculateSheetPhysicalDamage, type SheetCombatEquipment } from './combatDefenses'
 import './themes/mobileSession.css'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
@@ -572,80 +573,6 @@ function calculateSheetResourceMaximums(
       number('progression.classStatus.ps') + number('progression.statusBonuses.ps')),
     pr: Math.max(0, (breathing + ability) * 10 + (family?.pr ?? 0) + (rank?.pr ?? 0) +
       number('progression.classStatus.pr') + number('progression.statusBonuses.pr')),
-  }
-}
-
-// Regras reutilizadas pelo combate de personagens e inimigos.
-// O formato dos itens é normalizado antes do cálculo, evitando que as fichas
-// dependam das tabelas de inventário umas das outras.
-type SheetCombatEquipment = {
-  name?: string
-  weaponDamage?: string
-  equipmentType?: string
-  armorClass?: string
-  armorCoverage?: string
-  protectionTier?: string
-  protectionMode?: string
-}
-type SheetDamageType = 'cortante_perfurante' | 'especial_bruto'
-
-function calculateSheetDefenses(
-  equippedItems: SheetCombatEquipment[],
-  stats: { dexterity: number; resistance: number; combat: number; mental: number },
-) {
-  const armor = equippedItems.find(item => item.equipmentType === 'armor')
-  const protections = equippedItems.filter(item => item.equipmentType === 'protection')
-  const armorClass = armor?.armorClass || 'leve'
-  const armorDexterity = !armor ? stats.dexterity
-    : armorClass === 'pesada' ? 0
-    : armorClass === 'media' ? Math.floor(stats.dexterity / 2)
-    : stats.dexterity
-  const armorResistance = armorClass === 'pesada' ? stats.resistance * 2 + 8
-    : armorClass === 'media' ? stats.resistance + 6
-    : Math.floor(stats.resistance / 2) + 4
-  const armorCovers = (type: SheetDamageType) => Boolean(armor) && (
-    armorClass === 'pesada' || armor?.armorCoverage === 'todos' || armor?.armorCoverage === type
-  )
-  const fraction = (item: SheetCombatEquipment) => item.protectionTier === 'avancada'
-    ? 1 : item.protectionTier === 'moderada' ? 0.5 : 0.25
-  const physicalProtection = protections.filter(item => item.protectionMode !== 'sanidade')
-    .reduce((total, item) => total + Math.floor(stats.resistance * fraction(item)), 0)
-  const sanityProtection = protections.filter(item => item.protectionMode === 'sanidade')
-    .reduce((total, item) => total + Math.floor(stats.mental * fraction(item)), 0)
-  return {
-    armor,
-    armorClass,
-    armorDexterity,
-    counterAttackDT: stats.combat + armorDexterity,
-    armorResistance,
-    armorCovers,
-    physicalProtection,
-    sanityProtection,
-  }
-}
-
-function calculateSheetPhysicalDamage(input: {
-  incoming: number
-  reactionReduction: number
-  damageType: SheetDamageType
-  defenses: ReturnType<typeof calculateSheetDefenses>
-  specialBruteProtectionOnly?: boolean
-}) {
-  const incoming = Math.max(0, input.incoming)
-  const reactionPrevented = Math.floor(incoming * Math.max(0, Math.min(1, input.reactionReduction)))
-  const damageAfterReaction = Math.max(0, incoming - reactionPrevented)
-  const armorReduction = input.defenses.armorCovers(input.damageType)
-    ? input.defenses.armorResistance : 0
-  const armorPrevented = Math.min(
-    damageAfterReaction,
-    armorReduction + (input.specialBruteProtectionOnly && input.damageType !== 'especial_bruto'
-      ? 0 : input.defenses.physicalProtection),
-  )
-  return {
-    reactionPrevented,
-    armorPrevented,
-    remaining: Math.max(0, damageAfterReaction - armorPrevented),
-    totalPrevented: reactionPrevented + armorPrevented,
   }
 }
 
@@ -7230,15 +7157,25 @@ async function sendItemToCharacter() {
   })
 
   const masterShieldCombatParticipants = masterShieldInitiativeEntries.map(entry => {
+    const readDefense = (path: string, fallback: any = 0): any => path.split('.').reduce(
+      (current: any, key: string) => current && typeof current === 'object' ? current[key] : undefined,
+      entry.sheetData as any,
+    ) ?? fallback
+    const defenseStats = {
+      resistance: calculateSheetSkill(readDefense, 'resistance', activeSystem?.data?.skillPoints),
+      mental: calculateSheetSkill(readDefense, 'mental', activeSystem?.data?.skillPoints),
+      dexterity: calculateSheetSkill(readDefense, 'dexterity', activeSystem?.data?.skillPoints),
+      combat: calculateSheetSkill(readDefense, 'combat', activeSystem?.data?.skillPoints),
+    }
     if (entry.kind === 'enemy') {
       const enemy = enemies.find(enemy => enemy.id === entry.id)
       const overview = enemy ? getEnemySheetOverview(enemy) : null
-      return { ...entry, maxResources: { pv: overview?.maxPV ?? 0, ps: overview?.maxPS ?? 0, pr: overview?.maxPR ?? 0 } }
+      return { ...entry, defenseStats, maxResources: { pv: overview?.maxPV ?? 0, ps: overview?.maxPS ?? 0, pr: overview?.maxPR ?? 0 } }
     }
     const data = entry.sheetData
     const tier = String(data.family?.tier ?? '5')
     const rank = String(data.progression?.rankId ?? 'zaidan')
-    return { ...entry, maxResources: calculateSheetResourceMaximums(data, {
+    return { ...entry, defenseStats, maxResources: calculateSheetResourceMaximums(data, {
       skillPointConfig: activeSystem?.data?.skillPoints,
       usesFamilyTiers: systemFeatures.usesFamilyTiers ?? false,
       familyTier: systemFeatures.usesFamilyTiers ? getSystemFamilyTier(tier) : null,
@@ -10351,7 +10288,7 @@ counterAttackDT
         else {
           setActivePage(item.id)
           if (item.id === 'sheets') setSheetCharacterView(false)
-          if (item.id === 'master-chest' || item.id === 'customization' || item.id === 'dice-tower') setNotice('')
+          if (item.id === 'master-chest' || item.id === 'customization' || item.id === 'dice-tower' || item.id === 'missions') setNotice('')
           if (item.id === 'dice-tower') setError('')
         }
       },
@@ -10477,7 +10414,7 @@ counterAttackDT
                 setSelectedCampaignId(campaignId)
                 const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
                 if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-                else if (activePage !== 'profile' && activePage !== 'master-chest') setNotice('Campanha principal atualizada para este perfil.')
+                else if (activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'missions') setNotice('Campanha principal atualizada para este perfil.')
               }}
               aria-label="Selecionar campanha ativa"
             >
@@ -10536,7 +10473,7 @@ counterAttackDT
           </div>
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">MUNDO DA CAMPANHA</span>
-            <button type="button" className={`nav-link ${activePage === 'missions' ? 'active' : ''}`} onClick={() => setActivePage('missions')} disabled={!selectedCampaignId} aria-current={activePage === 'missions' ? 'page' : undefined}>
+            <button type="button" className={`nav-link ${activePage === 'missions' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('missions') }} disabled={!selectedCampaignId} aria-current={activePage === 'missions' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">📜</span><span className="hb-sidebar-nav-name">Missões</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId} aria-current={activePage === 'shops' ? 'page' : undefined}>
@@ -13666,7 +13603,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div className="hb-ms-command-links">
                     <button type="button" onClick={() => setActivePage('conditions')}>◈ Condições</button>
                     <button type="button" onClick={() => setActivePage('master-chest')}>▣ Baú do mestre</button>
-                    <button type="button" onClick={() => setActivePage('missions')}>📜 Missões</button>
+                    <button type="button" onClick={() => { setNotice(''); setActivePage('missions') }}>📜 Missões</button>
                     <button type="button" onClick={() => { setSheetCharacterView(false); setActivePage('sheets') }}>♙ Fichas</button>
                     <button type="button" onClick={() => { setEnemySheetView(false); setActivePage('enemies') }}>⚔ Inimigos</button>
                   </div>
@@ -13677,6 +13614,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   seasonId={masterShieldSeasonId}
                   participants={masterShieldCombatParticipants}
                   activeTurnKey={activeShieldDesk.turn}
+                  playerResourceCode={resourceAbbreviation}
+                  playerResourceName={resourceName}
+                  enemyResourceCode={enemyResourceAbbreviation}
+                  enemyResourceName={isKisatsutaiSystem ? 'Sangue' : resourceName}
+                  specialBruteProtectionOnly={isKisatsutaiSystem}
                   onAdjusted={() => { setMasterShieldRefreshKey(value => value+1); setEnemyPartyRefreshKey(value => value+1) }}
                   onDiceTower={() => setActivePage('dice-tower')}
                   onConditions={() => setActivePage('conditions')}
@@ -16965,7 +16907,7 @@ style={{cursor:'pointer'}}>
             </div>
           )}
 
-          {notice && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && activePage !== 'dice-tower' && (
+          {notice && activePage !== 'missions' && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && activePage !== 'dice-tower' && (
             <div className="notice" role="status">
               <span>✓</span> {notice}
               <button
