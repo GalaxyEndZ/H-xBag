@@ -1,0 +1,26 @@
+/* HäxBag · V110 · Mobile-first session dock. Desktop remains unchanged. */
+.hb-mobile-session-dock{display:none}
+@media(max-width:800px){
+  .app-shell.hb-polish{min-width:0;width:100%}
+  .app-shell.hb-polish .main-content{min-width:0;max-width:100%;padding-bottom:calc(94px + env(safe-area-inset-bottom,0px))}
+  .app-shell.hb-polish .page-content{min-width:0;max-width:100%;overflow-wrap:anywhere}
+  .app-shell.hb-polish .page-content > :is(section,div){min-width:0;max-width:100%}
+  .app-shell.hb-polish .hb-mobile-session-dock{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:10010;min-height:69px;padding:5px max(8px,env(safe-area-inset-left,0px)) calc(5px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-right,0px));background:color-mix(in srgb,var(--season-surface,#211e26) 96%,#000);border-top:1px solid var(--season-line,rgba(255,255,255,.18));box-shadow:0 -13px 33px rgba(0,0,0,.32);backdrop-filter:blur(15px);isolation:isolate;gap:3px}
+  .app-shell.hb-polish .hb-mobile-session-dock button{min-width:0;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 2px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--season-muted,#bab2af);font-family:inherit;cursor:pointer}
+  .app-shell.hb-polish .hb-mobile-session-dock button span{font-size:21px;line-height:1}
+  .app-shell.hb-polish .hb-mobile-session-dock button small{font-size:10px;font-weight:780;line-height:1.2;white-space:nowrap}
+  .app-shell.hb-polish .hb-mobile-session-dock button.active{background:color-mix(in srgb,var(--season-primary,#d7af83) 14%,transparent);border-color:color-mix(in srgb,var(--season-primary,#d7af83) 27%,transparent);color:var(--season-primary,#d7af83)}
+  .app-shell.hb-polish .hb-mobile-session-dock button:disabled{opacity:.4;cursor:not-allowed}
+  .app-shell.hb-polish .hb-mobile-session-dock button:focus-visible{outline:2px solid var(--season-primary,#d7af83);outline-offset:-2px}
+  .app-shell.hb-polish .hb-ms-dashboard .hb-ms-quicknav{scroll-margin-top:15px}
+  .app-shell.hb-polish :is(.hb-ms-pane,.hb-ms-initiative-row,.master-shield-heading,.hb-ms-command-strip,.hb-ms-session-toolbar){min-width:0}
+  .app-shell.hb-polish :is(input,select,textarea){font-size:max(16px,1em)}
+  .app-shell.hb-polish :is(button,a,input,select,textarea){touch-action:manipulation}
+  .app-shell.hb-polish .page-content :is(.hb-missions,.hb-combat-console){max-width:100%}
+}
+@media(max-width:430px){
+  .app-shell.hb-polish .hb-mobile-session-dock button{min-height:55px}
+  .app-shell.hb-polish .hb-mobile-session-dock button small{font-size:9px}
+  .app-shell.hb-polish .hb-mobile-session-dock button span{font-size:20px}
+}
+@media(prefers-reduced-motion:reduce){.app-shell.hb-polish .hb-mobile-session-dock *{animation:none!important;transition:none!important}}

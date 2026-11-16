@@ -21,6 +21,9 @@ import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSU
 import HaxTable from './components/HaxTable'
 import DiceTower from './components/DiceTower'
 import MasterChest from './components/MasterChest'
+import CampaignMissions from './components/CampaignMissions'
+import MasterCombatConsole from './components/MasterCombatConsole'
+import './themes/mobileSession.css'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
@@ -1985,7 +1988,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
   useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
@@ -2537,7 +2540,32 @@ useEffect(() => {
     setMasterShieldDesk(updated)
     try { window.localStorage.setItem(`haxbag:shield-desk:v10:${shieldDeskKey}`, JSON.stringify(updated)) }
     catch { /* A área continua utilizável quando o armazenamento local estiver bloqueado. */ }
+    // O turno e a rodada ficam compartilhados entre os mestres. As notas são locais.
+    if ((patch.round !== undefined || patch.turn !== undefined) && selectedCampaignId && masterShieldSeasonId && isMaster) {
+      void supabase.rpc('hax_combat_set_turn', {
+        p_campaign_id:selectedCampaignId, p_season_id:masterShieldSeasonId,
+        p_round:updated.round, p_turn:updated.turn,
+      }).then(({error:syncError}) => { if (syncError) setError(`Marcador salvo localmente, mas não sincronizado: ${syncError.message}`) })
+    }
   }
+
+  useEffect(() => {
+    if (!shieldDeskKey || !selectedCampaignId || !masterShieldSeasonId || !isMaster) return
+    let cancelled=false
+    async function syncTurn() {
+      const {data,error:syncError}=await supabase.from('hax_combat_sessions').select('round_number,turn_key')
+        .eq('campaign_id',selectedCampaignId).eq('season_id',masterShieldSeasonId).maybeSingle()
+      if (cancelled || syncError || !data) return
+      setMasterShieldDesk(current => current.key===shieldDeskKey
+        ? {...current,round:Math.max(1,Number(data.round_number)||1),turn:String(data.turn_key||'')}
+        : current)
+    }
+    void syncTurn()
+    const channel=supabase.channel(`hax-combat-turn-${masterShieldSeasonId}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'hax_combat_sessions',filter:`campaign_id=eq.${selectedCampaignId}`},()=>{void syncTurn()})
+      .subscribe()
+    return()=>{cancelled=true;void supabase.removeChannel(channel)}
+  },[shieldDeskKey,selectedCampaignId,masterShieldSeasonId,isMaster])
 
   useEffect(() => {
     const season = seasons.find(entry => entry.id === selectedSeasonId)
@@ -7201,6 +7229,23 @@ async function sendItemToCharacter() {
     return a.name.localeCompare(b.name, 'pt-BR') || a.kind.localeCompare(b.kind)
   })
 
+  const masterShieldCombatParticipants = masterShieldInitiativeEntries.map(entry => {
+    if (entry.kind === 'enemy') {
+      const enemy = enemies.find(enemy => enemy.id === entry.id)
+      const overview = enemy ? getEnemySheetOverview(enemy) : null
+      return { ...entry, maxResources: { pv: overview?.maxPV ?? 0, ps: overview?.maxPS ?? 0, pr: overview?.maxPR ?? 0 } }
+    }
+    const data = entry.sheetData
+    const tier = String(data.family?.tier ?? '5')
+    const rank = String(data.progression?.rankId ?? 'zaidan')
+    return { ...entry, maxResources: calculateSheetResourceMaximums(data, {
+      skillPointConfig: activeSystem?.data?.skillPoints,
+      usesFamilyTiers: systemFeatures.usesFamilyTiers ?? false,
+      familyTier: systemFeatures.usesFamilyTiers ? getSystemFamilyTier(tier) : null,
+      familyBreathingBonus: systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier,'breathing') : 0,
+      rankStatus: systemFeatures.usesRanks ? getSystemRankStatus(rank) : null,
+    }) }
+  })
   const masterShieldReadyTurns = masterShieldInitiativeEntries.filter(entry => entry.initiative !== null)
   const activeShieldDesk = masterShieldDesk.key === shieldDeskKey ? masterShieldDesk : EMPTY_MASTER_SHIELD_DESK
   const activeShieldTurnIndex = masterShieldReadyTurns.findIndex(entry => `${entry.kind}:${entry.id}` === activeShieldDesk.turn)
@@ -10290,6 +10335,7 @@ counterAttackDT
     {id:'master-shield',label:'Escudo do mestre',symbol:'♜',description:'Iniciativas, turnos, recursos e anotações',campaign:true,master:true},
     {id:'conditions',label:'Condições e efeitos',symbol:'✧',description:'Biblioteca e condições ativas',campaign:true,master:true},
     {id:'master-chest',label:'Baú do mestre',symbol:'🗝',description:'Itens, recompensas e entregas',campaign:true,master:true},
+    {id:'missions',label:'Missões',symbol:'📜',description:'Objetivos, progresso e drops de missão',campaign:true},
     {id:'shops',label:'Lojas',symbol:'▤',description:'Comércio da campanha',campaign:true},
     {id:'bestiary',label:'Bestiário',symbol:'♞',description:'Criaturas e registros',campaign:true},
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
@@ -10490,6 +10536,9 @@ counterAttackDT
           </div>
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">MUNDO DA CAMPANHA</span>
+            <button type="button" className={`nav-link ${activePage === 'missions' ? 'active' : ''}`} onClick={() => setActivePage('missions')} disabled={!selectedCampaignId} aria-current={activePage === 'missions' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">📜</span><span className="hb-sidebar-nav-name">Missões</span>
+            </button>
             <button type="button" className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId} aria-current={activePage === 'shops' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">▤</span><span className="hb-sidebar-nav-name">Lojas</span><span className="nav-count">{shops.length}</span>
             </button>
@@ -10513,7 +10562,7 @@ counterAttackDT
             <span className="hb-sidebar-group-title">COMUNIDADE</span>
             <a
               className="nav-link hb-sidebar-discord-link"
-              href="https://discord.gg/bjfzDeuND"
+              href="https://discord.gg/ERPq7KHS8S"
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setSidebarMobileOpen(false)}
@@ -10637,7 +10686,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -13531,6 +13580,24 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
+          {activePage === 'missions' && selectedCampaign && (
+            <CampaignMissions
+              key={selectedCampaign.id}
+              campaignId={selectedCampaign.id}
+              seasonId={selectedSeasonId}
+              seasons={seasons.map(season => ({ id: season.id, name: season.name }))}
+              characters={characters.map(character => ({ id: character.id, name: character.name, emoji: character.emoji }))}
+              isMaster={isMaster}
+              userId={session?.user.id ?? ''}
+              onDelivered={() => {
+                if (selectedCharacterId) void supabase.from('inventory_items')
+                  .select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id, sale_blocked')
+                  .eq('character_id',selectedCharacterId).order('created_at',{ascending:true})
+                  .then(({data}) => { if(data) setItems((data as Item[]).filter(item=>item.metadata?.cybernetic!==true || item.metadata?.cyberneticEquipped!==true)) })
+              }}
+            />
+          )}
+
           {activePage === 'dice-tower' && selectedCampaignId && (
             <DiceTower />
           )}
@@ -13567,6 +13634,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <a href="#hb-ms-players"><span aria-hidden="true">♙</span> Party de personagens</a>
                   <a href="#hb-ms-enemies"><span aria-hidden="true">⚔</span> Party de inimigos</a>
                   <a href="#hb-ms-initiative"><span aria-hidden="true">⚡</span> Iniciativa conjunta</a>
+                  <a href="#hb-ms-combat"><span aria-hidden="true">⚔</span> Ações de combate</a>
                   <a href="#hb-ms-activities"><span aria-hidden="true">◷</span> Atividades</a>
                   <a href="#hb-ms-notes"><span aria-hidden="true">✎</span> Anotações</a>
                 </nav>
@@ -13598,10 +13666,21 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div className="hb-ms-command-links">
                     <button type="button" onClick={() => setActivePage('conditions')}>◈ Condições</button>
                     <button type="button" onClick={() => setActivePage('master-chest')}>▣ Baú do mestre</button>
+                    <button type="button" onClick={() => setActivePage('missions')}>📜 Missões</button>
                     <button type="button" onClick={() => { setSheetCharacterView(false); setActivePage('sheets') }}>♙ Fichas</button>
                     <button type="button" onClick={() => { setEnemySheetView(false); setActivePage('enemies') }}>⚔ Inimigos</button>
                   </div>
                 </div>
+
+                {masterShieldSeasonId && <MasterCombatConsole
+                  campaignId={selectedCampaign.id}
+                  seasonId={masterShieldSeasonId}
+                  participants={masterShieldCombatParticipants}
+                  activeTurnKey={activeShieldDesk.turn}
+                  onAdjusted={() => { setMasterShieldRefreshKey(value => value+1); setEnemyPartyRefreshKey(value => value+1) }}
+                  onDiceTower={() => setActivePage('dice-tower')}
+                  onConditions={() => setActivePage('conditions')}
+                />}
 
                 <div className="hb-ms-roster-toolbar" aria-label="Filtros das parties">
                   <label className="hb-ms-roster-search"><span aria-hidden="true">⌕</span>
@@ -13797,7 +13876,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         </div>
                       </div>
                       <div className="hb-ms-initiative-toolbar">
-                        <p>As iniciativas continuam salvas nas fichas. O marcador de turno é particular deste navegador.</p>
+                        <p>As iniciativas continuam salvas nas fichas. O marcador de turno e rodada é sincronizado entre mestres da campanha.</p>
                         <button type="button" className="secondary-button" style={{ padding: '8px 12px', fontSize: 12 }}
                           disabled={sheetSaving || enemyPartySavingId !== null || masterShieldLoading ||
                             !masterShieldInitiativeEntries.some(entry => entry.initiative !== null)}
@@ -18189,6 +18268,14 @@ style={{cursor:'pointer'}}>
             )}
           </div>
         </main>
+        <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
+          <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='overview'?'page':undefined} className={activePage==='overview'?'active':''} onClick={()=>setActivePage('overview')}><span aria-hidden="true">⌂</span><small>Início</small></button>
+          <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='sheets'?'page':undefined} className={activePage==='sheets'?'active':''} onClick={()=>{setActivePage('sheets');setSheetCharacterView(false)}}><span aria-hidden="true">▧</span><small>Fichas</small></button>
+          <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='missions'?'page':undefined} className={activePage==='missions'?'active':''} onClick={()=>setActivePage('missions')}><span aria-hidden="true">📜</span><small>Missões</small></button>
+          {isMaster ? <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='master-shield'?'page':undefined} className={activePage==='master-shield'?'active':''} onClick={()=>setActivePage('master-shield')}><span aria-hidden="true">♜</span><small>Escudo</small></button>
+            : <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='dice-tower'?'page':undefined} className={activePage==='dice-tower'?'active':''} onClick={()=>setActivePage('dice-tower')}><span aria-hidden="true">🎲</span><small>Dados</small></button>}
+          <button type="button" aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" onClick={()=>setSidebarMobileOpen(true)}><span aria-hidden="true">☰</span><small>Menu</small></button>
+        </nav>
       </div>
     )
   }
