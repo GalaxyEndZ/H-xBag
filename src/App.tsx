@@ -12,6 +12,7 @@ import './themes/seasonThemes.css'
 import './themes/seasonThemes-enhanced.css'
 import './themes/visualStyles.css'
 import './themes/rosterCrestFix.css'
+import './themes/sheetsRefined.css'
 import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
@@ -13984,6 +13985,14 @@ disabled={
       </form>
     )}
                 {characters.length > 0 && <section className="sheet-roster-browser" aria-label="Explorar fichas de personagens">
+                  <div className="hb-v98-browser-heading">
+                    <div>
+                      <small>ACERVO DA CAMPANHA</small>
+                      <h3>Explorar personagens</h3>
+                      <p>Pesquise, combine filtros e escolha a ficha que deseja consultar.</p>
+                    </div>
+                    <span className="hb-v98-browser-count">{sheetFilteredCharacters.length} de {characters.length} fichas</span>
+                  </div>
                   <div className="sheet-roster-filterbar">
                     <div className="sheet-roster-search">
                       <label htmlFor="sheet-character-search">Buscar no elenco</label>
@@ -14078,6 +14087,7 @@ disabled={
                           <span className="sheet-page-eyebrow">{systemFeatures.usesRanks ? 'PERSONAGEM' : `NÍVEL ${character.level}`}<span className="sheet-roster-campaign-signature"> // {(selectedCampaign?.name?.trim() || 'CAMPANHA').toLocaleUpperCase('pt-BR')}</span></span>
                           <h3>{character.name}</h3>
                           <p>{character.archetype?.trim() || 'Arquétipo não definido'}</p>
+                          {selectedCharacterId === character.id && <span className="hb-v98-card-selected">✦ Selecionado</span>}
                         </div>
                         <div className="sheet-roster-card-details">
                           <div><span>{systemFeatures.usesRanks ? 'GRADUAÇÃO' : 'PROGRESSÃO'}</span><strong>{systemFeatures.usesRanks ? rank : `Nível ${character.level}`}</strong></div>
