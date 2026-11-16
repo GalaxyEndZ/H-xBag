@@ -194,3 +194,87 @@
 @media (prefers-reduced-motion:reduce) {
   .app-shell.theme-silvam_argentea :is(.primary-button,.nav-link) {transition:none !important;}
 }
+
+
+/* ===========================================================================
+   HÄXBAG V106 — VICE SUNSET | Paleta tropical inspirada em GTA VI
+   Paleta independente de todos os estilos visuais. Sem arte ou marca do jogo.
+   =========================================================================== */
+.app-shell.theme-vice_sunset {
+  --vice-pink:#FF73AE;
+  --vice-coral:#FF8A8C;
+  --vice-orange:#FFA86F;
+  --vice-violet:#A178DF;
+  --vice-sky:#77C8F3;
+  --season-text:#F6EDF6;
+  --theme-text-soft:#D8CDE6;
+  background-color:var(--season-bg);
+  background-image:
+    radial-gradient(ellipse at 94% 3%,rgba(255,128,159,.12),transparent 39%),
+    radial-gradient(ellipse at 6% 93%,rgba(119,200,243,.075),transparent 43%),
+    linear-gradient(153deg,#0D1025,#100F25 62%,#151022);
+}
+/* Ambientes noturnos, néon suave, pôr do sol tropical. */
+.app-shell.theme-vice_sunset :is(.sidebar,.hb-sidebar) {
+  background:
+    radial-gradient(ellipse at 3% -8%,rgba(255,146,119,.15),transparent 45%),
+    linear-gradient(180deg,#1C1731,#101127) !important;
+  border-right-color:rgba(247,143,188,.25) !important;
+}
+.app-shell.theme-vice_sunset .topbar {
+  background:linear-gradient(115deg,rgba(36,27,57,.96),rgba(16,17,40,.98)) !important;
+  border-bottom-color:rgba(255,125,181,.24) !important;
+}
+.app-shell.theme-vice_sunset :is(.nav-link.active,.hb-sidebar .nav-link.active) {
+  color:#FFD7E7 !important;
+  border-color:rgba(255,115,174,.48) !important;
+  background:linear-gradient(90deg,rgba(255,115,174,.16),rgba(161,120,223,.075)) !important;
+  box-shadow:inset 3px 0 0 var(--vice-pink),0 5px 16px rgba(12,8,28,.13);
+}
+.app-shell.theme-vice_sunset .page-content :is(
+  .card,.panel,.hb-panel,.sheet-card,.sheet-summary-card,.sheet-library-card,
+  .sheet-roster-card,.enemy-hub-card,.shop-item-card,.season-theme-panel,.campaign-card
+) {
+  border-color:color-mix(in srgb,var(--vice-violet) 28%,var(--season-line));
+  box-shadow:inset 0 1px 0 rgba(255,232,244,.035),0 12px 24px rgba(0,0,0,.13);
+}
+.app-shell.theme-vice_sunset .page-content :is(.sheet-card-title,.sheet-section-heading,.hb-panel-heading,.inventory-heading) {
+  border-bottom-color:rgba(255,141,184,.22);
+}
+.app-shell.theme-vice_sunset .page-content :is(h1,h2,h3) {
+  color:#F9EDF7;
+}
+.app-shell.theme-vice_sunset :is(.eyebrow,.hb-kicker,.sheet-page-eyebrow) {
+  color:#FFAACB;
+}
+.app-shell.theme-vice_sunset :is(button.primary-button,.primary-button) {
+  background:linear-gradient(115deg,#FF73AE 2%,#FF8E9D 53%,#FFB879 100%) !important;
+  border-color:#FFAFBC !important;
+  color:#251126 !important;
+  text-shadow:none !important;
+  box-shadow:0 5px 17px rgba(255,111,171,.17);
+}
+.app-shell.theme-vice_sunset :is(button.primary-button,.primary-button):hover:not(:disabled) {
+  filter:brightness(1.055);
+  box-shadow:0 8px 24px rgba(255,111,171,.27);
+}
+.app-shell.theme-vice_sunset :is(input:not([type="checkbox"]),select,textarea):focus-visible {
+  outline-color:var(--vice-pink);
+  border-color:var(--vice-pink) !important;
+  box-shadow:0 0 0 3px rgba(255,115,174,.16);
+}
+.app-shell.theme-vice_sunset :is(.season-theme-panel,.hb-customization-current-palette) {
+  border-color:rgba(255,144,181,.4) !important;
+  background:
+    radial-gradient(ellipse at 95% 3%,rgba(255,166,117,.14),transparent 45%),
+    radial-gradient(ellipse at 0% 100%,rgba(119,200,243,.07),transparent 36%),
+    linear-gradient(145deg,#251D3E,#17162E) !important;
+}
+.app-shell.theme-vice_sunset .hb-customization-page .hb-customization-palette-grid .season-theme-option.active {
+  border-color:var(--vice-pink) !important;
+  box-shadow:inset 0 0 0 1px rgba(255,145,188,.23),0 8px 22px rgba(0,0,0,.2);
+}
+.app-shell.theme-vice_sunset ::selection {background:rgba(255,115,174,.42);color:#120A20;}
+@media(prefers-reduced-motion:reduce) {
+  .app-shell.theme-vice_sunset :is(.primary-button,.nav-link){transition:none!important;}
+}

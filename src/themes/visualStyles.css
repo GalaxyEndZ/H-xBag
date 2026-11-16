@@ -10947,3 +10947,76 @@ body[data-hb-visual-style="ciclos"] :is(.bestiary-modal,.enemy-hub-modal,.item-d
     opacity:.09 !important;
   }
 }
+
+/* ========================================================================
+   HÄXBAG V107 — EMBLEMAS POR ESTILO | VISÃO GERAL
+   Substitui apenas o símbolo genérico ◈, mantendo o quadro ornamental.
+   Cada identidade visual usa seu brasão próprio, independente da paleta.
+   Respeita o comportamento responsivo existente (oculto até 520px).
+   ======================================================================== */
+.app-shell.visual-style-classic { --hb-overview-crest: url("./style-art/eclipse-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-japanese { --hb-overview-crest: url("./style-art/kisatsutai-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-cyberpunk { --hb-overview-crest: url("./style-art/cyberflower-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-ciclos { --hb-overview-crest: url("./style-art/ciclos-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-hax { --hb-overview-crest: url("./style-art/hax-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-vale_fantasma { --hb-overview-crest: url("./style-art/vale-fantasma-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-vigilia_lunar { --hb-overview-crest: url("./style-art/vigilia_lunar-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-floresta_esquecida { --hb-overview-crest: url("./style-art/floresta_esquecida-crest.png"); --hb-overview-crest-size: 64%; }
+.app-shell.visual-style-inverno_eterno { --hb-overview-crest: url("./style-art/inverno_eterno-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-arcano { --hb-overview-crest: url("./style-art/arcano-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-catedral_onix { --hb-overview-crest: url("./style-art/catedral_onix-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-mare_abissal { --hb-overview-crest: url("./style-art/mare_abissal-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-jardim_espectral { --hb-overview-crest: url("./style-art/jardim_espectral-crest.svg"); --hb-overview-crest-size: 78%; }
+.app-shell.visual-style-relicario_solar { --hb-overview-crest: url("./style-art/relicario_solar-crest.svg"); --hb-overview-crest-size: 78%; }
+
+.app-shell.hb-polish:is(
+  .visual-style-classic,
+  .visual-style-japanese,
+  .visual-style-cyberpunk,
+  .visual-style-ciclos,
+  .visual-style-hax,
+  .visual-style-vale_fantasma,
+  .visual-style-vigilia_lunar,
+  .visual-style-floresta_esquecida,
+  .visual-style-inverno_eterno,
+  .visual-style-arcano,
+  .visual-style-catedral_onix,
+  .visual-style-mare_abissal,
+  .visual-style-jardim_espectral,
+  .visual-style-relicario_solar
+) .page-content .hb-overview-hero > .hb-hero-emblem {
+  display:grid !important;
+  place-items:center;
+  color:transparent !important;
+  font-size:0 !important;
+  background-image:
+    var(--hb-overview-crest),
+    linear-gradient(140deg,
+      color-mix(in srgb,var(--season-primary) 17%,transparent),
+      color-mix(in srgb,var(--season-primary) 5%,transparent)
+    ) !important;
+  background-size:var(--hb-overview-crest-size) auto,cover !important;
+  background-position:center,center !important;
+  background-repeat:no-repeat,no-repeat !important;
+}
+
+@media(max-width:520px) {
+  .app-shell.hb-polish:is(
+    .visual-style-classic,
+  .visual-style-japanese,
+  .visual-style-cyberpunk,
+  .visual-style-ciclos,
+  .visual-style-hax,
+  .visual-style-vale_fantasma,
+  .visual-style-vigilia_lunar,
+  .visual-style-floresta_esquecida,
+  .visual-style-inverno_eterno,
+  .visual-style-arcano,
+  .visual-style-catedral_onix,
+  .visual-style-mare_abissal,
+  .visual-style-jardim_espectral,
+  .visual-style-relicario_solar
+  ) .page-content .hb-overview-hero > .hb-hero-emblem {
+    display:none !important;
+  }
+}
