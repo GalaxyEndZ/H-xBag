@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
 import {
-  KIT_DEFINITIONS, KIT_MAIN_SKILLS, SCARCITY_DICE,
+  KIT_DEFINITIONS, SCARCITY_DICE,
   kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight,
   type KitBenefitMode, type KitEffect, type KitType,
 } from '../kitRules'
+import { KIT_SKILL_CATALOG } from '../kitSkillCatalog'
 import './KitEditor.css'
 
 export type KitEditorProps = {
@@ -13,6 +14,8 @@ export type KitEditorProps = {
   onBenefitModeChange: (mode: KitBenefitMode) => void
   skills: string[]
   setSkills: Dispatch<SetStateAction<string[]>>
+  skillBonus: string
+  onSkillBonusChange: (value: string) => void
   uniqueEffect: string
   onUniqueEffectChange: (value: string) => void
   effect: KitEffect | null
@@ -26,7 +29,7 @@ export type KitEditorProps = {
 }
 
 export default function KitEditor({
-  type, onTypeChange, benefitMode, onBenefitModeChange, skills, setSkills,
+  type, onTypeChange, benefitMode, onBenefitModeChange, skills, setSkills, skillBonus, onSkillBonusChange,
   uniqueEffect, onUniqueEffectChange, effect, onEffectChange,
   effectNotes, onEffectNotesChange, scarcityLevel, onScarcityLevelChange,
   exhausted, onExhaustedChange,
@@ -72,17 +75,25 @@ export default function KitEditor({
         </label>}
         {slots.length > 0 && <div className="hb-kit-skill-grid">
           {slots.map((slot, index) => <label key={`${type}-${benefitMode}-${index}`}>{slot.label}
-            {slot.group === 'main' ? <select value={skills[index] || ''} onChange={event => setSkills(current => { const next = [...current]; next[index] = event.target.value; return next })}>
-              <option value="">Selecione...</option>
-              {KIT_MAIN_SKILLS.map(value => <option key={value} value={value}>{value}</option>)}
-            </select> : <input value={skills[index] || ''} maxLength={80} placeholder="Nome da perícia" onChange={event => setSkills(current => { const next = [...current]; next[index] = event.target.value; return next })}/>}
+            <select value={skills[index] || ''} onChange={event => setSkills(current => { const next = [...current]; next[index] = event.target.value; return next })}>
+              <option value="">Selecione uma perícia cadastrada...</option>
+              {KIT_SKILL_CATALOG[slot.group].map(group => <optgroup key={group.group} label={group.group}>
+                {group.options.map(option => <option key={option.value} value={option.value}
+                  disabled={skills.some((value,slotIndex)=>slotIndex!==index && value===option.value)}>{option.label}</option>)}
+              </optgroup>)}
+            </select>
           </label>)}
+          <label className="hb-kit-skill-bonus">Bônus numérico em cada perícia (+)
+            <input type="number" inputMode="numeric" min={1} step={1} required
+              value={skillBonus} onChange={event=>onSkillBonusChange(event.target.value)} placeholder="Ex.: 5" />
+            <small>Escolha um número inteiro positivo. O mesmo bônus será aplicado a cada perícia selecionada enquanto o kit estiver equipado.</small>
+          </label>
         </div>}
         {benefitMode === 'protection' && type === 'equip_standard' && <p className="hb-kit-editor-note">O kit concede proteção moderada. A forma de aplicar segue o sistema de proteção já existente.</p>}
         {type === 'equip_rare' && <label>Funcionalidade única
           <textarea value={uniqueEffect} onChange={event => onUniqueEffectChange(event.target.value)} maxLength={1000} rows={3} placeholder="Descreva a função exclusiva deste kit..."/>
         </label>}
-        <p className="hb-kit-editor-note">A quantidade de perícias é fixa, mas o valor do aumento não foi especificado. As escolhas ficam registradas para o mestre, sem bônus numérico inventado.</p>
+        <p className="hb-kit-editor-note">As perícias vêm do catálogo do RPG. O mestre escolhe o bônus numérico de cada kit ao criá-lo ou editá-lo.</p>
       </>}
       {definition.family === 'consumable' && <>
         <div className="hb-kit-scarcity-row">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { supabase } from '../supabase'
 import './MasterChest.css'
 import KitEditor from './KitEditor'
+import { validateKitSkillSelection } from '../kitSkillCatalog'
 import { KIT_DEFINITIONS, SCARCITY_CHARGES, isKitType, kitAvailableScarcityLevels, kitDefinition, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from '../kitRules'
 
 type CharacterOption = { id: string; campaign_id: string; name: string; emoji?: string | null }
@@ -148,6 +149,7 @@ type ItemDraft = {
   kitType: KitType | null
   kitBenefitMode: KitBenefitMode
   kitSkills: string[]
+  kitSkillBonus: string
   kitUniqueEffect: string
   kitEffect: KitEffect | null
   kitEffectNotes: string
@@ -180,7 +182,7 @@ const emptyDraft = (): ItemDraft => ({
   protectionTier: 'basica', protectionMode: 'resistencia', weaponClass: 'improvised',
   scarcityLevel: '1', scarcityExhausted: false,
   scarcityMode: 'fixed', scarcityMinLevel: '1', scarcityMaxLevel: '4',
-  kitType: null, kitBenefitMode: 'skills', kitSkills: [], kitUniqueEffect: '', kitEffect: null, kitEffectNotes: '',
+  kitType: null, kitBenefitMode: 'skills', kitSkills: [], kitSkillBonus: '', kitUniqueEffect: '', kitEffect: null, kitEffectNotes: '',
   moneyMode: 'fixed', moneyMin: '100', moneyMax: '1000',
   cyberneticCategory: 'Outro', cyberneticLocation: '', cyberneticLoad: '0', cyberneticEffects: '',
   notifyOnDelivery: false, deliveryMessage: '',
@@ -717,6 +719,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
       kitType: isKitType(meta.kitType) ? meta.kitType : null,
       kitBenefitMode: maybeValue(meta.kitBenefitMode, ['skills','protection','three_archetype','main_and_archetype'], 'skills'),
       kitSkills: Array.isArray(meta.kitSkills) ? meta.kitSkills.filter((entry):entry is string => typeof entry === 'string') : [],
+      kitSkillBonus: Number.isInteger(Number(meta.kitSkillBonus)) && Number(meta.kitSkillBonus)>0 ? String(meta.kitSkillBonus) : '',
       kitUniqueEffect: typeof meta.kitUniqueEffect === 'string' ? meta.kitUniqueEffect : '',
       kitEffect: maybeValue(meta.kitEffect, ['damage','resistance','combat_point',''] as const, '') || null,
       kitEffectNotes: typeof meta.kitEffectNotes === 'string' ? meta.kitEffectNotes : '',
@@ -803,9 +806,8 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
     const price = randomMoney ? moneyMin : isConsumable && draft.scarcityExhausted ? 0 : rawPrice
     if (activeChestKit && chestKitDef?.family === 'consumable' && !kitAvailableScarcityLevels(activeChestKit).includes(Number(draft.scarcityLevel) as 1|2|3|4)) {setError('Nível de escassez inválido para este tipo de kit.');return}
     if (activeChestKit && chestKitDef?.family === 'equippable') {
-      const slots=kitSlots(activeChestKit,draft.kitBenefitMode)
-      if (slots.some((_,i)=>!draft.kitSkills[i]?.trim())) {setError('Configure todas as perícias beneficiadas pelo kit.');return}
-      if (new Set(slots.map((_,i)=>draft.kitSkills[i]?.trim().toLocaleLowerCase('pt-BR'))).size !== slots.length) {setError('Escolha perícias diferentes para o kit.');return}
+      const invalid=validateKitSkillSelection(activeChestKit,draft.kitBenefitMode,draft.kitSkills,draft.kitSkillBonus)
+      if(invalid){setError(invalid);return}
       if (activeChestKit === 'equip_rare' && !draft.kitUniqueEffect.trim()) {setError('Descreva a funcionalidade única do kit raro.');return}
     }
     if (!draft.name.trim()) { setError('Informe o nome do drop.'); return }
@@ -851,6 +853,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
         kitFamily: chestKitDef?.family ?? null,
         kitBenefitMode: chestKitDef?.family === 'equippable' ? draft.kitBenefitMode : null,
         kitSkills: chestKitDef?.family === 'equippable' ? draft.kitSkills.slice(0,kitSlots(activeChestKit!,draft.kitBenefitMode).length).map(entry=>entry.trim()) : null,
+        kitSkillBonus: chestKitDef?.family === 'equippable' && kitSlots(activeChestKit!,draft.kitBenefitMode).length ? Number(draft.kitSkillBonus) : null,
         kitUniqueEffect: activeChestKit === 'equip_rare' ? draft.kitUniqueEffect.trim() : null,
         kitEffect: chestKitDef?.family === 'consumable' && activeChestKit !== 'prolonged' ? draft.kitEffect : null,
         kitEffectNotes: chestKitDef?.family === 'consumable' ? draft.kitEffectNotes.trim() : null,
@@ -1535,13 +1538,14 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
                 const definition = value ? KIT_DEFINITIONS[value] : null
                 const level = value ? normalizeKitLevel(value, Number(current.scarcityLevel)) : null
                 const cats = definition ? ['Kits', definition.family === 'consumable' ? 'Consumíveis' : 'Equipamento', ...current.categories.filter(category => !['Kits','Consumíveis','Equipamento'].includes(category))] : current.categories
-                return {...current, kitType:value, kitBenefitMode:value==='equip_rare'?'three_archetype':'skills',kitSkills:[],equipmentType:'none',categories:cats,category: definition ? 'Kits':current.category,scarcityMode:'fixed',scarcityLevel:level ? String(level) as ItemDraft['scarcityLevel'] : current.scarcityLevel,scarcityExhausted:false}
+                return {...current, kitType:value, kitBenefitMode:value==='equip_rare'?'three_archetype':'skills',kitSkills:[],kitSkillBonus:'',equipmentType:'none',categories:cats,category: definition ? 'Kits':current.category,scarcityMode:'fixed',scarcityLevel:level ? String(level) as ItemDraft['scarcityLevel'] : current.scarcityLevel,scarcityExhausted:false}
               })
               setEditorDirty(true)
             }}
             benefitMode={draft.kitBenefitMode}
             onBenefitModeChange={value => {setDraft(current => ({...current,kitBenefitMode:value,kitSkills:[]}));setEditorDirty(true)}}
             skills={draft.kitSkills}
+            skillBonus={draft.kitSkillBonus} onSkillBonusChange={value=>setField('kitSkillBonus',value)}
             setSkills={value => {setDraft(current => ({...current,kitSkills:typeof value==='function'?value(current.kitSkills):value}));setEditorDirty(true)}}
             uniqueEffect={draft.kitUniqueEffect} onUniqueEffectChange={value => setField('kitUniqueEffect',value)}
             effect={draft.kitEffect} onEffectChange={value => setField('kitEffect',value)}

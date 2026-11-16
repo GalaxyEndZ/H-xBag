@@ -21,3 +21,8 @@
 .hb-kit-detail p,.hb-kit-detail li{margin:0;color:var(--season-muted,#a8aeba);font-size:12px;line-height:1.5}
 .hb-kit-detail ul{margin:0;padding-left:20px}
 @media(max-width:560px){.hb-kit-scarcity-row{grid-template-columns:1fr}.hb-kit-editor{padding:13px}}
+
+/* V91: lista de perícias e campo numérico padronizados. */
+.hb-kit-editor .hb-kit-skill-grid select{max-width:100%;min-width:0;width:100%}
+.hb-kit-editor .hb-kit-skill-bonus{grid-column:1/-1;min-width:0}
+.hb-kit-editor .hb-kit-skill-bonus small{font-weight:400;opacity:.8;line-height:1.4}
