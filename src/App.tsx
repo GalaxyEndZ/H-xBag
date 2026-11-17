@@ -12261,9 +12261,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           {activePage === 'profile' && <div className="hb-profile-unified hb-profile-v129" data-profile-section={profileSection}>
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16 hb-profile-page-v17" data-cover={accountCover} aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
-                <div className="hb-profile-identity-cover">
+                <div className="hb-profile-identity-cover" data-has-custom-cover={profilePhotoUrls.cover ? 'true' : 'false'}>
                   {profilePhotoUrls.cover && <img className="hpl-header-cover-image" src={profilePhotoUrls.cover} alt="Capa personalizada do perfil" style={{objectPosition:`center ${profilePhotoUrls.coverPosition}%`}}/>}
-                  <span className="hb-profile-identity-cover-art" aria-hidden="true" />
+                  {!profilePhotoUrls.cover && <span className="hb-profile-identity-cover-art" aria-hidden="true" />}
                   <span className="hb-profile-identity-cover-vignette" aria-hidden="true" />
                   <div className="hb-profile-identity-cover-topline">
                     <span><span aria-hidden="true">✦</span> HÄXBAG <span className="hb-profile-identity-overline">/ ARQUIVO DO AVENTUREIRO</span></span>
@@ -12627,20 +12627,30 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   {profileSection==='studio' && <>
                   <section className="hb-profile-side-card hb-profile-preview-panel hb-v130-live-preview" aria-label="Prévia do perfil">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Sua identidade ao vivo' : 'Cartão do aventureiro'}</h2></div></div>
-                    <div className={`hb-profile-preview-card ${(identityCardPreview.image || profilePhotoUrls.cover)?'has-custom-background':''}`} data-cover={profileEditing ? profileCoverDraft : accountCover}>
+                    <div className={`hb-profile-preview-card hb-identity-v135 ${(identityCardPreview.image || profilePhotoUrls.cover)?'has-custom-background':''}`} data-cover={profileEditing ? profileCoverDraft : accountCover}>
                       <span className="hb-profile-preview-art" aria-hidden="true" />
                       {(identityCardPreview.image || profilePhotoUrls.cover) && <><img className="hb-identity-card-custom-background" src={identityCardPreview.image || profilePhotoUrls.cover} alt="" style={{objectPosition:`center ${identityCardPreview.image?identityCardPreview.position:profilePhotoUrls.coverPosition}%`}}/><span className="hb-identity-card-custom-overlay" aria-hidden="true"/></>}
-                      <div className="hb-profile-preview-topline"><span>HÄXBAG <span className="hb-profile-preview-edition">· CARTA DE IDENTIDADE</span></span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
-                      <span className="hb-profile-preview-decor" aria-hidden="true">✧</span>
-                      <span className="hb-profile-preview-avatar" aria-hidden="true">{identityCardPreview.portrait==='photo' && profilePhotoUrls.avatar
-                        ? <img src={profilePhotoUrls.avatar} alt="" style={{objectPosition:`center ${profilePhotoUrls.avatarPosition}%`}}/>
-                        : profileEditing ? (profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()) : (accountAvatar || String(displayName).charAt(0).toUpperCase())}</span>
-                      <strong className="hb-profile-preview-name">{profileEditing ? (profileNameDraft.trim() || 'Seu nome de exibição') : displayName}</strong>
-                      <span className="hb-profile-preview-title">✧ {profileTitleOptions.find(option => option.id === (profileEditing ? profileTitleDraft : accountTitle))?.name || 'Viajante dos Mundos'}</span>
-                      <p className="hb-profile-preview-bio">{(profileEditing ? profileBioDraft : accountBio).trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
-                      <span className="hb-profile-preview-signature"><span>✦ CARTÃO DO AVENTUREIRO</span><span>HÄXBAG · I</span></span>
+                      <div className="hb-profile-preview-topline"><span>✦ HÄXBAG <span className="hb-profile-preview-edition">/ CARTA DE IDENTIDADE</span></span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
+                      <div className="hb-identity-v135-emblem" aria-hidden="true"><span>✧</span><small>REGISTRO DO AVENTUREIRO</small><span>✧</span></div>
+                      <div className="hb-identity-v135-person">
+                        <span className="hb-profile-preview-avatar" aria-hidden="true">{identityCardPreview.portrait==='photo' && profilePhotoUrls.avatar
+                          ? <img src={profilePhotoUrls.avatar} alt="" style={{objectPosition:`center ${profilePhotoUrls.avatarPosition}%`}}/>
+                          : profileEditing ? (profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()) : (accountAvatar || String(displayName).charAt(0).toUpperCase())}</span>
+                        <div className="hb-identity-v135-person-copy">
+                          <small>IDENTIDADE DO PORTADOR</small>
+                          <strong className="hb-profile-preview-name">{profileEditing ? (profileNameDraft.trim() || 'Seu nome de exibição') : displayName}</strong>
+                          <span className="hb-identity-v135-handle">@{profileEditing ? (profileUsernameDraft.trim() || accountUsername || 'aventureiro') : (accountUsername || 'aventureiro')}</span>
+                          <span className="hb-profile-preview-title">✧ {profileTitleOptions.find(option => option.id === (profileEditing ? profileTitleDraft : accountTitle))?.name || 'Viajante dos Mundos'}</span>
+                        </div>
+                      </div>
+                      <div className="hb-identity-v135-description">
+                        <span className="hb-identity-v135-description-label">✎ SOBRE O AVENTUREIRO</span>
+                        <p className="hb-profile-preview-bio">{(profileEditing ? profileBioDraft : accountBio).trim() || 'Sua história ainda não foi escrita. Adicione uma apresentação para dar vida à sua carta.'}</p>
+                      </div>
+                      <span className="hb-profile-preview-signature"><span>✦ IDENTIDADE · HÄXBAG</span><span>REGISTRO PESSOAL / I</span></span>
                     </div>
-                    <p className="hb-profile-preview-help">{profileEditing ? 'Veja seu visual antes de publicar. O rascunho só passa a valer após salvar.' : 'Sua carta usa a capa do perfil por padrão. Um fundo exclusivo pode ser escolhido em Meu Ateliê.'}</p>
+                    <p className="hb-profile-preview-help">{profileEditing ? 'A descrição acompanha sua edição e aparece inteira na carta. Salve a identidade para publicá-la.' : 'A descrição usa sua biografia; a capa serve de fundo até você escolher uma imagem exclusiva.'}</p>
+                    <button type="button" className="hb-identity-v135-edit-bio" onClick={()=>document.getElementById('hb-v130-studio-story')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}>✎ Editar descrição da carta <span aria-hidden="true">↗</span></button>
                     <button type="button" className="hb-profile-copy-card" onClick={() => {
                       const text = [`✦ HÄXBAG · CARTÃO DO AVENTUREIRO`, String(displayName), accountUsername ? `@${accountUsername}` : '', accountTitleName, accountBio.trim()].filter(Boolean).join('\n')
                       void navigator.clipboard.writeText(text).then(() => setNotice('Cartão do aventureiro copiado!')).catch(() => setError('Não foi possível copiar seu cartão.'))

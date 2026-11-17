@@ -54,7 +54,14 @@
 /* Barra de salvamento, só quando há alterações */
 .hpl-bottom-save{position:sticky;bottom:12px;z-index:15;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 17px;border:1px solid color-mix(in srgb,var(--hpl-accent) 40%,var(--hpl-line));border-radius:15px;background:color-mix(in srgb,var(--hpl-accent) 7%,var(--season-bg,#181a1c));box-shadow:0 16px 32px #0007;backdrop-filter:blur(17px)}.hpl-bottom-save>span{display:grid;gap:3px}.hpl-bottom-save strong{font-size:12px}.hpl-bottom-save small{font-size:11px;color:var(--hpl-muted)}.hpl-bottom-save>div{display:flex;gap:8px;align-items:center}.hpl-bottom-save>div button:not(.hpl-primary){border:1px solid var(--hpl-line);border-radius:10px;background:var(--hpl-surface-alt);padding:11px 13px;font-size:11px;font-weight:800}
 /* Integração com o cabeçalho histórico do perfil */
-.hpl-header-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}.hb-profile-identity-cover:has(.hpl-header-cover-image) .hb-profile-identity-cover-art{opacity:.25}.hpl-header-avatar-image{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}.hb-profile-identity-avatar:has(.hpl-header-avatar-image){padding:0;overflow:hidden}
+.hpl-header-cover-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}/* V134: Foto de capa escolhida substitui a arte do tema — nunca sobrepor os dois.
+   Preserva o estilo temático apenas quando não há imagem personalizada. */
+.hb-profile-identity-cover:has(.hpl-header-cover-image) .hb-profile-identity-cover-art{display:none!important;background-image:none!important}
+.hb-profile-page-v17 .hb-profile-identity-cover[data-has-custom-cover="true"] .hb-profile-identity-cover-art{display:none!important;background-image:none!important}
+.hb-profile-page-v17 .hb-profile-identity-cover[data-has-custom-cover="true"] .hb-profile-cover-crest{display:none!important}
+.hb-profile-page-v17 .hb-profile-identity-cover[data-has-custom-cover="true"] .hb-profile-identity-cover-vignette{
+  background:linear-gradient(90deg,rgba(8,10,12,.65) 0%,rgba(8,10,12,.30) 43%,rgba(8,10,12,.05) 100%),linear-gradient(0deg,rgba(8,10,12,.24),transparent 60%)!important
+}.hpl-header-avatar-image{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}.hb-profile-identity-avatar:has(.hpl-header-avatar-image){padding:0;overflow:hidden}
 .hb-profile-page-v17 .hb-profile-quick-nav a[href="#hb-profile-legacy-plus"]{border-color:color-mix(in srgb,var(--season-primary) 28%,var(--season-line));color:var(--season-primary)}
 /* Responsive */
 @media(max-width:1160px){.hpl-spotlight{grid-template-columns:minmax(0,1.5fr) minmax(260px,.95fr)}.hpl-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}.hpl-overview-community{grid-column:1/-1}.hpl-award-form{grid-template-columns:repeat(2,minmax(0,1fr))}.hpl-award-form .hpl-primary{grid-column:1/-1}.hpl-tabs button{padding:9px 12px}}

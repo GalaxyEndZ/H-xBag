@@ -201,17 +201,30 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
             </div>}
             {tab === 'identity' && view.identity_card_visible && <section className="hb-public-panel hb-public-identity-card-section">
               <span className="hb-public-overline">UMA CARTA ÚNICA</span><h3>Carta de Identidade</h3>
-              <div className={`hb-public-identity-card ${view.identity_card_image?'has-image':''}`} data-cover={view.identity_card_cover_theme || 'eclipse'}>
+              <div className={`hb-public-identity-card hb-public-identity-card-v135 ${view.identity_card_image?'has-image':''}`} data-cover={view.identity_card_cover_theme || 'eclipse'}>
                 {view.identity_card_image && <><img className="hb-public-identity-card-background" src={view.identity_card_image} alt="" style={{objectPosition:`center ${view.identity_card_position ?? 50}%`}}/><span className="hb-public-identity-card-shade" aria-hidden="true"/></>}
-                <div className="hb-public-identity-card-top"><span>✦ HÄXBAG · CARTA DE IDENTIDADE</span><span>✧ AVENTUREIRO</span></div>
-                <div className="hb-public-identity-card-portrait" aria-hidden="true">
-                  {view.identity_card_portrait !== 'symbol' && view.avatar_image
-                    ? <img src={view.avatar_image} alt="" style={{objectPosition:`center ${view.avatar_position ?? 50}%`}}/>
-                    : <span>{view.identity_card_symbol || (view.display_name || 'A').charAt(0).toUpperCase()}</span>}
+                <div className="hb-public-identity-card-top"><span>✦ HÄXBAG / CARTA DE IDENTIDADE</span><span>REGISTRO PESSOAL</span></div>
+                <div className="hb-public-identity-card-emblem" aria-hidden="true"><span>✧</span><small>O REGISTRO DO AVENTUREIRO</small><span>✧</span></div>
+                <div className="hb-public-identity-card-person">
+                  <div className="hb-public-identity-card-portrait" aria-label="Retrato do aventureiro">
+                    {view.identity_card_portrait !== 'symbol' && view.avatar_image
+                      ? <img src={view.avatar_image} alt={`Retrato de ${view.display_name}`} style={{objectPosition:`center ${view.avatar_position ?? 50}%`}}/>
+                      : <span aria-hidden="true">{view.identity_card_symbol || (view.display_name || 'A').charAt(0).toUpperCase()}</span>}
+                  </div>
+                  <div className="hb-public-identity-card-person-copy">
+                    <small>IDENTIDADE DO PORTADOR</small>
+                    <strong>{view.display_name}</strong>
+                    <span className="hb-public-identity-card-handle">@{view.username}</span>
+                    {view.status && allow('show_status') && <span className="hb-public-identity-card-status">✧ {view.status}</span>}
+                  </div>
                 </div>
-                <strong>{view.display_name}</strong><span className="hb-public-identity-card-handle">@{view.username}</span>
-                {view.status && allow('show_status') && <small>{view.status}</small>}
-                <div className="hb-public-identity-card-bottom"><span>✦ CARTÃO DO AVENTUREIRO</span><span>HÄXBAG · I</span></div>
+                <div className="hb-public-identity-card-description">
+                  <span className="hb-public-identity-card-description-label">✎ SOBRE O AVENTUREIRO</span>
+                  {allow('show_bio') && view.bio?.trim()
+                    ? <p>{view.bio.trim()}</p>
+                    : <p className="hb-public-identity-card-description-placeholder">{allow('show_bio')?'Este aventureiro ainda não escreveu uma descrição.':'A descrição deste aventureiro é privada.'}</p>}
+                </div>
+                <div className="hb-public-identity-card-bottom"><span>✦ IDENTIDADE · HÄXBAG</span><span>REGISTRO PESSOAL / I</span></div>
               </div>
               <p className="hb-public-muted">Esta carta usa a capa do perfil como fundo, exceto quando o aventureiro escolhe uma imagem exclusiva no Ateliê.</p>
             </section>}

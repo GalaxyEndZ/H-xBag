@@ -12,3 +12,83 @@
 /* Prevalece sobre o posicionamento genérico das peças decorativas da prévia. */
 .hb-profile-page-v17 .hb-profile-preview-panel .hb-profile-preview-card > .hb-identity-card-custom-background{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 .hb-profile-page-v17 .hb-profile-preview-panel .hb-profile-preview-card > .hb-identity-card-custom-overlay{position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(7,10,14,.6),rgba(7,10,14,.42) 45%,rgba(7,10,14,.83))}
+
+/* V135 — Carta de Identidade: composição de retrato, nome e descrição completa.
+   Usa as variáveis do tema e preserva a imagem de fundo exclusiva/da capa. */
+.hb-profile-page-v17 .hb-profile-preview-panel .hb-profile-preview-card.hb-identity-v135{
+  align-items:stretch;gap:13px;min-height:395px;padding:20px 19px 16px;text-align:left;
+  border:1px solid color-mix(in srgb,var(--season-primary) 55%,var(--profile-line));
+  box-shadow:0 16px 34px rgba(0,0,0,.2),inset 0 0 0 4px color-mix(in srgb,var(--season-primary) 5%,transparent)
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-topline{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-bottom:1px;color:var(--season-primary);font-size:9px;font-weight:850;letter-spacing:.1em
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-edition{color:inherit;opacity:.83}
+.hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-emblem{
+  display:flex;justify-content:center;align-items:center;gap:11px;color:var(--season-primary);opacity:.92;
+  text-align:center;min-width:0
+}
+.hb-identity-v135-emblem:before,.hb-identity-v135-emblem:after{content:'';flex:1;height:1px;background:currentColor;opacity:.32}
+.hb-identity-v135-emblem>span{font:18px/1 Georgia,serif;opacity:.8}
+.hb-identity-v135-emblem small{font-size:8px;letter-spacing:.14em;font-weight:800;white-space:nowrap}
+.hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-person{
+  display:flex;align-items:center;gap:15px;min-width:0;padding:5px 0 8px
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-avatar{
+  flex:0 0 88px;width:88px;height:98px;margin:0;border-radius:17px;font-size:37px;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--season-primary) 9%,transparent),0 9px 22px rgba(0,0,0,.25)
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-person-copy{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;flex:1}
+.hb-identity-v135-person-copy>small{font-size:9px;line-height:1.3;letter-spacing:.12em;font-weight:800;color:var(--season-primary)}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-name{
+  margin:0;color:var(--season-text);font:700 clamp(19px,2vw,25px)/1.2 Georgia,serif;
+  text-align:left;overflow-wrap:anywhere;max-width:100%;text-shadow:0 2px 8px rgba(0,0,0,.12)
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-handle{
+  font-size:12px;line-height:1.35;font-weight:650;max-width:100%;overflow-wrap:anywhere;color:var(--season-muted)
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-title{
+  display:inline-flex;align-items:center;gap:5px;color:var(--season-primary);
+  font:600 11px/1.35 Georgia,serif;white-space:normal;text-align:left
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-description{
+  display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:0;width:100%;
+  margin-top:2px;padding:14px 15px;border:1px solid color-mix(in srgb,var(--season-primary) 26%,transparent);
+  border-radius:11px;background:color-mix(in srgb,var(--season-bg) 74%,transparent);
+  backdrop-filter:blur(4px)
+}
+.hb-identity-v135-description-label{color:var(--season-primary);font-size:9px;font-weight:800;letter-spacing:.14em}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-bio{
+  width:100%;max-width:none;min-height:0;margin:0;color:var(--season-text);
+  font-size:12px;line-height:1.65;text-align:left;font-weight:500;white-space:pre-wrap;overflow-wrap:anywhere;
+  overflow:visible;display:block;line-clamp:unset;-webkit-line-clamp:unset
+}
+.hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-signature{
+  width:100%;margin-top:auto;padding-top:12px;gap:9px;border-top-color:color-mix(in srgb,var(--season-primary) 34%,transparent);
+  font-size:8px;line-height:1.45;letter-spacing:.1em;flex-wrap:wrap
+}
+.hb-profile-page-v17 .hb-identity-v135.has-custom-background{
+  --season-primary:#e5c996;--season-text:#fff9f0;--season-muted:#efe1cf;--season-bg:#10151a
+}
+.hb-profile-page-v17 .hb-identity-v135.has-custom-background .hb-identity-v135-description{
+  background:rgba(6,9,13,.73);border-color:rgba(234,212,174,.27)
+}
+.hb-profile-page-v17 .hb-identity-v135.has-custom-background .hb-identity-card-custom-overlay{
+  background:linear-gradient(180deg,rgba(8,10,15,.47),rgba(8,10,15,.26) 40%,rgba(8,10,15,.69) 100%)
+}
+.hb-identity-v135-edit-bio{
+  width:100%;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border:1px solid var(--season-line);border-radius:10px;background:color-mix(in srgb,var(--season-primary) 6%,var(--season-surface));
+  color:var(--season-text);font-size:11px;font-weight:750;cursor:pointer
+}
+.hb-identity-v135-edit-bio:hover{border-color:var(--season-primary);background:color-mix(in srgb,var(--season-primary) 12%,var(--season-surface))}
+.hb-identity-v135-edit-bio:focus-visible{outline:2px solid var(--season-primary);outline-offset:2px}
+@media(max-width:520px){
+ .hb-profile-page-v17 .hb-profile-preview-panel .hb-profile-preview-card.hb-identity-v135{padding:17px 13px 14px;gap:11px;min-height:350px}
+ .hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-person{gap:11px}
+ .hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-avatar{flex-basis:73px;width:73px;height:82px;border-radius:14px}
+ .hb-profile-page-v17 .hb-identity-v135 .hb-identity-v135-description{padding:12px}
+ .hb-profile-page-v17 .hb-identity-v135 .hb-profile-preview-name{font-size:20px}
+}
