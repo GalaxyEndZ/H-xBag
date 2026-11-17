@@ -1,0 +1,100 @@
+/* HäxBag V131 — Perfil, refinamento integral de navegação, comunidade, conta e jornada.
+   Camada estritamente visual: conserva regras de dados e a privacidade existente. */
+.hb-profile-v129{
+  --hb-v131-radius:19px;
+  --hb-v131-soft-line:color-mix(in srgb,var(--hb-profile-accent) 16%,var(--hb-profile-line));
+  --hb-v131-raised:0 10px 28px rgba(0,0,0,.09);
+}
+.hb-profile-v129 :is(.hb-profile-identity,.hb-v129-navigation,.hb-profile-info-tile,.hb-v129-overview-feature>article,.hb-profile-character-card,.hb-profile-campaign-card,.hb-profile-card,.hb-profile-side-card,.hb-friends-box,.hpl-panel){
+  -webkit-font-smoothing:antialiased;
+}
+/* O cabeçalho vira uma única área editorial e transmite o progresso do usuário. */
+.hb-profile-v129 .hb-profile-identity{border-color:var(--hb-v131-soft-line);border-radius:26px 26px 0 0;box-shadow:0 25px 54px rgba(0,0,0,.15)}
+.hb-profile-v129 .hb-profile-identity-cover{height:clamp(185px,20vw,248px);background:radial-gradient(ellipse at 15% 15%,color-mix(in srgb,var(--hb-profile-accent) 19%,transparent),transparent 55%),linear-gradient(125deg,var(--season-bg,#0e1113),var(--hb-profile-surface))}
+.hb-profile-v129 .hb-profile-cover-crest{opacity:.35;filter:drop-shadow(0 5px 15px #0008)}
+.hb-profile-v129 .hb-profile-identity-main{align-items:center;grid-template-columns:clamp(88px,10vw,124px) minmax(0,1fr) minmax(158px,auto);row-gap:16px;padding:clamp(19px,2.4vw,34px) clamp(20px,3vw,42px)}
+.hb-profile-v129 .hb-profile-identity-avatar{border:2px solid color-mix(in srgb,var(--hb-profile-accent) 60%,transparent);box-shadow:0 0 0 5px color-mix(in srgb,var(--hb-profile-accent) 12%,transparent),0 16px 35px rgba(0,0,0,.23)}
+.hb-profile-v129 .hb-profile-identity-copy>p{font-size:13px;max-width:670px}
+.hb-profile-v129 .hb-profile-handle-row{max-width:100%;flex-wrap:wrap;gap:7px}
+.hb-profile-v129 .hb-profile-identity-badges{row-gap:8px}
+.hb-v131-hero-progress{grid-column:1/-1;display:grid;grid-template-columns:minmax(200px,1fr) minmax(140px,.9fr) auto;align-items:center;gap:20px;padding:18px 20px;border:1px solid var(--hb-v131-soft-line);border-radius:15px;background:linear-gradient(102deg,color-mix(in srgb,var(--hb-profile-accent) 8%,var(--hb-profile-soft)),var(--hb-profile-surface));min-width:0}
+.hb-v131-hero-progress-copy{display:grid;gap:3px;min-width:0}.hb-v131-hero-progress-copy>span{font-size:9px;letter-spacing:.15em;font-weight:850;color:var(--hb-profile-accent)}.hb-v131-hero-progress-copy strong{font-size:16px;line-height:1.3}.hb-v131-hero-progress-copy small{font-size:11px;color:var(--hb-profile-muted);line-height:1.5}
+.hb-v131-hero-progress-track{height:9px;border-radius:100px;border:1px solid var(--hb-profile-line);background:color-mix(in srgb,var(--hb-profile-accent) 9%,var(--hb-profile-soft));overflow:hidden}
+.hb-v131-hero-progress-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--hb-profile-accent),color-mix(in srgb,var(--hb-profile-accent) 65%,white));transition:width .3s ease}
+.hb-profile-v129 .hb-v131-hero-progress>button{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;white-space:nowrap;padding:9px 15px;border:1px solid color-mix(in srgb,var(--hb-profile-accent) 38%,var(--hb-profile-line));border-radius:10px;background:var(--hb-profile-soft);color:var(--hb-profile-ink);font-size:11px;font-weight:750}
+.hb-profile-v129 .hb-v131-hero-progress>button:hover{background:color-mix(in srgb,var(--hb-profile-accent) 14%,var(--hb-profile-soft));border-color:var(--hb-profile-accent)}
+/* Navegação por seções: alvo maior, seleção inequívoca, acessível pelo teclado. */
+.hb-profile-v129 .hb-v129-navigation{gap:12px;padding:19px clamp(16px,2.6vw,32px);background:linear-gradient(100deg,color-mix(in srgb,var(--hb-profile-accent) 8%,var(--hb-profile-surface)),var(--hb-profile-surface));border-color:var(--hb-v131-soft-line)}
+.hb-profile-v129 .hb-v129-tabs button{min-height:53px;border-radius:12px;box-shadow:inset 0 1px rgba(255,255,255,.025);transition:background .15s ease,border-color .15s ease,transform .15s ease;gap:8px}
+.hb-profile-v129 .hb-v129-tabs button:hover{transform:translateY(-1px)}
+.hb-profile-v129 .hb-v129-tabs button.is-active{border-color:var(--hb-profile-accent);background:color-mix(in srgb,var(--hb-profile-accent) 17%,var(--hb-profile-soft));box-shadow:inset 0 -3px var(--hb-profile-accent),0 5px 15px color-mix(in srgb,var(--hb-profile-accent) 10%,transparent)}
+.hb-profile-v129 :is(#hb-v129-profile-navigation,#hb-profile-characters,#hb-profile-campaigns,#hb-profile-editor-region,#hb-social-hub){scroll-margin-top:24px}
+.hb-profile-v129 .hb-v129-section-caption{margin-bottom:23px;padding-top:32px;padding-bottom:20px}
+.hb-profile-v129 .hb-v129-section-caption h2{font-size:clamp(27px,2.9vw,39px)}
+/* Visão geral: próximos passos guiados e marcos verídicos. */
+.hb-profile-v129 .hb-profile-action-strip>button{position:relative;overflow:hidden}
+.hb-profile-v129 .hb-profile-action-strip>button::after{content:'↗';position:absolute;right:13px;top:12px;font-size:12px;color:var(--hb-profile-accent);opacity:.6}
+.hb-profile-v129 .hb-profile-info-tile{border-color:var(--hb-v131-soft-line);border-radius:17px;box-shadow:var(--hb-v131-raised)}
+.hb-profile-v129 .hb-profile-info-tile strong{font-variant-numeric:tabular-nums}
+.hb-profile-v129 .hb-v129-overview-feature>article{border-radius:var(--hb-v131-radius);box-shadow:var(--hb-v131-raised)}
+.hb-profile-v129 .hb-v131-next-steps{justify-content:flex-start;gap:10px}
+.hb-profile-v129 .hb-v131-next-steps h3{margin:0;font-size:clamp(20px,2vw,27px)}
+.hb-profile-v129 .hb-v131-next-steps p{font-size:12px;line-height:1.6;margin:0 0 4px}
+.hb-profile-v129 .hb-v131-next-steps button{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0;min-height:42px}
+.hb-profile-v129 .hb-v131-next-steps button.hb-v131-step-primary{background:color-mix(in srgb,var(--hb-profile-accent) 18%,var(--hb-profile-soft));border-color:color-mix(in srgb,var(--hb-profile-accent) 50%,var(--hb-profile-line))}
+.hb-v131-milestones{padding:clamp(18px,2vw,27px);border:1px solid var(--hb-v131-soft-line);background:radial-gradient(ellipse at 100% 0%,color-mix(in srgb,var(--hb-profile-accent) 7%,transparent),transparent 55%),var(--hb-profile-surface);border-radius:var(--hb-v131-radius);display:grid;gap:20px;min-width:0;box-shadow:var(--hb-v131-raised)}
+.hb-v131-milestones-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}.hb-v131-milestones-heading>div{display:grid;gap:6px}.hb-v131-milestones-heading h3{font:600 clamp(22px,2.3vw,30px)/1.2 Georgia,serif;margin:0}.hb-v131-milestones-heading button{border:1px solid var(--hb-profile-line);border-radius:10px;padding:11px 13px;background:var(--hb-profile-soft);color:var(--hb-profile-ink);font-size:11px;font-weight:800}
+.hb-v131-milestone-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.hb-v131-milestone-grid>div{position:relative;display:grid;align-content:start;gap:6px;padding:20px 18px 19px;border:1px solid var(--hb-profile-line);background:var(--hb-profile-soft);border-radius:14px;min-width:0;overflow:hidden}
+.hb-v131-milestone-grid>div::before{content:'';position:absolute;inset:0 auto 0 0;width:3px;background:var(--hb-profile-accent);opacity:.7}
+.hb-v131-milestone-grid>div>span{font-size:25px;color:var(--hb-profile-accent);height:33px}.hb-v131-milestone-grid strong{font-size:12px;line-height:1.4}.hb-v131-milestone-grid small{font-size:11px;line-height:1.5;color:var(--hb-profile-muted)}
+/* Minha jornada: alternar densidade e agrupamento sem reescrever dados. */
+.hb-v131-journey-controls{display:flex;align-items:center;justify-content:space-between;gap:17px;flex-wrap:wrap;padding:18px 20px;border:1px solid var(--hb-v131-soft-line);border-radius:var(--hb-v131-radius);background:var(--hb-profile-surface)}
+.hb-v131-journey-controls>div:first-child{display:grid;gap:4px}.hb-v131-journey-controls>div:first-child strong{font-size:16px}.hb-v131-journey-controls>div:first-child small{font-size:11px;color:var(--hb-profile-muted)}
+.hb-v131-journey-controls-actions{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.hb-v131-journey-controls-actions label{display:grid;gap:5px;color:var(--hb-profile-muted);font-size:11px}
+.hb-profile-v129 .hb-v131-journey-controls-actions select{min-height:40px;min-width:174px;padding:9px 12px;border:1px solid var(--hb-profile-line);border-radius:10px;color:var(--hb-profile-ink);background:var(--hb-profile-soft);font:inherit;font-size:12px}
+.hb-v131-layout-switch{display:flex;align-items:center;gap:4px;padding:4px;border-radius:11px;border:1px solid var(--hb-profile-line);background:var(--hb-profile-soft)}
+.hb-profile-v129 .hb-v131-layout-switch button{min-height:33px;padding:8px 12px;background:transparent;border:1px solid transparent;border-radius:8px;color:var(--hb-profile-muted);font-size:11px;font-weight:780}
+.hb-profile-v129 .hb-v131-layout-switch button.is-active{background:color-mix(in srgb,var(--hb-profile-accent) 15%,var(--hb-profile-soft));border-color:color-mix(in srgb,var(--hb-profile-accent) 45%,var(--hb-profile-line));color:var(--hb-profile-ink)}
+.hb-profile-v129 .hb-v131-compact-grid{grid-template-columns:1fr;gap:7px}
+.hb-profile-v129 .hb-v131-compact-grid .hb-profile-character-card,.hb-profile-v129 .hb-v131-compact-grid .hb-profile-campaign-card{min-height:72px;padding:11px 15px;border-radius:11px;box-shadow:none}
+.hb-profile-v129 .hb-v131-compact-grid :is(.hb-profile-character-avatar,.hb-profile-campaign-emblem){width:44px;height:44px;border-radius:10px;font-size:23px}
+.hb-profile-v129 .hb-v131-compact-grid .hb-profile-character-info{min-width:0}
+.hb-profile-v129 .hb-profile-campaign-card{position:relative;align-items:center}
+.hb-v131-campaign-actions{display:grid;justify-items:end;gap:7px;flex:none}
+.hb-profile-v129 .hb-v131-campaign-actions button{padding:7px 12px;min-height:32px;border-radius:9px;color:var(--hb-profile-ink);background:var(--hb-profile-soft);border:1px solid var(--hb-profile-line);font-size:11px;font-weight:800}
+.hb-profile-v129 .hb-v131-campaign-actions button:hover{border-color:var(--hb-profile-accent)}
+.hb-profile-v129 .hb-profile-featured-character{box-shadow:var(--hb-v131-raised)}
+.hb-profile-v129 .hb-profile-empty-collection{padding:25px;border:1px dashed var(--hb-v131-soft-line);background:color-mix(in srgb,var(--hb-profile-accent) 4%,var(--hb-profile-surface));border-radius:14px}
+/* Conta: ajuda de segurança e transparência sobre privacidade. */
+.hb-profile-v129 .hb-v129-account-guide{border-radius:var(--hb-v131-radius);min-height:0}
+.hb-v131-account-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-top:8px}
+.hb-v131-account-overview>div{display:grid;align-content:start;gap:6px;min-width:0;padding:18px;border:1px solid var(--hb-profile-line);border-radius:12px;background:var(--hb-profile-soft)}
+.hb-v131-account-overview span{font-size:9px;color:var(--hb-profile-accent);letter-spacing:.14em;font-weight:850}.hb-v131-account-overview strong{font-size:13px;overflow-wrap:anywhere}.hb-v131-account-overview small{font-size:11px;color:var(--hb-profile-muted);line-height:1.5}
+/* Identidade e legado e comunidade partilham a mesma grade, cor e ritmo. */
+.hb-profile-v129 :is(.hpl-v128,.hb-friends-panel){--hpl-accent:var(--hb-profile-accent);--hpl-line:var(--hb-profile-line);--hpl-ink:var(--hb-profile-ink);--hpl-muted:var(--hb-profile-muted)}
+.hb-profile-v129 .hpl-v128 .hpl-panel,.hb-profile-v129 .hpl-v128 .hpl-spotlight,.hb-profile-v129 .hb-friends-box{border-radius:var(--hb-v131-radius);border-color:var(--hb-v131-soft-line);box-shadow:var(--hb-v131-raised)}
+.hb-profile-v129 .hpl-v128 .hpl-panel-heading h3{letter-spacing:-.025em}
+.hb-profile-v129 .hpl-v128 .hpl-tabs button[aria-selected='true']{border-color:color-mix(in srgb,var(--hb-profile-accent) 42%,var(--hb-profile-line));color:var(--hb-profile-ink)}
+.hb-profile-v129 .hpl-v128 .hpl-privacy-row{min-height:72px}
+.hb-profile-v129 .hpl-v128 .hpl-privacy-copy small{line-height:1.5}
+.hb-profile-v129 .hb-friends-panel{min-width:0;max-width:none}
+.hb-profile-v129 .hb-friends-panel :is(.hb-friends-heading,.hb-social-intro,.hb-friends-stats,.hb-friends-tabs){min-width:0}
+.hb-profile-v129 .hb-friends-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:clamp(17px,2vw,24px);border:1px solid var(--hb-v131-soft-line);border-radius:var(--hb-v131-radius);background:radial-gradient(ellipse at 100% 10%,color-mix(in srgb,var(--hb-profile-accent) 12%,transparent),transparent 60%),var(--hb-profile-surface)}
+.hb-profile-v129 .hb-friends-heading h2{font-family:Georgia,serif;letter-spacing:-.02em}
+.hb-profile-v129 .hb-social-intro{border-radius:14px;border-color:var(--hb-v131-soft-line)}
+.hb-profile-v129 .hb-friends-stats>span{background:var(--hb-profile-surface);border:1px solid var(--hb-profile-line);border-radius:11px;padding:13px 16px}
+.hb-profile-v129 .hb-friends-tabs{padding:5px;border-radius:12px;background:var(--hb-profile-soft);border:1px solid var(--hb-profile-line)}
+.hb-profile-v129 .hb-friends-tabs button{min-height:43px;border-radius:9px}
+.hb-profile-v129 .hb-friends-tabs button.active{color:var(--hb-profile-ink);background:color-mix(in srgb,var(--hb-profile-accent) 13%,var(--hb-profile-soft));box-shadow:inset 0 -2px var(--hb-profile-accent)}
+.hb-profile-v129 .hb-friends-person,.hb-profile-v129 .hb-friends-invite{min-width:0}
+.hb-profile-v129 .hb-friends-person :is(strong,small){overflow-wrap:anywhere}
+.hb-profile-v129 .hb-friends-avatar{background:color-mix(in srgb,var(--hb-profile-accent) 15%,var(--hb-profile-soft));border-color:var(--hb-profile-line)}
+.hb-profile-v129 .hb-friends-empty{line-height:1.65}
+/* Responsividade e conforto visual. */
+@media(max-width:1180px){.hb-profile-v129 .hb-v131-hero-progress{grid-template-columns:minmax(160px,1fr) minmax(120px,.65fr)}.hb-profile-v129 .hb-v131-hero-progress>button{grid-column:1/-1;justify-content:center}.hb-v131-account-overview{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:950px){.hb-profile-v129 .hb-profile-identity-main{grid-template-columns:88px minmax(0,1fr);gap:14px}.hb-profile-v129 .hb-v129-hero-actions{grid-column:2;display:flex;flex-wrap:wrap;min-width:0}.hb-v131-hero-progress{grid-column:1/-1}.hb-v131-milestone-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.hb-profile-v129 .hb-profile-identity-cover{height:194px}.hb-profile-v129 .hb-profile-identity-main{padding:20px 17px;grid-template-columns:76px minmax(0,1fr)}.hb-profile-v129 .hb-v131-hero-progress{grid-template-columns:1fr;gap:10px;padding:15px}.hb-v131-hero-progress-track{width:100%}.hb-profile-v129 .hb-v129-hero-actions{grid-column:1/-1;width:100%}.hb-profile-v129 .hb-v129-navigation{padding:14px}.hb-profile-v129 .hb-v129-tabs{display:flex;gap:7px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:thin;padding-bottom:4px}.hb-profile-v129 .hb-v129-tabs button{flex:0 0 auto;min-width:112px;scroll-snap-align:start;min-height:46px}.hb-profile-v129 .hb-v129-section-caption{align-items:start;flex-direction:column;gap:12px}.hb-profile-v129 .hb-v129-section-caption>button{width:100%}.hb-v131-milestone-grid{grid-template-columns:1fr}.hb-v131-milestone-grid>div{min-height:84px;grid-template-columns:44px 1fr;align-items:center;gap:4px 11px}.hb-v131-milestone-grid>div>span{grid-row:1/3;display:grid;place-items:center}.hb-v131-milestone-grid>div strong{align-self:end}.hb-v131-milestone-grid>div small{align-self:start}.hb-v131-milestones-heading{align-items:flex-start}.hb-v131-journey-controls{padding:15px}.hb-v131-journey-controls-actions{width:100%;display:grid;grid-template-columns:1fr auto;align-items:end}.hb-v131-journey-controls-actions label{min-width:0}.hb-v131-journey-controls-actions select{min-width:0;width:100%}.hb-v131-account-overview{grid-template-columns:1fr}.hb-profile-v129 .hb-v131-campaign-actions{align-items:end}.hb-profile-v129 .hb-friends-tabs{overflow-x:auto;max-width:100%}}
+@media(max-width:460px){.hb-profile-v129 .hb-profile-identity-main{grid-template-columns:64px minmax(0,1fr)}.hb-profile-v129 .hb-v131-hero-progress{padding:13px}.hb-profile-v129 .hb-profile-action-strip{grid-template-columns:1fr 1fr}.hb-v131-journey-controls-actions{grid-template-columns:1fr}.hb-v131-layout-switch{justify-content:space-between}.hb-v131-layout-switch button{flex:1}.hb-profile-v129 .hb-profile-campaign-card{flex-wrap:wrap;align-items:start}.hb-profile-v129 .hb-v131-campaign-actions{margin-left:auto;min-width:0}.hb-profile-v129 .hb-v131-milestones{padding:16px}.hb-profile-v129 .hb-v131-hero-progress-copy strong{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.hb-profile-v129 .hb-v131-hero-progress-track>span,.hb-profile-v129 .hb-v129-tabs button{transition:none!important}.hb-profile-v129 .hb-v129-tabs button:hover{transform:none!important}}

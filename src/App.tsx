@@ -32,6 +32,7 @@ import FriendsPanel from './components/FriendsPanel'
 import ProfileLegacy from './components/ProfileLegacy'
 import './components/ProfileUnified.css'
 import './components/ProfileAtelier.css'
+import './components/ProfilePolish.css'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -1587,6 +1588,8 @@ const resetCreatureFilters = () => {
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
   const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const [profileJourneyDisplay,setProfileJourneyDisplay] = useState<'cards'|'compact'>('cards')
+  const [profileJourneyOrder,setProfileJourneyOrder] = useState<'name'|'campaign'>('name')
   const switchProfileSection = (next:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
     setProfileSection(next)
     if (next === 'studio') setProfileEditing(true)
@@ -7320,6 +7323,10 @@ async function sendItemToCharacter() {
   const accountMasterCampaigns = campaigns.filter(campaign => campaign.role === 'master' || campaign.created_by === session?.user.id)
   const profileCompletion = [Boolean(accountUsername), Boolean(accountAvatar), Boolean(accountBio.trim()), Boolean(storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId))]
     .filter(Boolean).length * 25
+  const nextProfileStep = !accountUsername ? 'username'
+    : !accountAvatar ? 'avatar'
+    : !accountBio.trim() ? 'bio'
+    : accountAssignedCharacters.length > 0 && !storedFeaturedCharacterId ? 'featured' : null
   const accountCreatedAt = session?.user.created_at
     ? new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : 'Data indisponível'
@@ -12291,12 +12298,26 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     </button>
                     <button type="button" className="hb-v129-hero-secondary" onClick={()=>switchProfileSection('legacy')}>✦ Minha vitrine</button>
                   </div>
+                  <div className="hb-v131-hero-progress" aria-label="Progresso da identidade">
+                    <div className="hb-v131-hero-progress-copy"><span>SEU PERFIL, SUA HISTÓRIA</span><strong>{profileCompletion}% preenchido</strong><small>{nextProfileStep ? 'Há detalhes que podem tornar seu perfil mais completo.' : 'Continue registrando suas aventuras.'}</small></div>
+                    <div className="hb-v131-hero-progress-track" role="progressbar" aria-label="Identidade preenchida" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${profileCompletion}%`}}/></div>
+                    <button type="button" onClick={()=>nextProfileStep==='featured' ? switchProfileSection('journey') : switchProfileSection('studio')}>{nextProfileStep ? 'Continuar perfil' : 'Revisar identidade'} <span aria-hidden="true">↗</span></button>
+                  </div>
                 </div>
               </header>
 
               <div className="hb-v129-navigation" id="hb-v129-profile-navigation" aria-label="Navegação principal do perfil">
                 <div className="hb-v129-nav-heading"><span>SEU ESPAÇO</span><strong>Explorar o perfil</strong><small>Uma área para cada parte da sua história.</small></div>
-                <nav className="hb-v129-tabs" role="tablist" aria-label="Seções do perfil">
+                <nav className="hb-v129-tabs" role="tablist" aria-label="Seções do perfil" onKeyDown={event=>{
+                  if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
+                  if (!(event.target instanceof HTMLButtonElement)) return
+                  const tabs = ['overview','journey','studio','legacy','friends','account'] as const
+                  const selected = tabs.indexOf(profileSection)
+                  const index = event.key==='Home' ? 0 : event.key==='End' ? tabs.length-1 : (selected + (event.key==='ArrowRight'?1:-1) + tabs.length)%tabs.length
+                  event.preventDefault()
+                  switchProfileSection(tabs[index])
+                  window.requestAnimationFrame(()=>document.getElementById(`hb-v129-tab-${tabs[index]}`)?.focus({preventScroll:true}))
+                }}>
                   {([
                     ['overview','◈','Visão geral'],
                     ['journey','⚔','Minha jornada'],
@@ -12335,8 +12356,23 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
               <div className="hb-v129-overview-feature">
                 <article className="hb-v129-overview-story"><div><span className="hb-kicker">✧ SUA APRESENTAÇÃO</span><h3>Quem você é neste universo</h3><p>{accountBio.trim()||'Conte aos outros aventureiros quem você é e quais histórias gostaria de viver.'}</p></div><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>Editar apresentação ↗</button></article>
-                <article className="hb-v129-overview-next"><span className="hb-kicker">PRÓXIMOS PASSOS</span><h3>Continue sua jornada</h3><button type="button" onClick={()=>switchProfileSection('journey')}>⚔ Ver personagens e campanhas <span>↗</span></button><button type="button" onClick={()=>switchProfileSection('legacy')}>✦ Ajustar insígnias e crônicas <span>↗</span></button><button type="button" onClick={()=>switchProfileSection('friends')}>♧ Encontrar minha companhia <span>↗</span></button></article>
+                <article className="hb-v129-overview-next hb-v131-next-steps">
+                  <span className="hb-kicker">SUA PRÓXIMA ETAPA</span>
+                  <h3>{nextProfileStep==='username'?'Escolha sua identidade':nextProfileStep==='avatar'?'Dê um rosto ao seu perfil':nextProfileStep==='bio'?'Conte sua história':nextProfileStep==='featured'?'Escolha seu protagonista':'Continue sua jornada'}</h3>
+                  <p>{nextProfileStep==='username'?'Defina um @usuário exclusivo para que outros aventureiros encontrem você.':nextProfileStep==='avatar'?'Selecione um símbolo no Ateliê para identificar seu perfil.':nextProfileStep==='bio'?'Escreva uma breve apresentação para os outros participantes.':nextProfileStep==='featured'?'Destaque um dos personagens vinculados à sua conta.':'Sua identidade principal está pronta. Explore sua jornada, insígnias e companhia.'}</p>
+                  {nextProfileStep && <button type="button" className="hb-v131-step-primary" onClick={()=>nextProfileStep==='featured' ? switchProfileSection('journey') : switchProfileSection('studio')}>✧ {nextProfileStep==='featured'?'Escolher protagonista':'Completar identidade'} <span aria-hidden="true">↗</span></button>}
+                  <button type="button" onClick={()=>switchProfileSection('journey')}>⚔ Personagens e campanhas <span aria-hidden="true">↗</span></button>
+                  <button type="button" onClick={()=>switchProfileSection('friends')}>♧ Encontrar aventureiros <span aria-hidden="true">↗</span></button>
+                </article>
               </div>
+              <section className="hb-v131-milestones" aria-label="Registros da sua jornada">
+                <div className="hb-v131-milestones-heading"><div><span className="hb-kicker">✦ UM RETRATO DA SUA JORNADA</span><h3>Seus marcos</h3></div><button type="button" onClick={()=>switchProfileSection('journey')}>Explorar jornada ↗</button></div>
+                <div className="hb-v131-milestone-grid">
+                  <div><span aria-hidden="true">✦</span><strong>Primeiro registro</strong><small>{accountCreatedAt}</small></div>
+                  <div><span aria-hidden="true">⚔</span><strong>{accountAssignedCharacters.length ? 'Personagens reunidos' : 'Aguardando personagens'}</strong><small>{accountAssignedCharacters.length ? `${accountAssignedCharacters.length} personagem(ns) na sua história` : 'Seus personagens aparecerão aqui'}</small></div>
+                  <div><span aria-hidden="true">⚑</span><strong>{campaigns.length ? 'Mundos compartilhados' : 'Primeira campanha'}</strong><small>{campaigns.length ? `${campaigns.length} campanha(s) em andamento no perfil` : 'Seu próximo capítulo começa com uma campanha'}</small></div>
+                </div>
+              </section>
               </div>
 
               <div className="hb-v129-section" id="hb-v129-panel-journey" role="tabpanel" aria-labelledby="hb-v129-tab-journey" hidden={profileSection!=='journey'}>
@@ -12348,12 +12384,23 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     const campaignName = campaigns.find(campaign => campaign.id === character.campaign_id)?.name ?? ''
                     const matchesCampaign = profileCharacterCampaignFilter === 'all' || character.campaign_id === profileCharacterCampaignFilter
                     return matchesCampaign && `${character.name} ${character.archetype ?? ''} ${campaignName}`.toLocaleLowerCase('pt-BR').includes(profileCharacterQuery.trim().toLocaleLowerCase('pt-BR'))
-                  })
+                  }).sort((a,b)=>profileJourneyOrder==='campaign'
+                    ? ((campaigns.find(c=>c.id===a.campaign_id)?.name || '').localeCompare(campaigns.find(c=>c.id===b.campaign_id)?.name || '', 'pt-BR') || a.name.localeCompare(b.name,'pt-BR'))
+                    : a.name.localeCompare(b.name,'pt-BR'))
                   const visibleCampaigns = campaigns.filter(campaign => {
                     const matchesRole = profileCampaignRoleFilter === 'all' || (campaign.role === 'master' || campaign.created_by === session.user.id ? 'master' : 'player') === profileCampaignRoleFilter
                     return matchesRole && `${campaign.name} ${campaign.system_name ?? ''}`.toLocaleLowerCase('pt-BR').includes(profileCampaignQuery.trim().toLocaleLowerCase('pt-BR'))
-                  })
+                  }).sort((a,b)=>profileJourneyOrder==='campaign'
+                    ? ((a.role==='master'||a.created_by===session.user.id?-1:1)-(b.role==='master'||b.created_by===session.user.id?-1:1) || a.name.localeCompare(b.name,'pt-BR'))
+                    : a.name.localeCompare(b.name,'pt-BR'))
                   return <>
+                    <div className="hb-v131-journey-controls" aria-label="Opções da jornada">
+                      <div><span className="hb-kicker">ARQUIVO DE AVENTURAS</span><strong>{assigned.length} personagens · {campaigns.length} campanhas</strong><small>Escolha como deseja visualizar seus registros.</small></div>
+                      <div className="hb-v131-journey-controls-actions">
+                        <label>Ordenação<select value={profileJourneyOrder} onChange={event=>setProfileJourneyOrder(event.target.value as 'name'|'campaign')}><option value="name">Nome A–Z</option><option value="campaign">Agrupar por campanha / papel</option></select></label>
+                        <div className="hb-v131-layout-switch" role="group" aria-label="Densidade dos cartões"><button type="button" aria-pressed={profileJourneyDisplay==='cards'} className={profileJourneyDisplay==='cards'?'is-active':''} onClick={()=>setProfileJourneyDisplay('cards')}>▦ Cartões</button><button type="button" aria-pressed={profileJourneyDisplay==='compact'} className={profileJourneyDisplay==='compact'?'is-active':''} onClick={()=>setProfileJourneyDisplay('compact')}>☷ Compacto</button></div>
+                      </div>
+                    </div>
                     <div className="hb-profile-featured-character">
                       {featured ? <>
                         <span className="hb-profile-featured-ornament" aria-hidden="true">✦</span>
@@ -12383,7 +12430,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       {(profileCharacterQuery || profileCharacterCampaignFilter !== 'all') && <button type="button" className="hb-profile-clear-search" onClick={() => { setProfileCharacterQuery(''); setProfileCharacterCampaignFilter('all') }}>Limpar filtros</button>}
                       <span className="hb-profile-result-count" aria-live="polite">{visibleCharacters.length} de {assigned.length}</span>
                     </div>
-                    <div className="hb-profile-character-grid">
+                    <div className={`hb-profile-character-grid ${profileJourneyDisplay==='compact'?'hb-v131-compact-grid':''}`}>
                       {visibleCharacters.length ? visibleCharacters.map(character => (
                         <article className={`hb-profile-character-card ${featured?.id === character.id ? 'hb-profile-character-card-featured' : ''}`} key={character.id}>
                           <span className="hb-profile-character-avatar" aria-hidden="true">{character.emoji || '⚔️'}</span>
@@ -12411,12 +12458,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       {(profileCampaignQuery || profileCampaignRoleFilter !== 'all') && <button type="button" className="hb-profile-clear-search" onClick={() => { setProfileCampaignQuery(''); setProfileCampaignRoleFilter('all') }}>Limpar filtros</button>}
                       <span className="hb-profile-result-count" aria-live="polite">{visibleCampaigns.length} de {campaigns.length}</span>
                     </div>
-                    <div className="hb-profile-campaign-grid">
+                    <div className={`hb-profile-campaign-grid ${profileJourneyDisplay==='compact'?'hb-v131-compact-grid':''}`}>
                       {visibleCampaigns.length ? visibleCampaigns.map(campaign => (
                         <article key={campaign.id} className="hb-profile-campaign-card">
                           <span className="hb-profile-campaign-emblem" aria-hidden="true">✧</span>
                           <div><strong>{campaign.name}</strong><small>{campaign.system_name || 'Campanha de RPG'}</small></div>
-                          <span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? '♜ Mestre' : '♙ Jogador'}</span>
+                          <div className="hb-v131-campaign-actions"><span className="hb-profile-campaign-role">{campaign.role === 'master' || campaign.created_by === session.user.id ? '♜ Mestre' : '♙ Jogador'}</span><button type="button" onClick={()=>{setSelectedCampaignId(campaign.id);setActivePage('campaigns')}} aria-label={`Abrir campanha ${campaign.name}`}>Abrir ↗</button></div>
                         </article>
                       )) : <p className="hb-profile-empty-collection">{campaigns.length ? 'Nenhuma campanha corresponde à busca.' : 'Você ainda não participa de nenhuma campanha.'}</p>}
                     </div>
@@ -12427,7 +12474,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
               <div className="hb-v129-section" id="hb-v129-panel-editor" role="tabpanel" aria-labelledby={profileSection==='account'?'hb-v129-tab-account':'hb-v129-tab-studio'} hidden={profileSection!=='studio' && profileSection!=='account'}>
               <div className={`hb-profile-layout ${profileSection==='studio'?'hb-v130-studio-layout':''}`} id="hb-profile-editor-region">
-                {profileSection==='account' ? <article className="hb-profile-card hb-v129-account-guide"><span className="hb-kicker">⌘ ACESSO PESSOAL</span><h2>Seu registro de conta</h2><p>Suas informações de acesso ficam restritas a você. Nome de exibição e nome de usuário são configurados no ateliê, enquanto a visibilidade do seu conteúdo público é controlada em Identidade e Legado.</p><div className="hb-v129-account-guide-actions"><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar minha identidade</button><button type="button" onClick={()=>switchProfileSection('legacy')}>◇ Configurar privacidade</button></div><div className="hb-v129-privacy-note"><span aria-hidden="true">♙</span><div><strong>E-mail privado</strong><small>Seu endereço de e-mail não é exibido nos perfis públicos.</small></div></div></article> : profileEditing ? (
+                {profileSection==='account' ? <article className="hb-profile-card hb-v129-account-guide"><span className="hb-kicker">⌘ ACESSO PESSOAL</span><h2>Seu registro de conta</h2><p>Suas informações de acesso ficam restritas a você. Nome de exibição e nome de usuário são configurados no ateliê, enquanto a visibilidade do seu conteúdo público é controlada em Identidade e Legado.</p><div className="hb-v129-account-guide-actions"><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar minha identidade</button><button type="button" onClick={()=>switchProfileSection('legacy')}>◇ Configurar privacidade</button></div><div className="hb-v129-privacy-note"><span aria-hidden="true">♙</span><div><strong>E-mail privado</strong><small>Seu endereço de e-mail não é exibido nos perfis públicos.</small></div></div>
+                  <div className="hb-v131-account-overview"><div><span>IDENTIFICAÇÃO</span><strong>{accountUsername ? `@${accountUsername}` : 'Nome de usuário pendente'}</strong><small>Visível a outros aventureiros conforme seu perfil.</small></div><div><span>CADASTRO</span><strong>{accountCreatedAt}</strong><small>Primeiro registro no HäxBag.</small></div><div><span>PRIVACIDADE</span><strong>Configuração individual</strong><small>Biografia, personagens, campanhas, insígnias, crônicas e status.</small></div></div>
+                </article> : profileEditing ? (
                 <form className="hb-profile-card hb-profile-edit-card hb-v130-studio-form" onSubmit={async event => {
                   event.preventDefault()
                   if (profileSaving || !profileHasChanges) return
