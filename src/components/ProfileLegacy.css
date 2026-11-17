@@ -97,3 +97,35 @@
 .hpl-v128 .hpl-spotlight.layout-gallery .hpl-mini-badges>span{width:50px;height:50px;font-size:28px}
 .hpl-v128 .hpl-visitor.layout-gallery .hpl-heroes,.hpl-v128 .hpl-visitor.layout-gallery .hpl-badges{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .hpl-v128 .hpl-visitor.layout-compact .hpl-hero,.hpl-v128 .hpl-visitor.layout-compact .hpl-badge{min-height:68px;padding:9px}
+
+/* V137 — insígnias oficiais e administração restrita */
+.hpl-v128 .hpl-badge-section{display:grid;gap:17px;min-width:0}
+.hpl-v128 .hpl-v137-badge-banner{display:flex;align-items:center;gap:15px;flex-wrap:wrap;padding:17px 19px;margin:18px 0;border:1px solid color-mix(in srgb,var(--hpl-accent) 29%,var(--hpl-line));border-radius:16px;background:linear-gradient(110deg,color-mix(in srgb,var(--hpl-accent) 11%,var(--hpl-surface-alt)),var(--hpl-surface-alt))}
+.hpl-v137-badge-banner>span:first-child{font:normal 32px Georgia,serif;color:var(--hpl-accent)}
+.hpl-v137-badge-banner>div{display:grid;gap:5px;flex:1;min-width:185px}
+.hpl-v137-badge-banner strong{font-size:13px;color:var(--hpl-ink)}
+.hpl-v137-badge-banner p{margin:0;color:var(--hpl-muted);font-size:11px;line-height:1.7}
+.hpl-v137-beta-status{padding:7px 11px;border:1px solid var(--hpl-line);border-radius:999px;color:var(--hpl-muted);font-size:10px;font-weight:800;white-space:nowrap}
+.hpl-v137-beta-status.is-open{border-color:color-mix(in srgb,#96be9d 60%,var(--hpl-line));color:#96be9d}
+.hpl-v128 .hpl-v137-official-badge{cursor:default;min-height:118px;padding:19px 15px;overflow:hidden;isolation:isolate}
+.hpl-v137-official-badge:before{content:'✧';position:absolute;right:36px;top:-29px;font:normal 105px Georgia,serif;color:var(--hpl-accent);opacity:.07;pointer-events:none}
+.hpl-v137-official-badge .hpl-badge-art{width:67px;height:67px;border-radius:18px;font:normal 41px Georgia,serif}
+.hpl-v137-official-badge.badge-fundador .hpl-badge-art{background:linear-gradient(140deg,rgba(217,188,126,.29),rgba(166,117,46,.08));border-color:rgba(217,188,126,.6);color:#e6c989;box-shadow:inset 0 0 0 3px rgba(217,188,126,.08)}
+.hpl-v137-official-badge.badge-primordial .hpl-badge-art{background:linear-gradient(140deg,rgba(148,168,211,.29),rgba(105,87,156,.07));border-color:rgba(151,162,217,.53);color:#b4baf0;box-shadow:inset 0 0 0 3px rgba(151,162,217,.07)}
+.hpl-v137-official-badge.is-locked{opacity:.67;filter:saturate(.72)}
+.hpl-v137-official-badge.is-earned{border-color:color-mix(in srgb,var(--hpl-accent) 55%,var(--hpl-line))}
+.hpl-v137-official-badge .hpl-badge-seal,.hpl-v137-badge-seal{flex:none;display:grid;place-items:center;width:27px;height:27px;border:1px solid var(--hpl-line);border-radius:50%;color:var(--hpl-muted);font-size:14px}
+.hpl-v137-official-badge.is-earned .hpl-v137-badge-seal{background:var(--hpl-accent);color:#121519;border-color:transparent}
+.hpl-v137-badge-help{margin:15px 0 0;color:var(--hpl-muted);font-size:11px;line-height:1.65}
+.hpl-v137-admin-panel{display:grid;gap:18px}
+.hpl-v137-admin-panel .hpl-search{max-width:650px}
+.hpl-v137-admin-people{display:grid;gap:9px}
+.hpl-v137-admin-person{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 13px;border-radius:13px;border:1px solid var(--hpl-line);background:var(--hpl-surface-alt)}
+.hpl-v137-admin-person .hpl-person-visit{flex:1;min-width:180px;display:flex;align-items:center;gap:11px;min-height:44px;border:0;background:none;text-align:left;color:var(--hpl-ink);cursor:pointer}
+.hpl-v137-admin-person .hpl-person-visit>span:last-child{display:grid;gap:3px;min-width:0}
+.hpl-v137-admin-person .hpl-person-visit strong{font-size:12px;overflow-wrap:anywhere}
+.hpl-v137-admin-person .hpl-person-visit small{font-size:10px;color:var(--hpl-muted)}
+.hpl-v137-admin-person .hpl-primary{flex:none;min-height:40px}
+.hpl-v137-admin-notice{padding:10px 14px;margin:0;border:1px solid color-mix(in srgb,var(--hpl-accent) 35%,var(--hpl-line));border-radius:9px;font-size:12px;line-height:1.5;color:var(--hpl-ink)}
+.hpl-v137-admin-hint{color:var(--hpl-muted);font-size:12px;line-height:1.6}
+@media(max-width:600px){.hpl-v128 .hpl-v137-badge-banner{padding:13px}.hpl-v128 .hpl-v137-official-badge{min-height:100px;padding:13px}.hpl-v137-official-badge .hpl-badge-art{width:56px;height:56px;font-size:32px}.hpl-v137-admin-person .hpl-primary{width:100%}}

@@ -32,10 +32,12 @@ import FriendsPanel from './components/FriendsPanel'
 import ProfileLegacy from './components/ProfileLegacy'
 import PublicAdventurerProfile from './components/PublicAdventurerProfile'
 import IdentityCardCustomizer, { DEFAULT_IDENTITY_CARD, type IdentityCardPreferences } from './components/IdentityCardCustomizer'
+import { defaultProfileAppearance, profileFrameNames, profileThemePalette, type ProfileAppearance } from './profileTheme'
 import './components/ProfileUnified.css'
 import './components/ProfileAtelier.css'
 import './components/ProfilePolish.css'
 import './components/ProfileV132.css'
+import './components/ProfilePersonalTheme.css'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -1544,42 +1546,10 @@ const resetCreatureFilters = () => {
   }
   useEffect(() => { setVisualStylePreviewKey(null); setVisualStyleCollection('all'); setVisualStylePreviewMode('cover') }, [selectedSeasonId])
 
-  // Janelas renderizadas por createPortal ficam fora de .app-shell.
-  // Espelhamos o estilo e a paleta no body para modais e seletores flutuantes,
-  // restaurando os valores anteriores ao trocar de tema ou desmontar o app.
-  useEffect(() => {
-    const body = document.body
-    const oldStyle = body.getAttribute('data-hb-visual-style')
-    const palette: Record<string, string> = {
-      '--season-primary': activeTheme.primary,
-      '--season-secondary': activeTheme.secondary,
-      '--season-glow': activeTheme.glow,
-      '--season-bg': activeTheme.bg,
-      '--season-surface': activeTheme.surface,
-      '--season-surface-alt': activeTheme.surfaceAlt,
-      '--season-line': activeTheme.line,
-      '--season-muted': '#b9b4c2',
-      '--season-on-primary': activeTheme.onPrimary,
-    }
-    const oldProperties = Object.entries(palette).map(([property, value]) => {
-      const previousValue = body.style.getPropertyValue(property)
-      const previousPriority = body.style.getPropertyPriority(property)
-      body.style.setProperty(property, value)
-      return { property, previousValue, previousPriority }
-    })
-    body.dataset.hbVisualStyle = activeVisualStyleKey
-    return () => {
-      if (oldStyle === null) body.removeAttribute('data-hb-visual-style')
-      else body.setAttribute('data-hb-visual-style', oldStyle)
-      oldProperties.forEach(({ property, previousValue, previousPriority }) => {
-        if (previousValue) body.style.setProperty(property, previousValue, previousPriority)
-        else body.style.removeProperty(property)
-      })
-    }
-  }, [activeThemeKey, activeVisualStyleKey])
-
   const [creatingSeason, setCreatingSeason] = useState(false)
   const creatingSeasonRef = useRef(false)
+  const [profileAppearance,setProfileAppearance] = useState<ProfileAppearance | null>(null)
+  const [profileAppearanceRequest,setProfileAppearanceRequest] = useState(0)
   const [profileNameDraft, setProfileNameDraft] = useState('')
   const [profileUsernameDraft, setProfileUsernameDraft] = useState('')
   const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
@@ -1940,6 +1910,45 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [activePage, setActivePage] = useState<
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
+  // A aparência pessoal só substitui a paleta ENQUANTO o Perfil está aberto.
+  // Ao sair do Perfil, a temporada recupera seus estilos sem gravar alterações nela.
+  const personalProfileTheme = activePage === 'profile' && profileAppearance !== null
+  const displayPalette = personalProfileTheme ? profileThemePalette(profileAppearance) : activeTheme
+  useEffect(() => {
+    const body = document.body
+    const oldStyle = body.getAttribute('data-hb-visual-style')
+    const oldProfileTheme = body.getAttribute('data-hb-personal-profile')
+    const palette: Record<string,string> = {
+      '--season-primary': displayPalette.primary,
+      '--season-secondary': displayPalette.secondary,
+      '--season-glow': displayPalette.glow,
+      '--season-bg': displayPalette.bg,
+      '--season-surface': displayPalette.surface,
+      '--season-surface-alt': displayPalette.surfaceAlt,
+      '--season-line': displayPalette.line,
+      '--season-muted': '#b9b4c2',
+      '--season-on-primary': displayPalette.onPrimary,
+    }
+    const oldProperties = Object.entries(palette).map(([property,value]) => {
+      const previousValue=body.style.getPropertyValue(property)
+      const previousPriority=body.style.getPropertyPriority(property)
+      body.style.setProperty(property,value)
+      return {property,previousValue,previousPriority}
+    })
+    body.dataset.hbVisualStyle = activeVisualStyleKey
+    if (personalProfileTheme) body.dataset.hbPersonalProfile='true'
+    else body.removeAttribute('data-hb-personal-profile')
+    return () => {
+      if(oldStyle===null)body.removeAttribute('data-hb-visual-style')
+      else body.setAttribute('data-hb-visual-style',oldStyle)
+      if(oldProfileTheme===null)body.removeAttribute('data-hb-personal-profile')
+      else body.setAttribute('data-hb-personal-profile',oldProfileTheme)
+      oldProperties.forEach(({property,previousValue,previousPriority}) => {
+        if(previousValue)body.style.setProperty(property,previousValue,previousPriority)
+        else body.style.removeProperty(property)
+      })
+    }
+  }, [activeVisualStyleKey, activeThemeKey, displayPalette.primary, displayPalette.secondary, displayPalette.glow, displayPalette.bg, displayPalette.surface, displayPalette.surfaceAlt, displayPalette.line, displayPalette.onPrimary, personalProfileTheme])
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
   useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
   useEffect(() => {
@@ -10414,7 +10423,7 @@ counterAttackDT
   if (!session) return <Auth />
 
   return (
-    <div className={`app-shell hb-polish theme-${activeThemeKey} visual-style-${activeVisualStyleKey}`} style={{'--season-primary': activeTheme.primary, '--season-secondary': activeTheme.secondary, '--season-glow': activeTheme.glow, '--season-bg': activeTheme.bg, '--season-surface': activeTheme.surface, '--season-surface-alt': activeTheme.surfaceAlt, '--season-line': activeTheme.line, '--season-line-soft': activeTheme.glow.replace(/\.\d+\)/, '.14)'), '--season-muted': '#b9b4c2', '--season-on-primary': activeTheme.onPrimary,  '--season-panel-tint': activeTheme.surfaceAlt, '--purple': activeTheme.primary, '--purple-bright': activeTheme.primary, '--purple-dark': activeTheme.secondary} as React.CSSProperties}>
+    <div className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
@@ -12301,6 +12310,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <button type="button" className="hb-profile-identity-edit" onClick={() => { switchProfileSection('studio'); setProfileEditing(true) }} aria-controls="hb-profile-editor-region">
                       <span aria-hidden="true">✎</span> Editar perfil
                     </button>
+                    <button type="button" className="hb-v136-theme-action" onClick={()=>{switchProfileSection('legacy');setProfileAppearanceRequest(n=>n+1)}} title="Alterar o tema pessoal desta página em Identidade e Legado → Aparência"><span className="hb-v136-theme-dot" style={{background:profileAppearance?.accent ?? defaultProfileAppearance.accent}} aria-hidden="true"/> <span>Tema do Perfil</span> ↗</button>
                     <button type="button" className="hb-v129-hero-secondary" onClick={()=>switchProfileSection('legacy')}>✦ Minha vitrine</button>
                     <button type="button" className="hb-v129-hero-secondary hb-v132-public-preview" onClick={()=>setPreviewMyPublicProfile(true)}>◈ Ver perfil público</button>
                   </div>
@@ -12314,6 +12324,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 
               <div className="hb-v129-navigation" id="hb-v129-profile-navigation" aria-label="Navegação principal do perfil">
                 <div className="hb-v129-nav-heading"><span>SEU ESPAÇO</span><strong>Explorar o perfil</strong><small>Uma área para cada parte da sua história.</small></div>
+                {personalProfileTheme && <div className="hb-v136-personal-palette" aria-label="Tema pessoal ativo"><span className="hb-v136-theme-dot" style={{background:profileAppearance.accent}} aria-hidden="true"/><span><strong>Minha paleta</strong><small>{profileFrameNames[profileAppearance.frame]} · só no Perfil</small></span><button type="button" onClick={()=>{switchProfileSection('legacy');setProfileAppearanceRequest(n=>n+1)}}>Ajustar ↗</button></div>}
                 <nav className="hb-v129-tabs" role="tablist" aria-label="Seções do perfil" onKeyDown={event=>{
                   if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
                   if (!(event.target instanceof HTMLButtonElement)) return
@@ -12337,7 +12348,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               <div className="hb-v129-section-caption">
                 <div><span>✦ HÄXBAG · {profileSection==='overview'?'VISÃO GERAL':profileSection==='journey'?'JORNADA':profileSection==='studio'?'ATELIÊ':profileSection==='legacy'?'IDENTIDADE E LEGADO':profileSection==='friends'?'COMUNIDADE':'CONTA'}</span>
                   <h2>{({overview:'Sua história em um só lugar',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua companhia de aventureiros',account:'Informações da conta'} as const)[profileSection]}</h2>
-                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, capas e símbolos pessoais.',legacy:'Configure seu visual, protagonistas, conquistas, crônicas e privacidade.',friends:'Abra o perfil de qualquer amigo, conheça aventureiros e acompanhe seus convites.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
+                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, carta e símbolos pessoais.',legacy:'Escolha a paleta exclusiva desta página e configure protagonistas, conquistas, crônicas e privacidade.',friends:'Abra o perfil de qualquer amigo, conheça aventureiros e acompanhe seus convites.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
                 </div>
                 {profileSection!=='studio'&&<button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Personalizar</button>}
               </div>
@@ -12352,7 +12363,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <button type="button" onClick={() => {switchProfileSection('studio');setProfileEditing(true)}}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Capas, títulos e identidade</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('friends')}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('journey')}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
-                <button type="button" onClick={() => switchProfileSection('legacy')}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Insígnias, crônicas e vitrine social</small></span></button>
+                <button type="button" onClick={() => switchProfileSection('legacy')}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Aparência, conquistas e vitrine social</small></span></button>
               </div>
               <div className="hb-profile-overview-grid" aria-label="Estatísticas do aventureiro">
                 <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">♙</span><span>Personagens atribuídos</span><strong>{accountAssignedCharacters.length}</strong><small>Heróis e histórias que você vive</small></article>
@@ -12699,6 +12710,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             userId={session.user.id}
             activeCampaignId={selectedCampaignId}
             onImagesLoaded={(avatar,cover,avatarPosition,coverPosition)=>setProfilePhotoUrls(previous=>previous.avatar===avatar && previous.cover===cover && previous.avatarPosition===avatarPosition && previous.coverPosition===coverPosition?previous:{avatar,cover,avatarPosition,coverPosition})}
+            appearanceRequest={profileAppearanceRequest}
+            onAppearanceChange={(appearance)=>setProfileAppearance(previous=>previous?.accent===appearance.accent && previous.frame===appearance.frame && previous.layout===appearance.layout?previous:appearance)}
             displayName={String(displayName)}
             username={accountUsername}
             characters={accountAssignedCharacters.map(character=>({id:character.id,name:character.name,emoji:character.emoji||'⚔️',archetype:character.archetype||'',campaign:campaigns.find(c=>c.id===character.campaign_id)?.name||'Campanha'}))}

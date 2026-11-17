@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
+import { profileFrameNames, profileThemePalette, type ProfileAppearance } from '../profileTheme'
 import './ProfileLegacy.css'
 
 type PrivacyKey = 'show_bio'|'show_characters'|'show_campaigns'|'show_badges'|'show_journal'|'show_status'|'show_identity_card'
@@ -16,6 +17,10 @@ type Showcase = {
 type Person = AdventurerRef
 const defaultPrivacy:Privacy = {show_bio:true,show_characters:true,show_campaigns:false,show_badges:true,show_journal:true,show_status:true,show_identity_card:true}
 const defaultProfile = (id:string):Showcase => ({user_id:id,avatar_image:'',cover_image:'',status:'available',status_custom:'',avatar_position:50,cover_position:50,frame:'classic',accent:'#d9bd8b',layout:'classic',privacy:defaultPrivacy,featured_ids:[],featured_badges:[],journal:[]})
+const officialBadgeCatalog = [
+  {id:'fundador',title:'Fundador',description:'Participe da fundação do HäxBag',symbol:'✦',origin:'Concedida exclusivamente pelo administrador'},
+  {id:'primordial',title:'Primordial',description:'Participe da beta do HäxBag',symbol:'◈',origin:'Concedida automaticamente durante a beta'},
+] as const
 const statusOptions=[['available','Disponível para jogar'],['preparing','Preparando campanha'],['looking','Procurando grupo'],['busy','Em aventura'],['offline','Indisponível'],['custom','Personalizado']]
 const clampImage=(file:File,kind:'avatar'|'cover'):Promise<string>=>new Promise((resolve,reject)=>{
   if(!['image/png','image/jpeg','image/webp'].includes(file.type)){reject(new Error('Use PNG, JPG ou WebP.'));return}
@@ -35,12 +40,15 @@ const clampImage=(file:File,kind:'avatar'|'cover'):Promise<string>=>new Promise(
 const uid=()=>globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`
 const dateNow=()=>new Date().toISOString().slice(0,10)
 
-export default function ProfileLegacy({userId,displayName,username,characters,campaigns,onImagesLoaded}: {
+export default function ProfileLegacy({userId,displayName,username,characters,campaigns,onImagesLoaded,onAppearanceChange,appearanceRequest=0}: {
   userId:string;displayName:string;username:string;
-  characters:Hero[];campaigns:{id:string;name:string;master:boolean}[];activeCampaignId:string|null;onImagesLoaded?:(avatar:string,cover:string,avatarPosition:number,coverPosition:number)=>void
+  characters:Hero[];campaigns:{id:string;name:string;master:boolean}[];activeCampaignId:string|null;onImagesLoaded?:(avatar:string,cover:string,avatarPosition:number,coverPosition:number)=>void;onAppearanceChange?:(appearance:ProfileAppearance)=>void;appearanceRequest?:number
 }) {
   const imagesCallback=useRef(onImagesLoaded)
   imagesCallback.current=onImagesLoaded
+  const appearanceCallback=useRef(onAppearanceChange)
+  appearanceCallback.current=onAppearanceChange
+  const lastAppearanceRequest=useRef(0)
   const [profile,setProfile]=useState<Showcase>(()=>defaultProfile(userId))
   const [savedProfile,setSavedProfile]=useState<Showcase>(()=>defaultProfile(userId))
   const [activeTab,setActiveTab]=useState<'overview'|'appearance'|'heroes'|'badges'|'chronicles'|'community'|'privacy'>('overview')
@@ -55,27 +63,47 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   const [people,setPeople]=useState<Person[]>([])
   const [visitorPerson,setVisitorPerson]=useState<Person|null>(null)
   const [newChronicle,setNewChronicle]=useState({title:'',detail:'',date:dateNow()})
-  const [grantUser,setGrantUser]=useState('')
-  const [grantTitle,setGrantTitle]=useState('')
-  const [grantDetail,setGrantDetail]=useState('')
-  const [grantSymbol,setGrantSymbol]=useState('🏅')
+  const [isSiteAdmin,setIsSiteAdmin]=useState(false)
+  const [betaActive,setBetaActive]=useState(true)
+  const [adminSearch,setAdminSearch]=useState('')
+  const [adminMatches,setAdminMatches]=useState<Person[]>([])
+  const [adminSearchBusy,setAdminSearchBusy]=useState(false)
+  const [adminGrantBusy,setAdminGrantBusy]=useState<string|null>(null)
+  const [adminNotice,setAdminNotice]=useState('')
   const refresh=useCallback(async()=>{
-    const [r,a]=await Promise.all([
+    const [r,a,settings]=await Promise.all([
       supabase.from('hax_profile_showcase').select('*').eq('user_id',userId).maybeSingle(),
-      supabase.from('hax_profile_awards').select('id,title,description,symbol,created_at,given_by').eq('recipient_id',userId).order('created_at',{ascending:false}),
+      supabase.rpc('hax_badge_my_awards'),
+      supabase.rpc('hax_badge_site_status'),
     ])
-    if(r.error||a.error){setError(`Não foi possível carregar a vitrine. Execute o SQL da V127. ${r.error?.message||a.error?.message}`)}
+    if(r.error||a.error||settings.error){setError(`Não foi possível carregar a vitrine e as insígnias oficiais. Confira as migrações V127, V133 e V137. ${r.error?.message||a.error?.message||settings.error?.message}`)}
     else {
       const data=r.data as Partial<Showcase>|null
       const normalized={...defaultProfile(userId),...data,privacy:{...defaultPrivacy,...data?.privacy},featured_ids:Array.isArray(data?.featured_ids)?data.featured_ids:[],featured_badges:Array.isArray(data?.featured_badges)?data.featured_badges:[],journal:Array.isArray(data?.journal)?data.journal:[]}
       setProfile(normalized)
       setSavedProfile(normalized)
       imagesCallback.current?.(data?.avatar_image||'',data?.cover_image||'',data?.avatar_position??50,data?.cover_position??50)
-      setAwards((a.data||[]) as Award[]);setError('')
+      setAwards((a.data||[]) as Award[])
+      const status=settings.data as {is_admin?:boolean;beta_active?:boolean}|null
+      setIsSiteAdmin(status?.is_admin===true)
+      setBetaActive(status?.beta_active===true)
+      setError('')
     }
     setLoading(false)
   },[userId])
   useEffect(()=>{void refresh()},[refresh])
+  // A prévia da paleta é compartilhada com App apenas nesta sessão de edição.
+  // O banco só é alterado pelo botão Salvar perfil existente.
+  useEffect(()=>{
+    if(!loading)appearanceCallback.current?.({accent:profile.accent,frame:profile.frame as ProfileAppearance['frame'],layout:profile.layout as ProfileAppearance['layout']})
+  },[loading,profile.accent,profile.frame,profile.layout])
+  useEffect(()=>{
+    if(appearanceRequest>0 && appearanceRequest!==lastAppearanceRequest.current){
+      lastAppearanceRequest.current=appearanceRequest
+      setActiveTab('appearance')
+      window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>document.getElementById('hpl-tab-appearance')?.scrollIntoView({block:'nearest',behavior:'smooth'})))
+    }
+  },[appearanceRequest])
   useEffect(()=>{
     if(!campaigns.length)return
     let canceled=false
@@ -100,30 +128,18 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     },350)
     return()=>{cancelled=true;window.clearTimeout(handle)}
   },[search,userId])
-  const earned=useMemo<Award[]>(()=>{
-    const result:Award[]=[]
-    function add(condition:boolean,id:string,title:string,description:string,symbol:string){if(condition)result.push({id,title,description,symbol,created_at:'',given_by:null})}
-    add(characters.length>0,'first_character','Primeiro personagem','Criou seu primeiro herói.','⚔️')
-    add(characters.length>=3,'character_trio','Elenco de aventureiros','Possui três ou mais personagens.','🧙')
-    add(campaigns.length>0,'first_campaign','Primeira campanha','Entrou no mundo das campanhas.','⚑')
-    add(campaigns.length>=4,'many_campaigns','Viajante de mundos','Participa de quatro ou mais campanhas.','🗺️')
-    add(campaigns.some(c=>c.master),'narrator','Mestre de campanha','Narra pelo menos uma campanha.','♜')
-    add(completedMissions.length>0,'first_mission','Missão cumprida','Concluiu pelo menos uma missão.','📜')
-    add(completedSeasons.length>0,'completed_season','Cronista de mundos','Encerrou uma temporada como mestre.','🏰')
-    return result
-  },[characters,campaigns,completedMissions.length,completedSeasons.length])
-  const allBadges=[...earned,...awards]
+  // O banco é a única fonte de verdade para insígnias.
+  const allBadges=awards
   const hasChanges=JSON.stringify(profile)!==JSON.stringify(savedProfile)
-  const featuredAwards=profile.featured_badges.map(id=>allBadges.find(badge=>badge.id===id)).filter((value):value is Award=>!!value)
+  const featuredAwards=allBadges
   const publiclyVisible=Object.values(profile.privacy).filter(Boolean).length
   const featured=profile.featured_ids.map(id=>characters.find(character=>character.id===id)).filter((value):value is Hero=>!!value).slice(0,3)
   const timeline=useMemo(()=>{
     const entries:Chronicle[]=[...profile.journal,...completedMissions,...completedSeasons]
     campaigns.forEach(c=>entries.push({id:`campaign-${c.id}`,date:'',title:`${c.master?'Mestre em':'Participa de'} ${c.name}`,detail:'Marco de campanha',kind:'campaign'}))
-    earned.forEach(b=>entries.push({id:`badge-${b.id}`,date:'',title:`Conquista: ${b.title}`,detail:b.description,kind:'badge'}))
     awards.forEach(b=>entries.push({id:`award-${b.id}`,date:b.created_at,title:`Insígnia recebida: ${b.title}`,detail:b.description,kind:'badge'}))
     return entries.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,60)
-  },[profile.journal,campaigns,earned,awards,completedMissions,completedSeasons])
+  },[profile.journal,campaigns,awards,completedMissions,completedSeasons])
   const statusText=(p:Showcase)=>p.status==='custom'?p.status_custom:statusOptions.find(o=>o[0]===p.status)?.[1]||'Disponível'
   async function save(next:Showcase=profile){
     setSaving(true);setError('');setNotice('')
@@ -155,19 +171,39 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   }
   function openPerson(person:Person){setVisitorPerson(person)}
   async function requestFriend(id:string){const {error:failure}=await supabase.rpc('hb_send_friend_request',{p_target:id});if(failure)setError(failure.message);else setNotice('Solicitação de amizade enviada.')}
-  async function grantAward(){
-    if(!grantUser||!grantTitle.trim())return
-    const {error:failure}=await supabase.rpc('hax_profile_grant_award',{p_target:grantUser,p_title:grantTitle.trim().slice(0,80),p_description:grantDetail.trim().slice(0,240),p_symbol:grantSymbol.slice(0,10)})
-    if(failure)setError(failure.message)
-    else{setNotice('Insígnia concedida.');setGrantTitle('');setGrantDetail('')}
+  // A pesquisa é exclusiva da administração; saber quem é mestre não dá direito a conceder insígnias.
+  useEffect(()=>{
+    if(!isSiteAdmin||adminSearch.trim().length<2){setAdminMatches([]);setAdminSearchBusy(false);return}
+    let cancelled=false
+    setAdminSearchBusy(true)
+    const handle=window.setTimeout(async()=>{
+      const {data,error:failure}=await supabase.rpc('hb_search_people',{p_query:adminSearch.trim()})
+      if(!cancelled){
+        setAdminMatches(failure?[]:((data||[]) as Person[]).slice(0,12))
+        setAdminSearchBusy(false)
+      }
+    },350)
+    return()=>{cancelled=true;window.clearTimeout(handle)}
+  },[isSiteAdmin,adminSearch])
+  async function grantFounder(person:Person){
+    if(!isSiteAdmin||adminGrantBusy)return
+    setAdminGrantBusy(person.id);setAdminNotice('')
+    const {data,error:failure}=await supabase.rpc('hax_badge_grant_founder',{p_target:person.id})
+    setAdminGrantBusy(null)
+    if(failure){setAdminNotice(`Não foi possível conceder Fundador: ${failure.message}`);return}
+    setAdminNotice(data===true?`Insígnia Fundador concedida a ${person.display_name}.`:`${person.display_name} já possui a insígnia Fundador.`)
+    if(person.id===userId){
+      const {data:myBadges,error:reloadError}=await supabase.rpc('hax_badge_my_awards')
+      if(!reloadError)setAwards((myBadges||[]) as Award[])
+    }
   }
   if(loading)return <section className="hpl-loading" role="status"><span className="hpl-loading-mark">✦</span><strong>Preparando sua história</strong><small>Carregando identidade do aventureiro…</small></section>
-  return <section className="hpl-root hpl-v128" id="hb-profile-legacy-plus" style={{'--hpl-accent':profile.accent} as React.CSSProperties} aria-labelledby="hpl-title">
+  return <section className="hpl-root hpl-v128" id="hb-profile-legacy-plus" style={{'--hpl-accent':profileThemePalette({accent:profile.accent,frame:profile.frame as ProfileAppearance['frame'],layout:profile.layout as ProfileAppearance['layout']}).primary} as React.CSSProperties} aria-labelledby="hpl-title">
     <header className="hpl-intro">
       <div className="hpl-intro-copy">
         <span className="hpl-overline"><span aria-hidden="true">✦</span> O ATELIÊ DO AVENTUREIRO</span>
         <h2 id="hpl-title">Identidade <em>&amp; legado</em></h2>
-        <p>Dê forma à sua história, escolha o que mostrar ao mundo e preserve os momentos que tornaram sua jornada única.</p>
+        <p>Escolha a aparência de todo o seu Perfil, personalize sua vitrine e preserve os momentos que tornaram sua jornada única.</p>
       </div>
       <div className="hpl-intro-actions">
         <span className={`hpl-save-state ${hasChanges?'pending':'saved'}`} role="status">{hasChanges?'● Alterações não salvas':'✓ Personalização atualizada'}</span>
@@ -209,7 +245,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <div className="hpl-aside-sub"><strong>Protagonistas</strong><button type="button" onClick={()=>setActiveTab('heroes')}>Organizar ↗</button></div>
         <div className="hpl-mini-heroes">{featured.length?featured.map(hero=><div key={hero.id} title={`${hero.name} · ${hero.campaign}`}><span>{hero.emoji||'⚔️'}</span><strong>{hero.name}</strong></div>):<p>Escolha até três personagens para esta vitrine.</p>}</div>
         <div className="hpl-aside-sub"><strong>Insígnias favoritas</strong><button type="button" onClick={()=>setActiveTab('badges')}>Escolher ↗</button></div>
-        <div className="hpl-mini-badges">{featuredAwards.length?featuredAwards.map(award=><span key={award.id} title={award.title} aria-label={award.title}>{award.symbol}</span>):<p>Destaque suas conquistas favoritas.</p>}</div>
+        <div className="hpl-mini-badges">{featuredAwards.length?featuredAwards.map(award=><span key={award.id} title={award.title} aria-label={award.title}>{award.symbol}</span>):<p>As insígnias oficiais aparecerão aqui quando forem concedidas.</p>}</div>
         <div className="hpl-aside-foot"><span>PRIVACIDADE DA VITRINE</span><strong>{publiclyVisible} de 7 áreas visíveis</strong><button type="button" onClick={()=>setActiveTab('privacy')}>Gerenciar privacidade</button></div>
       </aside>
     </div>
@@ -238,6 +274,14 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         </div>
         <div className="hpl-overview-actions"><button type="button" className="hpl-primary" onClick={()=>setActiveTab('appearance')}>Ajustar minha identidade <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setActiveTab('privacy')}>Definir o que mostrar</button></div>
       </article>
+      <article className="hpl-panel hpl-v136-theme-overview">
+        <div className="hpl-panel-heading"><span className="hpl-overline">PALETA PESSOAL · SÓ NO PERFIL</span><h3>Seu mundo, suas cores</h3><p>Esta paleta acompanha todas as seções do seu Perfil, mas não altera os temas das campanhas.</p></div>
+        <div className="hpl-v136-profile-swatches" aria-label="Prévia da paleta pessoal">
+          <span style={{background:profile.accent}}/><span style={{background:profile.accent,opacity:.75}}/><span style={{background:profile.accent,opacity:.5}}/><span style={{background:profile.accent,opacity:.25}}/>
+        </div>
+        <div className="hpl-summary-list"><div><span>Tom escolhido</span><strong>{profile.accent.toUpperCase()}</strong></div><div><span>Acabamento</span><strong>{profileFrameNames[profile.frame as ProfileAppearance['frame']]||'Clássica'}</strong></div></div>
+        <button type="button" className="hpl-v136-open-appearance" onClick={()=>setActiveTab('appearance')}>✧ Personalizar meu tema <span aria-hidden="true">↗</span></button>
+      </article>
       <article className="hpl-panel hpl-overview-chronicles"><div className="hpl-panel-heading"><span className="hpl-overline">CAPÍTULO II · MEMÓRIAS</span><h3>Últimas crônicas</h3><p>Momentos importantes, registros e conquistas.</p></div>
         {timeline.length?<ol className="hpl-timeline hpl-timeline-short">{timeline.slice(0,4).map(item=><li key={item.id}><span>{item.date?item.date.slice(0,10):'REGISTRO'}</span><strong>{item.title}</strong><p>{item.detail}</p></li>)}</ol>:<div className="hpl-empty"><span aria-hidden="true">▤</span><strong>Uma nova história começa aqui.</strong><p>Suas crônicas e conquistas aparecerão neste espaço.</p></div>}
         <button type="button" className="hpl-text-action" onClick={()=>setActiveTab('chronicles')}>Ver todas as crônicas ↗</button>
@@ -245,7 +289,16 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
       <article className="hpl-panel hpl-overview-community"><div className="hpl-panel-heading"><span className="hpl-overline">CAPÍTULO III · COMPANHIA</span><h3>Histórias que se encontram</h3><p>Conheça outros aventureiros e fortaleça sua companhia.</p></div><div className="hpl-community-visual" aria-hidden="true"><span>✦</span><span>♧</span><span>✧</span></div><button type="button" className="hpl-text-action" onClick={()=>setActiveTab('community')}>Encontrar jogadores ↗</button></article>
     </div>}
 
-    {activeTab==='appearance'&&<div className="hpl-section-layout">
+    {activeTab==='appearance'&&<div className="hpl-v136-appearance-workspace">
+      <div className="hpl-v136-theme-banner">
+        <div className="hpl-v136-theme-copy"><span className="hpl-overline">PERSONALIZAÇÃO AO VIVO</span><h3>A aparência do seu Perfil</h3><p>Experimente uma cor: a barra lateral, os controles e todos os painéis do Perfil acompanham sua escolha imediatamente. Ao abrir outra página, o HäxBag retorna ao tema original da campanha.</p>
+          <div className="hpl-v136-theme-status"><span className="hpl-v136-theme-indicator" style={{background:profile.accent}} aria-hidden="true"/> <strong>{profile.accent.toUpperCase()}</strong><span>· {profileFrameNames[profile.frame as ProfileAppearance['frame']]}</span>{hasChanges&&<em>Prévia não salva</em>}</div>
+        </div>
+        <div className="hpl-v136-theme-demo" aria-label="Exemplo de aparência" style={{'--hpl-demo-accent':profile.accent} as React.CSSProperties}>
+          <div className="hpl-v136-demo-sidebar"><span>✧</span><i/><i/><i/></div><div className="hpl-v136-demo-main"><span>PERFIL DO AVENTUREIRO</span><strong>Seu espaço pessoal</strong><div><i/><i/></div><b>Visual ativo</b></div>
+        </div>
+      </div>
+      <div className="hpl-section-layout">
       <div className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">01 · RETRATO</span><h3>Avatar &amp; capa</h3><p>Escolha imagens que representem sua identidade. A prévia acima muda em tempo real.</p></div>
         <div className="hpl-upload-grid"><label className="hpl-upload-card"><span className="hpl-upload-icon">◉</span><strong>Foto de perfil</strong><small>PNG, JPG ou WebP · até 6 MB</small><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>void imageChanged(e,'avatar_image')}/></label><label className="hpl-upload-card"><span className="hpl-upload-icon">▰</span><strong>Imagem de capa</strong><small>PNG, JPG ou WebP · até 6 MB</small><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>void imageChanged(e,'cover_image')}/></label></div>
         <div className="hpl-range-grid"><label>Enquadramento do avatar <span>{profile.avatar_position}%</span><input type="range" min={0} max={100} value={profile.avatar_position} onChange={e=>setProfile(p=>({...p,avatar_position:Number(e.target.value)}))}/></label><label>Posição da capa <span>{profile.cover_position}%</span><input type="range" min={0} max={100} value={profile.cover_position} onChange={e=>setProfile(p=>({...p,cover_position:Number(e.target.value)}))}/></label></div>
@@ -256,15 +309,38 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <div className="hpl-control-group"><strong>Cor de destaque</strong><div className="hpl-palette" role="group" aria-label="Cores de destaque">{['#d9bd8b','#97b59b','#b89bd3','#d89184','#82adcf','#e3b766'].map(color=><button key={color} type="button" aria-label={`Usar cor ${color}`} aria-pressed={profile.accent===color} className={profile.accent===color?'selected':''} style={{background:color}} onClick={()=>setProfile(p=>({...p,accent:color}))}/>)}<label className="hpl-custom-color">Cor livre<input aria-label="Escolher outra cor" type="color" value={profile.accent} onChange={e=>setProfile(p=>({...p,accent:e.target.value}))}/></label></div></div>
         <div className="hpl-control-group"><strong>Disposição da vitrine</strong><div className="hpl-choice-grid hpl-layout-grid">{([['classic','Clássica','▤'],['compact','Compacta','☷'],['gallery','Galeria','▦']] as const).map(([id,name,symbol])=><button key={id} type="button" className={`hpl-option ${profile.layout===id?'selected':''}`} aria-pressed={profile.layout===id} onClick={()=>setProfile(p=>({...p,layout:id}))}><span className="hpl-layout-icon">{symbol}</span><strong>{name}</strong></button>)}</div></div>
       </div>
+      </div>
+      <div className="hpl-v136-theme-footnote"><span aria-hidden="true">⌘</span><p>A cor é pessoal e não modifica as temporadas. Clique em <strong>Salvar perfil</strong> para manter sua escolha na próxima visita.</p><button type="button" onClick={()=>setProfile(p=>({...p,accent:'#d9bd8b',frame:'classic',layout:'classic'}))}>Restaurar visual clássico</button></div>
     </div>}
 
     {activeTab==='heroes'&&<section className="hpl-panel"><div className="hpl-panel-heading hpl-heading-row"><div><span className="hpl-overline">OS ROSTOS DA SUA HISTÓRIA</span><h3>Protagonistas em destaque</h3><p>Escolha até três personagens para aparecerem na sua vitrine pública, conforme sua privacidade.</p></div><span className="hpl-count">{featured.length} / 3 selecionados</span></div>
       {characters.length?<div className="hpl-heroes">{characters.map(hero=>{const checked=profile.featured_ids.includes(hero.id);return <label key={hero.id} className={`hpl-hero ${checked?'selected':''}`}><input type="checkbox" checked={checked} disabled={!checked&&profile.featured_ids.length>=3} onChange={e=>setProfile(p=>({...p,featured_ids:e.target.checked?[...p.featured_ids,hero.id].slice(0,3):p.featured_ids.filter(id=>id!==hero.id)}))}/><span className="hpl-hero-avatar">{hero.emoji||'⚔️'}</span><div><strong>{hero.name}</strong><small>{hero.archetype||'Aventureiro'}</small><span>{hero.campaign}</span></div><span className="hpl-select-marker" aria-hidden="true">{checked?'✓':'+'}</span></label>})}</div>:<div className="hpl-empty"><span aria-hidden="true">⚔</span><strong>Os protagonistas ainda estão por vir.</strong><p>Quando seus personagens estiverem disponíveis, você poderá escolhê-los aqui.</p></div>}
     </section>}
 
-    {activeTab==='badges'&&<section className="hpl-panel"><div className="hpl-panel-heading hpl-heading-row"><div><span className="hpl-overline">HONRAS &amp; DISTINÇÕES</span><h3>Insígnias e conquistas</h3><p>Conquistas automáticas e homenagens dos mestres. Escolha até quatro para destacar.</p></div><span className="hpl-count">{profile.featured_badges.length} / 4 em destaque</span></div>
-      {allBadges.length?<div className="hpl-badges">{allBadges.map(award=>{const checked=profile.featured_badges.includes(award.id);return <label key={award.id} className={`hpl-badge ${checked?'selected':''}`}><input type="checkbox" checked={checked} disabled={!checked&&profile.featured_badges.length>=4} onChange={e=>setProfile(p=>({...p,featured_badges:e.target.checked?[...p.featured_badges,award.id].slice(0,4):p.featured_badges.filter(id=>id!==award.id)}))}/><span className="hpl-badge-art">{award.symbol}</span><div><strong>{award.title}</strong><small>{award.description}</small><span>{award.given_by?'Concedida pelo mestre':'Conquista de jornada'}</span></div><span className="hpl-select-marker" aria-hidden="true">{checked?'✓':'+'}</span></label>})}</div>:<div className="hpl-empty"><span aria-hidden="true">✦</span><strong>Seu legado ainda está sendo escrito.</strong><p>Suas conquistas aparecerão aqui conforme você avançar nas campanhas.</p></div>}
-    </section>}
+    {activeTab==='badges'&&<div className="hpl-badge-section">
+      <section className="hpl-panel">
+        <div className="hpl-panel-heading hpl-heading-row"><div><span className="hpl-overline">HONRAS OFICIAIS DO HÄXBAG</span><h3>Insígnias e reconhecimento</h3><p>Somente insígnias registradas pelo site são exibidas no seu perfil. Nesta fase existem duas.</p></div><span className="hpl-count">{allBadges.length} de 2 recebidas</span></div>
+        <div className="hpl-v137-badge-banner"><span>✦</span><div><strong>Reconhecimento verdadeiro</strong><p>Insígnias não são escolhidas nem criadas pelos jogadores ou mestres. A Primordial é automática durante a beta; a Fundador é exclusiva da administração.</p></div><span className={`hpl-v137-beta-status ${betaActive?'is-open':''}`}>{betaActive?'◉ Beta ativa':'◈ Beta encerrada'}</span></div>
+        <div className="hpl-badges hpl-v137-badge-grid">{officialBadgeCatalog.map(badge=>{
+          const owned=allBadges.find(item=>item.id===badge.id)
+          return <article key={badge.id} className={`hpl-badge hpl-v137-official-badge badge-${badge.id} ${owned?'selected is-earned':'is-locked'}`}>
+            <span className="hpl-badge-art" aria-hidden="true">{badge.symbol}</span>
+            <div><strong>{badge.title}</strong><small>{badge.description}</small><span>{owned?`✓ Recebida${owned.created_at?' em '+new Date(owned.created_at).toLocaleDateString('pt-BR'):''}`:badge.origin}</span></div>
+            <span className="hpl-v137-badge-seal" aria-label={owned?'Insígnia concedida':'Ainda não recebida'}>{owned?'✓':'◇'}</span>
+          </article>
+        })}</div>
+        <p className="hpl-v137-badge-help">As insígnias recebidas aparecem automaticamente na vitrine e no perfil público, caso a opção “Insígnias” esteja visível nas suas configurações de privacidade.</p>
+      </section>
+      {isSiteAdmin&&<section className="hpl-panel hpl-v137-admin-panel">
+        <div className="hpl-panel-heading"><span className="hpl-overline">ADMINISTRAÇÃO DO SITE · ACESSO RESTRITO</span><h3>Conceder Fundador</h3><p>Somente sua conta autorizada como administradora pode conceder esta insígnia. Busque uma conta do HäxBag para reconhecer sua participação na fundação.</p></div>
+        <label className="hpl-search">Encontrar conta<div className="hpl-search-field"><span aria-hidden="true">⌕</span><input type="search" value={adminSearch} onChange={event=>{setAdminSearch(event.target.value);setAdminNotice('')}} placeholder="Nome de usuário ou nome de exibição…"/></div></label>
+        {adminNotice&&<p className="hpl-v137-admin-notice" role="status">{adminNotice}</p>}
+        {adminSearchBusy&&<p className="hpl-v137-admin-hint" role="status">Procurando contas…</p>}
+        <div className="hpl-v137-admin-people">{adminMatches.map(person=><div key={person.id} className="hpl-v137-admin-person"><button type="button" className="hpl-person-visit" onClick={()=>openPerson(person)}><span className="hpl-person-avatar" aria-hidden="true">{person.display_name.slice(0,1).toUpperCase()}</span><span><strong>{person.display_name}</strong><small>@{person.username||'aventureiro'}</small></span></button><button className="hpl-primary" type="button" disabled={!!adminGrantBusy} onClick={()=>void grantFounder(person)}>{adminGrantBusy===person.id?'Concedendo…':'✦ Conceder Fundador'}</button></div>)}</div>
+        {!adminMatches.length&&adminSearch.trim().length<2&&<p className="hpl-v137-admin-hint">Digite pelo menos dois caracteres para encontrar a conta que receberá Fundador.</p>}
+        {!adminSearchBusy&&!adminMatches.length&&adminSearch.trim().length>=2&&<p className="hpl-v137-admin-hint">Nenhuma conta encontrada.</p>}
+      </section>}
+    </div>}
 
     {activeTab==='chronicles'&&<div className="hpl-section-layout hpl-chronicles-layout"><section className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">O LIVRO DA JORNADA</span><h3>Escrever uma crônica</h3><p>Guarde descobertas, vitórias e histórias que merecem ser lembradas.</p></div>
       <div className="hpl-chronicle-form"><label>Data do acontecimento<input type="date" value={newChronicle.date} onChange={e=>setNewChronicle(p=>({...p,date:e.target.value}))}/></label><label>Título<input value={newChronicle.title} maxLength={100} placeholder="Ex.: A noite da última batalha" onChange={e=>setNewChronicle(p=>({...p,title:e.target.value}))}/></label><label>O que aconteceu?<textarea rows={5} value={newChronicle.detail} maxLength={500} placeholder="Conte como esse capítulo aconteceu…" onChange={e=>setNewChronicle(p=>({...p,detail:e.target.value}))}/><small>{newChronicle.detail.length}/500 caracteres</small></label><button type="button" className="hpl-primary" onClick={addJournal} disabled={!newChronicle.title.trim()||profile.journal.length>=60}>＋ Adicionar ao meu livro</button><p className="hpl-hint">As crônicas adicionadas são salvas ao clicar em “Salvar perfil”. Limite de 60 anotações próprias.</p></div>
@@ -279,7 +355,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <div className="hpl-visitor-invite-steps"><span>✧ Perfil público protegido</span><span>♧ Pedidos de amizade</span><span>⚑ Convites de campanha</span></div>
         <small>A busca e a lista de amigos abrem a mesma visualização, sem expor informações privadas.</small>
       </section>
-      {campaigns.some(c=>c.master)&&<section className="hpl-panel hpl-community-award"><div className="hpl-panel-heading"><span className="hpl-overline">PRIVILÉGIO DO MESTRE</span><h3>Conceder insígnia especial</h3><p>Reconheça os feitos de um participante das suas campanhas.</p></div><div className="hpl-award-form"><label>Jogador<select value={grantUser} onChange={e=>setGrantUser(e.target.value)}><option value="">Selecione um jogador pesquisado</option>{people.map(p=><option key={p.id} value={p.id}>{p.display_name}</option>)}</select></label><label>Símbolo<input maxLength={10} value={grantSymbol} onChange={e=>setGrantSymbol(e.target.value)} aria-label="Símbolo da insígnia"/></label><label>Nome da insígnia<input value={grantTitle} maxLength={80} placeholder="Ex.: Guardião do Véu" onChange={e=>setGrantTitle(e.target.value)}/></label><label>Descrição<input value={grantDetail} maxLength={240} placeholder="Motivo da homenagem" onChange={e=>setGrantDetail(e.target.value)}/></label><button type="button" className="hpl-primary" disabled={!grantUser||!grantTitle.trim()} onClick={()=>void grantAward()}>✦ Conceder insígnia</button></div></section>}
+
     </div>}
 
     {activeTab==='privacy'&&<div className="hpl-section-layout"><section className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">AS PORTAS DA SUA HISTÓRIA</span><h3>Presença e status</h3><p>Deixe seus companheiros saberem se você está disponível para aventuras.</p></div><div className="hpl-fields"><label>Status<select value={profile.status} onChange={e=>setProfile(p=>({...p,status:e.target.value}))}>{statusOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>{profile.status==='custom'&&<label>Mensagem de status<input maxLength={60} value={profile.status_custom} onChange={e=>setProfile(p=>({...p,status_custom:e.target.value}))} placeholder="Escreva sua mensagem…"/></label>}</div><div className="hpl-feature-highlight"><span className="hpl-feature-sigil">◉</span><div><small>PRÉVIA DO SEU STATUS</small><strong>{statusText(profile)||'Seu status personalizado'}</strong><span>O status só aparece para visitantes se você permitir.</span></div></div></section>

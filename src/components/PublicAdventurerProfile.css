@@ -107,3 +107,9 @@
   .hb-public-identity-card-v135 .hb-public-identity-card-person-copy>strong{font-size:21px}
   .hb-public-identity-card-v135 .hb-public-identity-card-description{padding:13px}
 }
+
+/* V137: estilo especial das duas insígnias oficiais no perfil público */
+.hb-public-badge-fundador{border-color:rgba(222,185,114,.35);background:linear-gradient(120deg,rgba(225,183,102,.13),rgba(0,0,0,.12))}
+.hb-public-badge-fundador>span{color:#f3d399;border:1px solid rgba(222,185,114,.36);background:rgba(225,183,102,.15)}
+.hb-public-badge-primordial{border-color:rgba(161,177,233,.32);background:linear-gradient(120deg,rgba(155,169,231,.13),rgba(0,0,0,.12))}
+.hb-public-badge-primordial>span{color:#bcc4f7;border:1px solid rgba(161,177,233,.33);background:rgba(155,169,231,.13)}
