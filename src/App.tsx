@@ -30,9 +30,11 @@ import './themes/mobileEmojiPicker.css'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import ProfileLegacy from './components/ProfileLegacy'
+import PublicAdventurerProfile from './components/PublicAdventurerProfile'
 import './components/ProfileUnified.css'
 import './components/ProfileAtelier.css'
 import './components/ProfilePolish.css'
+import './components/ProfileV132.css'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -1588,6 +1590,7 @@ const resetCreatureFilters = () => {
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
   const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
   const [profileJourneyDisplay,setProfileJourneyDisplay] = useState<'cards'|'compact'>('cards')
   const [profileJourneyOrder,setProfileJourneyOrder] = useState<'name'|'campaign'>('name')
   const switchProfileSection = (next:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
@@ -12297,6 +12300,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <span aria-hidden="true">✎</span> Editar perfil
                     </button>
                     <button type="button" className="hb-v129-hero-secondary" onClick={()=>switchProfileSection('legacy')}>✦ Minha vitrine</button>
+                    <button type="button" className="hb-v129-hero-secondary hb-v132-public-preview" onClick={()=>setPreviewMyPublicProfile(true)}>◈ Ver perfil público</button>
                   </div>
                   <div className="hb-v131-hero-progress" aria-label="Progresso da identidade">
                     <div className="hb-v131-hero-progress-copy"><span>SEU PERFIL, SUA HISTÓRIA</span><strong>{profileCompletion}% preenchido</strong><small>{nextProfileStep ? 'Há detalhes que podem tornar seu perfil mais completo.' : 'Continue registrando suas aventuras.'}</small></div>
@@ -12331,7 +12335,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               <div className="hb-v129-section-caption">
                 <div><span>✦ HÄXBAG · {profileSection==='overview'?'VISÃO GERAL':profileSection==='journey'?'JORNADA':profileSection==='studio'?'ATELIÊ':profileSection==='legacy'?'IDENTIDADE E LEGADO':profileSection==='friends'?'COMUNIDADE':'CONTA'}</span>
                   <h2>{({overview:'Sua história em um só lugar',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua companhia de aventureiros',account:'Informações da conta'} as const)[profileSection]}</h2>
-                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, capas e símbolos pessoais.',legacy:'Configure seu visual, protagonistas, conquistas, crônicas e privacidade.',friends:'Encontre jogadores, acompanhe solicitações e convide amigos.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
+                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, capas e símbolos pessoais.',legacy:'Configure seu visual, protagonistas, conquistas, crônicas e privacidade.',friends:'Abra o perfil de qualquer amigo, conheça aventureiros e acompanhe seus convites.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
                 </div>
                 {profileSection!=='studio'&&<button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Personalizar</button>}
               </div>
@@ -12691,6 +12695,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
             <div id="hb-social-hub"><FriendsPanel campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></div>
           </div>
+          {previewMyPublicProfile && session && <PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/>}
           </div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
