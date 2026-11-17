@@ -31,6 +31,7 @@ import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import ProfileLegacy from './components/ProfileLegacy'
 import './components/ProfileUnified.css'
+import './components/ProfileAtelier.css'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -1588,6 +1589,7 @@ const resetCreatureFilters = () => {
   const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
   const switchProfileSection = (next:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
     setProfileSection(next)
+    if (next === 'studio') setProfileEditing(true)
     window.requestAnimationFrame(() => {
       document.getElementById('hb-v129-profile-navigation')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'})
     })
@@ -7331,7 +7333,7 @@ async function sendItemToCharacter() {
     setProfileBioDraft(accountBio)
     setProfileCoverDraft(accountCover)
     setProfileTitleDraft(accountTitle)
-    setProfileEditing(false)
+    setProfileEditing(profileSection === 'studio')
     setProfileFeaturedCharacterId(null)
     setError('')
     setNotice('')
@@ -12424,9 +12426,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
 
               <div className="hb-v129-section" id="hb-v129-panel-editor" role="tabpanel" aria-labelledby={profileSection==='account'?'hb-v129-tab-account':'hb-v129-tab-studio'} hidden={profileSection!=='studio' && profileSection!=='account'}>
-              <div className="hb-profile-layout" id="hb-profile-editor-region">
+              <div className={`hb-profile-layout ${profileSection==='studio'?'hb-v130-studio-layout':''}`} id="hb-profile-editor-region">
                 {profileSection==='account' ? <article className="hb-profile-card hb-v129-account-guide"><span className="hb-kicker">⌘ ACESSO PESSOAL</span><h2>Seu registro de conta</h2><p>Suas informações de acesso ficam restritas a você. Nome de exibição e nome de usuário são configurados no ateliê, enquanto a visibilidade do seu conteúdo público é controlada em Identidade e Legado.</p><div className="hb-v129-account-guide-actions"><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar minha identidade</button><button type="button" onClick={()=>switchProfileSection('legacy')}>◇ Configurar privacidade</button></div><div className="hb-v129-privacy-note"><span aria-hidden="true">♙</span><div><strong>E-mail privado</strong><small>Seu endereço de e-mail não é exibido nos perfis públicos.</small></div></div></article> : profileEditing ? (
-                <form className="hb-profile-card hb-profile-edit-card" onSubmit={async event => {
+                <form className="hb-profile-card hb-profile-edit-card hb-v130-studio-form" onSubmit={async event => {
                   event.preventDefault()
                   if (profileSaving || !profileHasChanges) return
                   const nextName = profileNameDraft.trim().replace(/\s+/g, ' ')
@@ -12469,72 +12471,76 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       if (profileError) throw profileError
                       setNotice('Perfil atualizado com sucesso.')
                     }
-                    setProfileEditing(false)
+                    setProfileEditing(true)
                   } catch (err) {
                     setError(/nome.*uso|display.name|duplicate|unique/i.test(err instanceof Error ? err.message : String(err)) ? 'Esse nome já está em uso. Escolha outro.' : 'Erro ao salvar seu perfil: ' + (err instanceof Error ? err.message : String(err)))
                   } finally {
                     setProfileSaving(false)
                   }
                 }}>
-                  <div className="hb-profile-card-heading">
-                    <span className="hb-profile-card-glyph" aria-hidden="true">✦</span>
-                    <div><span className="hb-kicker">SEU ATELIÊ PESSOAL</span><h2>Forje sua identidade</h2><p>Escolha sua capa, seu título e sua assinatura. Visualize tudo antes de salvar.</p></div>
-                  </div>
-                  <fieldset className="hb-profile-atelier-fieldset">
-                    <legend>01 <span aria-hidden="true">✧</span> Capa da sua história</legend>
-                    <p>Escolha um cenário para seu arquivo de aventureiro. As capas são estilizadas, sem arquivos externos.</p>
-                    <div className="hb-profile-cover-grid" role="group" aria-label="Escolha a capa do perfil">
-                      {profileCoverOptions.map(option => <button key={option.id} type="button" className={`hb-profile-cover-option ${profileCoverDraft === option.id ? 'is-active' : ''}`} data-cover={option.id} aria-pressed={profileCoverDraft === option.id} onClick={() => setProfileCoverDraft(option.id)}>
-                        <span className="hb-profile-cover-option-art" aria-hidden="true"><i>{option.symbol}</i></span>
-                        <strong>{option.name}</strong><small>{option.description}</small>
-                        <span className="hb-profile-cover-check" aria-hidden="true">{profileCoverDraft === option.id ? '✓' : '✧'}</span>
-                      </button>)}
+                  <header className="hb-v130-studio-intro">
+                    <div className="hb-v130-studio-intro-top"><span>HÄXBAG / ESTÚDIO DE IDENTIDADE</span><span className={`hb-v130-studio-state ${profileHasChanges?'is-dirty':''}`} role="status">{profileHasChanges?'● Rascunho em edição':'✓ Tudo salvo'}</span></div>
+                    <div className="hb-v130-studio-intro-grid">
+                      <div><span className="hb-v130-studio-eyebrow">✦ A IDENTIDADE POR TRÁS DA LENDA</span><h2>Seu ateliê<span className="hb-v130-studio-title-dot">.</span></h2><p>Escolha como você se apresenta em cada mundo. Monte sua assinatura, encontre seu símbolo e veja o resultado enquanto cria.</p></div>
+                      <div className="hb-v130-studio-monogram" aria-hidden="true"><span>{profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}</span><small>{profileTitleOptions.find(option=>option.id===profileTitleDraft)?.name || 'Aventureiro'}</small></div>
                     </div>
-                  </fieldset>
-                  <fieldset className="hb-profile-atelier-fieldset">
-                    <legend>02 <span aria-hidden="true">✧</span> Título do aventureiro</legend>
-                    <p>Seu título é uma escolha estética. Não representa conquistas ou permissões na campanha.</p>
-                    <div className="hb-profile-title-grid" role="group" aria-label="Escolha seu título">
-                      {profileTitleOptions.map(option => <button key={option.id} type="button" className={`hb-profile-title-option ${profileTitleDraft === option.id ? 'is-active' : ''}`} aria-pressed={profileTitleDraft === option.id} onClick={() => setProfileTitleDraft(option.id)}><span aria-hidden="true">{option.symbol}</span>{option.name}</button>)}
+                    <nav className="hb-v130-studio-jumps" aria-label="Ir para área do ateliê">
+                      {([['identity','01','Identidade'],['avatar','02','Símbolo'],['cover','03','Capa'],['title','04','Título'],['story','05','Sua história']] as const).map(([key,index,label])=><button key={key} type="button" onClick={()=>document.getElementById(`hb-v130-studio-${key}`)?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'})}><small>{index}</small>{label}</button>)}
+                    </nav>
+                  </header>
+
+                  <section className="hb-v130-studio-block" id="hb-v130-studio-identity" aria-labelledby="hb-v130-title-identity">
+                    <div className="hb-v130-studio-heading"><span className="hb-v130-studio-index">01</span><div><span className="hb-kicker">O NOME DE SUA LENDA</span><h3 id="hb-v130-title-identity">Identidade</h3><p>O nome visto por outros aventureiros e o identificador usado para encontrar você.</p></div></div>
+                    <div className="hb-v130-studio-field-grid">
+                      <label className="hb-profile-field hb-v130-studio-field"><span className="hb-v130-studio-field-label">Nome de exibição <small>{profileNameDraft.length}/60</small></span>
+                        <input maxLength={60} required value={profileNameDraft} onChange={event=>setProfileNameDraft(event.target.value)} autoComplete="nickname" placeholder="Como deseja ser chamado?"/>
+                        <small>Pode se repetir. Aparece nas campanhas e no cartão de perfil.</small>
+                      </label>
+                      <label className="hb-profile-field hb-v130-studio-field"><span className="hb-v130-studio-field-label">Nome de usuário <small>Exclusivo</small></span>
+                        <div className="hb-v130-studio-username"><span aria-hidden="true">@</span><input maxLength={24} required value={profileUsernameDraft} onChange={event=>setProfileUsernameDraft(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g,''))} autoComplete="username" placeholder="seu_usuario" /></div>
+                        <small>De 3 a 24 caracteres: letras, números e _.</small>
+                      </label>
                     </div>
-                  </fieldset>
-                  <div className="hb-profile-editor-divider"><span>03</span> Sua assinatura</div>
-                  <fieldset className="hb-profile-avatar-fieldset">
-                    <legend>Avatar do perfil</legend>
-                    <p>Escolha um símbolo para representar sua conta no menu principal e no seu cartão de perfil.</p>
-                    <div className="hb-profile-avatar-options" role="group" aria-label="Escolha seu avatar">
-                      <button type="button" className={`hb-profile-avatar-option ${profileAvatarDraft === '' ? 'active' : ''}`}
-                        aria-label="Usar iniciais do nome" aria-pressed={profileAvatarDraft === ''} onClick={() => setProfileAvatarDraft('')}>
-                        {(profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}
-                      </button>
-                      {profileAvatarOptions.map(emoji => (
-                        <button key={emoji} type="button" className={`hb-profile-avatar-option ${profileAvatarDraft === emoji ? 'active' : ''}`}
-                          aria-label={`Usar avatar ${emoji}`} aria-pressed={profileAvatarDraft === emoji} onClick={() => setProfileAvatarDraft(emoji)}>{emoji}</button>
-                      ))}
+                    <div className="hb-v130-studio-inline-note"><span aria-hidden="true">✧</span> Um bom nome é fácil de reconhecer — e pode ser atualizado quando sua jornada mudar.</div>
+                  </section>
+
+                  <section className="hb-v130-studio-block" id="hb-v130-studio-avatar" aria-labelledby="hb-v130-title-avatar">
+                    <div className="hb-v130-studio-heading"><span className="hb-v130-studio-index">02</span><div><span className="hb-kicker">SUA MARCA NO MUNDO</span><h3 id="hb-v130-title-avatar">Símbolo do aventureiro</h3><p>Um pequeno emblema que acompanha seu nome no perfil e no menu do HäxBag.</p></div></div>
+                    <div className="hb-v130-avatar-composition"><div className="hb-v130-avatar-showcase" aria-live="polite"><span>{profileAvatarDraft || (profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}</span><div><strong>Seu emblema</strong><small>{profileAvatarDraft?'Símbolo selecionado':'Iniciais do nome'}</small></div></div>
+                      <fieldset className="hb-profile-avatar-fieldset hb-v130-avatar-fieldset"><legend>Escolha um símbolo</legend><div className="hb-profile-avatar-options" role="group" aria-label="Escolha seu avatar"><button type="button" className={`hb-profile-avatar-option ${profileAvatarDraft===''?'active':''}`} aria-label="Usar iniciais do nome" aria-pressed={profileAvatarDraft===''} onClick={()=>setProfileAvatarDraft('')}>{(profileNameDraft.trim() || String(displayName)).charAt(0).toUpperCase()}</button>{profileAvatarOptions.map(emoji=><button key={emoji} type="button" className={`hb-profile-avatar-option ${profileAvatarDraft===emoji?'active':''}`} aria-label={`Usar avatar ${emoji}`} aria-pressed={profileAvatarDraft===emoji} onClick={()=>setProfileAvatarDraft(emoji)}>{emoji}</button>)}</div></fieldset>
                     </div>
-                  </fieldset>
-                  <label className="hb-profile-field">Nome de exibição
-                    <input maxLength={60} required value={profileNameDraft} onChange={event => setProfileNameDraft(event.target.value)}
-                      autoComplete="nickname" placeholder="Como os outros jogadores verão seu nome" />
-                    <small>Pode se repetir. É como os outros jogadores verão você nas campanhas. {profileNameDraft.length}/60</small>
-                  </label>
-                  <label className="hb-profile-field">Nome de usuário
-                    <input maxLength={24} required value={profileUsernameDraft} onChange={event => setProfileUsernameDraft(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} autoComplete="username" placeholder="seu_usuario" />
-                    <small>Seu identificador exclusivo: @seu_usuario. Usado para encontrar amigos.</small>
-                  </label>
-                  <label className="hb-profile-field">Sobre você <span className="hb-profile-optional">Opcional</span>
-                    <textarea rows={4} maxLength={180} value={profileBioDraft} onChange={event => setProfileBioDraft(event.target.value)}
-                      placeholder="Uma frase sobre suas aventuras, personagens ou histórias favoritas…" />
-                    <span className="hb-profile-bio-meta"><small>Exibido no seu próprio perfil e cartão de aventureiro.</small><small>{profileBioDraft.length}/180</small></span>
-                    <span className="hb-profile-bio-meter" aria-hidden="true"><i style={{ width: `${Math.min(100, (profileBioDraft.length / 180) * 100)}%` }} /></span>
-                  </label>
-                  <div className="hb-profile-form-footer">
+                    <div className="hb-v130-studio-inline-note"><span aria-hidden="true">✧</span> Quer uma foto personalizada? Use a seção <button type="button" onClick={()=>switchProfileSection('legacy')}>Identidade e legado ↗</button> para enviar avatar e capa próprios.</div>
+                  </section>
+
+                  <section className="hb-v130-studio-block" id="hb-v130-studio-cover" aria-labelledby="hb-v130-title-cover">
+                    <div className="hb-v130-studio-heading"><span className="hb-v130-studio-index">03</span><div><span className="hb-kicker">A ATMOSFERA DA SUA HISTÓRIA</span><h3 id="hb-v130-title-cover">Capa do perfil</h3><p>Escolha o cenário visual da sua identidade. A prévia ao lado muda imediatamente.</p></div></div>
+                    <fieldset className="hb-profile-atelier-fieldset hb-v130-studio-cover-field"><legend className="hb-v130-visually-hidden">Escolha a capa do perfil</legend><div className="hb-profile-cover-grid" role="group" aria-label="Escolha a capa do perfil">
+                      {profileCoverOptions.map(option=><button key={option.id} type="button" className={`hb-profile-cover-option ${profileCoverDraft===option.id?'is-active':''}`} data-cover={option.id} aria-pressed={profileCoverDraft===option.id} onClick={()=>setProfileCoverDraft(option.id)}><span className="hb-profile-cover-option-art" aria-hidden="true"><i>{option.symbol}</i></span><strong>{option.name}</strong><small>{option.description}</small><span className="hb-profile-cover-check" aria-hidden="true">{profileCoverDraft===option.id?'✓':'✧'}</span></button>)}
+                    </div></fieldset>
+                  </section>
+
+                  <section className="hb-v130-studio-block" id="hb-v130-studio-title" aria-labelledby="hb-v130-title-title">
+                    <div className="hb-v130-studio-heading"><span className="hb-v130-studio-index">04</span><div><span className="hb-kicker">UM TÍTULO PARA RECORDAR</span><h3 id="hb-v130-title-title">Título do aventureiro</h3><p>Escolha o epíteto que acompanha seu nome. É decorativo e não altera permissões ou conquistas.</p></div></div>
+                    <fieldset className="hb-profile-atelier-fieldset"><legend className="hb-v130-visually-hidden">Escolha o título</legend><div className="hb-profile-title-grid" role="group" aria-label="Escolha seu título">
+                      {profileTitleOptions.map(option=><button key={option.id} type="button" className={`hb-profile-title-option ${profileTitleDraft===option.id?'is-active':''}`} aria-pressed={profileTitleDraft===option.id} onClick={()=>setProfileTitleDraft(option.id)}><span aria-hidden="true">{option.symbol}</span>{option.name}</button>)}
+                    </div></fieldset>
+                  </section>
+
+                  <section className="hb-v130-studio-block hb-v130-studio-story" id="hb-v130-studio-story" aria-labelledby="hb-v130-title-story">
+                    <div className="hb-v130-studio-heading"><span className="hb-v130-studio-index">05</span><div><span className="hb-kicker">NAS SUAS PRÓPRIAS PALAVRAS</span><h3 id="hb-v130-title-story">Sua apresentação</h3><p>Um pequeno trecho para contar sobre você, seus personagens ou o tipo de aventura que busca.</p></div></div>
+                    <label className="hb-profile-field hb-v130-studio-field hb-v130-bio-field"><span className="hb-v130-studio-field-label">Sobre você <small>Opcional · {profileBioDraft.length}/180</small></span>
+                      <textarea rows={5} maxLength={180} value={profileBioDraft} onChange={event=>setProfileBioDraft(event.target.value)} placeholder="Toda lenda começa em algum lugar. Qual é a sua?"/>
+                      <span className="hb-profile-bio-meta"><small>Essa apresentação aparece no seu cartão de aventureiro.</small><small>{profileBioDraft.length} / 180</small></span>
+                      <span className="hb-profile-bio-meter" aria-hidden="true"><i style={{width:`${Math.min(100,(profileBioDraft.length/180)*100)}%`}}/></span>
+                    </label>
+                  </section>
+                  <div className="hb-profile-form-footer hb-v130-studio-footer">
                     <span className={`hb-profile-save-status ${profileHasChanges ? 'has-changes' : 'is-saved'}`} aria-live="polite">{profileHasChanges ? '● Alterações não salvas' : '✓ Perfil atualizado'}</span>
                     <div className="hb-profile-form-actions">
                       <button type="button" className="secondary-button" disabled={profileSaving || !profileHasChanges}
                         onClick={() => { setProfileNameDraft(String(displayName)); setProfileUsernameDraft(accountUsername); setProfileAvatarDraft(accountAvatar); setProfileBioDraft(accountBio); setProfileCoverDraft(accountCover); setProfileTitleDraft(accountTitle) }}>Descartar</button>
                       <button type="submit" className="primary-button" disabled={profileSaving || !profileHasChanges}>
-                        {profileSaving ? 'Salvando…' : 'Salvar alterações'}
+                        {profileSaving ? 'Salvando…' : '✓ Salvar identidade'}
                       </button>
                     </div>
                   </div>
@@ -12564,10 +12570,10 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   </article>
                 )}
 
-                <aside className="hb-profile-side-panel">
+                <aside className={`hb-profile-side-panel ${profileSection==='studio'?'hb-v130-studio-aside':''}`}>
                   {profileSection==='studio' && <>
-                  <section className="hb-profile-side-card hb-profile-preview-panel" aria-label="Prévia do perfil">
-                    <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Prévia do perfil' : 'Cartão do aventureiro'}</h2></div></div>
+                  <section className="hb-profile-side-card hb-profile-preview-panel hb-v130-live-preview" aria-label="Prévia do perfil">
+                    <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Sua identidade ao vivo' : 'Cartão do aventureiro'}</h2></div></div>
                     <div className="hb-profile-preview-card" data-cover={profileEditing ? profileCoverDraft : accountCover}>
                       <span className="hb-profile-preview-art" aria-hidden="true" />
                       <div className="hb-profile-preview-topline"><span>HÄXBAG <span className="hb-profile-preview-edition">· CARTA DE IDENTIDADE</span></span><span>{activeVisualStyle.symbol} {activeVisualStyle.label}</span></div>
@@ -12578,13 +12584,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <p className="hb-profile-preview-bio">{(profileEditing ? profileBioDraft : accountBio).trim() || 'Uma aventura começa com uma história. Adicione sua apresentação.'}</p>
                       <span className="hb-profile-preview-signature"><span>✦ CARTÃO DO AVENTUREIRO</span><span>HÄXBAG · I</span></span>
                     </div>
-                    <p className="hb-profile-preview-help">{profileEditing ? 'Uma prévia em tempo real. As escolhas serão salvas na sua conta quando você confirmar.' : 'Seu cartão pessoal, com sua capa e título escolhidos.'}</p>
+                    <p className="hb-profile-preview-help">{profileEditing ? 'Veja seu visual antes de publicar. O rascunho só passa a valer após salvar.' : 'Seu cartão pessoal, com sua capa e título escolhidos.'}</p>
                     <button type="button" className="hb-profile-copy-card" onClick={() => {
                       const text = [`✦ HÄXBAG · CARTÃO DO AVENTUREIRO`, String(displayName), accountUsername ? `@${accountUsername}` : '', accountTitleName, accountBio.trim()].filter(Boolean).join('\n')
                       void navigator.clipboard.writeText(text).then(() => setNotice('Cartão do aventureiro copiado!')).catch(() => setError('Não foi possível copiar seu cartão.'))
                     }}><span aria-hidden="true">⧉</span> Copiar meu cartão</button>
                   </section>
-                  <section className="hb-profile-side-card hb-profile-legacy-panel" aria-label="Personalização do perfil">
+                  <section className="hb-profile-side-card hb-profile-legacy-panel hb-v130-completion-panel" aria-label="Personalização do perfil">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">✦</span><div><span className="hb-kicker">O SEU LEGADO</span><h2>Registro do aventureiro</h2></div></div>
                     <div className="hb-profile-legacy-progress"><strong>{profileCompletion}%</strong><div><span>Identidade preenchida</span><span>Detalhes que fazem sua história única</span></div></div>
                     <div className="hb-profile-progress-rail" role="progressbar" aria-label="Identidade preenchida" aria-valuemin={0} aria-valuemax={100} aria-valuenow={profileCompletion}><span style={{width: `${profileCompletion}%`}} /></div>
