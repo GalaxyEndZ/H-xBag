@@ -24,3 +24,26 @@
 .hb-public-progress{display:grid;justify-items:center;align-content:center;flex:1;min-height:240px;padding:45px 22px;text-align:center}.hb-public-progress-icon{font-size:40px;color:var(--season-primary,#d9bd8b)}.hb-public-progress strong{font:600 23px Georgia,serif}.hb-public-progress p{max-width:500px;color:var(--season-muted,#aaa);line-height:1.6}.hb-public-progress button{padding:10px 16px;border-radius:10px;background:var(--season-primary,#d9bd8b);border:0;color:#111}
 @media(max-width:740px){.hb-public-dialog{height:calc(100dvh - 14px);border-radius:18px}.hb-public-backdrop{padding:7px}.hb-public-toolbar-caption{gap:7px;letter-spacing:.08em;font-size:9px}.hb-public-cover{height:155px;padding:18px}.hb-public-cover-top{font-size:8px}.hb-public-identity{padding:0 17px 19px;align-items:start;gap:12px;flex-wrap:wrap}.hb-public-avatar{width:83px;height:83px;margin-top:-32px;border-radius:19px;font-size:38px}.hb-public-identity-copy{padding-top:12px;flex:1 1 calc(100% - 105px)}.hb-public-identity-copy h2{font-size:27px}.hb-public-eyebrow{font-size:8px}.hb-public-relationship{margin-left:95px;align-self:auto}.hb-public-stats{padding:13px 17px;gap:7px}.hb-public-stats>div{padding:7px 9px;gap:5px;flex:1 1 44%}.hb-public-stats strong{font-size:14px}.hb-public-stats small{font-size:10px}.hb-public-tabs{padding:8px 12px 0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.hb-public-tabs button{padding:11px 11px 12px}.hb-public-main{padding:16px}.hb-public-overview{grid-template-columns:1fr}.hb-public-panel{padding:17px}.hb-public-gallery{grid-template-columns:1fr}.hb-public-footer{padding:15px 17px 22px}.hb-public-footer-actions{width:100%}.hb-public-footer-actions>button{flex:1}.hb-public-invite{width:100%}.hb-public-invite select{flex:1;max-width:none;min-width:0}.hb-public-footer-note small{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.hb-public-dialog *{scroll-behavior:auto}}
+
+/* V133 — Carta de Identidade pública: imagem independente da capa */
+.hb-public-identity-card-section{display:grid;justify-items:center;gap:14px}
+.hb-public-identity-card-section>.hb-public-overline,.hb-public-identity-card-section>h3,.hb-public-identity-card-section>.hb-public-muted{justify-self:stretch}
+.hb-public-identity-card{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:13px;width:min(100%,450px);min-height:520px;padding:26px 28px 22px;border:1px solid color-mix(in srgb,var(--hb-public-accent,#d9bd8b) 65%,transparent);border-radius:18px;box-shadow:0 28px 50px rgba(0,0,0,.23),inset 0 0 0 5px rgba(255,255,255,.035);color:#f7f2eb;text-align:center;background:radial-gradient(ellipse at 50% 15%,color-mix(in srgb,var(--hb-public-accent,#d9bd8b) 27%,transparent),transparent 58%),linear-gradient(145deg,#292729,#121821)}
+.hb-public-identity-card-background{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.hb-public-identity-card-shade{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(8,11,16,.7),rgba(8,11,16,.4) 34%,rgba(8,11,16,.65) 70%,rgba(8,11,16,.9))}
+.hb-public-identity-card-top{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:9px;font-weight:850;letter-spacing:.1em;color:#e9d2a2;text-align:left}
+.hb-public-identity-card-portrait{width:122px;height:122px;flex-shrink:0;display:grid;place-items:center;margin-top:52px;border:2px solid var(--hb-public-accent,#d9bd8b);border-radius:27px;overflow:hidden;background:#1c1d22;box-shadow:0 0 0 5px rgba(20,20,20,.18),0 12px 30px rgba(0,0,0,.33)}
+.hb-public-identity-card-portrait img{width:100%;height:100%;object-fit:cover}
+.hb-public-identity-card-portrait span{font:600 51px Georgia,serif;color:#e8c28b}
+.hb-public-identity-card>strong{font:600 clamp(22px,4vw,30px)/1.2 Georgia,serif;overflow-wrap:anywhere;text-shadow:0 2px 15px rgba(0,0,0,.65)}
+.hb-public-identity-card-handle{font-size:13px;color:#f0dfcb;font-weight:700}
+.hb-public-identity-card>small{font-size:11px;color:#f3e5d2}
+.hb-public-identity-card-bottom{display:flex;justify-content:space-between;gap:10px;width:100%;border-top:1px solid rgba(255,255,255,.32);padding-top:15px;margin-top:auto;font-size:9px;font-weight:800;letter-spacing:.09em;color:#e7cd9c}
+@media(max-width:520px){.hb-public-identity-card{min-height:440px;padding:19px 16px}.hb-public-identity-card-portrait{margin-top:40px;width:96px;height:96px;border-radius:22px}.hb-public-identity-card-top{font-size:8px}.hb-public-identity-card-bottom{font-size:8px}}
+/* V133: se não houver imagem enviada, a Carta de Identidade acompanha a capa temática do perfil. */
+.hb-public-identity-card{--hb-identity-theme:161,49,67;background:radial-gradient(ellipse at 50% 10%,rgba(var(--hb-identity-theme),.38),transparent 64%),linear-gradient(145deg,#292729,#121821)}
+.hb-public-identity-card[data-cover="lunar"]{--hb-identity-theme:87,121,168}
+.hb-public-identity-card[data-cover="verdant"]{--hb-identity-theme:42,123,99}
+.hb-public-identity-card[data-cover="arcane"]{--hb-identity-theme:124,77,169}
+.hb-public-identity-card[data-cover="golden"]{--hb-identity-theme:185,118,46}
+.hb-public-identity-card[data-cover="winter"]{--hb-identity-theme:80,159,183}

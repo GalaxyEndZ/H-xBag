@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
 import './ProfileLegacy.css'
 
-type PrivacyKey = 'show_bio'|'show_characters'|'show_campaigns'|'show_badges'|'show_journal'|'show_status'
+type PrivacyKey = 'show_bio'|'show_characters'|'show_campaigns'|'show_badges'|'show_journal'|'show_status'|'show_identity_card'
 type Privacy = Record<PrivacyKey,boolean>
 type Hero = {id:string;name:string;emoji:string;archetype:string;campaign:string}
 type Chronicle = {id:string;date:string;title:string;detail:string;kind:string}
@@ -14,7 +14,7 @@ type Showcase = {
   featured_ids:string[];featured_badges:string[];journal:Chronicle[];
 }
 type Person = AdventurerRef
-const defaultPrivacy:Privacy = {show_bio:true,show_characters:true,show_campaigns:false,show_badges:true,show_journal:true,show_status:true}
+const defaultPrivacy:Privacy = {show_bio:true,show_characters:true,show_campaigns:false,show_badges:true,show_journal:true,show_status:true,show_identity_card:true}
 const defaultProfile = (id:string):Showcase => ({user_id:id,avatar_image:'',cover_image:'',status:'available',status_custom:'',avatar_position:50,cover_position:50,frame:'classic',accent:'#d9bd8b',layout:'classic',privacy:defaultPrivacy,featured_ids:[],featured_badges:[],journal:[]})
 const statusOptions=[['available','Disponível para jogar'],['preparing','Preparando campanha'],['looking','Procurando grupo'],['busy','Em aventura'],['offline','Indisponível'],['custom','Personalizado']]
 const clampImage=(file:File,kind:'avatar'|'cover'):Promise<string>=>new Promise((resolve,reject)=>{
@@ -127,7 +127,17 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   const statusText=(p:Showcase)=>p.status==='custom'?p.status_custom:statusOptions.find(o=>o[0]===p.status)?.[1]||'Disponível'
   async function save(next:Showcase=profile){
     setSaving(true);setError('');setNotice('')
-    const payload={...next,featured_ids:next.featured_ids.slice(0,3),featured_badges:next.featured_badges.slice(0,4),journal:next.journal.slice(0,60)}
+    // Atualizar apenas os campos da vitrine. A Carta de Identidade é editada
+    // independentemente no Ateliê e não pode ser sobrescrita por um rascunho
+    // antigo desta tela ao salvar outros detalhes do perfil.
+    const payload={
+      user_id:next.user_id,avatar_image:next.avatar_image,cover_image:next.cover_image,
+      status:next.status,status_custom:next.status_custom,
+      avatar_position:next.avatar_position,cover_position:next.cover_position,
+      frame:next.frame,accent:next.accent,layout:next.layout,privacy:next.privacy,
+      featured_ids:next.featured_ids.slice(0,3),featured_badges:next.featured_badges.slice(0,4),
+      journal:next.journal.slice(0,60),
+    }
     const {error:failure}=await supabase.from('hax_profile_showcase').upsert(payload,{onConflict:'user_id'})
     setSaving(false)
     if(failure)setError(failure.message)
@@ -200,7 +210,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <div className="hpl-mini-heroes">{featured.length?featured.map(hero=><div key={hero.id} title={`${hero.name} · ${hero.campaign}`}><span>{hero.emoji||'⚔️'}</span><strong>{hero.name}</strong></div>):<p>Escolha até três personagens para esta vitrine.</p>}</div>
         <div className="hpl-aside-sub"><strong>Insígnias favoritas</strong><button type="button" onClick={()=>setActiveTab('badges')}>Escolher ↗</button></div>
         <div className="hpl-mini-badges">{featuredAwards.length?featuredAwards.map(award=><span key={award.id} title={award.title} aria-label={award.title}>{award.symbol}</span>):<p>Destaque suas conquistas favoritas.</p>}</div>
-        <div className="hpl-aside-foot"><span>PRIVACIDADE DA VITRINE</span><strong>{publiclyVisible} de 6 áreas visíveis</strong><button type="button" onClick={()=>setActiveTab('privacy')}>Gerenciar privacidade</button></div>
+        <div className="hpl-aside-foot"><span>PRIVACIDADE DA VITRINE</span><strong>{publiclyVisible} de 7 áreas visíveis</strong><button type="button" onClick={()=>setActiveTab('privacy')}>Gerenciar privacidade</button></div>
       </aside>
     </div>
 
@@ -224,7 +234,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <div className="hpl-summary-list">
           <div><span>Identidade visual</span><strong>{profile.frame==='gold'?'Moldura dourada':profile.frame==='arcane'?'Moldura arcana':profile.frame==='shadow'?'Moldura sombria':'Moldura clássica'}</strong></div>
           <div><span>Disposição</span><strong>{profile.layout==='gallery'?'Galeria':profile.layout==='compact'?'Compacta':'Clássica'}</strong></div>
-          <div><span>Informações públicas</span><strong>{publiclyVisible} de 6 áreas</strong></div>
+          <div><span>Informações públicas</span><strong>{publiclyVisible} de 7 áreas</strong></div>
         </div>
         <div className="hpl-overview-actions"><button type="button" className="hpl-primary" onClick={()=>setActiveTab('appearance')}>Ajustar minha identidade <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setActiveTab('privacy')}>Definir o que mostrar</button></div>
       </article>
@@ -273,7 +283,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     </div>}
 
     {activeTab==='privacy'&&<div className="hpl-section-layout"><section className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">AS PORTAS DA SUA HISTÓRIA</span><h3>Presença e status</h3><p>Deixe seus companheiros saberem se você está disponível para aventuras.</p></div><div className="hpl-fields"><label>Status<select value={profile.status} onChange={e=>setProfile(p=>({...p,status:e.target.value}))}>{statusOptions.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>{profile.status==='custom'&&<label>Mensagem de status<input maxLength={60} value={profile.status_custom} onChange={e=>setProfile(p=>({...p,status_custom:e.target.value}))} placeholder="Escreva sua mensagem…"/></label>}</div><div className="hpl-feature-highlight"><span className="hpl-feature-sigil">◉</span><div><small>PRÉVIA DO SEU STATUS</small><strong>{statusText(profile)||'Seu status personalizado'}</strong><span>O status só aparece para visitantes se você permitir.</span></div></div></section>
-      <section className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">CONTROLE DE VISIBILIDADE</span><h3>Quem pode ver o quê?</h3><p>Suas informações privadas e seus dados de conta não são exibidos na vitrine pública.</p></div><div className="hpl-privacy">{([['show_bio','Biografia','A sua apresentação pessoal'],['show_characters','Personagens','Protagonistas escolhidos'],['show_campaigns','Campanhas','Contagem de campanhas'],['show_badges','Insígnias','Conquistas em destaque'],['show_journal','Crônicas','Registros da sua jornada'],['show_status','Status','A sua disponibilidade']] as [PrivacyKey,string,string][]).map(([key,label,subtitle])=><label key={key} className="hpl-privacy-row"><span className="hpl-privacy-copy"><strong>{label}</strong><small>{subtitle}</small></span><input type="checkbox" checked={profile.privacy[key]} onChange={e=>setProfile(p=>({...p,privacy:{...p.privacy,[key]:e.target.checked}}))}/><span className="hpl-switch" aria-hidden="true"/></label>)}</div><div className="hpl-privacy-footer"><span aria-hidden="true">⌘</span><p>As permissões são aplicadas no Supabase; ocultar uma seção não é apenas um efeito visual.</p></div><div className="hpl-v132-privacy-preview"><div><strong>Conferir minha vitrine pública</strong><small>Veja como as pessoas enxergam seu perfil. Salve as alterações de privacidade antes de abrir a prévia.</small></div><button type="button" onClick={()=>setVisitorPerson({id:userId,display_name:displayName,username})}>◈ Ver como visitante</button></div></section></div>}
+      <section className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">CONTROLE DE VISIBILIDADE</span><h3>Quem pode ver o quê?</h3><p>Suas informações privadas e seus dados de conta não são exibidos na vitrine pública.</p></div><div className="hpl-privacy">{([['show_bio','Biografia','A sua apresentação pessoal'],['show_characters','Personagens','Protagonistas escolhidos'],['show_campaigns','Campanhas','Contagem de campanhas'],['show_badges','Insígnias','Conquistas em destaque'],['show_journal','Crônicas','Registros da sua jornada'],['show_status','Status','A sua disponibilidade'],['show_identity_card','Carta de Identidade','Exibir sua carta personalizada no perfil público']] as [PrivacyKey,string,string][]).map(([key,label,subtitle])=><label key={key} className="hpl-privacy-row"><span className="hpl-privacy-copy"><strong>{label}</strong><small>{subtitle}</small></span><input type="checkbox" checked={profile.privacy[key]} onChange={e=>setProfile(p=>({...p,privacy:{...p.privacy,[key]:e.target.checked}}))}/><span className="hpl-switch" aria-hidden="true"/></label>)}</div><div className="hpl-privacy-footer"><span aria-hidden="true">⌘</span><p>As permissões são aplicadas no Supabase; ocultar uma seção não é apenas um efeito visual.</p></div><div className="hpl-v132-privacy-preview"><div><strong>Conferir minha vitrine pública</strong><small>Veja como as pessoas enxergam seu perfil. Salve as alterações de privacidade antes de abrir a prévia.</small></div><button type="button" onClick={()=>setVisitorPerson({id:userId,display_name:displayName,username})}>◈ Ver como visitante</button></div></section></div>}
     </div>
     {hasChanges&&<div className="hpl-bottom-save"><span><strong>Alterações não salvas</strong><small>Salve para aplicar a personalização na sua conta.</small></span><div><button type="button" onClick={()=>setProfile(savedProfile)} disabled={saving}>Descartar</button><button type="button" className="hpl-primary" disabled={saving} onClick={()=>void save()}>{saving?'Salvando…':'Salvar alterações'}</button></div></div>}
     {visitorPerson && <PublicAdventurerProfile person={visitorPerson} isSelf={visitorPerson.id===userId} onClose={()=>setVisitorPerson(null)} campaigns={visitorPerson.id===userId?[]:campaigns.filter(c=>c.master).map(c=>({id:c.id,name:c.name}))}/>}
