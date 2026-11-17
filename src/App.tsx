@@ -12287,6 +12287,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <a href="#hb-profile-characters"><span aria-hidden="true">♙</span> Personagens</a>
                 <a href="#hb-profile-campaigns"><span aria-hidden="true">⚑</span> Campanhas</a>
                 <a href="#hb-profile-editor-region"><span aria-hidden="true">✎</span> Meu ateliê</a>
+                <a href="#hb-profile-legacy-plus"><span aria-hidden="true">✦</span> Identidade e legado</a>
                 <a href="#hb-social-hub"><span aria-hidden="true">♧</span> Amigos</a>
               </nav>
               <div id="hb-profile-journey" className="hb-profile-section-heading" aria-hidden="true">
@@ -12299,6 +12300,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <button type="button" onClick={() => setProfileEditing(true)}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Capas, títulos e identidade</small></span></button>
                 <button type="button" onClick={() => document.getElementById('hb-social-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
                 <button type="button" onClick={() => document.getElementById('hb-profile-characters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
+                <button type="button" onClick={() => document.getElementById('hb-profile-legacy-plus')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Insígnias, crônicas e vitrine social</small></span></button>
               </div>
               <div className="hb-profile-overview-grid" aria-label="Estatísticas do aventureiro">
                 <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">♙</span><span>Personagens atribuídos</span><strong>{accountAssignedCharacters.length}</strong><small>Heróis e histórias que você vive</small></article>
