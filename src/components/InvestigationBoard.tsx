@@ -88,7 +88,7 @@ type InvestigationCard = {
 }
 type InvestigationLink = { id: string; campaign_id: string; from_card_id: string; to_card_id: string; label: string; relation_type: Relation }
 type Draft = Pick<InvestigationCard,'title'|'description'|'category'|'visibility'|'status'|'season_id'|'image_url'|'image_caption'|'image_display_mode'|'image_size'|'image_attachments'|'priority'|'pinned'|'group_name'|'event_date'>
-const newDraft = (seasonId: string): Draft => ({ title: '', description: '', category: 'clue', visibility: 'public', status: 'open', season_id: seasonId || null, image_url: '', image_caption: '', image_display_mode: 'photo', image_size: 'medium', image_attachments: [], priority:'normal', pinned:false, group_name:'', event_date:null })
+const newDraft = (seasonId: string): Draft => ({ title: '', description: '', category: 'clue', visibility: 'public', status: 'open', season_id: seasonId || null, image_url: '', image_caption: '', image_display_mode: 'photo', image_size: 'small', image_attachments: [], priority:'normal', pinned:false, group_name:'', event_date:null })
 const catInfo: Record<Category,{emoji:string; label:string; accent:string}> = {
   clue:{emoji:'🔎',label:'Pista',accent:'#c98a65'},
   person:{emoji:'🧑',label:'Pessoa',accent:'#98a7c3'},
@@ -261,7 +261,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
   const selectedCard = useMemo(() => visibleCards.find(card => card.id === selectedId) ?? null, [visibleCards, selectedId])
 
   function addCard(){setEditorId(null);setDraft(newDraft(seasonId));setEditing(true);setMessage('')}
-  function editCard(card:InvestigationCard){setEditorId(card.id);setDraft({title:card.title,description:card.description,category:card.category,status:card.status,visibility:card.visibility,season_id:card.season_id,image_url:card.image_url || '',image_caption:card.image_caption || '',image_display_mode:card.image_display_mode || 'photo',image_size:card.image_size || 'medium',image_attachments:card.image_attachments || [],priority:card.priority || 'normal',pinned:card.pinned || false,group_name:card.group_name || '',event_date:card.event_date || null});setEditing(true)}
+  function editCard(card:InvestigationCard){setEditorId(card.id);setDraft({title:card.title,description:card.description,category:card.category,status:card.status,visibility:card.visibility,season_id:card.season_id,image_url:card.image_url || '',image_caption:card.image_caption || '',image_display_mode:card.image_display_mode || 'photo',image_size:card.image_size || 'small',image_attachments:card.image_attachments || [],priority:card.priority || 'normal',pinned:card.pinned || false,group_name:card.group_name || '',event_date:card.event_date || null});setEditing(true)}
 
   async function saveCard(event:FormEvent){
     event.preventDefault()
@@ -634,7 +634,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
               const coverCaption=card.image_url?card.image_caption:(card.image_attachments||[])[0]?.caption
               if (cardIsDocument(card) && cover) {
                 return <div key={card.id}
-                  className={`hb-investigation-free-image size-${card.image_size || 'medium'} ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`}
+                  className={`hb-investigation-free-image size-${card.image_size || 'small'} ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`}
                   style={{left:`${card.x}%`,top:`${card.y}%`}}>
                   <button type="button"
                     className="hb-investigation-free-image-button"
@@ -702,7 +702,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
             <div><dt>Área</dt><dd>{selectedCard.group_name||'Sem área definida'}</dd></div>
             <div><dt>Data da pista</dt><dd>{dateLabel(selectedCard.event_date)}</dd></div>
             <div><dt>Fixação</dt><dd>{selectedCard.pinned?'Fixada no quadro':'Posição livre'}</dd></div>
-            {cardIsDocument(selectedCard) && <div><dt>Tamanho da imagem</dt><dd>{freeImageSizeLabel[selectedCard.image_size || 'medium']}</dd></div>}
+            {cardIsDocument(selectedCard) && <div><dt>Tamanho da imagem</dt><dd>{freeImageSizeLabel[selectedCard.image_size || 'small']}</dd></div>}
             <div><dt>Visibilidade</dt><dd>{selectedCard.visibility==='master'?'Somente mestre':'Todos os participantes'}</dd></div>
             <div><dt>Temporada</dt><dd>{seasons.find(season=>season.id===selectedCard.season_id)?.name||'Sem temporada'}</dd></div>
                       </dl>
@@ -740,8 +740,8 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
       </label>
       {draft.image_display_mode === 'document' && <label className="hb-investigation-display-mode-label">Tamanho da imagem no quadro
         <select value={draft.image_size} onChange={event=>setDraft(current=>({...current,image_size:event.target.value as FreeImageSize}))}>
-          <option value="small">Pequena · 200 × 260 px</option>
-          <option value="medium">Média · 320 × 420 px (padrão)</option>
+          <option value="small">Pequena · 200 × 260 px (padrão)</option>
+          <option value="medium">Média · 320 × 420 px</option>
           <option value="large">Grande · 480 × 620 px</option>
         </select>
         <small>Essas medidas definem o espaço máximo da imagem antes do zoom do quadro. Nada é cortado ou deformado.</small>
