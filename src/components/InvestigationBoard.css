@@ -176,3 +176,45 @@
   outline:2px dashed var(--season-primary,#d6ae8e);
   outline-offset:6px;
 }
+
+/* V124 · Tamanhos consistentes para imagens soltas.
+   O contêiner é totalmente transparente; a imagem é o próprio elemento visível. */
+.hb-investigation-free-image.size-small { --hb-free-width: 200px; --hb-free-height: 260px; }
+.hb-investigation-free-image.size-medium { --hb-free-width: 320px; --hb-free-height: 420px; }
+.hb-investigation-free-image.size-large { --hb-free-width: 480px; --hb-free-height: 620px; }
+.hb-investigation-free-image {
+  width:var(--hb-free-width, 320px);
+  height:var(--hb-free-height, 420px);
+  min-width:0;
+  min-height:0;
+  max-width:none;
+  max-height:none;
+  background:transparent;
+  pointer-events:auto;
+}
+.hb-investigation-free-image .hb-investigation-free-image-button,
+.hb-investigation-free-image .hb-investigation-free-image-button:hover,
+.hb-investigation-free-image .hb-investigation-free-image-button:active {
+  width:100%;
+  height:100%;
+  max-width:none;
+  max-height:none;
+  display:grid;
+  place-items:center;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+.hb-investigation-free-image .hb-investigation-free-image-button img {
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:none;
+  max-height:none;
+  object-fit:contain;
+  object-position:center;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}

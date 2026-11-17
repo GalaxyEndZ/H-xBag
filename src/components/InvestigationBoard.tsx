@@ -9,6 +9,8 @@ type Priority = 'low' | 'normal' | 'high' | 'critical'
 type Relation = 'evidence' | 'suspect' | 'timeline' | 'contradiction' | 'other'
 type BoardView = 'board' | 'timeline'
 type ImageDisplayMode = 'photo' | 'document'
+type FreeImageSize = 'small' | 'medium' | 'large'
+const freeImageSizeLabel: Record<FreeImageSize, string> = { small: 'Pequena', medium: 'Média', large: 'Grande' }
 type Attachment = { id: string; url: string; caption: string }
 const MAX_ATTACHMENTS = 6
 const MAX_IMAGE_FILE_BYTES = 12_000_000
@@ -75,6 +77,7 @@ type InvestigationCard = {
   image_url: string | null
   image_caption: string
   image_display_mode: ImageDisplayMode
+  image_size: FreeImageSize
   image_attachments: Attachment[]
   priority: Priority
   pinned: boolean
@@ -84,8 +87,8 @@ type InvestigationCard = {
   updated_at: string
 }
 type InvestigationLink = { id: string; campaign_id: string; from_card_id: string; to_card_id: string; label: string; relation_type: Relation }
-type Draft = Pick<InvestigationCard,'title'|'description'|'category'|'visibility'|'status'|'season_id'|'image_url'|'image_caption'|'image_display_mode'|'image_attachments'|'priority'|'pinned'|'group_name'|'event_date'>
-const newDraft = (seasonId: string): Draft => ({ title: '', description: '', category: 'clue', visibility: 'public', status: 'open', season_id: seasonId || null, image_url: '', image_caption: '', image_display_mode: 'photo', image_attachments: [], priority:'normal', pinned:false, group_name:'', event_date:null })
+type Draft = Pick<InvestigationCard,'title'|'description'|'category'|'visibility'|'status'|'season_id'|'image_url'|'image_caption'|'image_display_mode'|'image_size'|'image_attachments'|'priority'|'pinned'|'group_name'|'event_date'>
+const newDraft = (seasonId: string): Draft => ({ title: '', description: '', category: 'clue', visibility: 'public', status: 'open', season_id: seasonId || null, image_url: '', image_caption: '', image_display_mode: 'photo', image_size: 'medium', image_attachments: [], priority:'normal', pinned:false, group_name:'', event_date:null })
 const catInfo: Record<Category,{emoji:string; label:string; accent:string}> = {
   clue:{emoji:'🔎',label:'Pista',accent:'#c98a65'},
   person:{emoji:'🧑',label:'Pessoa',accent:'#98a7c3'},
@@ -176,7 +179,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
 
   const refresh = useCallback(async () => {
     const [c,l] = await Promise.all([
-      supabase.from('hax_investigation_cards').select('id,campaign_id,season_id,title,description,category,visibility,status,x,y,image_url,image_caption,image_display_mode,image_attachments,priority,pinned,group_name,event_date,created_at,updated_at').eq('campaign_id',campaignId).order('created_at'),
+      supabase.from('hax_investigation_cards').select('id,campaign_id,season_id,title,description,category,visibility,status,x,y,image_url,image_caption,image_display_mode,image_size,image_attachments,priority,pinned,group_name,event_date,created_at,updated_at').eq('campaign_id',campaignId).order('created_at'),
       supabase.from('hax_investigation_links').select('id,campaign_id,from_card_id,to_card_id,label,relation_type').eq('campaign_id',campaignId),
     ])
     if (c.error || l.error) {
@@ -258,7 +261,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
   const selectedCard = useMemo(() => visibleCards.find(card => card.id === selectedId) ?? null, [visibleCards, selectedId])
 
   function addCard(){setEditorId(null);setDraft(newDraft(seasonId));setEditing(true);setMessage('')}
-  function editCard(card:InvestigationCard){setEditorId(card.id);setDraft({title:card.title,description:card.description,category:card.category,status:card.status,visibility:card.visibility,season_id:card.season_id,image_url:card.image_url || '',image_caption:card.image_caption || '',image_display_mode:card.image_display_mode || 'photo',image_attachments:card.image_attachments || [],priority:card.priority || 'normal',pinned:card.pinned || false,group_name:card.group_name || '',event_date:card.event_date || null});setEditing(true)}
+  function editCard(card:InvestigationCard){setEditorId(card.id);setDraft({title:card.title,description:card.description,category:card.category,status:card.status,visibility:card.visibility,season_id:card.season_id,image_url:card.image_url || '',image_caption:card.image_caption || '',image_display_mode:card.image_display_mode || 'photo',image_size:card.image_size || 'medium',image_attachments:card.image_attachments || [],priority:card.priority || 'normal',pinned:card.pinned || false,group_name:card.group_name || '',event_date:card.event_date || null});setEditing(true)}
 
   async function saveCard(event:FormEvent){
     event.preventDefault()
@@ -277,6 +280,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
       image_url:(draft.image_url || '').trim() || null,
       image_caption:draft.image_caption.trim(),
       image_display_mode:draft.image_display_mode,
+      image_size:draft.image_size,
       image_attachments:draft.image_attachments,
       priority:draft.priority,
       pinned:draft.pinned,
@@ -630,7 +634,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
               const coverCaption=card.image_url?card.image_caption:(card.image_attachments||[])[0]?.caption
               if (cardIsDocument(card) && cover) {
                 return <div key={card.id}
-                  className={`hb-investigation-free-image ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`}
+                  className={`hb-investigation-free-image size-${card.image_size || 'medium'} ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`}
                   style={{left:`${card.x}%`,top:`${card.y}%`}}>
                   <button type="button"
                     className="hb-investigation-free-image-button"
@@ -698,6 +702,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
             <div><dt>Área</dt><dd>{selectedCard.group_name||'Sem área definida'}</dd></div>
             <div><dt>Data da pista</dt><dd>{dateLabel(selectedCard.event_date)}</dd></div>
             <div><dt>Fixação</dt><dd>{selectedCard.pinned?'Fixada no quadro':'Posição livre'}</dd></div>
+            {cardIsDocument(selectedCard) && <div><dt>Tamanho da imagem</dt><dd>{freeImageSizeLabel[selectedCard.image_size || 'medium']}</dd></div>}
             <div><dt>Visibilidade</dt><dd>{selectedCard.visibility==='master'?'Somente mestre':'Todos os participantes'}</dd></div>
             <div><dt>Temporada</dt><dd>{seasons.find(season=>season.id===selectedCard.season_id)?.name||'Sem temporada'}</dd></div>
                       </dl>
@@ -731,8 +736,16 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
           <option value="photo">Fotografia · cartão compacto</option>
           <option value="document">Imagem solta · PNG direto no quadro, sem cartão</option>
         </select>
-        <small>Documento amplia o cartão e preserva a proporção da imagem, ideal para cartas, mapas, páginas, bilhetes e fotografias completas.</small>
+        <small>Imagem solta: o próprio PNG aparece no quadro, com transparência e proporção preservadas.</small>
       </label>
+      {draft.image_display_mode === 'document' && <label className="hb-investigation-display-mode-label">Tamanho da imagem no quadro
+        <select value={draft.image_size} onChange={event=>setDraft(current=>({...current,image_size:event.target.value as FreeImageSize}))}>
+          <option value="small">Pequena · 200 × 260 px</option>
+          <option value="medium">Média · 320 × 420 px (padrão)</option>
+          <option value="large">Grande · 480 × 620 px</option>
+        </select>
+        <small>Essas medidas definem o espaço máximo da imagem antes do zoom do quadro. Nada é cortado ou deformado.</small>
+      </label>}
       <div className="hb-investigation-upload-box"><label className="hb-investigation-file-picker">Carregar capa<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy} onChange={event=>void handleImageFile(event)}/></label><small>Fotos grandes são compactadas antes de salvar. No modo Imagem solta, a imagem aparece diretamente no quadro, sem bordas, título ou fundo de cartão.</small>{draft.image_url&&<div className={`hb-investigation-upload-preview ${draft.image_display_mode==='document'?'is-document':''}`}><img src={draft.image_url} alt={draft.image_caption||'Prévia da capa'}/><button type="button" onClick={()=>setDraft(current=>({...current,image_url:'',image_caption:''}))}>Remover capa</button></div>}</div>
       <div className="hb-investigation-section-title"><strong>Galeria de anexos ({draft.image_attachments.length}/{MAX_ATTACHMENTS})</strong><small>Imagens adicionais vinculadas à pista</small></div>
       <div className="hb-investigation-attachment-actions"><label className="hb-investigation-file-picker">Adicionar imagens<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy||draft.image_attachments.length>=MAX_ATTACHMENTS} onChange={event=>void handleAttachments(event)}/></label><button type="button" disabled={busy||draft.image_attachments.length>=MAX_ATTACHMENTS} onClick={addAttachmentUrl}>＋ Adicionar URL</button></div>
