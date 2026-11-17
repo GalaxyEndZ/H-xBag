@@ -30,6 +30,7 @@ import './themes/mobileEmojiPicker.css'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import ProfileLegacy from './components/ProfileLegacy'
+import './components/ProfileUnified.css'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -1584,6 +1585,13 @@ const resetCreatureFilters = () => {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
+  const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const switchProfileSection = (next:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
+    setProfileSection(next)
+    window.requestAnimationFrame(() => {
+      document.getElementById('hb-v129-profile-navigation')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'})
+    })
+  }
   const [profileCharacterQuery, setProfileCharacterQuery] = useState('')
   const [profileCampaignQuery, setProfileCampaignQuery] = useState('')
   const [profileCharacterCampaignFilter, setProfileCharacterCampaignFilter] = useState('all')
@@ -12236,7 +12244,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           {activePage === 'conditions' && isMaster && selectedCampaignId && (
             <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} />
           )}
-          {activePage === 'profile' && (
+          {activePage === 'profile' && <div className="hb-profile-unified hb-profile-v129" data-profile-section={profileSection}>
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16 hb-profile-page-v17" data-cover={accountCover} aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
                 <div className="hb-profile-identity-cover">
@@ -12249,8 +12257,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   </div>
                   <div className="hb-profile-cover-story">
                     <span className="hb-profile-cover-chapter"><span aria-hidden="true">✧</span> O SEU LEGADO <span className="hb-profile-cover-chapter-index">· ARQUIVO I</span></span>
-                    <p className="hb-profile-cover-title">Toda jornada tem<br /><em>uma história.</em></p>
-                    <p className="hb-profile-cover-subtitle">Seu nome. Suas histórias. Um universo inteiro por escrever.</p>
+                    <p className="hb-profile-cover-title">Seu mundo.<br /><em>Seu legado.</em></p>
+                    <p className="hb-profile-cover-subtitle">Um lugar para reunir suas jornadas, personagens e conexões.</p>
                     <span className="hb-profile-cover-crest" aria-hidden="true">{profileCoverOptions.find(option => option.id === accountCover)?.symbol || '✦'}</span>
                   </div>
                   <div className="hb-profile-identity-cover-bottomline" aria-hidden="true"><span>✧</span><i /><span>✧</span></div>
@@ -12275,21 +12283,36 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <span className="hb-profile-banner-pill">{accountCoverName}</span>
                     </div>
                   </div>
-                  <button type="button" className="hb-profile-identity-edit" onClick={() => setProfileEditing(value => !value)}
-                    aria-expanded={profileEditing} aria-controls="hb-profile-editor-region">
-                    <span aria-hidden="true">{profileEditing ? '←' : '✎'}</span> {profileEditing ? 'Voltar ao perfil' : 'Editar perfil'}
-                  </button>
+                  <div className="hb-v129-hero-actions">
+                    <button type="button" className="hb-profile-identity-edit" onClick={() => { switchProfileSection('studio'); setProfileEditing(true) }} aria-controls="hb-profile-editor-region">
+                      <span aria-hidden="true">✎</span> Editar perfil
+                    </button>
+                    <button type="button" className="hb-v129-hero-secondary" onClick={()=>switchProfileSection('legacy')}>✦ Minha vitrine</button>
+                  </div>
                 </div>
               </header>
 
-              <nav className="hb-profile-quick-nav" aria-label="Navegação do perfil">
-                <a href="#hb-profile-journey"><span aria-hidden="true">◈</span> Visão geral</a>
-                <a href="#hb-profile-characters"><span aria-hidden="true">♙</span> Personagens</a>
-                <a href="#hb-profile-campaigns"><span aria-hidden="true">⚑</span> Campanhas</a>
-                <a href="#hb-profile-editor-region"><span aria-hidden="true">✎</span> Meu ateliê</a>
-                <a href="#hb-profile-legacy-plus"><span aria-hidden="true">✦</span> Identidade e legado</a>
-                <a href="#hb-social-hub"><span aria-hidden="true">♧</span> Amigos</a>
-              </nav>
+              <div className="hb-v129-navigation" id="hb-v129-profile-navigation" aria-label="Navegação principal do perfil">
+                <div className="hb-v129-nav-heading"><span>SEU ESPAÇO</span><strong>Explorar o perfil</strong><small>Uma área para cada parte da sua história.</small></div>
+                <nav className="hb-v129-tabs" role="tablist" aria-label="Seções do perfil">
+                  {([
+                    ['overview','◈','Visão geral'],
+                    ['journey','⚔','Minha jornada'],
+                    ['studio','✎','Meu ateliê'],
+                    ['legacy','✦','Identidade e legado'],
+                    ['friends','♧','Amigos'],
+                    ['account','⌘','Conta'],
+                  ] as const).map(([id,icon,label])=><button key={id} type="button" role="tab" id={`hb-v129-tab-${id}`} aria-controls={id==='studio'||id==='account'?'hb-v129-panel-editor':`hb-v129-panel-${id}`} aria-selected={profileSection===id} className={profileSection===id?'is-active':''} onClick={()=>switchProfileSection(id)}><span aria-hidden="true">{icon}</span>{label}{id==='studio' && profileEditing && profileHasChanges && <span className="hb-v129-unsaved-dot" title="Alterações não salvas" aria-label="Alterações não salvas">●</span>}</button>)}
+                </nav>
+              </div>
+              <div className="hb-v129-section-caption">
+                <div><span>✦ HÄXBAG · {profileSection==='overview'?'VISÃO GERAL':profileSection==='journey'?'JORNADA':profileSection==='studio'?'ATELIÊ':profileSection==='legacy'?'IDENTIDADE E LEGADO':profileSection==='friends'?'COMUNIDADE':'CONTA'}</span>
+                  <h2>{({overview:'Sua história em um só lugar',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua companhia de aventureiros',account:'Informações da conta'} as const)[profileSection]}</h2>
+                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, capas e símbolos pessoais.',legacy:'Configure seu visual, protagonistas, conquistas, crônicas e privacidade.',friends:'Encontre jogadores, acompanhe solicitações e convide amigos.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
+                </div>
+                {profileSection!=='studio'&&<button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Personalizar</button>}
+              </div>
+              <div className="hb-v129-section" id="hb-v129-panel-overview" role="tabpanel" aria-labelledby="hb-v129-tab-overview" hidden={profileSection!=='overview'}>
               <div id="hb-profile-journey" className="hb-profile-section-heading" aria-hidden="true">
                 <span className="hb-profile-section-emblem">✧</span>
                 <span>O LEGADO DO AVENTUREIRO</span>
@@ -12297,10 +12320,10 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <span className="hb-profile-section-end">NOSSOS REGISTROS</span>
               </div>
               <div className="hb-profile-action-strip" aria-label="Ações do perfil">
-                <button type="button" onClick={() => setProfileEditing(true)}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Capas, títulos e identidade</small></span></button>
-                <button type="button" onClick={() => document.getElementById('hb-social-hub')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
-                <button type="button" onClick={() => document.getElementById('hb-profile-characters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
-                <button type="button" onClick={() => document.getElementById('hb-profile-legacy-plus')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Insígnias, crônicas e vitrine social</small></span></button>
+                <button type="button" onClick={() => {switchProfileSection('studio');setProfileEditing(true)}}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Capas, títulos e identidade</small></span></button>
+                <button type="button" onClick={() => switchProfileSection('friends')}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
+                <button type="button" onClick={() => switchProfileSection('journey')}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
+                <button type="button" onClick={() => switchProfileSection('legacy')}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Insígnias, crônicas e vitrine social</small></span></button>
               </div>
               <div className="hb-profile-overview-grid" aria-label="Estatísticas do aventureiro">
                 <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">♙</span><span>Personagens atribuídos</span><strong>{accountAssignedCharacters.length}</strong><small>Heróis e histórias que você vive</small></article>
@@ -12308,7 +12331,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">♜</span><span>Como mestre</span><strong>{accountMasterCampaigns.length}</strong><small>Campanhas sob sua direção</small></article>
                 <article className="hb-profile-info-tile"><span className="hb-profile-tile-icon" aria-hidden="true">✧</span><span>Desde</span><strong>{accountCreatedAt}</strong><small>Seu primeiro registro no HäxBag</small></article>
               </div>
+              <div className="hb-v129-overview-feature">
+                <article className="hb-v129-overview-story"><div><span className="hb-kicker">✧ SUA APRESENTAÇÃO</span><h3>Quem você é neste universo</h3><p>{accountBio.trim()||'Conte aos outros aventureiros quem você é e quais histórias gostaria de viver.'}</p></div><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>Editar apresentação ↗</button></article>
+                <article className="hb-v129-overview-next"><span className="hb-kicker">PRÓXIMOS PASSOS</span><h3>Continue sua jornada</h3><button type="button" onClick={()=>switchProfileSection('journey')}>⚔ Ver personagens e campanhas <span>↗</span></button><button type="button" onClick={()=>switchProfileSection('legacy')}>✦ Ajustar insígnias e crônicas <span>↗</span></button><button type="button" onClick={()=>switchProfileSection('friends')}>♧ Encontrar minha companhia <span>↗</span></button></article>
+              </div>
+              </div>
 
+              <div className="hb-v129-section" id="hb-v129-panel-journey" role="tabpanel" aria-labelledby="hb-v129-tab-journey" hidden={profileSection!=='journey'}>
               <section className="hb-profile-collections hb-profile-collections-v2" aria-label="Minha jornada nas campanhas">
                 {(() => {
                   const assigned = accountAssignedCharacters
@@ -12335,7 +12364,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         </div>
                         <div className="hb-profile-featured-aside">
                           <span>REGISTRO DE PERSONAGEM</span><strong>✧</strong>
-                          <button type="button" onClick={() => document.getElementById('hb-profile-characters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Ver meus personagens ↗</button>
+                          <button type="button" onClick={() => document.getElementById('hb-profile-characters')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Ver meus personagens ↓</button>
                         </div>
                       </> : <>
                         <div className="hb-profile-featured-art" aria-hidden="true">✧</div>
@@ -12392,9 +12421,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   </>
                 })()}
               </section>
+              </div>
 
+              <div className="hb-v129-section" id="hb-v129-panel-editor" role="tabpanel" aria-labelledby={profileSection==='account'?'hb-v129-tab-account':'hb-v129-tab-studio'} hidden={profileSection!=='studio' && profileSection!=='account'}>
               <div className="hb-profile-layout" id="hb-profile-editor-region">
-                {profileEditing ? (
+                {profileSection==='account' ? <article className="hb-profile-card hb-v129-account-guide"><span className="hb-kicker">⌘ ACESSO PESSOAL</span><h2>Seu registro de conta</h2><p>Suas informações de acesso ficam restritas a você. Nome de exibição e nome de usuário são configurados no ateliê, enquanto a visibilidade do seu conteúdo público é controlada em Identidade e Legado.</p><div className="hb-v129-account-guide-actions"><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar minha identidade</button><button type="button" onClick={()=>switchProfileSection('legacy')}>◇ Configurar privacidade</button></div><div className="hb-v129-privacy-note"><span aria-hidden="true">♙</span><div><strong>E-mail privado</strong><small>Seu endereço de e-mail não é exibido nos perfis públicos.</small></div></div></article> : profileEditing ? (
                 <form className="hb-profile-card hb-profile-edit-card" onSubmit={async event => {
                   event.preventDefault()
                   if (profileSaving || !profileHasChanges) return
@@ -12527,13 +12558,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <div><span>ASSINADO POR</span><strong>{displayName}</strong></div>
                       <span className="hb-profile-story-seal" aria-label={`Estilo ${activeVisualStyle.label}`}>{activeVisualStyle.symbol}</span>
                     </div>
-                    <button type="button" className="hb-profile-story-action" onClick={() => setProfileEditing(true)}>
+                    <button type="button" className="hb-profile-story-action" onClick={() => {switchProfileSection('studio');setProfileEditing(true)}}>
                       <span aria-hidden="true">✎</span> {accountBio.trim() ? 'Editar minha história' : 'Escrever minha história'} <span aria-hidden="true">↗</span>
                     </button>
                   </article>
                 )}
 
                 <aside className="hb-profile-side-panel">
+                  {profileSection==='studio' && <>
                   <section className="hb-profile-side-card hb-profile-preview-panel" aria-label="Prévia do perfil">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">✧</span><div><span className="hb-kicker">{profileEditing ? 'EM TEMPO REAL' : 'SUA INSÍGNIA'}</span><h2>{profileEditing ? 'Prévia do perfil' : 'Cartão do aventureiro'}</h2></div></div>
                     <div className="hb-profile-preview-card" data-cover={profileEditing ? profileCoverDraft : accountCover}>
@@ -12562,8 +12594,10 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <li className={accountBio.trim() ? 'done' : ''}>{accountBio.trim() ? '✓' : '○'} Sua apresentação</li>
                       <li className={storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId) ? 'done' : ''}>{storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId) ? '✓' : '○'} Protagonista escolhido</li>
                     </ul>
-                    {profileCompletion < 100 && <button type="button" className="hb-profile-legacy-action" onClick={() => !accountUsername || !accountAvatar || !accountBio.trim() ? setProfileEditing(true) : document.getElementById('hb-profile-characters')?.scrollIntoView({behavior:'smooth',block:'start'})}>Completar minha identidade <span aria-hidden="true">↗</span></button>}
+                    {profileCompletion < 100 && <button type="button" className="hb-profile-legacy-action" onClick={() => !accountUsername || !accountAvatar || !accountBio.trim() ? (switchProfileSection('studio'),setProfileEditing(true)) : switchProfileSection('journey')}>Completar minha identidade <span aria-hidden="true">↗</span></button>}
                   </section>
+                  </>}
+                  {profileSection==='account' && <>
                   <section className="hb-profile-side-card">
                     <div className="hb-profile-side-heading"><span aria-hidden="true">⌘</span><div><span className="hb-kicker">DADOS DA CONTA</span><h2>Informações</h2></div></div>
                     <div className="hb-profile-account-line"><span>E-mail</span><strong title={session.user.email || ''}>{session.user.email || 'Indisponível'}</strong><small>Privado · não exibido para outros jogadores</small></div>
@@ -12583,11 +12617,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       </button>
                     </div>
                   </section>
+                  </>}
                 </aside>
               </div>
+              </div>
             </section>
-          )}
-          {activePage === 'profile' && session && <ProfileLegacy
+          <div className="hb-v129-section hb-v129-legacy" id="hb-v129-panel-legacy" role="tabpanel" aria-labelledby="hb-v129-tab-legacy" hidden={profileSection!=='legacy'}>
+          {session && <ProfileLegacy
             userId={session.user.id}
             activeCampaignId={selectedCampaignId}
             onImagesLoaded={(avatar,cover,avatarPosition,coverPosition)=>setProfilePhotoUrls(previous=>previous.avatar===avatar && previous.cover===cover && previous.avatarPosition===avatarPosition && previous.coverPosition===coverPosition?previous:{avatar,cover,avatarPosition,coverPosition})}
@@ -12596,7 +12632,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             characters={accountAssignedCharacters.map(character=>({id:character.id,name:character.name,emoji:character.emoji||'⚔️',archetype:character.archetype||'',campaign:campaigns.find(c=>c.id===character.campaign_id)?.name||'Campanha'}))}
             campaigns={campaigns.map(c=>({id:c.id,name:c.name,master:c.role==='master'||c.created_by===session.user.id}))}
           />}
-          {activePage === 'profile' && <div id="hb-social-hub"><FriendsPanel campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></div>}
+          </div>
+          <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
+            <div id="hb-social-hub"><FriendsPanel campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></div>
+          </div>
+          </div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
     <header className="hb-hero hb-overview-hero">
