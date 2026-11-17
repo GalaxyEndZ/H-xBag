@@ -33,7 +33,7 @@ import KitEditor from './components/KitEditor'
 import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
-import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, consumeComplexBonus, type ComplexPreparation } from './complexActionRules'
+import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
 import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
 
 /** Marcador decorativo usado apenas nas prévias sem retrato do Bestiário. */
@@ -8233,7 +8233,7 @@ const attribute =
   const baseBonus =
     kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
     (kind === 'Ataque especial' || kind === 'Tiro' || kind === 'Disparo') ? ability :
-    kind === 'Bloqueio' ? vigor + resistance :
+    kind === 'Bloqueio' ? resistance + vigor :
     armorDexterity
   const preparationBonus = forEnemy ? 0 : primaryKeys.reduce((sum,key) => sum + pendingComplexBonus(complexPreparations,key),0)
   const bonus = baseBonus + preparationBonus
@@ -8251,7 +8251,7 @@ const attribute =
   const conditionAttributeKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
   const conditionCombatKey = (kind.startsWith('Ataque') || kind === 'Tiro' || kind === 'Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
   const attributeBase = kind === 'Ataque bruto' ? strength : kind === 'Ataque ágil' || kind === 'Esquiva' || kind === 'Disparo' ? agility : kind === 'Ataque especial' ? breathing : kind === 'Tiro' ? intellect : defense
-  const conditionBonus = applyConditionModifier(attributeBase, conditionModifiers, 'status', conditionAttributeKey) - attributeBase
+  const conditionBonus = kind === 'Bloqueio' ? 0 : applyConditionModifier(attributeBase, conditionModifiers, 'status', conditionAttributeKey) - attributeBase
   const combatConditionBonus = applyConditionModifier(baseBonus, conditionModifiers, 'combat_points', conditionCombatKey) - baseBonus
   const total = highest + bonus + conditionBonus + combatConditionBonus
 
@@ -8275,7 +8275,7 @@ const attribute =
     setBlockIncomingDamage('')
     setBlockDamageReduction(reduction)
     setCombatActionResult(
-      `Bloqueio: ${diceDescription} + Vigor + Respiração (${bonus}) = ${total}. ${outcome}`
+      `Bloqueio: ${diceDescription} + Constituição (${bonus}) = ${total}. ${outcome}`
     )
   } else if (kind === 'Esquiva') {
     const target =
@@ -8312,8 +8312,8 @@ const attribute =
     )
   }
 
-  if (!forEnemy && preparationBonus > 0) {
-    setComplexPreparations(previous => primaryKeys.reduce((all,key) => consumeComplexBonus(all,key), previous))
+  if (!forEnemy && complexPreparations.some(item => !item.consumed)) {
+    setComplexPreparations(previous => advanceComplexAction(previous))
   }
   return total
 }
@@ -9708,7 +9708,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 const best = Math.max(...rolls)
                                 const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'vigor')
                                 const total = best + vigor + preparationBonus
-                                if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'vigor'))
+                                if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
                                 const success = total >= dt
                                 const recovery = Math.floor(value / (success ? 4 : 8))
                                 const applied = Math.min(recovery, Math.max(0, value - current))
@@ -9739,7 +9739,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             ['dexterity','Destreza',dexterity], ['resistance','Resistência',resistance], ['ability','Habilidade',ability],
                           ] as const).map(([key,label,value]) => {
                             const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,key)
-                            return <div key={key} className={key==='dexterity'?'sheet-dexterity-with-armor':''} title={preparationBonus ? `Bônus de Ação Complexa pendente: +${preparationBonus} (próximo teste)` : undefined}>
+                            return <div key={key} className={key==='dexterity'?'sheet-dexterity-with-armor':''} title={preparationBonus ? `Bônus de Ação Complexa ativo: +${preparationBonus} (até três ações)` : undefined}>
                               <span>{label}{preparationBonus > 0 && <small style={{display:'block',fontSize:10,color:'var(--season-primary)',fontWeight:700}}>Preparo +{preparationBonus}</small>}</span>
                               <strong>{key==='dexterity' && equippedArmor ? <><small className="armor-dexterity-value">{armorDexterity}</small>{value + preparationBonus}</> : value + preparationBonus}</strong>
                             </div>
@@ -9878,6 +9878,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   setCombatActionResult(selected
                                     ? `Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus})${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}${equippedBonus ? ` + Kits (+${equippedBonus})` : ''} = ${total}.`
                                     : `Teste sem perícia — ${testAttribute.label} (${testAttribute.value}): ${diceDescription}${conditionTotal ? ` + Condições do atributo (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''} = ${total}.`)
+                                  if (!forEnemy && complexPreparations.some(preparation=>!preparation.consumed)) setComplexPreparations(previous=>advanceComplexAction(previous))
                                 }}>🎲 Rolar teste</button>
                               </div>
                               <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Perícia: {selected ? `+${effectiveConditionSkill(selected.bonus, conditionModifiers, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key, selected.name) + equippedKitSkillBonuses(items,selectedCharacterId,selected.key).reduce((sum,kit)=>sum+kit.bonus,0)}` : withoutSkill ? 'nenhuma (somente atributo)' : 'selecione uma perícia'}</small>
@@ -9895,8 +9896,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 : (!forEnemy && isConditionGrantedSkill(conditionModifiers, target, key, skill.name))
                                   ? [{key, label: `${skill.name} · ${group} (condição)`, name: skill.name, bonus: 0}] : []
                             }))
-                            const extraGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais']
-                            const extraSkills = skills.filter(skill => extraGroups.includes(skill.key.split(':')[0]))
+                            const generalGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais']
+                            const extraSkills = skills.filter(skill => !generalGroups.includes(skill.key.split(':')[0]))
                             const chosen = extraSkills.find(skill => skill.key === complexSkill)
                             const targetSkill = COMPLEX_MAIN_SKILLS.find(skill => skill.key === complexMainSkill)
                             const result = complexResult.trim() ? Number(complexResult) : Number.NaN
@@ -9905,7 +9906,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             const remainingPreparations = Math.max(0, MAX_COMPLEX_ACTIONS_PER_SCENE - complexSceneCount)
                             const actionError = complexPreparationError(complexPreparations,chosen?.key || '',targetSkill?.key || '',result)
                             const canPrepare = !actionError
-                            const actionHint = actionError || 'Pronto para preparar: a perícia extra e a beneficiada só podem participar uma vez por cena.'
+                            const actionHint = actionError || 'Pronto para preparar: a perícia de arquétipo e a beneficiada só podem participar uma vez por cena.'
                             const thresholds = [{label:'15–19',bonus:1},{label:'20–24',bonus:2},{label:'25–29',bonus:3},{label:'30–34',bonus:4},{label:'35+',bonus:5}]
                             return <div id="haxbag-complex-actions" className="combat-skill-test hax-complex-panel">
                               <style>{`
@@ -9943,7 +9944,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 @media(max-width:680px){.hax-complex-overview{grid-template-columns:repeat(3,minmax(0,1fr))}.hax-complex-stat{padding:9px}.hax-complex-stat strong{font-size:1rem}.hax-complex-fields{grid-template-columns:1fr}.hax-complex-panel{padding:14px;gap:12px}.hax-complex-scale{gap:5px}.hax-complex-tier{padding:10px 3px;min-height:58px}.hax-complex-tier strong{font-size:1.05rem}.hax-complex-buttons button{flex:1 1 145px}}
                               `}</style>
                               <div className="hax-complex-head">
-                                <div><strong>🧠 Ações Complexas</strong><small>Use uma perícia extra para preparar um bônus em uma das seis perícias principais. Cada origem e cada destino só podem ser escolhidos uma vez por cena.</small></div>
+                                <div><strong>🧠 Ações Complexas</strong><small>Use uma perícia de arquétipo para preparar um bônus em uma das seis perícias principais. Cada origem e cada destino só podem ser escolhidos uma vez por cena.</small></div>
                                 <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/{MAX_COMPLEX_ACTIONS_PER_SCENE} nesta cena</span>
                               </div>
                               <div className="hax-complex-overview">
@@ -9954,16 +9955,16 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={MAX_COMPLEX_ACTIONS_PER_SCENE}><span style={{width:`${complexSceneCount / MAX_COMPLEX_ACTIONS_PER_SCENE * 100}%`}} /></div>
                               <div className="hax-complex-fields">
                                 <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Respiração</option></select></label>
-                                <label><span>2 · 📚 Perícia extra utilizada</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia extra...</option>{extraSkills.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key)}>{skill.label} (+{skill.bonus}){complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key) ? ' · Já usada nesta cena' : ''}</option>)}</select></label>
+                                <label><span>2 · 📚 Perícia de arquétipo utilizada</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia de arquétipo...</option>{extraSkills.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key)}>{skill.label} (+{skill.bonus}){complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key) ? ' · Já usada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={targetSkill?.key || ''} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione uma das seis perícias...</option>{COMPLEX_MAIN_SKILLS.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.targetSkillKey === skill.key)}>{skill.label}{complexPreparations.some(preparation => preparation.targetSkillKey === skill.key) ? ' · Já beneficiada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
-                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=effectiveConditionSkill(chosen.bonus,conditionModifiers,'extra_skill',chosen.key,chosen.name);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia Extra ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
+                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
                               </div>
                               <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {targetSkill?.label || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
                               <div className="hax-complex-status">
-                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>O bônus aparece entre as seis perícias principais e vale apenas para o próximo teste que utilizar a perícia escolhida.</small></div>
-                                {complexPreparations.filter(preparation => !preparation.consumed).map(preparation => <span key={preparation.targetSkillKey} className="hax-complex-pill">🎯 +{preparation.bonus} · {preparation.targetSkillLabel} (pendente)</span>)}
+                                <div className="hax-complex-status-text"><strong>{validResult ? `✨ Bônus calculado: +${complexBonus}` : '✨ Bônus do preparo'}</strong><small>O bônus aparece entre as seis perícias principais e fica ativo durante as próximas 3 ações após o preparo; somente a perícia escolhida como destino recebe o bônus.</small></div>
+                                {complexPreparations.filter(preparation => !preparation.consumed).map(preparation => <span key={preparation.targetSkillKey} className="hax-complex-pill">🎯 +{preparation.bonus} · {preparation.targetSkillLabel} ({preparation.actionsRemaining ?? 3} ações)</span>)}
                               </div>
                               <div className={`hax-complex-guide${canPrepare ? ' ready' : ''}`} role="status">{canPrepare ? '✓' : 'ℹ️'} {actionHint}</div>
                               <div className="hax-complex-buttons">
@@ -9972,17 +9973,18 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const preparation: ComplexPreparation = {
                                     sourceSkillKey: chosen.key, sourceSkillLabel: chosen.label,
                                     targetSkillKey: targetSkill.key, targetSkillLabel: targetSkill.label,
-                                    bonus: complexBonus, consumed: false,
+                                    bonus: complexBonus, consumed: false, actionsRemaining: 3,
                                   }
-                                  setComplexPreparations(previous => complexPreparationError(previous,chosen.key,targetSkill.key,result) ? previous : [...previous,preparation])
+                                  setComplexPreparations(previous => complexPreparationError(previous,chosen.key,targetSkill.key,result) ? previous : [...advanceComplexAction(previous),preparation])
                                   setComplexSkill('');setComplexMainSkill('');setComplexResult('')
                                   setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para ${targetSkill.label} (perícia principal). Uma ação de preparo utilizada.`)
                                 }}>🎯 Preparar ação</button>
+                                <button type="button" className="secondary-button" disabled={!complexPreparations.some(preparation=>!preparation.consumed)} onClick={()=>{setComplexPreparations(previous=>advanceComplexAction(previous));setCombatActionResult('Uma ação registrada. A duração dos bônus ativos foi reduzida em 1 ação.')}}>⏳ Registrar ação sem rolagem</button>
                                 <button type="button" className="secondary-button" onClick={() => {setComplexPreparations([]);setComplexSkill('');setComplexMainSkill('');setComplexResult('')}}>↺ Nova cena</button>
                               </div>
-                              {complexPreparations.length > 0 && <div className="hax-complex-history"><strong>Preparações desta cena</strong><ul>{complexPreparations.map(preparation => <li key={preparation.sourceSkillKey}><span>{preparation.sourceSkillLabel} → {preparation.targetSkillLabel}</span><strong>+{preparation.bonus}</strong><small>{preparation.consumed ? 'Usado' : 'Pendente'}</small></li>)}</ul></div>}
-                              {extraSkills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia extra disponível</strong><small>Treine ou receba uma Perícia Geral (extra) na ficha para habilitar o preparo.</small></div></div>}
-                              <small className="hax-complex-note hax-complex-footer">💡 Até três preparações por cena. Cada perícia extra pode preparar uma ação uma única vez; cada perícia beneficiada pode receber no máximo um bônus. O bônus é consumido ao rolar o teste dessa perícia. Apenas “Nova cena” libera os usos.</small>
+                              {complexPreparations.length > 0 && <div className="hax-complex-history"><strong>Preparações desta cena</strong><ul>{complexPreparations.map(preparation => <li key={preparation.sourceSkillKey}><span>{preparation.sourceSkillLabel} → {preparation.targetSkillLabel}</span><strong>+{preparation.bonus}</strong><small>{preparation.consumed ? 'Expirado' : `${preparation.actionsRemaining ?? 3} ação(ões) restante(s)`}</small></li>)}</ul></div>}
+                              {extraSkills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia de arquétipo disponível</strong><small>Treine ou receba uma perícia de arquétipo na ficha para habilitar o preparo.</small></div></div>}
+                              <small className="hax-complex-note hax-complex-footer">💡 Até três preparações por cena. Cada perícia de arquétipo pode preparar uma ação uma única vez; cada perícia beneficiada pode receber no máximo um bônus. O bônus permanece durante as próximas 3 ações e expira após a terceira. Apenas “Nova cena” libera os usos.</small>
                             </div>
                           })()}
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
@@ -10047,7 +10049,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const highest = Math.max(...rolls)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'dexterity')
                                   const total = highest + armorDexterity + preparationBonus
-                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'dexterity'))
+                                  if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
@@ -10069,7 +10071,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const roll = rollSheetAttributeDice(diceCount)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'vigor')
                                   const total = roll.result + vigor + preparationBonus
-                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'vigor'))
+                                  if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
@@ -10090,7 +10092,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const roll = rollSheetAttributeDice(diceCount)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'resistance')
                                   const total = roll.result + resistance + preparationBonus
-                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'resistance'))
+                                  if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
@@ -10111,7 +10113,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const roll = rollSheetAttributeDice(diceCount)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'mental')
                                   const total = roll.result + mental + preparationBonus
-                                  if (preparationBonus) setComplexPreparations(previous => consumeComplexBonus(previous,'mental'))
+                                  if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
@@ -10129,7 +10131,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           <div className="combat-reactions-section" id={forEnemy ? 'inimigo-reacoes' : 'ficha-reacoes'}>
                             <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
-                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Vigor + Respiração</small></button>
+                            <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Constituição</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
   {(() => {
     const diceCount = 1 + Math.floor(agility) - (renderOverloaded ? 1 : 0)
@@ -10242,7 +10244,7 @@ const dt = counterAttackDT
                           <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza de armadura. Habilidades podem conceder D20 adicionais.</span></p>
 <p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
 <p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
-<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>1 + Defesa d20 + Constituição. Falha: nega ¼ do dano; sucesso (resultado maior que DT): nega ½ do dano; crítico: dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza de armadura. Se alcançar a DT, nega 100% do dano.</span></p><p>
+<p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>(Defesa + 1)d20 + Constituição. Falha: nega ¼ do dano; sucesso (resultado maior que DT): nega ½ do dano; crítico: dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza de armadura. Se alcançar a DT, nega 100% do dano.</span></p><p>
   <strong>Contra-ataque</strong>
   <span>
     O resultado do inimigo precisa ser menor que sua DT de Contra-ataque
