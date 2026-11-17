@@ -1225,7 +1225,7 @@ function App() {
   const [enemyStatusFilter, setEnemyStatusFilter] = useState<'all' | 'configured' | 'unconfigured' | 'party' | 'critical'>('all')
   const [enemyViewMode, setEnemyViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null)
-  const enemyConditionModifiers = useEnemyConditionModifiers(selectedCampaignId, selectedEnemyId)
+  const enemyConditionModifiers = useEnemyConditionModifiers(selectedCampaignId, selectedEnemyId ?? '')
   const [enemySheetView, setEnemySheetView] = useState(false)
   const [showEnemyForm, setShowEnemyForm] = useState(false)
   const [editingEnemyId, setEditingEnemyId] = useState<string | null>(null)
