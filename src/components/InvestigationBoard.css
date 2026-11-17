@@ -115,3 +115,64 @@
 .hb-investigation-upload-preview.is-document img{object-fit:contain;background:rgba(255,255,255,.07)}
 .hb-investigation-display-mode-label{display:grid;gap:7px;color:var(--season-muted,#bbb);font-size:13px}
 .hb-investigation-display-mode-label small{color:var(--season-muted,#aaa);line-height:1.55;font-size:11px}
+
+/* V123 · Imagem solta: a imagem é o elemento completo, sem cartão ou moldura. */
+.hb-investigation-free-image {
+  position:absolute;
+  z-index:3;
+  width:max-content;
+  height:max-content;
+  max-width:680px;
+  max-height:760px;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:0;
+  margin:0;
+  box-shadow:none;
+  transform:none;
+}
+.hb-investigation-free-image.is-selected { z-index:5; }
+.hb-investigation-free-image-button,
+.hb-investigation-free-image-button:hover,
+.hb-investigation-free-image-button:active {
+  display:block;
+  width:max-content;
+  max-width:680px;
+  max-height:760px;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:0!important;
+  margin:0!important;
+  box-shadow:none!important;
+  outline:0;
+  line-height:0;
+  cursor:grab;
+  touch-action:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.hb-investigation-free-image-button img {
+  display:block;
+  width:auto;
+  height:auto;
+  max-width:680px;
+  max-height:760px;
+  object-fit:contain;
+  object-position:top left;
+  background:none;
+  border:none;
+  border-radius:0;
+  padding:0;
+  box-shadow:none;
+  pointer-events:none;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.hb-investigation-free-image-button:active { cursor:grabbing; }
+.hb-investigation-free-image.is-pinned .hb-investigation-free-image-button { cursor:pointer; }
+.hb-investigation-free-image-button:focus-visible {
+  outline:2px dashed var(--season-primary,#d6ae8e);
+  outline-offset:6px;
+}

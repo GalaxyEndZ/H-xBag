@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { supabase } from '../supabase'
 import './InvestigationBoard.css'
 
@@ -36,6 +36,7 @@ async function imageFileToDataUrl(file:File, asDocument=false): Promise<string> 
     reader.onerror = () => reject(new Error('Falha ao ler imagem.'))
     reader.readAsDataURL(file)
   })
+  if (file.type === 'image/png' && raw.length <= MAX_IMAGE_DATA_CHARS) return raw
   if (file.type === 'image/gif') {
     if (raw.length > MAX_IMAGE_DATA_CHARS) throw new Error('GIF muito grande. Envie um GIF menor ou uma imagem estática.')
     return raw
@@ -97,11 +98,6 @@ const CANVAS_W = 3600
 const CANVAS_H = 2400
 const clamp = (n:number, lower:number, upper:number) => Math.max(lower, Math.min(upper, n))
 const cardIsDocument = (card:InvestigationCard) => card.image_display_mode === 'document' && Boolean(card.image_url || card.image_attachments?.length)
-const cardCenter = (card:InvestigationCard) => ({
-  x: Number(card.x)/100*CANVAS_W + (cardIsDocument(card) ? 172 : 124),
-  y: Number(card.y)/100*CANVAS_H + (cardIsDocument(card) ? 216 : 106),
-})
-
 export default function InvestigationBoard({ campaignId, seasonId, seasons, isMaster, userId }:{
   campaignId:string; seasonId:string; seasons:{id:string;name:string}[]; isMaster:boolean; userId:string
 }) {
@@ -134,11 +130,49 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
   const [relationType,setRelationType] = useState<Relation>('evidence')
   const [connecting,setConnecting] = useState(false)
   const [selectedId,setSelectedId] = useState<string | null>(null)
+  const [assetSizes,setAssetSizes] = useState<Record<string,{width:number;height:number}>>({})
   const [previewImage,setPreviewImage] = useState<{src:string; title:string; caption:string} | null>(null)
   const editingRef = useRef(false)
   const dragRef = useRef<{id:string;clientX:number;clientY:number;x:number;y:number;nextX:number;nextY:number}|null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const panRef = useRef<{pointerId:number;clientX:number;clientY:number;scrollLeft:number;scrollTop:number}|null>(null)
+
+  // Listener não-passivo: a rodinha ajusta o zoom sem rolar a página ao mesmo tempo.
+  useEffect(() => {
+    const viewport = scrollRef.current
+    if (!viewport || view !== 'board') return
+    function handleWheel(event: WheelEvent) {
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
+      event.preventDefault()
+      const current = scrollRef.current
+      if (!current) return
+      const rect = current.getBoundingClientRect()
+      const offsetX = event.clientX - rect.left
+      const offsetY = event.clientY - rect.top
+      const boardX = (current.scrollLeft + offsetX) / zoom
+      const boardY = (current.scrollTop + offsetY) / zoom
+      const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * current.clientHeight : event.deltaY
+      const next = clamp(Math.round((zoom + (delta < 0 ? .08 : -.08)) * 100) / 100, .3, 1.5)
+      if (next === zoom) return
+      setZoom(next)
+      window.requestAnimationFrame(() => {
+        const scroller = scrollRef.current
+        if (!scroller) return
+        scroller.scrollLeft = boardX * next - offsetX
+        scroller.scrollTop = boardY * next - offsetY
+      })
+    }
+    viewport.addEventListener('wheel', handleWheel, { passive:false })
+    return () => viewport.removeEventListener('wheel', handleWheel)
+  }, [view,zoom])
+
+  function cardCenter(card:InvestigationCard) {
+    const imageSize = cardIsDocument(card) ? assetSizes[card.id] : null
+    return {
+      x: Number(card.x)/100*CANVAS_W + (imageSize ? imageSize.width/2 : cardIsDocument(card) ? 220 : 124),
+      y: Number(card.y)/100*CANVAS_H + (imageSize ? imageSize.height/2 : cardIsDocument(card) ? 240 : 106),
+    }
+  }
 
   const refresh = useCallback(async () => {
     const [c,l] = await Promise.all([
@@ -327,28 +361,6 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
   }
 
-  function handleBoardWheel(e:ReactWheelEvent<HTMLDivElement>) {
-    const viewport = scrollRef.current
-    if (!viewport) return
-    if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return
-    e.preventDefault()
-    const rect = viewport.getBoundingClientRect()
-    const pointerX = e.clientX - rect.left + viewport.scrollLeft
-    const pointerY = e.clientY - rect.top + viewport.scrollTop
-    const boardX = pointerX / zoom
-    const boardY = pointerY / zoom
-    const step = e.deltaY < 0 ? 0.08 : -0.08
-    const next = clamp(Math.round((zoom + step) * 100) / 100, 0.3, 1.5)
-    if (next === zoom) return
-    setZoom(next)
-    window.requestAnimationFrame(() => {
-      const current = scrollRef.current
-      if (!current) return
-      current.scrollLeft = boardX * next - (e.clientX - rect.left)
-      current.scrollTop = boardY * next - (e.clientY - rect.top)
-    })
-  }
-
   // Conserva o centro visível durante as mudanças de zoom.
   function setBoardZoom(requested:number) {
     const next=clamp(Math.round(requested*100)/100,0.3,1.5)
@@ -405,8 +417,12 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
   }
   function moveDrag(e:ReactPointerEvent<HTMLButtonElement>){
     const drag=dragRef.current;if(!drag)return
-    const x=clamp(drag.x+(e.clientX-drag.clientX)/(CANVAS_W*zoom)*100,0,85)
-    const y=clamp(drag.y+(e.clientY-drag.clientY)/(CANVAS_H*zoom)*100,0,80)
+    const card = cards.find(entry=>entry.id===drag.id)
+    const imageSize=card && cardIsDocument(card) ? assetSizes[card.id] : null
+    const maxX=imageSize ? Math.max(0, (CANVAS_W-imageSize.width)/CANVAS_W*100) : 85
+    const maxY=imageSize ? Math.max(0, (CANVAS_H-imageSize.height)/CANVAS_H*100) : 80
+    const x=clamp(drag.x+(e.clientX-drag.clientX)/(CANVAS_W*zoom)*100,0,maxX)
+    const y=clamp(drag.y+(e.clientY-drag.clientY)/(CANVAS_H*zoom)*100,0,maxY)
     drag.nextX=x;drag.nextY=y
     setCards(previous=>previous.map(card=>card.id===drag.id?{...card,x,y}:card))
   }
@@ -576,7 +592,6 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
     <div className={`hb-investigation-board-layout ${!showInspector && view==='board' ? 'hb-investigation-board-wide' : ''}`}>
       {view==='board' ? <div ref={scrollRef} className={`hb-investigation-scroll ${isPanning?'is-panning':''}`}
         aria-label="Quadro de investigação: arraste o fundo com mouse ou dedo para navegar. Use a rodinha do mouse para ajustar o zoom. Selecione alfinetes para mover pistas."
-        onWheel={handleBoardWheel}
         onPointerDown={startPan} onPointerMove={movePan} onPointerUp={stopPan} onPointerCancel={stopPan} onLostPointerCapture={()=>{panRef.current=null;setIsPanning(false)}} tabIndex={0}>
         <div className="hb-investigation-stage" style={{width:CANVAS_W*zoom,height:CANVAS_H*zoom}}>
           <div className="hb-investigation-canvas" style={{width:CANVAS_W,height:CANVAS_H,transform:`scale(${zoom})`}}>
@@ -613,11 +628,38 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
               const meta=catInfo[card.category]||catInfo.clue
               const cover=card.image_url||(card.image_attachments||[])[0]?.url
               const coverCaption=card.image_url?card.image_caption:(card.image_attachments||[])[0]?.caption
-              return <article key={card.id} className={`hb-investigation-note ${card.image_display_mode==='document' && cover ? 'is-document' : ''} category-${card.category} status-${card.status} priority-${card.priority||'normal'} ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`} style={{left:`${card.x}%`,top:`${card.y}%`,['--hb-note-accent' as string]:meta.accent}} onClick={()=>setSelectedId(card.id)}>
+              if (cardIsDocument(card) && cover) {
+                return <div key={card.id}
+                  className={`hb-investigation-free-image ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`}
+                  style={{left:`${card.x}%`,top:`${card.y}%`}}>
+                  <button type="button"
+                    className="hb-investigation-free-image-button"
+                    aria-label={`Imagem solta: ${card.title}. ${isMaster&&!card.pinned?'Arraste para mover.':'Selecione para ver os detalhes.'}`}
+                    title={isMaster&&!card.pinned?`Arraste para mover: ${card.title}`:`Selecionar: ${card.title}`}
+                    onClick={()=>setSelectedId(card.id)}
+                    onDoubleClick={()=>setPreviewImage({src:cover,title:card.title,caption:coverCaption||''})}
+                    onPointerDown={event=>startDrag(event,card)}
+                    onPointerMove={moveDrag}
+                    onPointerUp={event=>void stopDrag(event)}
+                    onPointerCancel={event=>void stopDrag(event)}>
+                    <img src={cover} alt={coverCaption||card.title} draggable={false} loading="lazy"
+                      onLoad={event=>{
+                        const width=event.currentTarget.offsetWidth
+                        const height=event.currentTarget.offsetHeight
+                        setAssetSizes(previous=>{
+                          const saved=previous[card.id]
+                          if(saved?.width===width && saved?.height===height)return previous
+                          return {...previous,[card.id]:{width,height}}
+                        })
+                      }}/>
+                  </button>
+                </div>
+              }
+              return <article key={card.id} className={`hb-investigation-note category-${card.category} status-${card.status} priority-${card.priority||'normal'} ${selectedId===card.id?'is-selected':''} ${card.pinned?'is-pinned':''}`} style={{left:`${card.x}%`,top:`${card.y}%`,['--hb-note-accent' as string]:meta.accent}} onClick={()=>setSelectedId(card.id)}>
                 <button type="button" className="hb-investigation-pin" disabled={!isMaster||busy||card.pinned} title={card.pinned?'Desafixe para mover':isMaster?'Arraste para mover a pista':'Pista'} onPointerDown={event=>startDrag(event,card)} onPointerMove={moveDrag} onPointerUp={event=>void stopDrag(event)} onPointerCancel={event=>void stopDrag(event)} aria-label={`Mover ${card.title}`}>{card.pinned?'📍':'📌'}</button>
                 <div className="hb-investigation-note-head"><span>{meta.emoji} {meta.label}</span><span>{card.visibility==='master'?'🔒 Mestre':'◎ Visível'}</span></div>
-                <div className="hb-investigation-note-labels"><span className={`hb-investigation-priority priority-${card.priority||'normal'}`}>{priorityInfo[card.priority||'normal']?.label}</span>{card.pinned&&<span>📍 Fixada</span>}{cardIsDocument(card)&&<span>▤ Imagem inteira</span>}{card.image_attachments?.length>0&&<span>▧ {card.image_attachments.length+(card.image_url?1:0)}</span>}</div>
-                {cover && <button type="button" className={`hb-investigation-thumb ${card.image_display_mode==='document'?'is-document':''}`} onClick={event=>{event.stopPropagation();setPreviewImage({src:cover,title:card.title,caption:coverCaption||''})}} aria-label={`Abrir imagem de ${card.title}`}><img src={cover} alt={coverCaption||`Imagem da pista ${card.title}`} loading="lazy"/></button>}
+                <div className="hb-investigation-note-labels"><span className={`hb-investigation-priority priority-${card.priority||'normal'}`}>{priorityInfo[card.priority||'normal']?.label}</span>{card.pinned&&<span>📍 Fixada</span>}{card.image_attachments?.length>0&&<span>▧ {card.image_attachments.length+(card.image_url?1:0)}</span>}</div>
+                {cover && <button type="button" className="hb-investigation-thumb" onClick={event=>{event.stopPropagation();setPreviewImage({src:cover,title:card.title,caption:coverCaption||''})}} aria-label={`Abrir imagem de ${card.title}`}><img src={cover} alt={coverCaption||`Imagem da pista ${card.title}`} loading="lazy"/></button>}
                 <h3>{card.title}</h3><p>{card.description||'Sem descrição.'}</p>
                 {card.group_name && <small className="hb-investigation-note-group">◇ {card.group_name}</small>}
                 <div className="hb-investigation-note-footer"><small>{statusLabel[card.status]||'Em análise'}</small>{isMaster&&<div><button type="button" onClick={event=>{event.stopPropagation();void setPin(card)}} aria-label={`${card.pinned?'Desafixar':'Fixar'} ${card.title}`}>{card.pinned?'🔒':'◉'}</button><button type="button" onClick={event=>{event.stopPropagation();editCard(card)}} aria-label={`Editar ${card.title}`}>✎</button><button type="button" onClick={event=>{event.stopPropagation();startConnect(card.id)}} aria-label={`Conectar ${card.title}`}>↗</button><button type="button" onClick={event=>{event.stopPropagation();void deleteCard(card)}} aria-label={`Excluir ${card.title}`}>×</button></div>}</div>
@@ -687,11 +729,11 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
       <label className="hb-investigation-display-mode-label">Como mostrar a imagem no quadro?
         <select value={draft.image_display_mode} onChange={event=>setDraft(current=>({...current,image_display_mode:event.target.value as ImageDisplayMode}))}>
           <option value="photo">Fotografia · cartão compacto</option>
-          <option value="document">Imagem inteira · a própria imagem como folha/cartão</option>
+          <option value="document">Imagem solta · PNG direto no quadro, sem cartão</option>
         </select>
         <small>Documento amplia o cartão e preserva a proporção da imagem, ideal para cartas, mapas, páginas, bilhetes e fotografias completas.</small>
       </label>
-      <div className="hb-investigation-upload-box"><label className="hb-investigation-file-picker">Carregar capa<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy} onChange={event=>void handleImageFile(event)}/></label><small>Fotos grandes são compactadas antes de salvar. No modo imagem inteira, a imagem aparece completa, sem cortes.</small>{draft.image_url&&<div className={`hb-investigation-upload-preview ${draft.image_display_mode==='document'?'is-document':''}`}><img src={draft.image_url} alt={draft.image_caption||'Prévia da capa'}/><button type="button" onClick={()=>setDraft(current=>({...current,image_url:'',image_caption:''}))}>Remover capa</button></div>}</div>
+      <div className="hb-investigation-upload-box"><label className="hb-investigation-file-picker">Carregar capa<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy} onChange={event=>void handleImageFile(event)}/></label><small>Fotos grandes são compactadas antes de salvar. No modo Imagem solta, a imagem aparece diretamente no quadro, sem bordas, título ou fundo de cartão.</small>{draft.image_url&&<div className={`hb-investigation-upload-preview ${draft.image_display_mode==='document'?'is-document':''}`}><img src={draft.image_url} alt={draft.image_caption||'Prévia da capa'}/><button type="button" onClick={()=>setDraft(current=>({...current,image_url:'',image_caption:''}))}>Remover capa</button></div>}</div>
       <div className="hb-investigation-section-title"><strong>Galeria de anexos ({draft.image_attachments.length}/{MAX_ATTACHMENTS})</strong><small>Imagens adicionais vinculadas à pista</small></div>
       <div className="hb-investigation-attachment-actions"><label className="hb-investigation-file-picker">Adicionar imagens<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" disabled={busy||draft.image_attachments.length>=MAX_ATTACHMENTS} onChange={event=>void handleAttachments(event)}/></label><button type="button" disabled={busy||draft.image_attachments.length>=MAX_ATTACHMENTS} onClick={addAttachmentUrl}>＋ Adicionar URL</button></div>
       <div className="hb-investigation-attachment-list">{draft.image_attachments.map((item,index)=><div className="hb-investigation-attachment-item" key={item.id||index}>{item.url&&safeImageUrl(item.url)?<img src={item.url} alt={item.caption||`Anexo ${index+1}`}/>:<div className="hb-investigation-attachment-placeholder">Imagem {index+1}</div>}<div><label>Endereço da imagem<input value={item.url} onChange={event=>setDraft(current=>({...current,image_attachments:current.image_attachments.map(attachment=>attachment.id===item.id?{...attachment,url:event.target.value}:attachment)}))} placeholder="https://..."/></label><label>Legenda<input maxLength={140} value={item.caption} onChange={event=>setDraft(current=>({...current,image_attachments:current.image_attachments.map(attachment=>attachment.id===item.id?{...attachment,caption:event.target.value}:attachment)}))}/></label></div><button type="button" aria-label={`Remover anexo ${index+1}`} onClick={()=>setDraft(current=>({...current,image_attachments:current.image_attachments.filter(attachment=>attachment.id!==item.id)}))}>Remover</button></div>)}</div>
