@@ -257,3 +257,7 @@
 @media(max-width:570px){.hb-cc-history-limit{flex:1 1 100%}}
 .hb-cc-combat-condition-summary{margin:10px 0;padding:10px 14px;border-radius:11px;border:1px solid var(--season-line,rgba(255,255,255,.14));background:color-mix(in srgb,var(--season-primary,#d8a77d) 10%,transparent);font-size:13px}
 .hb-cc-combat-condition-summary strong{color:var(--season-primary,#dfb08e)}
+
+/* V126 — Leitura compatível com o histórico da V110, sem desfazer ações. */
+.hb-cc-history-legacy{font-size:11px;line-height:1.55;border-radius:9px;padding:10px 12px;margin:8px 0;color:var(--season-text,#e4dfd8);background:rgba(177,145,81,.11);border:1px solid rgba(188,157,94,.33);overflow-wrap:anywhere}
+.hb-cc-history-legacy code{font-size:10px;white-space:normal}

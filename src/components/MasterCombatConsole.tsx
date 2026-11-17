@@ -157,6 +157,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
   const [message, setMessage] = useState('')
   const [history, setHistory] = useState<CombatEvent[]>([])
   const [historyError, setHistoryError] = useState('')
+  const [legacyHistory, setLegacyHistory] = useState(false)
   const [historyBusy, setHistoryBusy] = useState(false)
   const [historyFilter, setHistoryFilter] = useState<'all' | 'selected'>('all')
   const [historyResourceFilter, setHistoryResourceFilter] = useState<'all' | Resource>('all')
@@ -445,17 +446,56 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
   }, [participants, targetFilter, targetSearch, targetSort, onlyWounded, activeTurnKey])
 
   const refresh = useCallback(async () => {
-    if (!campaignId || !seasonId) { setHistory([]); return }
+    if (!campaignId || !seasonId) {
+      setHistory([])
+      setHistoryError('')
+      setLegacyHistory(false)
+      return
+    }
     setHistoryBusy(true)
     try {
       const { data, error: loadError } = await supabase.from('hax_combat_events')
         .select('id,target_id,target_name,target_kind,resource,delta,previous_value,new_value,note,created_at,applied_at,action_id,reversed_at,reverses_event_id')
         .eq('campaign_id', campaignId).eq('season_id', seasonId)
         .order('applied_at', { ascending: false }).limit(historyLimit)
-      if (loadError) setHistoryError('Não foi possível carregar o registro. Confira se as migrações V110 e V113 foram aplicadas.')
-      else { setHistory((data ?? []) as CombatEvent[]); setHistoryError('') }
-    } catch {
-      setHistoryError('Falha de conexão ao consultar o registro de combate.')
+      if (!loadError) {
+        setHistory((data ?? []) as CombatEvent[])
+        setLegacyHistory(false)
+        setHistoryError('')
+        return
+      }
+
+      // Somente campos adicionados na V113 ausentes permitem o modo de leitura V110.
+      // Nunca oferecer desfazer sem o histórico auditável completo da V113.
+      const missingAuditColumn = ['42703', 'PGRST204', 'PGRST200'].includes(loadError.code ?? '') &&
+        /applied_at|action_id|reversed_at|reverses_event_id/i.test(`${loadError.message} ${loadError.details ?? ''}`)
+      if (missingAuditColumn) {
+        const { data: oldData, error: oldError } = await supabase.from('hax_combat_events')
+          .select('id,target_id,target_name,target_kind,resource,delta,previous_value,new_value,note,created_at')
+          .eq('campaign_id', campaignId).eq('season_id', seasonId)
+          .order('created_at', { ascending: false }).limit(historyLimit)
+        if (!oldError) {
+          setHistory((oldData ?? []) as CombatEvent[])
+          setLegacyHistory(true)
+          setUndoEventId(null)
+          setHistoryError('')
+          return
+        }
+        setHistoryError(`Falha no histórico de combate (${oldError.code ?? 'sem código'}): ${oldError.message}. Verifique a instalação da V110 e as permissões da campanha.`)
+      } else {
+        const hint = ['42P01', 'PGRST205'].includes(loadError.code ?? '')
+          ? ' A tabela hax_combat_events não foi encontrada: confira a migração V110.'
+          : loadError.code === '42501'
+            ? ' Verifique a permissão de mestre e a política RLS da tabela.'
+            : ' Confira a estrutura e as permissões de hax_combat_events no Supabase.'
+        setHistoryError(`Falha no histórico de combate (${loadError.code ?? 'sem código'}): ${loadError.message}.${hint}`)
+      }
+      setHistory([])
+      setLegacyHistory(false)
+    } catch (caught) {
+      setHistory([])
+      setLegacyHistory(false)
+      setHistoryError(`Falha de conexão ao consultar o histórico: ${caught instanceof Error ? caught.message : 'erro desconhecido'}.`)
     } finally {
       setHistoryBusy(false)
     }
@@ -518,7 +558,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
   }
 
   async function reverseEvent(event: CombatEvent) {
-    if (busy || undoBusy || event.reversed_at || event.reverses_event_id) return
+    if (legacyHistory || busy || undoBusy || event.reversed_at || event.reverses_event_id) return
     setUndoBusy(true)
     setError('')
     try {
@@ -773,11 +813,12 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
         <div className="hb-cc-history-tools"><label className="hb-cc-history-limit">Registros <select aria-label="Quantidade máxima de registros" value={historyLimit} onChange={event => setHistoryLimit(Number(event.target.value))}><option value={60}>60</option><option value={120}>120</option><option value={200}>200</option></select></label><input type="search" aria-label="Buscar no histórico" placeholder="Buscar alvo ou motivo..." value={historySearch} onChange={event=>setHistorySearch(event.target.value)}/><button type="button" disabled={!filteredHistory.length} onClick={exportRecentHistory}>↓ Exportar CSV</button></div>
         <div className="hb-cc-history-filters"><label>Alvos<select value={historyFilter} onChange={event => setHistoryFilter(event.target.value as typeof historyFilter)}><option value="all">Todos</option><option value="selected" disabled={!selectedParticipant}>Alvo selecionado</option></select></label><label>Recurso<select value={historyResourceFilter} onChange={event => setHistoryResourceFilter(event.target.value as typeof historyResourceFilter)}><option value="all">Todos</option>{resourceKeys.map(key => <option key={key} value={key}>{key.toUpperCase()}</option>)}</select></label></div>
         {historyError && <p role="alert" className="hb-cc-history-error">{historyError}</p>}
+        {legacyHistory && <p role="status" className="hb-cc-history-legacy">Histórico básico (V110): registros disponíveis para consulta e exportação. Os campos de auditoria da V113 estão ausentes, então a função Desfazer fica desativada. Execute <code>haxbag_combate_avancado_v113.sql</code> para habilitá-la.</p>}
         <div className="hb-cc-history-list" aria-label="Histórico recente do combate">
           {filteredHistory.length ? filteredHistory.map(event => {
             const applied = event.new_value - event.previous_value
             const latestForResource = history.find(item => item.target_kind === event.target_kind && item.target_id === event.target_id && item.resource === event.resource)
-            const isUndoable = applied !== 0 && latestForResource?.id === event.id && !event.reversed_at && !event.reverses_event_id && !busy && !undoBusy
+            const isUndoable = !legacyHistory && applied !== 0 && latestForResource?.id === event.id && !event.reversed_at && !event.reverses_event_id && !busy && !undoBusy
             return <div className="hb-cc-history-item" key={event.id}>
               <span className={`hb-cc-history-sign ${applied < 0 ? 'is-negative' : applied > 0 ? 'is-positive' : ''}`}>{applied < 0 ? '−' : applied > 0 ? '+' : '='}</span>
               <span className="hb-cc-history-text"><strong>{event.target_name} <em>{event.target_kind === 'enemy' ? 'Inimigo' : 'Personagem'}</em></strong>

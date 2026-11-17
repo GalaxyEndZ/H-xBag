@@ -29,6 +29,7 @@ import './themes/mobileSession.css'
 import './themes/mobileEmojiPicker.css'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
+import ProfileLegacy from './components/ProfileLegacy'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -1576,6 +1577,7 @@ const resetCreatureFilters = () => {
   const [profileNameDraft, setProfileNameDraft] = useState('')
   const [profileUsernameDraft, setProfileUsernameDraft] = useState('')
   const [profileAvatarDraft, setProfileAvatarDraft] = useState('')
+  const [profilePhotoUrls, setProfilePhotoUrls] = useState({avatar:'',cover:'',avatarPosition:50,coverPosition:50})
   const [profileBioDraft, setProfileBioDraft] = useState('')
   const [profileCoverDraft, setProfileCoverDraft] = useState('eclipse')
   const [profileTitleDraft, setProfileTitleDraft] = useState('traveler')
@@ -12238,6 +12240,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16 hb-profile-page-v17" data-cover={accountCover} aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
                 <div className="hb-profile-identity-cover">
+                  {profilePhotoUrls.cover && <img className="hpl-header-cover-image" src={profilePhotoUrls.cover} alt="Capa personalizada do perfil" style={{objectPosition:`center ${profilePhotoUrls.coverPosition}%`}}/>}
                   <span className="hb-profile-identity-cover-art" aria-hidden="true" />
                   <span className="hb-profile-identity-cover-vignette" aria-hidden="true" />
                   <div className="hb-profile-identity-cover-topline">
@@ -12255,7 +12258,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <div className="hb-profile-identity-main">
                   <div className="hb-profile-identity-avatar-wrap">
                     <span className="hb-profile-identity-avatar" aria-label="Avatar do perfil">
-                      {accountAvatar || String(displayName).charAt(0).toUpperCase()}
+                      {profilePhotoUrls.avatar ? <img className="hpl-header-avatar-image" src={profilePhotoUrls.avatar} alt="Avatar personalizado" style={{objectPosition:`center ${profilePhotoUrls.avatarPosition}%`}}/> : (accountAvatar || String(displayName).charAt(0).toUpperCase())}
                     </span>
                     <span className="hb-profile-identity-avatar-spark" aria-hidden="true">{activeVisualStyle.symbol}</span>
                   </div>
@@ -12582,6 +12585,15 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
             </section>
           )}
+          {activePage === 'profile' && session && <ProfileLegacy
+            userId={session.user.id}
+            activeCampaignId={selectedCampaignId}
+            onImagesLoaded={(avatar,cover,avatarPosition,coverPosition)=>setProfilePhotoUrls(previous=>previous.avatar===avatar && previous.cover===cover && previous.avatarPosition===avatarPosition && previous.coverPosition===coverPosition?previous:{avatar,cover,avatarPosition,coverPosition})}
+            displayName={String(displayName)}
+            username={accountUsername}
+            characters={accountAssignedCharacters.map(character=>({id:character.id,name:character.name,emoji:character.emoji||'⚔️',archetype:character.archetype||'',campaign:campaigns.find(c=>c.id===character.campaign_id)?.name||'Campanha'}))}
+            campaigns={campaigns.map(c=>({id:c.id,name:c.name,master:c.role==='master'||c.created_by===session.user.id}))}
+          />}
           {activePage === 'profile' && <div id="hb-social-hub"><FriendsPanel campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
