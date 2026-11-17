@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { calculateSheetDefenses, type SheetCombatEquipment, type SheetDamageType } from '../combatDefenses'
+import { applyConditionModifier, calculateConditionModifiers, type ConditionModifiers } from '../conditionEngine'
 import { calculateQuickDamage, type QuickReaction, type QuickResource, previewResource } from '../combatQuickActions'
 import './MasterCombatConsole.css'
 
@@ -44,7 +45,7 @@ type StoredQuickAction = {
   penetrationMode: PenetrationMode; penetrationFlat: string; penetrationPercent: string
   note: string; direction: Direction
 }
-type ActiveCondition = { id: string; character_id: string; emoji: string; name: string; severity: string; duration_label?: string | null }
+type ActiveCondition = { id: string; character_id: string; definition_id: string; emoji: string; name: string; severity: string; duration_label?: string | null }
 type PreviewRow = {
   participant: Participant; key: string; old: number | null; max: number | undefined
   damage: ReturnType<typeof calculateQuickDamage>; damageNext: number | null
@@ -62,14 +63,21 @@ const getEquipment = (p: Participant, byCharacter: Record<string, SheetCombatEqu
     kitSkillBonus: Number(item.kitSkillBonus ?? 0),
   }))
 }
-const getDefenses = (p: Participant, equipment: SheetCombatEquipment[]) => {
+const getDefenses = (p: Participant, equipment: SheetCombatEquipment[], modifiers: ConditionModifiers = {}) => {
   const kitBonus = (skill: string) => p.kind !== 'character' ? 0 : equipment.filter(item =>
     ['equip_simple', 'equip_standard', 'equip_rare'].includes(String(item.kitType)) &&
     (item.kitSkills ?? []).includes(skill) && Number.isSafeInteger(item.kitSkillBonus) && (item.kitSkillBonus ?? 0) > 0,
   ).reduce((sum, item) => sum + (item.kitSkillBonus ?? 0), 0)
-  return calculateSheetDefenses(equipment, { ...p.defenseStats,
+  const base = calculateSheetDefenses(equipment, { ...p.defenseStats,
     resistance: p.defenseStats.resistance + kitBonus('RESISTÊNCIA'),
     mental: p.defenseStats.mental + kitBonus('MENTAL') })
+  return {
+    ...base,
+    armorResistance: Math.max(0, applyConditionModifier(base.armorResistance, modifiers, 'combat_stats', 'armor_resistance')),
+    physicalProtection: Math.max(0, applyConditionModifier(base.physicalProtection, modifiers, 'combat_stats', 'physical_protection')),
+    sanityProtection: Math.max(0, applyConditionModifier(base.sanityProtection, modifiers, 'combat_stats', 'sanity_protection')),
+    counterAttackDT: Math.max(0, applyConditionModifier(base.counterAttackDT, modifiers, 'combat_stats', 'counterattack_dt')),
+  }
 }
 const emptyDamage = (resource: QuickResource) => calculateQuickDamage({
   incoming: 0, resource, damageType: 'cortante_perfurante', reaction: 'none',
@@ -123,6 +131,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
   const [presetDirection, setPresetDirection] = useState<Direction>(-1)
   const [quickActions, setQuickActions] = useState<StoredQuickAction[]>([])
   const [conditionsByTarget, setConditionsByTarget] = useState<Record<string, ActiveCondition[]>>({})
+  const [conditionModifiersByTarget, setConditionModifiersByTarget] = useState<Record<string, ConditionModifiers>>({})
   const [conditionError, setConditionError] = useState('')
   const [undoEventId, setUndoEventId] = useState<string | null>(null)
   const [undoBusy, setUndoBusy] = useState(false)
@@ -167,6 +176,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
     setQuickName('')
     setPresetDirection(-1)
     setConditionsByTarget({})
+    setConditionModifiersByTarget({})
     setUndoEventId(null)
     setFollowTurn(true)
     setTargetSearch('')
@@ -251,8 +261,11 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
   const selectedEquipment = useMemo(() => selectedParticipant
     ? getEquipment(selectedParticipant, equipmentByCharacter) : [], [selectedParticipant, equipmentByCharacter])
   const selectedDefenses = useMemo(() => selectedParticipant && selectedEquipmentReady
-    ? getDefenses(selectedParticipant, selectedEquipment) : null,
-    [selectedParticipant, selectedEquipment, selectedEquipmentReady])
+    ? getDefenses(selectedParticipant, selectedEquipment, conditionModifiersByTarget[targetKey(selectedParticipant)] || {}) : null,
+    [selectedParticipant, selectedEquipment, selectedEquipmentReady, conditionModifiersByTarget])
+  const selectedCritical = selectedParticipant ? Math.max(1,Math.min(20,applyConditionModifier(
+    Math.max(1,Math.min(20,Math.floor(Number(selectedParticipant.sheetData?.combat?.critical)||20))),
+    conditionModifiersByTarget[targetKey(selectedParticipant)] || {}, 'combat_stats','critical'))) : 20
   const rawMitigation = Number(mitigation)
   const mitigationValid = mitigation.trim() !== '' && Number.isInteger(rawMitigation) && rawMitigation >= 0 && rawMitigation <= 100000
   const mitigationValue = mitigationValid ? rawMitigation : 0
@@ -294,7 +307,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
     const max = participant.maxResources[resource]
     const ready = !autoDefenseEnabled || participant.kind === 'enemy' || equipmentStatus === 'ready'
     const defenses = autoDefenseEnabled && ready
-      ? getDefenses(participant, getEquipment(participant, equipmentByCharacter)) : null
+      ? getDefenses(participant, getEquipment(participant, equipmentByCharacter), conditionModifiersByTarget[targetKey(participant)] || {}) : null
     const individualReaction = multiMode ? (reactionOverrides[targetKey(participant)] ?? reaction) : reaction
     const damage = ready && amountValid && (resource === 'pr' || mitigationValid) && penValid
       ? calculateQuickDamage({ incoming: amountValue, resource, damageType, reaction: individualReaction,
@@ -312,7 +325,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
       recoveryEffect: old !== null && recoverNext !== null ? recoverNext - old : 0, blocked }
   }), [chosenTargets, resource, autoDefenseEnabled, equipmentStatus, equipmentByCharacter, amountValid,
     mitigationValid, penValid, amountValue, damageType, reaction, reactionOverrides, multiMode, mitigationValue,
-    effectivePenFlat, effectivePenPercent, specialBruteProtectionOnly])
+    effectivePenFlat, effectivePenPercent, specialBruteProtectionOnly, conditionModifiersByTarget])
   const groupBlocked = previewRows.filter(row => row.blocked)
   const groupDamageRows = previewRows.filter(row => row.damageEffect > 0 && !row.blocked)
   const groupRecoveryRows = previewRows.filter(row => row.recoveryEffect > 0 && !row.blocked)
@@ -370,11 +383,12 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
   const refreshConditions = useCallback(async () => {
     if (!campaignId) return
     try {
-      const [character, enemy] = await Promise.all([
+      const [character, enemy, definitions] = await Promise.all([
         supabase.rpc('hax_list_active_conditions', { p_campaign_id: campaignId, p_character_id: null }),
         supabase.rpc('hax_list_enemy_conditions', { p_campaign_id: campaignId, p_enemy_id: null }),
+        supabase.rpc('hax_list_condition_effects', { p_campaign_id: campaignId }),
       ])
-      if (character.error || enemy.error) {
+      if (character.error || enemy.error || definitions.error) {
         setConditionError('As condições não puderam ser carregadas. Use a Central de Condições.')
         return
       }
@@ -386,6 +400,11 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
         }
       }
       setConditionsByTarget(grouped)
+      const calculated: Record<string, ConditionModifiers> = {}
+      for (const [key, assignments] of Object.entries(grouped)) {
+        calculated[key] = calculateConditionModifiers(assignments, (definitions.data||[]) as {id:string;effects: {type?:string;target?:string;key?:string;value?:number;unit?:'flat'|'percent'}[]|string|null}[])
+      }
+      setConditionModifiersByTarget(calculated)
       setConditionError('')
     } catch { setConditionError('Não foi possível consultar as condições atuais.') }
   }, [campaignId])
@@ -639,6 +658,7 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
         {selectedParticipant ? <>
           {multiMode && <div className="hb-cc-group-heading"><strong>☷ Ação sobre {chosenTargets.length} participante(s)</strong><small>As resistências e os limites de recursos são calculados individualmente. O alvo abaixo é apenas uma referência para visualizar a ficha.</small></div>}
           <div className="hb-cc-selected-header"><span className="hb-cc-selected-avatar" aria-hidden="true">{selectedParticipant.emoji || (selectedParticipant.kind === 'enemy' ? '⚔' : '♙')}</span><span><small>ALVO SELECIONADO</small><strong>{selectedParticipant.name}</strong></span>{selected === activeTurnKey && <span className="hb-cc-live-tag">● Em turno</span>}</div>
+          {selectedParticipant && <div className="hb-cc-combat-condition-summary" title="Crítico efetivo da ficha somado às condições ativas">◈ Limite de crítico efetivo: <strong>{selectedCritical}+</strong></div>}
           <div className="hb-cc-active-conditions"><div className="hb-cc-active-head"><strong>◈ Condições do alvo em foco</strong><button type="button" onClick={() => void refreshConditions()} disabled={busy}>↻ Atualizar</button></div>
             {conditionError && <small className="hb-cc-validation">{conditionError}</small>}
             <div className="hb-cc-active-list">{(conditionsByTarget[selected] ?? []).map(condition => <span className={`hb-cc-condition-tag severity-${condition.severity}`} key={condition.id} title={condition.duration_label || 'Sem duração definida'}>{condition.emoji} {condition.name}</span>)}

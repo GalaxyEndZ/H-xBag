@@ -98,7 +98,6 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
 
   function startCreate() { setEditorId(null); setDraft(emptyDraft(seasonId)); setObjectiveText(''); setShowEditor(true); setError(''); setNotice('') }
   function startEdit(mission: Mission) {
-    if (mission.status === 'completed') return
     setEditorId(mission.id)
     setDraft({ title: mission.title, description: mission.description, visibility: mission.visibility, season_id: mission.season_id || '',
       objectives: mission.objectives.map(objective => ({ ...objective })), rewards: mission.reward_items.map(item => ({ ...item })), milestones: mission.reward_milestones.map(milestone => ({...milestone,items:milestone.items.map(item=>({...item})),conditions:milestone.conditions.map(item=>({...item}))})), recipientIds: [...mission.recipient_character_ids], hideObjectives:mission.hide_objectives, hideRewards:mission.hide_rewards })
@@ -116,6 +115,18 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
     if (draft.milestones.some(milestone=>milestone.conditions.some(condition=>!condition.id || condition.duration.length>120))) { setError('Revise as condições das faixas.'); return }
     const previous = missions.find(mission=>mission.id===editorId)
     if (previous?.awarded_milestones.some(threshold=>JSON.stringify(previous.reward_milestones.find(band=>band.threshold===threshold))!==JSON.stringify(draft.milestones.find(band=>band.threshold===threshold)))) { setError('Faixas já entregues não podem ser modificadas.'); return }
+    if (previous?.status === 'completed') {
+      // Recompensas e destinatários já pagos permanecem como histórico imutável.
+      if (JSON.stringify(previous.reward_items) !== JSON.stringify(draft.rewards) ||
+          JSON.stringify(previous.reward_milestones) !== JSON.stringify(draft.milestones) ||
+          JSON.stringify(previous.recipient_character_ids) !== JSON.stringify(draft.recipientIds)) {
+        setError('Uma missão concluída não permite alterar recompensas nem destinatários já consolidados.'); return
+      }
+      // Ao editar o texto de objetivos concluídos, nunca reabrir o progresso financeiro.
+      if (draft.objectives.some(objective => !objective.done)) {
+        setError('Os objetivos de uma missão concluída devem continuar marcados como realizados.'); return
+      }
+    }
     if (draft.rewards.length > 30 || draft.recipientIds.length > 50) { setError('Máximo de 30 drops finais e 50 destinatários.'); return }
     setSaving(true);setError('');setNotice('')
     const payload = { campaign_id: campaignId, season_id: draft.season_id || null,
@@ -123,8 +134,11 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
       objectives: draft.objectives, reward_items: draft.rewards, recipient_character_ids: draft.recipientIds,
       hide_objectives:draft.hideObjectives, hide_rewards:draft.hideRewards,
       reward_milestones: [...draft.milestones].sort((a,b)=>a.threshold-b.threshold) }
+    // campaign_id é permitido apenas na criação; a tabela proíbe editar a coluna.
+    const { campaign_id: _campaignForInsert, ...editablePayload } = payload
+    void _campaignForInsert
     const result = editorId
-      ? await supabase.from('campaign_missions').update({ ...payload, updated_at: new Date().toISOString() }).eq('id',editorId).eq('campaign_id',campaignId)
+      ? await supabase.from('campaign_missions').update({ ...editablePayload, updated_at: new Date().toISOString() }).eq('id',editorId).eq('campaign_id',campaignId)
       : await supabase.from('campaign_missions').insert({ ...payload, created_by:userId })
     setSaving(false)
     if (result.error) { setError(`Não foi possível salvar a missão: ${result.error.message}`); return }
@@ -194,7 +208,7 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
           <span className={`hb-mission-status ${mission.status}`}>{mission.status === 'active' ? '● Ativa' : mission.status === 'completed' ? '✓ Concluída' : '✕ Falhada'}</span>
           <span>{seasons.find(season=>season.id===mission.season_id)?.name || 'Todas as temporadas'}</span>
           {isMaster && <><span>{mission.visibility === 'master' ? '🔒 Mestre' : mission.visibility === 'assigned' ? '◈ Destinatários' : '◎ Pública'}</span>{mission.hide_objectives && <span>Objetivos ocultos</span>}{mission.hide_rewards && <span>Recompensas ocultas</span>}</>}
-        </div><h3>{mission.title}</h3></div>{isMaster && mission.status !== 'completed' && <button type="button" className="hb-missions-soft" disabled={saving} onClick={()=>startEdit(mission)}>Editar</button>}</div>
+        </div><h3>{mission.title}</h3></div>{isMaster && <button type="button" className="hb-missions-soft" disabled={saving} onClick={()=>startEdit(mission)}>Editar{mission.status === 'completed' ? ' missão concluída' : ''}</button>}</div>
         {mission.description && <p className="hb-mission-description">{mission.description}</p>}
         {!isMaster && mission.hide_objectives ? <p className="hb-mission-hidden"><span aria-hidden="true">🔒</span> Objetivos e progresso ocultos pelo mestre.</p> : <>
           <div className="hb-mission-progress"><div><strong>Objetivos</strong><span>{mission.objectives.filter(obj=>obj.done).length} / {mission.objectives.length}</span></div>
@@ -223,6 +237,8 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
         <div className="hb-missions-modal-head"><div><span className="hb-missions-kicker">EDITOR DO MESTRE</span><h2 id="hb-mission-editor-title">{editorId ? 'Editar missão' : 'Criar missão'}</h2></div><button type="button" onClick={()=>setShowEditor(false)} disabled={saving} aria-label="Fechar editor">✕</button></div>
         <form onSubmit={event=>void saveMission(event)} className="hb-missions-form">
           <label>Título<input autoFocus maxLength={120} required value={draft.title} onChange={event=>setDraft(current=>({...current,title:event.target.value}))} placeholder="Ex.: Recuperar o selo perdido"/></label>
+          {editorId && missions.find(mission=>mission.id===editorId)?.status==='completed' &&
+            <p className="hb-missions-archive-warning">✓ Missão concluída: você pode revisar título, descrição, visibilidade e objetivos já realizados. Drops, condições de recompensa, faixas pagas e destinatários estão congelados para impedir pagamentos duplicados.</p>}
           <label>Descrição<textarea rows={3} maxLength={4000} value={draft.description} onChange={event=>setDraft(current=>({...current,description:event.target.value}))} placeholder="Contexto, pistas, locais..."/></label>
           <div className="hb-missions-form-grid"><label>Temporada<select value={draft.season_id} onChange={event=>setDraft(current=>({...current,season_id:event.target.value}))}><option value="">Todas as temporadas</option>{seasons.map(season=><option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
           <label>Visibilidade<select value={draft.visibility} onChange={event=>setDraft(current=>({...current,visibility:event.target.value as Mission['visibility']}))}><option value="public">Todos os jogadores</option><option value="assigned">Somente destinatários</option><option value="master">Somente mestre</option></select></label></div>
@@ -232,12 +248,12 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
             <label><input type="checkbox" checked={draft.hideRewards} onChange={event=>setDraft(current=>({...current,hideRewards:event.target.checked}))}/> Ocultar drops e condições de recompensa dos jogadores</label>
           </fieldset>
           <fieldset><legend>Objetivos da missão</legend>
-            {draft.objectives.map(obj=><div className="hb-missions-objective-edit" key={obj.id}><input aria-label="Objetivo" maxLength={240} value={obj.title} onChange={event=>setDraft(current=>({...current,objectives:current.objectives.map(row=>row.id===obj.id?{...row,title:event.target.value}:row)}))}/><button type="button" className="hb-missions-danger" onClick={()=>setDraft(current=>({...current,objectives:current.objectives.filter(row=>row.id!==obj.id)}))}>Remover</button></div>)}
-            <div className="hb-missions-add-objective"><input value={objectiveText} maxLength={240} placeholder="Novo objetivo" onChange={event=>setObjectiveText(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();if(objectiveText.trim()){setDraft(current=>({...current,objectives:[...current.objectives,makeObjective(objectiveText.trim())]}));setObjectiveText('')}}}}/><button type="button" onClick={()=>{if(objectiveText.trim()){setDraft(current=>({...current,objectives:[...current.objectives,makeObjective(objectiveText.trim())]}));setObjectiveText('')}}}>＋ Adicionar</button></div>
+            {draft.objectives.map(obj=><div className="hb-missions-objective-edit" key={obj.id}><input aria-label="Objetivo" maxLength={240} value={obj.title} onChange={event=>setDraft(current=>({...current,objectives:current.objectives.map(row=>row.id===obj.id?{...row,title:event.target.value}:row)}))}/><button type="button" className="hb-missions-danger" disabled={Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} onClick={()=>setDraft(current=>({...current,objectives:current.objectives.filter(row=>row.id!==obj.id)}))}>Remover</button></div>)}
+            <div className="hb-missions-add-objective"><input disabled={Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} value={objectiveText} maxLength={240} placeholder="Novo objetivo" onChange={event=>setObjectiveText(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();if(objectiveText.trim()){setDraft(current=>({...current,objectives:[...current.objectives,makeObjective(objectiveText.trim())]}));setObjectiveText('')}}}}/><button type="button" disabled={Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} onClick={()=>{if(objectiveText.trim()){setDraft(current=>({...current,objectives:[...current.objectives,makeObjective(objectiveText.trim())]}));setObjectiveText('')}}}>＋ Adicionar</button></div>
           </fieldset>
           <fieldset className="hb-missions-milestones"><legend>Recompensas por porcentagem concluída</legend>
             <p className="hb-missions-help">Cada faixa é entregue uma única vez quando o mestre marca objetivos e atinge a porcentagem configurada. Os personagens recebem itens do Baú e/ou condições da biblioteca.</p>
-            {draft.milestones.map((band,index)=>{const paid=Boolean(editorId && missions.find(m=>m.id===editorId)?.awarded_milestones.includes(band.threshold));return <div className="hb-missions-milestone" key={index}>
+            {draft.milestones.map((band,index)=>{const paid=Boolean(editorId && (missions.find(m=>m.id===editorId)?.status==='completed' || missions.find(m=>m.id===editorId)?.awarded_milestones.includes(band.threshold)));return <div className="hb-missions-milestone" key={index}>
               <div className="hb-missions-band-head"><label>Ao atingir <input type="number" min="1" max="100" step="1" value={band.threshold} disabled={paid} onChange={event=>setDraft(current=>({...current,milestones:current.milestones.map((entry,i)=>i===index?{...entry,threshold:Number(event.target.value)||1}:entry)}))}/> %</label>
                 <button type="button" className="hb-missions-danger" disabled={paid} onClick={()=>setDraft(current=>({...current,milestones:current.milestones.filter((_,i)=>i!==index)}))}>Excluir faixa</button>
               </div>
@@ -249,16 +265,16 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
               {band.conditions.map((condition,j)=><div className="hb-missions-reward-row" key={`${condition.id}-${j}`}><span>✦ {condition.name}</span><input aria-label="Duração da condição" maxLength={120} placeholder="Ex.: 3 rodadas" value={condition.duration} disabled={paid} onChange={event=>setDraft(current=>({...current,milestones:current.milestones.map((entry,i)=>i===index?{...entry,conditions:entry.conditions.map((row,k)=>k===j?{...row,duration:event.target.value}:row)}:entry)}))}/><button type="button" className="hb-missions-danger" disabled={paid} onClick={()=>setDraft(current=>({...current,milestones:current.milestones.map((entry,i)=>i===index?{...entry,conditions:entry.conditions.filter((_,k)=>k!==j)}:entry)}))}>Retirar</button></div>)}
               <select aria-label={`Adicionar condição na faixa de ${band.threshold}%`} value="" disabled={paid || band.items.length+band.conditions.length>=30} onChange={event=>{const id=event.target.value;const found=conditions.find(row=>row.id===id);if(found)setDraft(current=>({...current,milestones:current.milestones.map((entry,i)=>i===index?{...entry,conditions:[...entry.conditions,{id,name:found.name,duration:'Indeterminada'}]}:entry)}))}}><option value="">＋ Condição da biblioteca...</option>{conditions.filter(condition=>!band.conditions.some(row=>row.id===condition.id)).map(condition=><option key={condition.id} value={condition.id}>{condition.emoji} {condition.name}</option>)}</select>
             </div>})}
-            <button type="button" className="hb-missions-soft" disabled={draft.milestones.length>=12} onClick={()=>setDraft(current=>{const next=[25,50,75,100,10,20,30,40,60,80,90].find(value=>!current.milestones.some(row=>row.threshold===value))||1;return {...current,milestones:[...current.milestones,{threshold:next,items:[],conditions:[]}]}})}>＋ Criar faixa de progresso</button>
+            <button type="button" className="hb-missions-soft" disabled={draft.milestones.length>=12 || Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} onClick={()=>setDraft(current=>{const next=[25,50,75,100,10,20,30,40,60,80,90].find(value=>!current.milestones.some(row=>row.threshold===value))||1;return {...current,milestones:[...current.milestones,{threshold:next,items:[],conditions:[]}]}})}>＋ Criar faixa de progresso</button>
             {!conditions.length&&<small className="hb-missions-help">Crie condições na biblioteca do Mestre para utilizá-las como drops.</small>}
           </fieldset>
           <fieldset><legend>Drops finais (compatibilidade com missões anteriores)</legend><p className="hb-missions-help">Estes drops são entregues somente ao concluir a missão. Use as faixas acima para recompensas liberadas em porcentagens intermediárias.</p>
-            {draft.rewards.map(reward=><div className="hb-missions-reward-row" key={reward.id}><span>{rewardLabel(reward)}</span><input type="number" min="1" max="999999" aria-label="Quantidade" value={reward.quantity} onChange={event=>setDraft(current=>({...current,rewards:current.rewards.map(item=>item.id===reward.id?{...item,quantity:Math.max(1,Math.min(999999,Number(event.target.value)||1))}:item)}))}/><button type="button" className="hb-missions-danger" onClick={()=>setDraft(current=>({...current,rewards:current.rewards.filter(item=>item.id!==reward.id)}))}>Retirar</button></div>)}
-            <select aria-label="Adicionar drop do baú" value="" disabled={draft.rewards.length>=30} onChange={event=>{const id=event.target.value;if(id)setDraft(current=>({...current,rewards:[...current.rewards,{id,quantity:1}]}))}}><option value="">＋ Adicionar drop existente...</option>{knownDrops.filter(drop=>!draft.rewards.some(line=>line.id===drop.id)).map(drop=><option key={drop.id} value={drop.id}>{drop.name} · {drop.is_infinite?'∞':`${drop.quantity} em estoque`}</option>)}</select>
+            {draft.rewards.map(reward=><div className="hb-missions-reward-row" key={reward.id}><span>{rewardLabel(reward)}</span><input type="number" min="1" max="999999" aria-label="Quantidade" value={reward.quantity} disabled={Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} onChange={event=>setDraft(current=>({...current,rewards:current.rewards.map(item=>item.id===reward.id?{...item,quantity:Math.max(1,Math.min(999999,Number(event.target.value)||1))}:item)}))}/><button type="button" className="hb-missions-danger" disabled={Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} onClick={()=>setDraft(current=>({...current,rewards:current.rewards.filter(item=>item.id!==reward.id)}))}>Retirar</button></div>)}
+            <select aria-label="Adicionar drop do baú" value="" disabled={draft.rewards.length>=30 || Boolean(editorId && missions.find(m=>m.id===editorId)?.status==='completed')} onChange={event=>{const id=event.target.value;if(id)setDraft(current=>({...current,rewards:[...current.rewards,{id,quantity:1}]}))}}><option value="">＋ Adicionar drop existente...</option>{knownDrops.filter(drop=>!draft.rewards.some(line=>line.id===drop.id)).map(drop=><option key={drop.id} value={drop.id}>{drop.name} · {drop.is_infinite?'∞':`${drop.quantity} em estoque`}</option>)}</select>
             {knownDrops.length===0 && <p className="hb-missions-help">Crie drops primeiro no Baú do Mestre.</p>}
           </fieldset>
-          <fieldset><legend>Destinatários dos drops</legend><p className="hb-missions-help">Escolha quais personagens receberão a remessa. A lista permanece salva para esta missão.</p>
-            <div className="hb-missions-recipient-list">{characters.map(character=><label key={character.id}><input type="checkbox" checked={draft.recipientIds.includes(character.id)} onChange={event=>setDraft(current=>({...current,recipientIds:event.target.checked?[...current.recipientIds,character.id]:current.recipientIds.filter(id=>id!==character.id)}))}/><span>{character.emoji||'♙'} {character.name}</span></label>)}</div>
+          <fieldset><legend>Destinatários dos drops</legend><p className="hb-missions-help">Escolha quais personagens receberão a remessa. A lista permanece salva para esta missão. Após entregar qualquer faixa, os destinatários ficam fixos para preservar o histórico.</p>
+            <div className="hb-missions-recipient-list">{characters.map(character=><label key={character.id}><input type="checkbox" disabled={Boolean(editorId && (missions.find(m=>m.id===editorId)?.status==='completed' || (missions.find(m=>m.id===editorId)?.awarded_milestones.length??0)>0))} checked={draft.recipientIds.includes(character.id)} onChange={event=>setDraft(current=>({...current,recipientIds:event.target.checked?[...current.recipientIds,character.id]:current.recipientIds.filter(id=>id!==character.id)}))}/><span>{character.emoji||'♙'} {character.name}</span></label>)}</div>
           </fieldset>
           <div className="hb-missions-modal-actions"><button type="button" onClick={()=>setShowEditor(false)} disabled={saving}>Cancelar</button><button type="submit" className="hb-missions-primary" disabled={saving}>{saving?'Salvando...':'Salvar missão'}</button></div>
         </form>

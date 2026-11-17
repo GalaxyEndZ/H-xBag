@@ -22,9 +22,11 @@ import HaxTable from './components/HaxTable'
 import DiceTower from './components/DiceTower'
 import MasterChest from './components/MasterChest'
 import CampaignMissions from './components/CampaignMissions'
+import InvestigationBoard from './components/InvestigationBoard'
 import MasterCombatConsole from './components/MasterCombatConsole'
 import { calculateSheetDefenses, calculateSheetPhysicalDamage, type SheetCombatEquipment } from './combatDefenses'
 import './themes/mobileSession.css'
+import './themes/mobileEmojiPicker.css'
 import ChestMessages from './components/ChestMessages'
 import FriendsPanel from './components/FriendsPanel'
 import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
@@ -34,7 +36,7 @@ import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, 
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
-import { useCharacterConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
+import { useCharacterConditionModifiers, useEnemyConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
 
 /** Marcador decorativo usado apenas nas prévias sem retrato do Bestiário. */
 function bestiaryCategorySymbol(category: string): string {
@@ -1223,6 +1225,7 @@ function App() {
   const [enemyStatusFilter, setEnemyStatusFilter] = useState<'all' | 'configured' | 'unconfigured' | 'party' | 'critical'>('all')
   const [enemyViewMode, setEnemyViewMode] = useState<'grid' | 'list'>('grid')
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null)
+  const enemyConditionModifiers = useEnemyConditionModifiers(selectedCampaignId, selectedEnemyId)
   const [enemySheetView, setEnemySheetView] = useState(false)
   const [showEnemyForm, setShowEnemyForm] = useState(false)
   const [editingEnemyId, setEditingEnemyId] = useState<string | null>(null)
@@ -1915,7 +1918,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
+  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
   useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
@@ -8153,7 +8156,8 @@ useEffect(() => {
                     const breathing = effectiveAttribute('attributes.breathing', 'breathing')
                     const ability = mainSkill('ability')
                     const defense = effectiveAttribute('attributes.defense', 'defense')
-                    const reactions = defense + 1
+                    const activeCombatConditions = forEnemy ? enemyConditionModifiers : conditionModifiers
+                    const reactions = Math.max(0, applyConditionModifier(defense + 1, activeCombatConditions, 'combat_stats', 'reactions'))
                     const combat = mainSkill('combat')
                     const resistance = mainSkill('resistance')
                     const strength = effectiveAttribute('attributes.strength', 'strength')
@@ -8176,15 +8180,25 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                         protectionTier: String(item.metadata?.protectionTier || 'basica'),
                         protectionMode: String(item.metadata?.protectionMode || 'resistencia'),
                       }))
-                    const characterDefenses = calculateSheetDefenses(equippedCharacterItems, {
+                    const baseCharacterDefenses = calculateSheetDefenses(equippedCharacterItems, {
                       dexterity, resistance, combat, mental,
                     })
+                    const characterDefenses = {
+                      ...baseCharacterDefenses,
+                      armorResistance: Math.max(0, applyConditionModifier(baseCharacterDefenses.armorResistance, activeCombatConditions, 'combat_stats', 'armor_resistance')),
+                      physicalProtection: Math.max(0, applyConditionModifier(baseCharacterDefenses.physicalProtection, activeCombatConditions, 'combat_stats', 'physical_protection')),
+                      sanityProtection: Math.max(0, applyConditionModifier(baseCharacterDefenses.sanityProtection, activeCombatConditions, 'combat_stats', 'sanity_protection')),
+                      counterAttackDT: Math.max(0, applyConditionModifier(baseCharacterDefenses.counterAttackDT, activeCombatConditions, 'combat_stats', 'counterattack_dt')),
+                    }
                     const {
                       armorClass, armorDexterity, counterAttackDT, armorResistance, armorCovers,
                       physicalProtection, sanityProtection,
                     } = characterDefenses
                     const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
-                    const criticalValue = Math.max(1, Math.min(20, Math.floor(num('combat.critical') || 20)))
+                    const sheetCriticalBase = Number(read('combat.critical', 20))
+                    const criticalValue = Math.max(1, Math.min(20, applyConditionModifier(
+                      Number.isFinite(sheetCriticalBase) && sheetCriticalBase > 0 ? Math.floor(sheetCriticalBase) : 20,
+                      activeCombatConditions, 'combat_stats', 'critical')))
                     const rollD20 = () => Math.floor(Math.random() * 20) + 1
 
 const rollAttributeDice = (diceCount: number, usesAgility = false) => {
@@ -9750,7 +9764,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     {[
       ['Dano base', baseDamage],
       ['Dano extra', equippedWeaponDamage],
-      ['Deslocamento', Math.max(1, Math.floor((movementActions * dexterity) / (renderOverloaded ? 2 : 1)))],
+      ['Deslocamento', Math.max(0, applyConditionModifier(Math.max(1, Math.floor((movementActions * dexterity) / (renderOverloaded ? 2 : 1))), activeCombatConditions, 'combat_stats', 'movement'))],
       ['Ações', movementActions + extraActions],
       ['Reações', reactions],
 ['Contra-ataque', counterAttackDT],
@@ -10275,6 +10289,7 @@ counterAttackDT
     {id:'conditions',label:'Condições e efeitos',symbol:'✧',description:'Biblioteca e condições ativas',campaign:true,master:true},
     {id:'master-chest',label:'Baú do mestre',symbol:'🗝',description:'Itens, recompensas e entregas',campaign:true,master:true},
     {id:'missions',label:'Missões',symbol:'📜',description:'Objetivos, progresso e drops de missão',campaign:true},
+    {id:'investigation',label:'Mesa de Investigação',symbol:'🧵',description:'Quadro de pistas, teorias e conexões',campaign:true},
     {id:'shops',label:'Lojas',symbol:'▤',description:'Comércio da campanha',campaign:true},
     {id:'bestiary',label:'Bestiário',symbol:'♞',description:'Criaturas e registros',campaign:true},
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
@@ -10478,6 +10493,9 @@ counterAttackDT
             <button type="button" className={`nav-link ${activePage === 'missions' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('missions') }} disabled={!selectedCampaignId} aria-current={activePage === 'missions' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">📜</span><span className="hb-sidebar-nav-name">Missões</span>
             </button>
+            <button type="button" className={`nav-link ${activePage === 'investigation' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('investigation') }} disabled={!selectedCampaignId} aria-current={activePage === 'investigation' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">🧵</span><span className="hb-sidebar-nav-name">Mesa de Investigação</span>
+            </button>
             <button type="button" className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId} aria-current={activePage === 'shops' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">▤</span><span className="hb-sidebar-nav-name">Lojas</span><span className="nav-count">{shops.length}</span>
             </button>
@@ -10625,7 +10643,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -13537,6 +13555,17 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             />
           )}
 
+          {activePage === 'investigation' && selectedCampaign && (
+            <InvestigationBoard
+              key={selectedCampaign.id}
+              campaignId={selectedCampaign.id}
+              seasonId={selectedSeasonId}
+              seasons={seasons.map(season=>({id:season.id,name:season.name}))}
+              isMaster={isMaster}
+              userId={session?.user.id ?? ''}
+            />
+          )}
+
           {activePage === 'dice-tower' && selectedCampaignId && (
             <DiceTower />
           )}
@@ -13991,7 +14020,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
         </label>
         <div className="emoji-field">
           <label>Emoji do personagem</label>
-          <div className="emoji-grid">
+          <div className="hb-character-emoji-current" role="status" aria-live="polite" aria-atomic="true">
+            <span aria-hidden="true">{characterEmoji}</span>
+            <div>
+              <strong>Emoji selecionado</strong>
+              <small>Escolha outro na grade abaixo, se desejar.</small>
+            </div>
+          </div>
+          <div className="emoji-grid" role="group" aria-label="Emojis disponíveis para o personagem">
             {availableEmojis.map((emoji) => (
               <button key={emoji} type="button" className={characterEmoji === emoji ? 'emoji-option selected' : 'emoji-option'} onClick={() => setCharacterEmoji(emoji)} aria-label={`Selecionar emoji ${emoji}`} aria-pressed={characterEmoji === emoji}>{emoji}</button>
             ))}
@@ -16909,7 +16945,7 @@ style={{cursor:'pointer'}}>
             </div>
           )}
 
-          {notice && activePage !== 'missions' && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && activePage !== 'dice-tower' && (
+          {notice && activePage !== 'missions' && activePage !== 'investigation' && activePage !== 'customization' && activePage !== 'master-chest' && activePage !== 'conditions' && activePage !== 'dice-tower' && (
             <div className="notice" role="status">
               <span>✓</span> {notice}
               <button

@@ -255,3 +255,5 @@
 .hb-cc-history-limit{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--cc-muted)}
 .hb-cc-history-limit select{min-height:34px;width:65px;padding:6px;font-size:10px}
 @media(max-width:570px){.hb-cc-history-limit{flex:1 1 100%}}
+.hb-cc-combat-condition-summary{margin:10px 0;padding:10px 14px;border-radius:11px;border:1px solid var(--season-line,rgba(255,255,255,.14));background:color-mix(in srgb,var(--season-primary,#d8a77d) 10%,transparent);font-size:13px}
+.hb-cc-combat-condition-summary strong{color:var(--season-primary,#dfb08e)}

@@ -21,6 +21,15 @@ const CONDITION_KEYS: Record<string, {value:string;label:string}[]> = {
     {value:'dodge',label:'Esquiva'}, {value:'counterattack',label:'Contra-ataque'},
     {value:'*',label:'Todos os testes de combate'},
   ],
+  combat_stats: [
+    {value:'critical',label:'Limite de crítico (menor = crítico mais fácil)'},
+    {value:'reactions',label:'Número de reações'},
+    {value:'counterattack_dt',label:'DT de contra-ataque'},
+    {value:'armor_resistance',label:'Resistência da armadura equipada'},
+    {value:'physical_protection',label:'Proteção física'},
+    {value:'sanity_protection',label:'Proteção de sanidade'},
+    {value:'movement',label:'Deslocamento'},
+  ],
   actions: [{value:'movement',label:'Ações de movimento'},{value:'extra',label:'Ações extras'}],
   resource: [{value:'pv',label:'Pontos de Vida (PV)'},{value:'ps',label:'Pontos de Sanidade (PS)'},{value:'pr',label:'Pontos de Recurso (PR)'}],
 }
@@ -212,7 +221,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
   },[campaignId])
   useEffect(()=>{void refresh();const timer=setInterval(()=>void refresh(),15000);return()=>clearInterval(timer)},[refresh])
   const effectTypes: {value:ConditionEffect['type'];label:string;hint:string}[] = [
-    {value:'modifier',label:'Bônus, penalidade ou concessão de perícia',hint:'Ajusta valores de testes, atributos e ações. Uma perícia específica com bônus positivo pode ser concedida temporariamente mesmo a quem não a possui.'},
+    {value:'modifier',label:'Bônus, penalidade ou concessão de perícia',hint:'Ajusta perícias, crítico, resistências, proteção, reações e outros indicadores. Um crítico mais baixo é melhor. Perícias específicas positivas podem ser concedidas temporariamente.'},
     {value:'dice',label:'Vantagem ou desvantagem',hint:'Altera a quantidade de dados rolados.'},
     {value:'restriction',label:'Bloquear ação ou reação',hint:'Bloqueia totalmente a ação. Para limitar quantidades, use o efeito de bônus ou penalidade na categoria Quantidade de ações.'},
     {value:'resource',label:'Alterar recurso máximo',hint:'Modifica o limite de PV, PS ou PR; não altera permanentemente a ficha.'},
@@ -271,7 +280,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
             {(['modifier','dice'].includes(effect.type))&&<label>Onde atua<select value={category} onChange={e=>{
               const target=e.target.value
               update(index,{target,key:CONDITION_KEYS[target]?.[0]?.value||(target==='main_skill'||target==='extra_skill'||target==='archetype_skill'?'*':'')})
-            }}><option value="status">Atributos</option>{effect.type!=='dice'&&<><option value="main_skill">Perícias principais</option><option value="extra_skill">Perícias gerais</option><option value="archetype_skill">Perícias de arquétipo</option></>}<option value="combat_points">Testes de combate</option>{effect.type!=='dice'&&<option value="actions">Quantidade de ações</option>}</select></label>}
+            }}><option value="status">Atributos</option>{effect.type!=='dice'&&<><option value="main_skill">Perícias principais</option><option value="extra_skill">Perícias gerais</option><option value="archetype_skill">Perícias de arquétipo</option></>}<option value="combat_points">Testes de combate</option>{effect.type!=='dice'&&<><option value="combat_stats">Indicadores de combate (crítico, defesas, proteção)</option><option value="actions">Quantidade de ações</option></>}</select></label>}
             {['modifier','dice','resource'].includes(effect.type)&&<>
               <label>{effect.type==='resource'?'Recurso afetado':customSkill?'Perícia afetada':category==='actions'?'Tipo de ação afetada':'Atributo ou ação afetada'}
                 {customSkill?<select value={effect.key||'*'} onChange={e=>update(index,{key:e.target.value})}><option value="" disabled>Escolha a perícia...</option>{(choices||[]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}{effect.key&&!choices?.some(option=>option.value===effect.key)&&<option value={effect.key}>{effect.key} (valor anterior)</option>}</select>:<select value={unknownKey?'__custom__':effect.key||''} onChange={e=>update(index,{key:e.target.value==='__custom__'?'':e.target.value})}><option value="">Selecione...</option>{(choices||[]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}{unknownKey&&<option value="__custom__">Identificador antigo (personalizado)</option>}</select>}

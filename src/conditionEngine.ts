@@ -48,6 +48,28 @@ export function useCharacterConditionModifiers(campaignId: string, characterId: 
   return state.scope === scope ? state.modifiers : {}
 }
 
+/** Efeitos de condições aplicadas manualmente a inimigos pelo mestre. */
+export function useEnemyConditionModifiers(campaignId: string, enemyId: string): ConditionModifiers {
+  const [state, setState] = useState<{scope:string; modifiers: ConditionModifiers}>({scope:'',modifiers:{}})
+  const scope=`${campaignId}:${enemyId}`
+  useEffect(()=>{
+    if(!campaignId||!enemyId)return
+    let live=true
+    const load=async()=>{
+      const [active, definitions]=await Promise.all([
+        supabase.rpc('hax_list_enemy_conditions',{p_campaign_id:campaignId,p_enemy_id:enemyId}),
+        supabase.rpc('hax_list_condition_effects',{p_campaign_id:campaignId}),
+      ])
+      if(!live||active.error||definitions.error)return
+      setState({scope,modifiers:calculateConditionModifiers((active.data||[]) as Assignment[],(definitions.data||[]) as DefinitionEffects[])})
+    }
+    void load()
+    const timer=window.setInterval(()=>void load(),5000)
+    return()=>{live=false;window.clearInterval(timer)}
+  },[campaignId,enemyId,scope])
+  return state.scope===scope?state.modifiers:{}
+}
+
 export type ConditionRuleState = {
   dice: ConditionModifiers
   resources: ConditionModifiers
