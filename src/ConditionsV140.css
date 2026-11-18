@@ -1,0 +1,7 @@
+/* V140 — descrições acessíveis e controles de visibilidade na biblioteca */
+.hb-condition-player-description { margin:10px 0 0; padding:10px 12px; border-radius:10px; border:1px solid color-mix(in srgb,var(--season-line,#777) 70%,transparent); background:color-mix(in srgb,var(--season-surface-alt,#28282b) 75%,transparent); color:var(--season-text,#eee); line-height:1.55; font-size:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.hb-condition-visibility { display:flex; align-items:center; gap:9px; margin:10px 0; padding:9px 10px; border:1px solid var(--season-line,rgba(255,255,255,.14)); border-radius:10px; background:color-mix(in srgb,var(--season-primary,#c5a17c) 6%,transparent); font-size:12px; font-weight:750; cursor:pointer; }
+.hb-condition-visibility input { width:18px; height:18px; accent-color:var(--season-primary,#c5a17c); }
+.hb-condition-notice { border:1px solid color-mix(in srgb,var(--season-primary,#d5ac8a) 45%,transparent); border-radius:12px; padding:10px 14px; color:var(--season-text,#eee); background:color-mix(in srgb,var(--season-primary,#d5ac8a) 9%,transparent); }
+.hb-condition-library-description {white-space:pre-wrap;overflow-wrap:anywhere;color:var(--season-text,#eee);font-size:12px;line-height:1.55;margin:7px 0;}
+.hb-public-conditions-library .hb-condition-library-item {cursor:default;}

@@ -38,7 +38,7 @@ import './components/ProfileAtelier.css'
 import './components/ProfilePolish.css'
 import './components/ProfileV132.css'
 import './components/ProfilePersonalTheme.css'
-import { ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
+import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
 import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
@@ -10319,7 +10319,7 @@ counterAttackDT
     {id:'sheets',label:'Fichas',symbol:'▧',description:'Biblioteca de personagens',campaign:true},
     {id:'enemies',label:'Inimigos',symbol:'⚔',description:'Fichas e grupos inimigos',campaign:true,master:true},
     {id:'master-shield',label:'Escudo do mestre',symbol:'♜',description:'Iniciativas, turnos, recursos e anotações',campaign:true,master:true},
-    {id:'conditions',label:'Condições e efeitos',symbol:'✧',description:'Biblioteca e condições ativas',campaign:true,master:true},
+    {id:'conditions',label:'Condições e efeitos',symbol:'✧',description:'Biblioteca e condições ativas',campaign:true},
     {id:'master-chest',label:'Baú do mestre',symbol:'🗝',description:'Itens, recompensas e entregas',campaign:true,master:true},
     {id:'missions',label:'Missões',symbol:'📜',description:'Objetivos, progresso e drops de missão',campaign:true},
     {id:'investigation',label:'Mesa de Investigação',symbol:'🧵',description:'Quadro de pistas, teorias e conexões',campaign:true},
@@ -12264,8 +12264,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             </section>
           )}
 
-          {activePage === 'conditions' && isMaster && selectedCampaignId && (
-            <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} />
+          {activePage === 'conditions' && selectedCampaignId && (
+            isMaster ? <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} /> : <PlayerConditionsLibrary campaignId={selectedCampaignId} />
           )}
           {activePage === 'profile' && <div className="hb-profile-unified hb-profile-v129" data-profile-section={profileSection}>
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16 hb-profile-page-v17" data-cover={accountCover} aria-labelledby="hb-profile-title">

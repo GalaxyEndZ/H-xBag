@@ -218,3 +218,16 @@
   border:0;
   box-shadow:none;
 }
+
+
+/* V140 — tinta escura legível nas pistas de papel, independentemente da paleta temática. */
+.hb-investigation-scroll .hb-investigation-note:not(.is-document) h3 {
+  color: #211915 !important;
+  font-weight: 850;
+  font-size: 16px;
+  line-height: 1.28;
+  text-shadow: none !important;
+  opacity: 1 !important;
+  letter-spacing: .005em;
+}
+.hb-investigation-scroll .hb-investigation-note:not(.is-document) p { color:#332a22 !important; }

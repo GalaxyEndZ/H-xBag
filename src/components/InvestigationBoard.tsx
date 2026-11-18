@@ -97,8 +97,8 @@ const catInfo: Record<Category,{emoji:string; label:string; accent:string}> = {
   theory:{emoji:'💡',label:'Teoria',accent:'#d2a44e'},
 }
 const statusLabel: Record<CardStatus,string> = {open:'Em análise', verified:'Confirmado', solved:'Resolvido'}
-const CANVAS_W = 3600
-const CANVAS_H = 2400
+const CANVAS_W = 10000
+const CANVAS_H = 10000
 const clamp = (n:number, lower:number, upper:number) => Math.max(lower, Math.min(upper, n))
 const cardIsDocument = (card:InvestigationCard) => card.image_display_mode === 'document' && Boolean(card.image_url || card.image_attachments?.length)
 export default function InvestigationBoard({ campaignId, seasonId, seasons, isMaster, userId }:{
@@ -119,7 +119,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
   const [groupFilter,setGroupFilter] = useState('all')
   const [pinnedOnly,setPinnedOnly] = useState(false)
   const [view,setView] = useState<BoardView>('board')
-  const [zoom,setZoom] = useState(0.65)
+  const [zoom,setZoom] = useState(0.32)
   const [showInspector,setShowInspector] = useState(true)
   const [isPanning,setIsPanning] = useState(false)
   const [arrangeMode,setArrangeMode] = useState<'category'|'group'>('group')
@@ -155,7 +155,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
       const boardX = (current.scrollLeft + offsetX) / zoom
       const boardY = (current.scrollTop + offsetY) / zoom
       const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * current.clientHeight : event.deltaY
-      const next = clamp(Math.round((zoom + (delta < 0 ? .08 : -.08)) * 100) / 100, .3, 1.5)
+      const next = clamp(Math.round((zoom + (delta < 0 ? .06 : -.06)) * 100) / 100, .04, 1.5)
       if (next === zoom) return
       setZoom(next)
       window.requestAnimationFrame(() => {
@@ -367,7 +367,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
 
   // Conserva o centro visível durante as mudanças de zoom.
   function setBoardZoom(requested:number) {
-    const next=clamp(Math.round(requested*100)/100,0.3,1.5)
+    const next=clamp(Math.round(requested*100)/100,0.04,1.5)
     if (next===zoom) return
     const viewport=scrollRef.current
     if (!viewport) {setZoom(next);return}
@@ -393,6 +393,19 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
   }
 
   // Calcula enquadramento somente com as pistas que o usuário pode ver.
+  // Enquadramento do painel completo; não altera posições de pistas salvas.
+  function frameEntireBoard() {
+    const viewport=scrollRef.current
+    if (!viewport) return
+    const fitted=clamp(Math.floor(Math.min(viewport.clientWidth/CANVAS_W,viewport.clientHeight/CANVAS_H)*100)/100,0.04,1.5)
+    setZoom(fitted)
+    window.requestAnimationFrame(()=>{
+      const current=scrollRef.current
+      if (!current)return
+      current.scrollLeft=Math.max(0,(CANVAS_W*fitted-current.clientWidth)/2)
+      current.scrollTop=Math.max(0,(CANVAS_H*fitted-current.clientHeight)/2)
+    })
+  }
   function frameVisibleCards() {
     const viewport=scrollRef.current
     if (!viewport || !visibleCards.length) return
@@ -403,7 +416,7 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
     const maxY=Math.max(...points.map(point=>point.y))
     const width=Math.max(450,maxX-minX+520)
     const height=Math.max(520,maxY-minY+610)
-    const next=clamp(Math.round(Math.min(viewport.clientWidth/width,viewport.clientHeight/height,1.15)*100)/100,.3,1.5)
+    const next=clamp(Math.round(Math.min(viewport.clientWidth/width,viewport.clientHeight/height,1.15)*100)/100,.04,1.5)
     setZoom(next)
     window.requestAnimationFrame(()=>{
       const current=scrollRef.current
@@ -582,11 +595,12 @@ export default function InvestigationBoard({ campaignId, seasonId, seasons, isMa
         <button type="button" className={view==='timeline'?'active':''} onClick={()=>setView('timeline')}>◷ Linha do tempo</button>
       </div>
       {view==='board' && <div className="hb-investigation-zoom">
-        <span>Quadro 3.600 × 2.400 · Arraste o fundo para navegar · Use a rodinha do mouse para dar zoom</span>
-        <button type="button" disabled={zoom<=0.3} onClick={()=>setBoardZoom(zoom-0.15)} aria-label="Diminuir zoom">−</button>
+        <span>Quadro 10.000 × 10.000 · Arraste o fundo para navegar · Use a rodinha do mouse para dar zoom</span>
+        <button type="button" disabled={zoom<=0.04} onClick={()=>setBoardZoom(zoom-0.08)} aria-label="Diminuir zoom">−</button>
         <strong>{Math.round(zoom*100)}%</strong>
-        <button type="button" disabled={zoom>=1.5} onClick={()=>setBoardZoom(zoom+0.15)} aria-label="Aumentar zoom">＋</button>
+        <button type="button" disabled={zoom>=1.5} onClick={()=>setBoardZoom(zoom+0.08)} aria-label="Aumentar zoom">＋</button>
         <button type="button" onClick={()=>setBoardZoom(.65)}>Zoom padrão</button>
+        <button type="button" onClick={frameEntireBoard} title="Mostrar toda a área de 10.000 por 10.000">Visão geral do quadro</button>
         <button type="button" disabled={!visibleCards.length} onClick={frameVisibleCards} title="Ajustar zoom e posição para mostrar as pistas visíveis">Enquadrar pistas</button>
         <button type="button" disabled={!selectedCard} onClick={focusSelectedCard} title="Centralizar a pista selecionada">Focar pista</button>
         <button type="button" aria-pressed={!showInspector} onClick={()=>setShowInspector(current=>!current)}>{showInspector?'Ampliar visualização':'Mostrar detalhes'}</button>
