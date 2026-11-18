@@ -233,7 +233,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     {value:'periodic_damage',label:'Dano por rodada',hint:'O mestre rola o dano; a aplicação permanece manual.'},
     {value:'round_counter',label:'Contador de rodadas',hint:'O mestre avança o contador; a condição não é removida sozinha.'},
     {value:'apply_condition',label:'Sugerir aplicação de outra condição',hint:'Vínculo informativo; o mestre decide quando aplicar.'},
-    {value:'remove_condition',label:'Remover outra condição ao aplicar',hint:'Ao aplicar esta condição manualmente, a condição vinculada será removida do mesmo alvo (personagem ou inimigo).'},
+    {value:'remove_condition',label:'Remover outra condição (em qualquer ordem)',hint:'A remoção é válida nas duas ordens: ao aplicar esta condição, remove a vinculada; se a vinculada for aplicada depois enquanto esta estiver ativa, ela será anulada. Sempre no mesmo alvo e por aplicação manual do mestre.'},
   ]
   const defaultEffect=(type:ConditionEffect['type']):ConditionEffect=>{
     switch(type){
@@ -335,10 +335,14 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
       p_campaign_id:campaignId,p_target_type:targetType,p_target_id:characterId,
       p_definition_id:definitionId,p_duration_label:rollDuration(),p_notes:notes.trim()||null,
     })
-    if(result.error)return {error:{message:`${result.error.message}. Confira se a migração V140 foi executada.`}}
+    if(result.error)return {error:{message:`${result.error.message}. Confira se as migrações V140 e V141 foram executadas.`}}
     const removed=Number(result.data||0)
     const linked=(definitions.find(d=>d.id===definitionId)?.effects||[]).some(e=>e.type==='remove_condition')
-    setNotice(linked?(removed?`Condição aplicada; ${removed} condição(ões) vinculada(s) removida(s).`:'Condição aplicada; o alvo não tinha a condição vinculada para remover.'):'Condição aplicada ao alvo.')
+    setNotice(removed===-1
+      ? 'Aplicação anulada: outra condição já ativa neste alvo remove a condição selecionada. A condição anterior foi preservada.'
+      : linked
+        ? (removed>0?`Condição aplicada; ${removed} condição(ões) vinculada(s) removida(s).`:'Condição aplicada; o alvo não tinha a condição vinculada para remover.')
+        : 'Condição aplicada ao alvo.')
     setDuration('');setNotes('');setWorkspace('active')
     return {error:null}
   }
