@@ -332,7 +332,14 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <p className="hpl-v137-badge-help">As insígnias recebidas aparecem automaticamente na vitrine e no perfil público, caso a opção “Insígnias” esteja visível nas suas configurações de privacidade.</p>
       </section>
       {isSiteAdmin&&<section className="hpl-panel hpl-v137-admin-panel">
-        <div className="hpl-panel-heading"><span className="hpl-overline">ADMINISTRAÇÃO DO SITE · ACESSO RESTRITO</span><h3>Conceder Fundador</h3><p>Somente sua conta autorizada como administradora pode conceder esta insígnia. Busque uma conta do HäxBag para reconhecer sua participação na fundação.</p></div>
+        <div className="hpl-panel-heading"><span className="hpl-overline">ADMINISTRAÇÃO DO SITE · ACESSO RESTRITO</span><h3>Conceder Fundador</h3><p>Como administrador do HäxBag, você também pode receber a insígnia Fundador. Conceda-a à sua própria conta ou busque outro aventureiro abaixo.</p></div>
+        <div className="hpl-v138-self-award" aria-label="Conceder insígnia Fundador à sua própria conta">
+          <span className="hpl-v138-self-award-icon" aria-hidden="true">✦</span>
+          <div className="hpl-v138-self-award-info"><span className="hpl-overline">SUA CONTA · ADMINISTRADOR DO SITE</span><strong>{displayName}</strong><small>@{username||'aventureiro'} · Insígnia Fundador</small></div>
+          <button type="button" className="hpl-primary" disabled={!!adminGrantBusy || allBadges.some(badge=>badge.id==='fundador')} onClick={()=>void grantFounder({id:userId,display_name:displayName,username})}>
+            {adminGrantBusy===userId?'Concedendo…':allBadges.some(badge=>badge.id==='fundador')?'✓ Você já possui Fundador':'✦ Conceder Fundador a mim'}
+          </button>
+        </div>
         <label className="hpl-search">Encontrar conta<div className="hpl-search-field"><span aria-hidden="true">⌕</span><input type="search" value={adminSearch} onChange={event=>{setAdminSearch(event.target.value);setAdminNotice('')}} placeholder="Nome de usuário ou nome de exibição…"/></div></label>
         {adminNotice&&<p className="hpl-v137-admin-notice" role="status">{adminNotice}</p>}
         {adminSearchBusy&&<p className="hpl-v137-admin-hint" role="status">Procurando contas…</p>}

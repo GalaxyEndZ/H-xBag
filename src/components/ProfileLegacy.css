@@ -129,3 +129,14 @@
 .hpl-v137-admin-notice{padding:10px 14px;margin:0;border:1px solid color-mix(in srgb,var(--hpl-accent) 35%,var(--hpl-line));border-radius:9px;font-size:12px;line-height:1.5;color:var(--hpl-ink)}
 .hpl-v137-admin-hint{color:var(--hpl-muted);font-size:12px;line-height:1.6}
 @media(max-width:600px){.hpl-v128 .hpl-v137-badge-banner{padding:13px}.hpl-v128 .hpl-v137-official-badge{min-height:100px;padding:13px}.hpl-v137-official-badge .hpl-badge-art{width:56px;height:56px;font-size:32px}.hpl-v137-admin-person .hpl-primary{width:100%}}
+
+/* V138 · Concessão oficial do Fundador à própria conta administrativa. */
+.hpl-v138-self-award{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:17px 18px;border:1px solid color-mix(in srgb,var(--hpl-accent) 42%,var(--hpl-line));border-radius:16px;background:linear-gradient(120deg,color-mix(in srgb,var(--hpl-accent) 11%,var(--hpl-surface-alt)),var(--hpl-surface-alt));box-shadow:inset 0 1px 0 color-mix(in srgb,var(--hpl-accent) 17%,transparent)}
+.hpl-v138-self-award-icon{display:grid;place-items:center;flex:none;width:50px;height:50px;border-radius:14px;border:1px solid color-mix(in srgb,var(--hpl-accent) 48%,var(--hpl-line));background:color-mix(in srgb,var(--hpl-accent) 14%,transparent);font-size:27px;color:var(--hpl-accent)}
+.hpl-v138-self-award-info{display:grid;flex:1;min-width:160px;gap:4px}
+.hpl-v138-self-award-info .hpl-overline{font-size:9px}
+.hpl-v138-self-award-info strong{color:var(--hpl-ink);font-size:15px;line-height:1.25;overflow-wrap:anywhere}
+.hpl-v138-self-award-info small{color:var(--hpl-muted);font-size:11px}
+.hpl-v138-self-award .hpl-primary{flex:none;max-width:100%;min-height:44px}
+.hpl-v138-self-award .hpl-primary:disabled{opacity:.7;cursor:default}
+@media(max-width:600px){.hpl-v138-self-award{padding:14px;gap:12px}.hpl-v138-self-award-icon{width:43px;height:43px;font-size:23px}.hpl-v138-self-award .hpl-primary{width:100%;flex:1 1 100%}}
