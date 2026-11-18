@@ -1,0 +1,22 @@
+/* HäxBag · Comunidade V161 — Retratos reais e refinamentos do mural/chat */
+.hb-social-v161 .hb-v161-avatar{position:relative;overflow:hidden;display:grid;place-items:center;flex-shrink:0;border-radius:50%;isolation:isolate;background:color-mix(in srgb,var(--hs-accent) 13%,var(--hs-surface))}
+.hb-social-v161 .hb-v161-avatar img{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center;border-radius:inherit}
+.hb-social-v161 .hb-social-post{overflow:hidden;transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease}
+.hb-social-v161 .hb-social-post:hover{transform:translateY(-1px);box-shadow:0 12px 30px rgba(0,0,0,.08)}
+.hb-social-v161 .hb-social-post-top>button:hover strong,.hb-social-v161 .hb-social-person-name:hover strong{color:var(--hs-accent)}
+.hb-social-v161 .hb-social-post-top>button:focus-visible,.hb-social-v161 .hb-social-chat-contact:focus-visible,.hb-social-v161 .hb-social-person-name:focus-visible{outline:2px solid var(--hs-accent);outline-offset:3px}
+.hb-social-v161 .hb-social-post>p{overflow-wrap:anywhere}
+.hb-social-v161 .hb-social-chat-contact .hb-v161-avatar{width:43px;height:43px}
+.hb-social-v161 .hb-v160-chat-header-identity .hb-v161-avatar{width:46px;height:46px}
+.hb-social-v161 .hb-v161-chat-message{display:flex;align-items:flex-end;gap:9px;max-width:100%;align-self:flex-start}
+.hb-social-v161 .hb-v161-chat-message.own{align-self:flex-end;flex-direction:row-reverse}
+.hb-social-v161 .hb-v161-chat-message>.hb-v161-avatar{width:30px;height:30px;font-size:.72rem;border-radius:50%;margin-bottom:3px}
+.hb-social-v161 .hb-v161-chat-message>.hb-social-bubble{max-width:min(75vw,490px);align-self:auto;min-width:0}
+.hb-social-v161 .hb-v161-chat-message.own>.hb-social-bubble{align-self:auto}
+.hb-social-v161 .hb-social-person .hb-v161-avatar{width:48px;height:48px}
+.hb-social-v161 .hb-social-composer .hb-v161-avatar{width:46px;height:46px}
+.hb-social-v161 .hb-social-chat-messages{scrollbar-width:thin;scrollbar-color:var(--hs-line) transparent}
+.hb-social-v161 .hb-social-bubble{box-shadow:0 3px 11px rgba(0,0,0,.035)}
+.hb-social-v161 .hb-social-chat-compose textarea:focus,.hb-social-v161 .hb-social-composer textarea:focus{outline:2px solid color-mix(in srgb,var(--hs-accent) 60%,transparent);outline-offset:1px}
+@media(max-width:640px){.hb-social-v161 .hb-v161-chat-message>.hb-social-bubble{max-width:calc(100vw - 113px)}.hb-social-v161 .hb-v161-chat-message>.hb-v161-avatar{width:26px;height:26px}.hb-social-v161 .hb-social-post:hover{transform:none}}
+@media(prefers-reduced-motion:reduce){.hb-social-v161 .hb-social-post{transition:none}.hb-social-v161 .hb-social-post:hover{transform:none}}
