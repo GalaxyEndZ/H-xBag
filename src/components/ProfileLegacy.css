@@ -140,3 +140,18 @@
 .hpl-v138-self-award .hpl-primary{flex:none;max-width:100%;min-height:44px}
 .hpl-v138-self-award .hpl-primary:disabled{opacity:.7;cursor:default}
 @media(max-width:600px){.hpl-v138-self-award{padding:14px;gap:12px}.hpl-v138-self-award-icon{width:43px;height:43px;font-size:23px}.hpl-v138-self-award .hpl-primary{width:100%;flex:1 1 100%}}
+
+/* V139 — administração geral de insígnias oficiais */
+.hpl-v139-badge-selector{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.7fr);align-items:end;gap:11px 16px;padding:18px;border:1px solid color-mix(in srgb,var(--hpl-accent) 28%,var(--hpl-line));border-radius:15px;background:color-mix(in srgb,var(--hpl-accent) 5%,var(--hpl-surface-alt))}
+.hpl-v139-badge-selector>label{display:grid;gap:5px;color:var(--hpl-ink)}
+.hpl-v139-badge-selector>label strong{font-size:13px;font-weight:800}
+.hpl-v139-badge-selector>label small{font-size:11px;line-height:1.5;color:var(--hpl-muted)}
+.hpl-v139-badge-selector>select{width:100%;min-width:0;min-height:43px;padding:9px 12px;border:1px solid var(--hpl-line);border-radius:10px;background:var(--hpl-surface);color:var(--hpl-ink);font:inherit;font-size:13px;cursor:pointer}
+.hpl-v139-badge-selector>select:focus-visible{outline:2px solid var(--hpl-accent);outline-offset:2px}
+.hpl-v139-selected-badge{grid-column:1/-1;display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--hpl-accent) 8%,var(--hpl-surface));border:1px solid var(--hpl-line)}
+.hpl-v139-selected-badge>span{display:grid;place-items:center;flex:none;width:47px;height:47px;border:1px solid color-mix(in srgb,var(--hpl-accent) 42%,transparent);border-radius:12px;color:var(--hpl-accent);font:normal 27px Georgia,serif;background:color-mix(in srgb,var(--hpl-accent) 13%,transparent)}
+.hpl-v139-selected-badge>div{display:grid;gap:4px;min-width:0}
+.hpl-v139-selected-badge strong{font-size:13px;color:var(--hpl-ink)}
+.hpl-v139-selected-badge small{font-size:11px;line-height:1.5;color:var(--hpl-muted)}
+.hpl-v139-badge-selector>.hpl-feedback{grid-column:1/-1}
+@media(max-width:600px){.hpl-v139-badge-selector{grid-template-columns:1fr;padding:13px}.hpl-v139-selected-badge{grid-column:auto}}

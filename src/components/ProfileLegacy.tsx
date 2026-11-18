@@ -9,6 +9,7 @@ type Privacy = Record<PrivacyKey,boolean>
 type Hero = {id:string;name:string;emoji:string;archetype:string;campaign:string}
 type Chronicle = {id:string;date:string;title:string;detail:string;kind:string}
 type Award = {id:string;title:string;description:string;symbol:string;created_at:string;given_by:string|null}
+type AdminBadge = {code:string;title:string;description:string;symbol:string}
 type Showcase = {
   user_id:string;avatar_image:string;cover_image:string;status:string;status_custom:string;avatar_position:number;cover_position:number;
   frame:string;accent:string;layout:string;privacy:Privacy;
@@ -70,6 +71,10 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   const [adminSearchBusy,setAdminSearchBusy]=useState(false)
   const [adminGrantBusy,setAdminGrantBusy]=useState<string|null>(null)
   const [adminNotice,setAdminNotice]=useState('')
+  const [adminBadgeCatalog,setAdminBadgeCatalog]=useState<AdminBadge[]>([])
+  const [adminBadgeCode,setAdminBadgeCode]=useState('fundador')
+  const [adminBadgeLoading,setAdminBadgeLoading]=useState(false)
+  const [adminBadgeError,setAdminBadgeError]=useState('')
   const refresh=useCallback(async()=>{
     const [r,a,settings]=await Promise.all([
       supabase.from('hax_profile_showcase').select('*').eq('user_id',userId).maybeSingle(),
@@ -171,6 +176,29 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   }
   function openPerson(person:Person){setVisitorPerson(person)}
   async function requestFriend(id:string){const {error:failure}=await supabase.rpc('hb_send_friend_request',{p_target:id});if(failure)setError(failure.message);else setNotice('Solicitação de amizade enviada.')}
+  // O catálogo concedível é fornecido pelo banco e só pode ser consultado pelo admin.
+  // Insígnias futuras entrarão aqui sem exigir alterações nessa interface.
+  useEffect(()=>{
+    if(!isSiteAdmin){setAdminBadgeCatalog([]);setAdminBadgeError('');return}
+    let cancelled=false
+    setAdminBadgeLoading(true)
+    void supabase.rpc('hax_badge_admin_catalog').then(({data,error:failure})=>{
+      if(cancelled)return
+      setAdminBadgeLoading(false)
+      if(failure){
+        setAdminBadgeError(`Não foi possível carregar o catálogo de concessão. Aplique o SQL da V139. ${failure.message}`)
+        setAdminBadgeCatalog([])
+        return
+      }
+      const badges=((data||[]) as AdminBadge[]).filter(badge=>badge.code&&badge.title)
+      setAdminBadgeCatalog(badges)
+      setAdminBadgeError('')
+      setAdminBadgeCode(current=>badges.some(badge=>badge.code===current)?current:(badges[0]?.code||''))
+    })
+    return()=>{cancelled=true}
+  },[isSiteAdmin])
+  const selectedAdminBadge=adminBadgeCatalog.find(badge=>badge.code===adminBadgeCode)
+  const alreadyOwnsSelectedBadge=allBadges.some(badge=>badge.id===adminBadgeCode)
   // A pesquisa é exclusiva da administração; saber quem é mestre não dá direito a conceder insígnias.
   useEffect(()=>{
     if(!isSiteAdmin||adminSearch.trim().length<2){setAdminMatches([]);setAdminSearchBusy(false);return}
@@ -185,13 +213,16 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     },350)
     return()=>{cancelled=true;window.clearTimeout(handle)}
   },[isSiteAdmin,adminSearch])
-  async function grantFounder(person:Person){
-    if(!isSiteAdmin||adminGrantBusy)return
+  async function grantOfficialBadge(person:Person){
+    const selected=selectedAdminBadge
+    if(!isSiteAdmin||adminGrantBusy||!selected)return
     setAdminGrantBusy(person.id);setAdminNotice('')
-    const {data,error:failure}=await supabase.rpc('hax_badge_grant_founder',{p_target:person.id})
+    const {data,error:failure}=await supabase.rpc('hax_badge_grant',{
+      p_target:person.id,p_badge_code:selected.code,
+    })
     setAdminGrantBusy(null)
-    if(failure){setAdminNotice(`Não foi possível conceder Fundador: ${failure.message}`);return}
-    setAdminNotice(data===true?`Insígnia Fundador concedida a ${person.display_name}.`:`${person.display_name} já possui a insígnia Fundador.`)
+    if(failure){setAdminNotice(`Não foi possível conceder ${selected.title}: ${failure.message}`);return}
+    setAdminNotice(data===true?`Insígnia ${selected.title} concedida a ${person.display_name}.`:`${person.display_name} já possui a insígnia ${selected.title}.`)
     if(person.id===userId){
       const {data:myBadges,error:reloadError}=await supabase.rpc('hax_badge_my_awards')
       if(!reloadError)setAwards((myBadges||[]) as Award[])
@@ -332,19 +363,28 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <p className="hpl-v137-badge-help">As insígnias recebidas aparecem automaticamente na vitrine e no perfil público, caso a opção “Insígnias” esteja visível nas suas configurações de privacidade.</p>
       </section>
       {isSiteAdmin&&<section className="hpl-panel hpl-v137-admin-panel">
-        <div className="hpl-panel-heading"><span className="hpl-overline">ADMINISTRAÇÃO DO SITE · ACESSO RESTRITO</span><h3>Conceder Fundador</h3><p>Como administrador do HäxBag, você também pode receber a insígnia Fundador. Conceda-a à sua própria conta ou busque outro aventureiro abaixo.</p></div>
-        <div className="hpl-v138-self-award" aria-label="Conceder insígnia Fundador à sua própria conta">
-          <span className="hpl-v138-self-award-icon" aria-hidden="true">✦</span>
-          <div className="hpl-v138-self-award-info"><span className="hpl-overline">SUA CONTA · ADMINISTRADOR DO SITE</span><strong>{displayName}</strong><small>@{username||'aventureiro'} · Insígnia Fundador</small></div>
-          <button type="button" className="hpl-primary" disabled={!!adminGrantBusy || allBadges.some(badge=>badge.id==='fundador')} onClick={()=>void grantFounder({id:userId,display_name:displayName,username})}>
-            {adminGrantBusy===userId?'Concedendo…':allBadges.some(badge=>badge.id==='fundador')?'✓ Você já possui Fundador':'✦ Conceder Fundador a mim'}
+        <div className="hpl-panel-heading"><span className="hpl-overline">ADMINISTRAÇÃO DO SITE · ACESSO RESTRITO</span><h3>Conceder insígnias oficiais</h3><p>Escolha uma insígnia do catálogo oficial e conceda-a a qualquer conta, inclusive a sua. A Primordial continua automática durante a beta, mas você também pode atribuí-la manualmente.</p></div>
+        <div className="hpl-v139-badge-selector">
+          <label htmlFor="hpl-v139-badge-choice"><strong>Insígnia a conceder</strong><small>Somente as insígnias oficiais do HäxBag estão disponíveis.</small></label>
+          <select id="hpl-v139-badge-choice" value={adminBadgeCode} disabled={adminBadgeLoading||!!adminGrantBusy||!adminBadgeCatalog.length} onChange={event=>{setAdminBadgeCode(event.target.value);setAdminNotice('')}}>
+            {adminBadgeCatalog.length===0&&<option value="">{adminBadgeLoading?'Carregando catálogo…':'Catálogo indisponível'}</option>}
+            {adminBadgeCatalog.map(badge=><option key={badge.code} value={badge.code}>{badge.symbol} {badge.title}</option>)}
+          </select>
+          {selectedAdminBadge&&<div className="hpl-v139-selected-badge"><span aria-hidden="true">{selectedAdminBadge.symbol}</span><div><strong>{selectedAdminBadge.title}</strong><small>{selectedAdminBadge.description}</small></div></div>}
+          {adminBadgeError&&<p className="hpl-feedback error" role="alert">{adminBadgeError}</p>}
+        </div>
+        <div className="hpl-v138-self-award" aria-label="Conceder insígnia à sua própria conta">
+          <span className="hpl-v138-self-award-icon" aria-hidden="true">{selectedAdminBadge?.symbol||'✦'}</span>
+          <div className="hpl-v138-self-award-info"><span className="hpl-overline">SUA CONTA · ADMINISTRADOR DO SITE</span><strong>{displayName}</strong><small>@{username||'aventureiro'} · {selectedAdminBadge?.title||'Selecione uma insígnia'}</small></div>
+          <button type="button" className="hpl-primary" disabled={!!adminGrantBusy||!selectedAdminBadge||alreadyOwnsSelectedBadge} onClick={()=>void grantOfficialBadge({id:userId,display_name:displayName,username})}>
+            {adminGrantBusy===userId?'Concedendo…':alreadyOwnsSelectedBadge?`✓ Você já possui ${selectedAdminBadge?.title||'esta insígnia'}`:`✦ Conceder ${selectedAdminBadge?.title||'insígnia'} a mim`}
           </button>
         </div>
         <label className="hpl-search">Encontrar conta<div className="hpl-search-field"><span aria-hidden="true">⌕</span><input type="search" value={adminSearch} onChange={event=>{setAdminSearch(event.target.value);setAdminNotice('')}} placeholder="Nome de usuário ou nome de exibição…"/></div></label>
         {adminNotice&&<p className="hpl-v137-admin-notice" role="status">{adminNotice}</p>}
         {adminSearchBusy&&<p className="hpl-v137-admin-hint" role="status">Procurando contas…</p>}
-        <div className="hpl-v137-admin-people">{adminMatches.map(person=><div key={person.id} className="hpl-v137-admin-person"><button type="button" className="hpl-person-visit" onClick={()=>openPerson(person)}><span className="hpl-person-avatar" aria-hidden="true">{person.display_name.slice(0,1).toUpperCase()}</span><span><strong>{person.display_name}</strong><small>@{person.username||'aventureiro'}</small></span></button><button className="hpl-primary" type="button" disabled={!!adminGrantBusy} onClick={()=>void grantFounder(person)}>{adminGrantBusy===person.id?'Concedendo…':'✦ Conceder Fundador'}</button></div>)}</div>
-        {!adminMatches.length&&adminSearch.trim().length<2&&<p className="hpl-v137-admin-hint">Digite pelo menos dois caracteres para encontrar a conta que receberá Fundador.</p>}
+        <div className="hpl-v137-admin-people">{adminMatches.map(person=><div key={person.id} className="hpl-v137-admin-person"><button type="button" className="hpl-person-visit" onClick={()=>openPerson(person)}><span className="hpl-person-avatar" aria-hidden="true">{person.display_name.slice(0,1).toUpperCase()}</span><span><strong>{person.display_name}</strong><small>@{person.username||'aventureiro'}</small></span></button><button className="hpl-primary" type="button" disabled={!!adminGrantBusy||!selectedAdminBadge||(person.id===userId&&alreadyOwnsSelectedBadge)} onClick={()=>void grantOfficialBadge(person)}>{adminGrantBusy===person.id?'Concedendo…':`✦ Conceder ${selectedAdminBadge?.title||'insígnia'}`}</button></div>)}</div>
+        {!adminMatches.length&&adminSearch.trim().length<2&&<p className="hpl-v137-admin-hint">Digite pelo menos dois caracteres para encontrar uma conta. Você pode conceder qualquer insígnia do catálogo a qualquer jogador.</p>}
         {!adminSearchBusy&&!adminMatches.length&&adminSearch.trim().length>=2&&<p className="hpl-v137-admin-hint">Nenhuma conta encontrada.</p>}
       </section>}
     </div>}
