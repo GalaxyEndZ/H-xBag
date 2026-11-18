@@ -2,7 +2,7 @@ import {
   getRegisteredSystems,
   getSystemByName,
 } from './systems/core/registry'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
@@ -18,19 +18,19 @@ import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSUTAI_ONI_CLASSES } from './systems/kisatsutai/extendedData'
-import HaxTable from './components/HaxTable'
-import DiceTower from './components/DiceTower'
-import MasterChest from './components/MasterChest'
-import CampaignMissions from './components/CampaignMissions'
-import InvestigationBoard from './components/InvestigationBoard'
-import MasterCombatConsole from './components/MasterCombatConsole'
+
+
+
+
+
+
 import { calculateSheetDefenses, calculateSheetPhysicalDamage, type SheetCombatEquipment } from './combatDefenses'
 import './themes/mobileSession.css'
 import './themes/mobileEmojiPicker.css'
 import ChestMessages from './components/ChestMessages'
-import FriendsPanel from './components/FriendsPanel'
-import ProfileLegacy from './components/ProfileLegacy'
-import PublicAdventurerProfile from './components/PublicAdventurerProfile'
+
+
+
 import IdentityCardCustomizer, { DEFAULT_IDENTITY_CARD, type IdentityCardPreferences } from './components/IdentityCardCustomizer'
 import { defaultProfileAppearance, profileFrameNames, profileThemePalette, type ProfileAppearance } from './profileTheme'
 import './components/ProfileUnified.css'
@@ -39,6 +39,7 @@ import './components/ProfilePolish.css'
 import './components/ProfileV132.css'
 import './components/ProfilePersonalTheme.css'
 import './components/ProfileV150.css'
+import './DeferredModule.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -47,6 +48,22 @@ import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } fr
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
 import { useCharacterConditionModifiers, useEnemyConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, conditionSkillComponents, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
+
+const HaxTable = lazy(() => import('./components/HaxTable'))
+const DiceTower = lazy(() => import('./components/DiceTower'))
+const MasterChest = lazy(() => import('./components/MasterChest'))
+const CampaignMissions = lazy(() => import('./components/CampaignMissions'))
+const InvestigationBoard = lazy(() => import('./components/InvestigationBoard'))
+const MasterCombatConsole = lazy(() => import('./components/MasterCombatConsole'))
+const FriendsPanel = memo(lazy(() => import('./components/FriendsPanel')))
+const ProfileLegacy = memo(lazy(() => import('./components/ProfileLegacy')))
+const PublicAdventurerProfile = lazy(() => import('./components/PublicAdventurerProfile'))
+/** Carrega módulos grandes quando a pessoa realmente visita a área correspondente. */
+function DeferredModule({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<section className="hb-deferred-module" role="status" aria-live="polite"><span aria-hidden="true">✦</span> Carregando área do HäxBag…</section>}>
+    {children}
+  </Suspense>
+}
 
 /** Marcador decorativo usado apenas nas prévias sem retrato do Bestiário. */
 function bestiaryCategorySymbol(category: string): string {
@@ -1570,6 +1587,7 @@ const resetCreatureFilters = () => {
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
   const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const [socialOpened, setSocialOpened] = useState(false)
   const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
   const [profileJourneyDisplay,setProfileJourneyDisplay] = useState<'cards'|'compact'>('cards')
   const [profileJourneyOrder,setProfileJourneyOrder] = useState<'name'|'campaign'>('name')
@@ -1580,7 +1598,15 @@ const resetCreatureFilters = () => {
       document.getElementById('hb-v129-profile-navigation')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'})
     })
   }
+  // Os personagens do Perfil são consultados por conta, não pela campanha ativa.
+  const [profileCharacters,setProfileCharacters] = useState<Character[]>([])
+  const [profileCharactersLoading,setProfileCharactersLoading] = useState(false)
+  const [profileCharactersError,setProfileCharactersError] = useState('')
+  const [profileCharactersRefresh,setProfileCharactersRefresh] = useState(0)
   const [profileCharacterQuery, setProfileCharacterQuery] = useState('')
+  const [profileCharacterArchetypeFilter,setProfileCharacterArchetypeFilter] = useState('all')
+  const [profileCharacterSort,setProfileCharacterSort] = useState<'name'|'recent'|'level'|'campaign'>('name')
+  const [profileCharacterVisibleCount,setProfileCharacterVisibleCount] = useState(24)
   const [profileCampaignQuery, setProfileCampaignQuery] = useState('')
   const [profileCharacterCampaignFilter, setProfileCharacterCampaignFilter] = useState('all')
   const [profileCampaignRoleFilter, setProfileCampaignRoleFilter] = useState<'all' | 'master' | 'player'>('all')
@@ -1918,8 +1944,56 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [activePage, setActivePage] = useState<
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
+  useEffect(() => {
+    if (activePage === 'profile' && profileSection === 'friends') setSocialOpened(true)
+  }, [activePage, profileSection])
   // A aparência pessoal só substitui a paleta ENQUANTO o Perfil está aberto.
   // Ao sair do Perfil, a temporada recupera seus estilos sem gravar alterações nela.
+  // Independente da campanha selecionada: consulta todos os registros atribuídos à conta.
+  // A paginação evita o limite padrão de linhas do PostgREST em perfis com muitos heróis.
+  useEffect(() => {
+    const userId=session?.user.id
+    if (!userId) {
+      setProfileCharacters([])
+      setProfileCharactersError('')
+      setProfileCharactersLoading(false)
+      return
+    }
+    if (activePage !== 'profile') return
+    let cancelled=false
+    async function loadMyProfileCharacters() {
+      setProfileCharactersLoading(true)
+      setProfileCharactersError('')
+      const result:Character[]=[]
+      const pageSize=500
+      try {
+        for (let start=0; ; start+=pageSize) {
+          const {data,error}=await supabase.from('characters')
+            .select('id,campaign_id,user_id,name,emoji,archetype,level,strength,visibility,current_player_id,created_at')
+            .eq('current_player_id',userId)
+            .order('created_at',{ascending:false})
+            .order('id',{ascending:true})
+            .range(start,start+pageSize-1)
+          if (cancelled) return
+          if (error) throw error
+          const batch=(data||[]) as Character[]
+          result.push(...batch)
+          if (batch.length<pageSize) break
+        }
+        // Um personagem aparece uma única vez, mesmo se houver atualização na consulta.
+        if (!cancelled) setProfileCharacters(Array.from(new Map(result.map(character=>[character.id,character])).values()))
+      } catch (error) {
+        if (!cancelled) {
+          setProfileCharacters([])
+          setProfileCharactersError(`Não foi possível carregar seus personagens de todas as campanhas: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      } finally {
+        if (!cancelled) setProfileCharactersLoading(false)
+      }
+    }
+    void loadMyProfileCharacters()
+    return () => {cancelled=true}
+  },[activePage,session?.user.id,profileCharactersRefresh])
   const personalProfileTheme = activePage === 'profile' && profileAppearance !== null
   const displayPalette = personalProfileTheme ? profileThemePalette(profileAppearance) : activeTheme
   useEffect(() => {
@@ -7341,8 +7415,42 @@ async function sendItemToCharacter() {
   const accountTitleName = profileTitleOptions.find(option => option.id === accountTitle)?.name ?? 'Viajante dos Mundos'
   const storedFeaturedCharacterId = typeof session?.user.user_metadata?.profile_featured_character_id === 'string'
     ? String(session.user.user_metadata.profile_featured_character_id) : null
-  const accountAssignedCharacters = characters.filter(character => character.current_player_id === session?.user.id)
-  const accountMasterCampaigns = campaigns.filter(campaign => campaign.role === 'master' || campaign.created_by === session?.user.id)
+  const accountAssignedCharacters = useMemo(
+    () => profileCharacters.filter(character => character.current_player_id === session?.user.id),
+    [profileCharacters, session?.user.id],
+  )
+  const accountMasterCampaigns = useMemo(
+    () => campaigns.filter(campaign => campaign.role === 'master' || campaign.created_by === session?.user.id),
+    [campaigns, session?.user.id],
+  )
+  // Passamos arrays e callbacks estáveis para a vitrine: editar outras áreas não
+  // força os cartões, insígnias e crônicas a renderizarem novamente.
+  const profileLegacyCharacters = useMemo(() => {
+    const names = new Map(campaigns.map(campaign => [campaign.id, campaign.name]))
+    return accountAssignedCharacters.map(character => ({
+      id: character.id,
+      name: character.name,
+      emoji: character.emoji || '⚔️',
+      archetype: character.archetype || '',
+      campaign: names.get(character.campaign_id) || 'Campanha',
+    }))
+  }, [accountAssignedCharacters, campaigns])
+  const profileLegacyCampaigns = useMemo(
+    () => campaigns.map(campaign => ({
+      id: campaign.id,
+      name: campaign.name,
+      master: campaign.role === 'master' || campaign.created_by === session?.user.id,
+    })),
+    [campaigns, session?.user.id],
+  )
+  const updateProfilePhotoUrls = useCallback((avatar: string, cover: string, avatarPosition: number, coverPosition: number) => {
+    setProfilePhotoUrls(previous => previous.avatar === avatar && previous.cover === cover && previous.avatarPosition === avatarPosition && previous.coverPosition === coverPosition
+      ? previous : { avatar, cover, avatarPosition, coverPosition })
+  }, [])
+  const updateProfileAppearance = useCallback((appearance: ProfileAppearance) => {
+    setProfileAppearance(previous => previous?.accent === appearance.accent && previous.frame === appearance.frame && previous.layout === appearance.layout
+      ? previous : appearance)
+  }, [])
   // A foto enviada também conta como avatar; sem personagens, não exigimos um destaque impossível.
   const profileIdentitySteps = [
     { id:'username' as const, symbol:'@', label:'Nome de usuário', detail:'Identificação para outros jogadores', done:Boolean(accountUsername) },
@@ -10721,7 +10829,7 @@ counterAttackDT
 
         <div className={`page-content page-${activePage}`} id="inicio-conteudo" tabIndex={-1}>
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
-            <MasterChest
+            <DeferredModule><MasterChest
               key={selectedCampaignId}
               campaignId={selectedCampaignId}
               characters={characters.map(character => ({ id: character.id, campaign_id: character.campaign_id, name: character.name, emoji: character.emoji }))}
@@ -10735,7 +10843,7 @@ counterAttackDT
                     .then(({ data }) => { if (data) setItems((data as Item[]).filter(item => item.metadata?.cybernetic !== true || item.metadata?.cyberneticEquipped !== true)) })
                 }
               }}
-            />
+            /></DeferredModule>
           )}
           <style>{`
 /* HäxBag · Fichas — renovação visual completa, compartilhada por jogadores e inimigos */
@@ -12436,13 +12544,29 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 {(() => {
                   const assigned = accountAssignedCharacters
                   const featured = assigned.find(character => character.id === (profileFeaturedCharacterId ?? storedFeaturedCharacterId)) ?? assigned[0]
+                  const campaignNames = new Map(campaigns.map(campaign=>[campaign.id,campaign.name]))
+                  const normalizeSearch = (text:string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
+                  const search = normalizeSearch(profileCharacterQuery.trim())
+                  const availableArchetypes = Array.from(new Set(assigned.map(character=>character.archetype?.trim()).filter((value):value is string=>Boolean(value)))).sort((a,b)=>a.localeCompare(b,'pt-BR'))
                   const visibleCharacters = assigned.filter(character => {
-                    const campaignName = campaigns.find(campaign => campaign.id === character.campaign_id)?.name ?? ''
-                    const matchesCampaign = profileCharacterCampaignFilter === 'all' || character.campaign_id === profileCharacterCampaignFilter
-                    return matchesCampaign && `${character.name} ${character.archetype ?? ''} ${campaignName}`.toLocaleLowerCase('pt-BR').includes(profileCharacterQuery.trim().toLocaleLowerCase('pt-BR'))
-                  }).sort((a,b)=>profileJourneyOrder==='campaign'
-                    ? ((campaigns.find(c=>c.id===a.campaign_id)?.name || '').localeCompare(campaigns.find(c=>c.id===b.campaign_id)?.name || '', 'pt-BR') || a.name.localeCompare(b.name,'pt-BR'))
-                    : a.name.localeCompare(b.name,'pt-BR'))
+                    if (profileCharacterCampaignFilter !== 'all' && character.campaign_id !== profileCharacterCampaignFilter) return false
+                    if (profileCharacterArchetypeFilter !== 'all' && (character.archetype?.trim()||'') !== profileCharacterArchetypeFilter) return false
+                    return !search || normalizeSearch(`${character.name} ${character.archetype||''} ${campaignNames.get(character.campaign_id)||''} ${character.level||''}`).includes(search)
+                  }).sort((a,b)=>{
+                    if (profileCharacterSort === 'recent') {
+                      const dateDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                      if (dateDiff) return dateDiff
+                    }
+                    if (profileCharacterSort === 'level' && a.level!==b.level) return b.level-a.level
+                    if (profileCharacterSort === 'campaign') {
+                      const nameDiff=(campaignNames.get(a.campaign_id)||'').localeCompare(campaignNames.get(b.campaign_id)||'','pt-BR')
+                      if (nameDiff) return nameDiff
+                    }
+                    return a.name.localeCompare(b.name,'pt-BR',{sensitivity:'base'})
+                  })
+                  const displayedCharacters=visibleCharacters.slice(0,profileCharacterVisibleCount)
+                  const hasCharacterFilters=Boolean(profileCharacterQuery.trim() || profileCharacterCampaignFilter!=='all' || profileCharacterArchetypeFilter!=='all')
+                  const resetCharacterFilters=()=>{setProfileCharacterQuery('');setProfileCharacterCampaignFilter('all');setProfileCharacterArchetypeFilter('all');setProfileCharacterSort('name');setProfileCharacterVisibleCount(24)}
                   const visibleCampaigns = campaigns.filter(campaign => {
                     const matchesRole = profileCampaignRoleFilter === 'all' || (campaign.role === 'master' || campaign.created_by === session.user.id ? 'master' : 'player') === profileCampaignRoleFilter
                     return matchesRole && `${campaign.name} ${campaign.system_name ?? ''}`.toLocaleLowerCase('pt-BR').includes(profileCampaignQuery.trim().toLocaleLowerCase('pt-BR'))
@@ -12453,7 +12577,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <div className="hb-v131-journey-controls" aria-label="Opções da jornada">
                       <div><span className="hb-kicker">ARQUIVO DE AVENTURAS</span><strong>{assigned.length} personagens · {campaigns.length} campanhas</strong><small>Escolha como deseja visualizar seus registros.</small></div>
                       <div className="hb-v131-journey-controls-actions">
-                        <label>Ordenação<select value={profileJourneyOrder} onChange={event=>setProfileJourneyOrder(event.target.value as 'name'|'campaign')}><option value="name">Nome A–Z</option><option value="campaign">Agrupar por campanha / papel</option></select></label>
+                        <label>Ordenação das campanhas<select value={profileJourneyOrder} onChange={event=>setProfileJourneyOrder(event.target.value as 'name'|'campaign')}><option value="name">Nome A–Z</option><option value="campaign">Agrupar por campanha / papel</option></select></label>
                         <div className="hb-v131-layout-switch" role="group" aria-label="Densidade dos cartões"><button type="button" aria-pressed={profileJourneyDisplay==='cards'} className={profileJourneyDisplay==='cards'?'is-active':''} onClick={()=>setProfileJourneyDisplay('cards')}>▦ Cartões</button><button type="button" aria-pressed={profileJourneyDisplay==='compact'} className={profileJourneyDisplay==='compact'?'is-active':''} onClick={()=>setProfileJourneyDisplay('compact')}>☷ Compacto</button></div>
                       </div>
                     </div>
@@ -12477,21 +12601,29 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       </>}
                     </div>
                     <div id="hb-profile-characters" className="hb-profile-collection-heading">
-                      <div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Somente personagens em que você está atribuído como jogador.</p></div>
-                      <span className="hb-profile-collection-count">{assigned.length} personagens</span>
+                      <div><span className="hb-kicker">REGISTROS DA JORNADA</span><h2>Meus personagens</h2><p>Todos os personagens atribuídos à sua conta, de qualquer campanha — não apenas da selecionada.</p></div>
+                      <span className="hb-profile-collection-count">{profileCharactersLoading?'Buscando…':`${assigned.length} ${assigned.length===1?'personagem':'personagens'}`}</span>
                     </div>
-                    <div className="hb-profile-collection-tools hb-profile-filter-bar">
-                      <label className="hb-profile-search-label"><span>Procurar personagem</span><input type="search" value={profileCharacterQuery} onChange={event => setProfileCharacterQuery(event.target.value)} placeholder="Nome, arquétipo ou campanha…" /></label>
-                      <label className="hb-profile-filter-select"><span>Campanha</span><select value={profileCharacterCampaignFilter} onChange={event => setProfileCharacterCampaignFilter(event.target.value)}><option value="all">Todas as campanhas</option>{campaigns.filter(campaign => assigned.some(character => character.campaign_id === campaign.id)).map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label>
-                      {(profileCharacterQuery || profileCharacterCampaignFilter !== 'all') && <button type="button" className="hb-profile-clear-search" onClick={() => { setProfileCharacterQuery(''); setProfileCharacterCampaignFilter('all') }}>Limpar filtros</button>}
-                      <span className="hb-profile-result-count" aria-live="polite">{visibleCharacters.length} de {assigned.length}</span>
+                    <div className="hb-profile-collection-tools hb-profile-filter-bar hb-profile-character-filters" role="search" aria-label="Filtros dos meus personagens">
+                      <label className="hb-profile-search-label"><span>Pesquisar personagens</span><input type="search" value={profileCharacterQuery} onChange={event=>{setProfileCharacterQuery(event.target.value);setProfileCharacterVisibleCount(24)}} placeholder="Nome, arquétipo, campanha ou nível…" /></label>
+                      <label className="hb-profile-filter-select"><span>Campanha</span><select value={profileCharacterCampaignFilter} onChange={event=>{setProfileCharacterCampaignFilter(event.target.value);setProfileCharacterVisibleCount(24)}}><option value="all">Todas as campanhas</option>{campaigns.filter(campaign=>assigned.some(character=>character.campaign_id===campaign.id)).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).map(campaign=><option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select></label>
+                      <label className="hb-profile-filter-select"><span>Arquétipo</span><select value={profileCharacterArchetypeFilter} onChange={event=>{setProfileCharacterArchetypeFilter(event.target.value);setProfileCharacterVisibleCount(24)}}><option value="all">Todos os arquétipos</option>{availableArchetypes.map(archetype=><option key={archetype} value={archetype}>{archetype}</option>)}</select></label>
+                      <label className="hb-profile-filter-select"><span>Ordenar personagens</span><select value={profileCharacterSort} onChange={event=>{setProfileCharacterSort(event.target.value as typeof profileCharacterSort);setProfileCharacterVisibleCount(24)}}><option value="name">Nome A–Z</option><option value="recent">Mais recentes</option><option value="level">Maior nível</option><option value="campaign">Por campanha</option></select></label>
+                      <div className="hb-profile-character-filter-footer">
+                        <span className="hb-profile-result-count" aria-live="polite">{profileCharactersLoading?'Atualizando personagens…':`${visibleCharacters.length} de ${assigned.length} ${assigned.length===1?'personagem':'personagens'}`}</span>
+                        {hasCharacterFilters&&<button type="button" className="hb-profile-clear-search" onClick={resetCharacterFilters}>Limpar filtros</button>}
+                        <button type="button" className="hb-profile-clear-search" disabled={profileCharactersLoading} onClick={()=>setProfileCharactersRefresh(value=>value+1)} aria-label="Atualizar lista de personagens de todas as campanhas">↻ Atualizar</button>
+                      </div>
                     </div>
+                    {profileCharactersError&&<p className="hb-profile-characters-error" role="alert">{profileCharactersError}</p>}
                     <div className={`hb-profile-character-grid ${profileJourneyDisplay==='compact'?'hb-v131-compact-grid':''}`}>
-                      {visibleCharacters.length ? visibleCharacters.map(character => (
+                      {displayedCharacters.length ? displayedCharacters.map(character => (
                         <article className={`hb-profile-character-card ${featured?.id === character.id ? 'hb-profile-character-card-featured' : ''}`} key={character.id}>
                           <span className="hb-profile-character-avatar" aria-hidden="true">{character.emoji || '⚔️'}</span>
                           <div className="hb-profile-character-info"><strong>{character.name}</strong><span>{campaigns.find(campaign => campaign.id === character.campaign_id)?.name || 'Campanha não disponível'}</span><small>{character.archetype || 'Arquétipo não definido'}</small></div>
-                          <div className="hb-profile-character-actions"><span className="hb-profile-character-role">Jogador</span><button type="button" className="hb-profile-feature-button" aria-pressed={featured?.id === character.id} disabled={profileFeatureSaving} onClick={async () => {
+                          <div className="hb-profile-character-actions"><span className="hb-profile-character-role">Jogador</span>
+                            {campaigns.some(campaign=>campaign.id===character.campaign_id)&&<button type="button" className="hb-profile-feature-button hb-profile-open-character" onClick={()=>{setSelectedCampaignId(character.campaign_id);setSelectedCharacterId(character.id);setActivePage('sheets')}} aria-label={`Abrir ficha de ${character.name}`}>Abrir ficha ↗</button>}
+                            <button type="button" className="hb-profile-feature-button" aria-pressed={featured?.id === character.id} disabled={profileFeatureSaving} onClick={async () => {
                             if (profileFeatureSaving) return
                             setProfileFeatureSaving(true)
                             setError('')
@@ -12505,8 +12637,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                             } finally { setProfileFeatureSaving(false) }
                           }}>{profileFeatureSaving ? 'Salvando…' : featured?.id === character.id ? '★ Em destaque' : '☆ Destacar'}</button></div>
                         </article>
-                      )) : <p className="hb-profile-empty-collection">{assigned.length ? 'Nenhum personagem corresponde à busca.' : 'Os personagens aparecerão aqui quando você for atribuído como jogador.'}</p>}
+                      )) : <p className="hb-profile-empty-collection">{profileCharactersLoading?'Buscando seus personagens em todas as campanhas…':profileCharactersError?'Não foi possível atualizar a lista. Tente novamente.':assigned.length?'Nenhum personagem corresponde aos filtros.':'Seus personagens aparecerão aqui quando você for atribuído como jogador.'}</p>}
                     </div>
+                    {visibleCharacters.length>displayedCharacters.length&&<div className="hb-profile-character-more"><span>Exibindo {displayedCharacters.length} de {visibleCharacters.length} personagens</span><button type="button" onClick={()=>setProfileCharacterVisibleCount(count=>count+24)}>Mostrar mais {Math.min(24,visibleCharacters.length-displayedCharacters.length)} personagens ↓</button></div>}
                     <div id="hb-profile-campaigns" className="hb-profile-collection-heading hb-profile-campaign-heading"><div><span className="hb-kicker">MUNDOS COMPARTILHADOS</span><h2>Minhas campanhas</h2><p>Campanhas em que você participa, como mestre ou jogador.</p></div><span className="hb-profile-collection-count">{campaigns.length} campanhas</span></div>
                     <div className="hb-profile-collection-tools hb-profile-filter-bar">
                       <label className="hb-profile-search-label"><span>Procurar campanha</span><input type="search" value={profileCampaignQuery} onChange={event => setProfileCampaignQuery(event.target.value)} placeholder="Nome ou sistema de RPG…" /></label>
@@ -12742,22 +12875,22 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
             </section>
           <div className="hb-v129-section hb-v129-legacy" id="hb-v129-panel-legacy" role="tabpanel" aria-labelledby="hb-v129-tab-legacy" hidden={profileSection!=='legacy'}>
-          {session && <ProfileLegacy
+          {session && <DeferredModule><ProfileLegacy
             userId={session.user.id}
             activeCampaignId={selectedCampaignId}
-            onImagesLoaded={(avatar,cover,avatarPosition,coverPosition)=>setProfilePhotoUrls(previous=>previous.avatar===avatar && previous.cover===cover && previous.avatarPosition===avatarPosition && previous.coverPosition===coverPosition?previous:{avatar,cover,avatarPosition,coverPosition})}
+            onImagesLoaded={updateProfilePhotoUrls}
             appearanceRequest={profileAppearanceRequest}
-            onAppearanceChange={(appearance)=>setProfileAppearance(previous=>previous?.accent===appearance.accent && previous.frame===appearance.frame && previous.layout===appearance.layout?previous:appearance)}
+            onAppearanceChange={updateProfileAppearance}
             displayName={String(displayName)}
             username={accountUsername}
-            characters={accountAssignedCharacters.map(character=>({id:character.id,name:character.name,emoji:character.emoji||'⚔️',archetype:character.archetype||'',campaign:campaigns.find(c=>c.id===character.campaign_id)?.name||'Campanha'}))}
-            campaigns={campaigns.map(c=>({id:c.id,name:c.name,master:c.role==='master'||c.created_by===session.user.id}))}
-          />}
+            characters={profileLegacyCharacters}
+            campaigns={profileLegacyCampaigns}
+          /></DeferredModule>}
           </div>
           <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
-            <div id="hb-social-hub"><FriendsPanel campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></div>
+            <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <DeferredModule><FriendsPanel active={profileSection === 'friends'} campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></DeferredModule>}</div>
           </div>
-          {previewMyPublicProfile && session && <PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/>}
+          {previewMyPublicProfile && session && <DeferredModule><PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/></DeferredModule>}
           </div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
@@ -13714,7 +13847,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 )}
 
           {activePage === 'missions' && selectedCampaign && (
-            <CampaignMissions
+            <DeferredModule><CampaignMissions
               key={selectedCampaign.id}
               campaignId={selectedCampaign.id}
               seasonId={selectedSeasonId}
@@ -13728,26 +13861,26 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   .eq('character_id',selectedCharacterId).order('created_at',{ascending:true})
                   .then(({data}) => { if(data) setItems((data as Item[]).filter(item=>item.metadata?.cybernetic!==true || item.metadata?.cyberneticEquipped!==true)) })
               }}
-            />
+            /></DeferredModule>
           )}
 
           {activePage === 'investigation' && selectedCampaign && (
-            <InvestigationBoard
+            <DeferredModule><InvestigationBoard
               key={selectedCampaign.id}
               campaignId={selectedCampaign.id}
               seasonId={selectedSeasonId}
               seasons={seasons.map(season=>({id:season.id,name:season.name}))}
               isMaster={isMaster}
               userId={session?.user.id ?? ''}
-            />
+            /></DeferredModule>
           )}
 
           {activePage === 'dice-tower' && selectedCampaignId && (
-            <DiceTower />
+            <DeferredModule><DiceTower /></DeferredModule>
           )}
 
           {activePage === 'player-table' && selectedCampaign && (
-            <HaxTable
+            <DeferredModule><HaxTable
               campaignId={selectedCampaign.id}
               campaignName={selectedCampaign.name}
               seasonId={selectedSeasonId}
@@ -13758,7 +13891,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               playerName={displayName}
               characters={characters}
               enemies={isMaster ? enemies : []}
-            />
+            /></DeferredModule>
           )}
 
           {activePage === 'master-shield' && selectedCampaign && isMaster && (
@@ -13816,7 +13949,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   </div>
                 </div>
 
-                {masterShieldSeasonId && <MasterCombatConsole
+                {masterShieldSeasonId && <DeferredModule><MasterCombatConsole
                   campaignId={selectedCampaign.id}
                   seasonId={masterShieldSeasonId}
                   participants={masterShieldCombatParticipants}
@@ -13829,7 +13962,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   onAdjusted={() => { setMasterShieldRefreshKey(value => value+1); setEnemyPartyRefreshKey(value => value+1) }}
                   onDiceTower={() => setActivePage('dice-tower')}
                   onConditions={() => setActivePage('conditions')}
-                />}
+                /></DeferredModule>}
 
                 <div className="hb-ms-roster-toolbar" aria-label="Filtros das parties">
                   <label className="hb-ms-roster-search"><span aria-hidden="true">⌕</span>

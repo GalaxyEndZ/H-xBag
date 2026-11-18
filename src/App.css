@@ -16542,3 +16542,63 @@ button:disabled { opacity: .58; }
   .app-shell.hb-polish .hb-sidebar-v20{transition:none!important}
   .app-shell.hb-polish .hb-sidebar-v20 .hb-sidebar-invite-chevron{transition:none!important}
 }
+
+/* V155 — arquivo de personagens de todas as campanhas: filtros preparados para listas extensas. */
+.hb-profile-page-v17 .hb-profile-character-filters{
+  display:grid;
+  grid-template-columns:minmax(250px,2fr) repeat(3,minmax(145px,1fr));
+  gap:12px 14px;
+  align-items:end;
+  padding:17px;
+}
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-search-label,
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-filter-select{
+  width:100%;min-width:0;max-width:none;flex:none;margin:0;
+}
+.hb-profile-page-v17 .hb-profile-character-filters :is(input,select){
+  width:100%;min-height:45px;
+}
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-character-filter-footer{
+  grid-column:1/-1;
+  display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;
+  gap:9px;
+  padding-top:12px;
+  border-top:1px solid var(--profile-line);
+}
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-result-count{
+  flex:1 1 auto;align-self:center;padding:0;margin:0;color:var(--season-muted);
+  font-size:.82rem;white-space:normal;
+}
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-clear-search{
+  min-height:37px;padding:8px 12px;align-self:center;border-radius:10px;
+  background:color-mix(in srgb,var(--season-primary) 5%,var(--season-surface));
+}
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-clear-search:hover:not(:disabled){
+  border-color:var(--season-primary);
+}
+.hb-profile-page-v17 .hb-profile-character-filters .hb-profile-clear-search:disabled{opacity:.5;cursor:wait}
+.hb-profile-page-v17 .hb-profile-characters-error{
+  margin:0;padding:13px 16px;border:1px solid rgba(220,113,120,.45);
+  border-radius:12px;background:rgba(190,76,87,.10);color:var(--season-text);
+  font-size:.86rem;line-height:1.55;
+}
+.hb-profile-page-v17 .hb-profile-character-more{
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;
+  padding:14px 16px;border:1px dashed var(--profile-line);border-radius:13px;
+  color:var(--season-muted);font-size:.82rem;
+}
+.hb-profile-page-v17 .hb-profile-character-more button{
+  min-height:39px;padding:9px 16px;border:1px solid var(--profile-line);
+  border-radius:10px;background:color-mix(in srgb,var(--season-primary) 9%,var(--season-surface));
+  color:var(--season-text);font:inherit;font-weight:750;cursor:pointer;
+}
+.hb-profile-page-v17 .hb-profile-character-more button:hover{border-color:var(--season-primary)}
+@media(max-width:1150px){
+  .hb-profile-page-v17 .hb-profile-character-filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:650px){
+  .hb-profile-page-v17 .hb-profile-character-filters{grid-template-columns:minmax(0,1fr);padding:13px;gap:12px}
+  .hb-profile-page-v17 .hb-profile-character-filters .hb-profile-result-count{flex-basis:100%}
+  .hb-profile-page-v17 .hb-profile-character-filters .hb-profile-character-filter-footer{justify-content:stretch}
+  .hb-profile-page-v17 .hb-profile-character-filters .hb-profile-clear-search{flex:1 1 125px}
+}

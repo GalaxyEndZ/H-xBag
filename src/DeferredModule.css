@@ -1,0 +1,20 @@
+/* V157 — retorno visual enquanto a seção de acesso eventual é carregada. */
+.hb-deferred-module {
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  margin: 12px 0;
+  border: 1px solid var(--season-line, rgba(255,255,255,.14));
+  border-radius: 16px;
+  background: var(--season-surface, #1b2225);
+  color: var(--season-muted, #b4b6bd);
+  font-weight: 650;
+  text-align: center;
+}
+.hb-deferred-module > span {
+  color: var(--season-primary, #d9bd8b);
+  font-size: 25px;
+}
