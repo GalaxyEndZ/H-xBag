@@ -41,6 +41,7 @@ import './components/ProfilePersonalTheme.css'
 import './components/ProfileV150.css'
 import './components/ProfileSocialV158.css'
 import './components/SocialRpgSpacesV159.css'
+import './components/SocialProfileV160.css'
 import './DeferredModule.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
@@ -12507,6 +12508,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     </button>
                     <button type="button" className="hb-v136-theme-action" onClick={()=>{switchProfileSection('legacy');setProfileAppearanceRequest(n=>n+1)}} title="Alterar o tema pessoal desta página em Identidade e Legado → Aparência"><span className="hb-v136-theme-dot" style={{background:profileAppearance?.accent ?? defaultProfileAppearance.accent}} aria-hidden="true"/> <span>Tema do Perfil</span> ↗</button>
                     <button type="button" className="hb-v129-hero-secondary" onClick={()=>switchProfileSection('legacy')}>✦ Minha vitrine</button>
+                    <button type="button" className="hb-v160-profile-social-action" onClick={()=>openSocialTab('feed')}>♧ Ir ao feed social</button>
                     <button type="button" className="hb-v129-hero-secondary hb-v132-public-preview" onClick={()=>setPreviewMyPublicProfile(true)}>◈ Ver perfil público</button>
                   </div>
                   <div className="hb-v131-hero-progress" aria-label="Progresso da identidade">
@@ -12517,6 +12519,13 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </div>
               </header>
 
+              {profileSection!=='friends'&&<nav className="hb-v160-profile-quick-links" aria-label="Acesso rápido à rede social">
+                <span className="hb-v160-quick-label">SUA REDE</span>
+                <button type="button" onClick={()=>openSocialTab('feed')}>✦ Feed</button>
+                <button type="button" onClick={()=>openSocialTab('messages')}>✉ Mensagens</button>
+                <button type="button" onClick={()=>openSocialTab('friends')}>♧ Amigos</button>
+                <button type="button" onClick={()=>openSocialTab('discover')}>⌕ Descobrir</button>
+              </nav>}
               <div className="hb-v129-navigation" id="hb-v129-profile-navigation" aria-label="Navegação principal do perfil">
                 <div className="hb-v129-nav-heading"><span>NAVEGAÇÃO</span><strong>Seu espaço social</strong><small>Histórias, pessoas e identidade no mesmo lugar.</small></div>
                 {personalProfileTheme && <div className="hb-v136-personal-palette" aria-label="Tema pessoal ativo"><span className="hb-v136-theme-dot" style={{background:profileAppearance.accent}} aria-hidden="true"/><span><strong>Minha paleta</strong><small>{profileFrameNames[profileAppearance.frame]} · só no Perfil</small></span><button type="button" onClick={()=>{switchProfileSection('legacy');setProfileAppearanceRequest(n=>n+1)}}>Ajustar ↗</button></div>}
@@ -12556,7 +12565,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
               <div className="hb-profile-action-strip" aria-label="Ações do perfil">
                 <button type="button" onClick={() => {switchProfileSection('studio');setProfileEditing(true)}}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Nome, foto e carta pessoal</small></span></button>
-                <button type="button" onClick={() => switchProfileSection('friends')}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
+                <button type="button" onClick={() => openSocialTab('friends')}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e seguidores</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('journey')}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('legacy')}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Aparência, conquistas e vitrine social</small></span></button>
               </div>
@@ -12574,7 +12583,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <p>{nextProfileStep==='username'?'Defina um @usuário exclusivo para que outros aventureiros encontrem você.':nextProfileStep==='avatar'?'Escolha uma foto ou um símbolo em Identidade e Legado → Aparência.':nextProfileStep==='bio'?'Escreva uma breve apresentação para os outros participantes.':nextProfileStep==='featured'?'Destaque um dos personagens vinculados à sua conta.':'Sua identidade principal está pronta. Explore sua jornada, insígnias e companhia.'}</p>
                   {nextProfileStep && <button type="button" className="hb-v131-step-primary" onClick={()=>nextProfileStep && openProfileIdentityStep(nextProfileStep)}>✧ {nextProfileStep==='featured'?'Escolher protagonista':'Completar identidade'} <span aria-hidden="true">↗</span></button>}
                   <button type="button" onClick={()=>switchProfileSection('journey')}>⚔ Personagens e campanhas <span aria-hidden="true">↗</span></button>
-                  <button type="button" onClick={()=>switchProfileSection('friends')}>♧ Encontrar aventureiros <span aria-hidden="true">↗</span></button>
+                  <button type="button" onClick={()=>openSocialTab('discover')}>⌕ Encontrar aventureiros <span aria-hidden="true">↗</span></button>
                 </article>
               </div>
               <section className="hb-v150-profile-guide" aria-label="Guia para completar a identidade">

@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
 import './FriendsPanel.css'
 import './SocialV156.css'
+import './SocialV160.css'
 
 type Person = {
   person_id: string
@@ -60,6 +61,18 @@ const EMPTY_PEOPLE: Person[] = []
 const visibilityLabels: Record<Post['visibility'],string> = { public:'🌐 Público',followers:'◉ Seguidores',friends:'♧ Amigos' }
 const formatDate = (date:string) => new Date(date).toLocaleString('pt-BR', { day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit' })
 const nameOf = (person:{display_name:string;username?:string}) => person.display_name || person.username || 'Aventureiro'
+const foldText = (value:string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
+const dayOf = (date:string) => new Date(date).toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'})
+const pageInfo:Record<SocialTab,{kicker:string;title:string;description:string;icon:string}> = {
+  feed:{kicker:'LINHA DO TEMPO',title:'Sua comunidade, suas histórias',description:'Compartilhe momentos, acompanhe quem você segue e encontre novas aventuras.',icon:'✦'},
+  friends:{kicker:'CONEXÕES RECÍPROCAS',title:'Seus amigos',description:'As amizades acontecem quando vocês se seguem mutuamente.',icon:'♧'},
+  following:{kicker:'SUA REDE',title:'Quem você acompanha',description:'Acompanhe as novidades dos aventureiros que você escolheu seguir.',icon:'↗'},
+  followers:{kicker:'SUA REDE',title:'Quem acompanha você',description:'Conheça as pessoas que decidiram seguir suas jornadas.',icon:'↙'},
+  discover:{kicker:'EXPLORAR',title:'Encontre aventureiros',description:'Busque jogadores por nome ou identificador para ampliar seu círculo.',icon:'⌕'},
+  messages:{kicker:'CONVERSAS',title:'Mensagens privadas',description:'Um espaço reservado para conversar com seus amigos mútuos.',icon:'✉'},
+  blocked:{kicker:'PRIVACIDADE',title:'Contas bloqueadas',description:'Gerencie os perfis com os quais você não deseja interagir.',icon:'⊘'},
+  invites:{kicker:'CAMPANHAS',title:'Seus convites',description:'Convites para participar de aventuras, separados das suas conexões sociais.',icon:'⚑'},
+}
 
 export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity }: Props) {
   const [internalTab,setInternalTab] = useState<Tab>('feed')
@@ -72,12 +85,17 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [searchResults,setSearchResults] = useState<Person[]>([])
   const [searchBusy,setSearchBusy] = useState(false)
   const [filter,setFilter] = useState('')
+  const [peopleOrder,setPeopleOrder] = useState<'az'|'za'>('az')
+  const [chatSearch,setChatSearch] = useState('')
+  const [unreadOnly,setUnreadOnly] = useState(false)
   const [posts,setPosts] = useState<Post[]>([])
   const [postText,setPostText] = useState('')
   const [visibility,setVisibility] = useState<Post['visibility']>('public')
   const [feedScope,setFeedScope] = useState<'all'|'following'|'mine'>('all')
   const [hasMore,setHasMore] = useState(false)
   const [feedBusy,setFeedBusy] = useState(false)
+  const [feedLoaded,setFeedLoaded] = useState(false)
+  const [likePending,setLikePending] = useState<Record<string,boolean>>({})
   const [conversations,setConversations] = useState<Conversation[]>([])
   const [selectedChat,setSelectedChat] = useState<Conversation|null>(null)
   const [chatMessages,setChatMessages] = useState<ChatMessage[]>([])
@@ -90,6 +108,9 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [error,setError] = useState('')
   const feedRequestRef = useRef(0)
   const messagesRequestRef = useRef(0)
+  const chatScrollRef = useRef<HTMLDivElement>(null)
+  const chatLastIdRef = useRef('')
+  const likeInFlightRef = useRef(new Set<string>())
 
   const rpc = useCallback(async <T,>(name:string,args:Record<string,unknown> = {}):Promise<T> => {
     const {data,error:failure} = await supabase.rpc(name,args)
@@ -107,11 +128,13 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const loadConversations = useCallback(async () => {
     const rows = await rpc<Conversation[]>('hax_social_chat_list')
     setConversations(rows||[])
-    setSelectedChat(selected=>selected ? (rows||[]).find(row=>row.partner_id===selected.partner_id)||null : null)
+    // Mantém a conversa recém-iniciada mesmo antes da primeira mensagem.
+    setSelectedChat(selected=>selected ? (rows||[]).find(row=>row.partner_id===selected.partner_id) || selected : null)
   },[rpc])
   const loadFeed = useCallback(async (before:string|null=null,add=false,scope:typeof feedScope='all') => {
     const requestId = ++feedRequestRef.current
     setFeedBusy(true)
+    if (!add) setFeedLoaded(false)
     try {
       const rows = await rpc<Post[]>('hax_social_feed',{p_scope:scope,p_before:before,p_limit:20})
       if (requestId !== feedRequestRef.current) return
@@ -124,7 +147,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     } catch (failure) {
       if (requestId === feedRequestRef.current) setError(failure instanceof Error?failure.message:String(failure))
     }
-    finally {if (requestId === feedRequestRef.current) setFeedBusy(false)}
+    finally {if (requestId === feedRequestRef.current) {setFeedBusy(false);setFeedLoaded(true)}}
   },[rpc])
   const loadInvites = useCallback(async () => {
     const {data,error:failure}=await supabase.rpc('hb_list_direct_invites')
@@ -155,10 +178,11 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     return () => { cancelled = true }
   },[active])
   useEffect(()=>{if(active)void refresh()},[active,refresh])
-  useEffect(()=>{if(active)void loadFeed(null,false,feedScope)},[active,feedScope,loadFeed])
+  useEffect(()=>{if(active && tab==='feed')void loadFeed(null,false,feedScope)},[active,tab,feedScope,loadFeed])
   useEffect(()=>{
-    if(!active){setSearchBusy(false);return}
+    if(!active || tab!=='discover'){setSearchBusy(false);return}
     if(search.trim().length<2){setSearchResults([]);setSearchBusy(false);return}
+    setSearchResults([])
     let canceled=false
     const timer=window.setTimeout(async()=>{
       setSearchBusy(true)
@@ -169,12 +193,16 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       finally{if(!canceled)setSearchBusy(false)}
     },300)
     return()=>{canceled=true;window.clearTimeout(timer)}
-  },[search,rpc,active])
+  },[search,rpc,active,tab])
   const openChat=useCallback((person:Conversation)=>{
+    // Evita mostrar uma resposta tardia ou o rascunho de outra conversa.
+    messagesRequestRef.current+=1
+    chatLastIdRef.current=''
     setSelectedChat(person)
     setChatMessages([])
+    setMessageDraft('')
     setTab('messages')
-  },[])
+  },[onSelectTab])
   const loadMessages=useCallback(async(partnerId:string)=>{
     const requestId = ++messagesRequestRef.current
     const rows=await rpc<ChatMessage[]>('hax_social_chat_messages',{p_partner:partnerId,p_limit:80})
@@ -198,6 +226,16 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     return()=>window.clearInterval(timer)
   },[active,tab,selectedChat?.partner_id,loadConversations,loadMessages])
 
+  useEffect(()=>{
+    if (!active || tab!=='messages' || !selectedChat || !chatMessages.length) return
+    const lastId=chatMessages[chatMessages.length-1]?.message_id||''
+    if (lastId===chatLastIdRef.current) return
+    const scroll=chatScrollRef.current
+    const nearBottom=scroll ? scroll.scrollHeight-scroll.scrollTop-scroll.clientHeight<150 : true
+    const initial=chatLastIdRef.current===''
+    chatLastIdRef.current=lastId
+    if (scroll && (initial || nearBottom)) scroll.scrollTop=scroll.scrollHeight
+  },[active,tab,selectedChat?.partner_id,chatMessages])
   async function action(key:string,operation:string,args:Record<string,unknown>,success:string,updateFeed=false){
     setBusy(key);setNotice('');setError('')
     try{
@@ -223,16 +261,24 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setBusy('publish');setError('');setNotice('')
     try{
       await rpc('hax_social_create_post',{p_content:postText.trim(),p_visibility:visibility})
-      setPostText('');setNotice('Publicação feita!');setTab('feed');setFeedScope('all')
-      await loadFeed(null,false,'all')
+      setPostText('');setNotice('Sua publicação já está no mural!');setTab('feed')
+      if (feedScope==='all') await loadFeed(null,false,'all')
+      else setFeedScope('all')
     }catch(failure){setError(failure instanceof Error?failure.message:String(failure))}
     finally{setBusy('')}
   }
   async function like(post:Post){
+    if(likeInFlightRef.current.has(post.post_id))return
+    likeInFlightRef.current.add(post.post_id)
+    setLikePending(current=>({...current,[post.post_id]:true}))
     try{
       const liked=await rpc<boolean>('hax_social_like_post',{p_post:post.post_id})
       setPosts(items=>items.map(item=>item.post_id!==post.post_id?item:{...item,liked,like_count:Math.max(0,Number(item.like_count)+(liked?1:-1))}))
     }catch(failure){setError(failure instanceof Error?failure.message:String(failure))}
+    finally{
+      likeInFlightRef.current.delete(post.post_id)
+      setLikePending(current=>({...current,[post.post_id]:false}))
+    }
   }
   async function deletePost(post:Post){
     if(!window.confirm('Excluir esta publicação?'))return
@@ -251,7 +297,15 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     finally{setBusy('')}
   }
   const currentPeople=people[tab]||EMPTY_PEOPLE
-  const filteredPeople=useMemo(()=>currentPeople.filter(p=>`${p.display_name} ${p.username}`.toLocaleLowerCase('pt-BR').includes(filter.trim().toLocaleLowerCase('pt-BR'))),[currentPeople,filter])
+  const filteredPeople=useMemo(()=>currentPeople
+    .filter(p=>foldText(`${p.display_name} ${p.username}`).includes(foldText(filter.trim())))
+    .sort((a,b)=>peopleOrder==='az' ? nameOf(a).localeCompare(nameOf(b),'pt-BR') : nameOf(b).localeCompare(nameOf(a),'pt-BR')),
+  [currentPeople,filter,peopleOrder])
+  const filteredConversations=useMemo(()=>conversations.filter(person=>{
+    if (unreadOnly && Number(person.unread_count)===0) return false
+    return foldText(`${person.display_name} ${person.username} ${person.last_message||''}`).includes(foldText(chatSearch.trim()))
+  }),[conversations,chatSearch,unreadOnly])
+  const info=pageInfo[tab]
   const tabs: {id:Tab;label:string;count?:number}[]=[
     {id:'feed',label:'✦ Feed'},
     {id:'friends',label:'♧ Amigos',count:summary.friends},
@@ -273,12 +327,12 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         {!blocked&&<button type="button" onClick={()=>viewPerson(person)}>Ver perfil</button>}
         {!blocked&&<button type="button" className={person.following?'hb-social-muted-action':'hb-social-primary-action'} disabled={!!busy} onClick={()=>follow(person)}>{person.following?'✓ Seguindo':person.follows_me?'↗ Seguir de volta':'+ Seguir'}</button>}
         {!blocked&&person.is_friend&&<button type="button" disabled={!!busy} onClick={()=>{const contact=conversations.find(c=>c.partner_id===person.person_id)||{partner_id:person.person_id,display_name:person.display_name,username:person.username,last_message:null,last_at:null,unread_count:0,can_message:true};openChat(contact)}}>✉ Mensagem</button>}
-        {blocked?<button type="button" className="hb-social-muted-action" disabled={!!busy} onClick={()=>block(person,true)}>Desbloquear</button>:<button type="button" className="hb-social-danger-action" disabled={!!busy} onClick={()=>block(person,false)}>Bloquear</button>}
+        {blocked?<button type="button" className="hb-social-muted-action" disabled={!!busy} onClick={()=>block(person,true)}>Desbloquear</button>:<details className="hb-v160-person-more"><summary aria-label={`Mais opções para ${nameOf(person)}`} title="Mais opções">⋯</summary><div><button type="button" className="hb-social-danger-action" disabled={!!busy} onClick={()=>block(person,false)}>⊘ Bloquear usuário</button></div></details>}
       </div>
     </article>
   }
 
-  return <section className="hb-friends-panel hb-social-hub hb-social-v158" aria-label="Comunidade do HäxBag">
+  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
         <div className="hb-v158-mini-profile">
@@ -303,29 +357,51 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         </div>
       </aside>
       <div className="hb-v158-social-content">
-    <header className="hb-social-hero"><div><span className="hb-social-overline">HÄXBAG / COMUNIDADE</span><h2>Seu espaço na comunidade</h2><p>Compartilhe sua jornada, acompanhe amigos e converse com quem faz parte das suas histórias.</p></div><button type="button" onClick={()=>{void refresh();void loadFeed(null,false,feedScope)}} disabled={loading}>{loading?'Atualizando…':'↻ Atualizar'}</button></header>
-    <div className="hb-social-stats"><div><strong>{summary.following}</strong><span>Seguindo</span></div><div><strong>{summary.followers}</strong><span>Seguidores</span></div><div><strong>{summary.friends}</strong><span>Amigos mútuos</span></div><div><strong>{summary.unread}</strong><span>Mensagens não lidas</span></div></div>
+    <header className="hb-social-hero hb-v160-hero">
+      <div className="hb-v160-hero-copy"><span className="hb-social-overline">HÄXBAG / SOCIAL / {info.kicker}</span><h2><span className="hb-v160-hero-icon" aria-hidden="true">{info.icon}</span>{info.title}</h2><p>{info.description}</p></div>
+      <div className="hb-v160-hero-actions">
+        {tab!=='feed'&&<button type="button" className="hb-v160-hero-main" onClick={()=>setTab('feed')}>✦ Ver feed</button>}
+        {tab==='feed'&&<button type="button" className="hb-v160-hero-main" onClick={()=>setTab('discover')}>⌕ Encontrar pessoas</button>}
+        <button type="button" className="hb-v160-refresh" aria-label="Atualizar esta página" title="Atualizar esta página" onClick={()=>{void refresh();if(tab==='feed')void loadFeed(null,false,feedScope);if(tab==='messages'&&selectedChat)void loadMessages(selectedChat.partner_id)}} disabled={loading}>{loading?'…':'↻'}<span>Atualizar</span></button>
+      </div>
+    </header>
+    <div className="hb-social-stats hb-v160-stats" aria-label="Resumo das conexões">
+      {([{id:'following',icon:'↗',count:summary.following,label:'Seguindo'}, {id:'followers',icon:'↙',count:summary.followers,label:'Seguidores'}, {id:'friends',icon:'♧',count:summary.friends,label:'Amigos'}, {id:'messages',icon:'✉',count:summary.unread,label:'Não lidas'}] as const).map(stat=><button key={stat.id} type="button" className={tab===stat.id?'is-current':''} onClick={()=>setTab(stat.id)} aria-label={`${stat.count} ${stat.label}. Abrir ${stat.id==='messages'?'mensagens':stat.label.toLowerCase()}`}><span className="hb-v160-stat-icon" aria-hidden="true">{stat.icon}</span><span><strong>{stat.count}</strong><small>{stat.label}</small></span><span className="hb-v160-stat-arrow" aria-hidden="true">↗</span></button>)}
+    </div>
     
-    {error&&<p className="hb-social-alert" role="alert">{error}</p>}
-    {notice&&<p className="hb-social-notice" role="status">{notice}</p>}
+    {error&&<div className="hb-social-alert hb-v160-alert" role="alert"><span>{error}</span><button type="button" onClick={()=>setError('')} aria-label="Dispensar aviso de erro">✕</button></div>}
+    {notice&&<div className="hb-social-notice hb-v160-alert" role="status"><span>{notice}</span><button type="button" onClick={()=>setNotice('')} aria-label="Dispensar confirmação">✕</button></div>}
 
     {tab==='feed'&&<div className="hb-social-feed-layout">
       <section className="hb-social-feed-main">
-        <form className="hb-social-composer" onSubmit={e=>void publish(e)}><div className="hb-social-section-title"><span className="hb-social-mark">✦</span><div><strong>Compartilhar uma história</strong><small>Publique acontecimentos, ideias ou novidades para a comunidade.</small></div></div><textarea rows={4} maxLength={1200} placeholder="O que está acontecendo na sua jornada?" value={postText} onChange={e=>setPostText(e.target.value)}/><div className="hb-social-composer-bottom"><label>Quem pode ver?<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])}><option value="public">Público (contas do HäxBag)</option><option value="followers">Meus seguidores</option><option value="friends">Somente amigos mútuos</option></select></label><small>{postText.length}/1200</small><button className="hb-social-primary-action" type="submit" disabled={!postText.trim()||!!busy}> {busy==='publish'?'Publicando…':'Publicar ↗'}</button></div></form>
-        <div className="hb-social-feed-header"><div><span className="hb-social-overline">MURAL DA COMUNIDADE</span><h3>Publicações recentes</h3></div><div className="hb-social-segments">{([['all','Para você'],['following','Seguindo'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
-        {posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}><span className="hb-social-avatar" aria-hidden="true">{nameOf(post).slice(0,1).toUpperCase()}</span><span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small>{formatDate(post.created_at)} · {visibilityLabels[post.visibility]}</small></div><p>{post.content}</p><footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
-        {!posts.length&&!feedBusy&&<div className="hb-social-empty"><strong>Ainda não há publicações neste mural.</strong><p>Compartilhe o primeiro capítulo ou acompanhe outros aventureiros.</p></div>}
-        {feedBusy&&<p className="hb-social-loading">Carregando publicações…</p>}
+        <form className="hb-social-composer hb-v160-composer" onSubmit={e=>void publish(e)}>
+          <div className="hb-v160-composer-author"><span className="hb-social-avatar" aria-hidden="true">{profileIdentity?.avatar?<img src={profileIdentity.avatar} alt=""/>:(profileIdentity?.name||'A').charAt(0).toUpperCase()}</span><div><strong>{profileIdentity?.name||'Você'}</strong><small>Uma nova história para compartilhar</small></div></div>
+          <label htmlFor="hb-v160-post-draft" className="hb-v160-editor-label">O que está acontecendo na sua jornada?</label>
+          <textarea id="hb-v160-post-draft" rows={3} maxLength={1200} placeholder="Conte uma conquista, compartilhe uma aventura ou convide alguém para conversar…" value={postText} onChange={e=>setPostText(e.target.value)}/>
+          <div className="hb-v160-writing-prompts" aria-label="Ideias para publicar"><span>Ideias:</span>{['✧ Minha aventura de hoje: ','⚔ Procuro uma mesa de RPG! ','✦ Uma conquista para compartilhar: '].map((template,index)=><button key={index} type="button" onClick={()=>setPostText(value=>value || template)}>{['Minha aventura','Procurar mesa','Conquista'][index]}</button>)}</div>
+          <div className="hb-social-composer-bottom"><label>Visibilidade<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])} aria-label="Quem pode ver esta publicação"><option value="public">🌐 Todas as contas</option><option value="followers">↗ Seguidores</option><option value="friends">♧ Apenas amigos</option></select></label><div className="hb-v160-composer-submit"><span className={postText.length>1080?'near-limit':''}>{postText.length} / 1200</span><button className="hb-social-primary-action" type="submit" disabled={!postText.trim()||!!busy}>{busy==='publish'?'Publicando…':'Publicar ✦'}</button></div></div>
+        </form>
+        <div className="hb-social-feed-header"><div><span className="hb-social-overline">LINHA DO TEMPO</span><h3>Publicações recentes</h3></div><div className="hb-social-segments" role="group" aria-label="Filtrar publicações">{([['all','Para você'],['following','Seguindo'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} aria-pressed={feedScope===key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
+        {feedLoaded&&posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}><span className="hb-social-avatar" aria-hidden="true">{nameOf(post).slice(0,1).toUpperCase()}</span><span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div><p>{post.content}</p><footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
+        {feedLoaded&&!posts.length&&!feedBusy&&<div className="hb-social-empty hb-v160-empty"><span className="hb-v160-empty-icon">✦</span><strong>Nenhuma publicação por enquanto.</strong><p>{feedScope==='following'?'Acompanhe novos jogadores para ver suas publicações aqui.':feedScope==='mine'?'Compartilhe seu primeiro registro no mural.':'Sua comunidade está pronta para novas histórias.'}</p>{feedScope==='following'&&<button type="button" onClick={()=>setTab('discover')}>Encontrar pessoas</button>}</div>}
+        {feedBusy&&<div className="hb-v160-skeletons" aria-label="Carregando publicações" aria-busy="true"><div/><div/></div>}
         {hasMore&&!feedBusy&&<button className="hb-social-load-more" type="button" onClick={()=>void loadFeed(posts.at(-1)?.created_at||null,true,feedScope)}>Mostrar mais publicações</button>}
       </section><aside className="hb-social-feed-aside"><span className="hb-social-overline">SEU CÍRCULO</span><h3>Histórias se conectam.</h3><p>Explore a comunidade e acompanhe as aventuras de quem você segue. O chat privado abre quando o seguimento é mútuo.</p><div className="hb-v158-aside-stats"><span><strong>{summary.followers}</strong> seguidores</span><span><strong>{summary.friends}</strong> amigos</span></div><button type="button" onClick={()=>setTab('discover')}>⌕ Encontrar aventureiros</button><button type="button" onClick={()=>setTab('messages')}>✉ Ir às mensagens {summary.unread>0?`(${summary.unread})`:''}</button><div className="hb-social-privacy-note">◈ Você escolhe se cada publicação será pública, para seguidores ou apenas para amigos. Bloqueios valem nos dois sentidos.</div></aside></div>}
 
-    {(['friends','following','followers','blocked'] as Tab[]).includes(tab)&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">SUA REDE</span><h3>{{friends:'Amigos mútuos',following:'Quem você segue',followers:'Quem segue você',blocked:'Contas bloqueadas'}[tab as 'friends'|'following'|'followers'|'blocked']}</h3><p>{tab==='friends'?'Vocês se seguem mutuamente e podem conversar em particular.':tab==='following'?'Pessoas cujas novidades você quer acompanhar.':tab==='followers'?'Pessoas que escolheram acompanhar seu perfil.':'Pessoas bloqueadas não podem seguir, enviar mensagens ou aparecer no seu feed.'}</p></div><label>Filtrar pessoas<input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Nome ou @usuário" /></label></div><div className="hb-social-people">{filteredPeople.map(person=>peopleCard(person,tab))}</div>{!filteredPeople.length&&<div className="hb-social-empty"><strong>Nenhum resultado.</strong><p>{filter?'Tente outro termo de busca.':tab==='blocked'?'Você não bloqueou ninguém.':'Explore outros perfis para ampliar sua rede.'}</p>{tab!=='blocked'&&<button type="button" onClick={()=>setTab('discover')}>Descobrir jogadores</button>}</div>}</section>}
+    {(['friends','following','followers','blocked'] as Tab[]).includes(tab)&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">SEU CÍRCULO</span><h3>{{friends:'Amigos mútuos',following:'Quem você segue',followers:'Quem segue você',blocked:'Contas bloqueadas'}[tab as 'friends'|'following'|'followers'|'blocked']}</h3><p>{tab==='friends'?'Vocês se seguem mutuamente e podem conversar em particular.':tab==='following'?'Pessoas cujas novidades você quer acompanhar.':tab==='followers'?'Pessoas que escolheram acompanhar seu perfil.':'Você pode desbloquear essas contas quando quiser.'}</p></div><span className="hb-v160-result-count">{filteredPeople.length} {filteredPeople.length===1?'perfil':'perfis'}</span></div>
+      <div className="hb-v160-people-tools"><label>Buscar nesta lista<input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Nome ou @usuário" /></label><label>Ordenar<select value={peopleOrder} onChange={e=>setPeopleOrder(e.target.value as 'az'|'za')}><option value="az">Nome: A → Z</option><option value="za">Nome: Z → A</option></select></label></div><div className="hb-social-people hb-v160-people-grid">{filteredPeople.map(person=>peopleCard(person,tab))}</div>{!filteredPeople.length&&!loading&&<div className="hb-social-empty hb-v160-empty"><strong>Nenhum resultado.</strong><p>{filter?'Tente outro termo de busca.':tab==='blocked'?'Você não bloqueou ninguém.':'Explore outros perfis para ampliar sua rede.'}</p>{tab!=='blocked'&&<button type="button" onClick={()=>setTab('discover')}>Descobrir jogadores</button>}</div>}</section>}
 
-    {tab==='discover'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">NOVAS CONEXÕES</span><h3>Descobrir aventureiros</h3><p>Busque por nome ou @usuário. Não são exibidas pessoas com quem você tenha bloqueio.</p></div></div><label className="hb-social-search-label">Pesquisar<input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Digite pelo menos 2 caracteres…" autoComplete="off" /></label>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people">{searchResults.map(person=>peopleCard(person,'discover'))}</div>{search.length<2&&<div className="hb-social-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
+    {tab==='discover'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">NOVAS CONEXÕES</span><h3>Descobrir aventureiros</h3><p>Busque por nome ou @usuário. Não são exibidas pessoas com quem você tenha bloqueio.</p></div></div><label className="hb-social-search-label hb-v160-discover-search"><span>Pesquisar jogadores</span><span className="hb-v160-search-input"><span aria-hidden="true">⌕</span><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Nome ou @usuário — ao menos 2 caracteres" autoComplete="off" /></span></label>
+      <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
 
-    {tab==='messages'&&<section className="hb-social-chat-shell"><div className="hb-social-chat-sidebar"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVERSAS PRIVADAS</span><h3>Mensagens</h3><p>Somente amigos mútuos podem enviar novas mensagens.</p></div></div>{conversations.map(person=><button type="button" key={person.partner_id} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}><span className="hb-social-avatar">{nameOf(person).charAt(0).toUpperCase()}</span><span><strong>{person.display_name}</strong><small>{person.last_message||'Comece uma conversa'}</small></span>{Number(person.unread_count)>0&&<em>{person.unread_count}</em>}</button>)}{!conversations.length&&<div className="hb-social-empty"><strong>Sem conversas.</strong><p>Siga um aventureiro que também segue você para iniciar um chat.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}</div><div className="hb-social-chat-main">{selectedChat?<><header><div><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'}</small></div><button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil ↗</button></header><div className="hb-social-chat-messages" aria-live="polite">{chatMessages.map(message=><div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`} key={message.message_id}><p>{message.body}</p><small>{formatDate(message.created_at)}</small></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose"><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={!messageDraft.trim()||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Escolha um contato ao lado. Apenas os participantes podem ler as mensagens.</p></div>}</div></section>}
+    {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat ${selectedChat?'has-active-chat':''}`}><div className="hb-social-chat-sidebar"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVERSAS PRIVADAS</span><h3>Conversas</h3><p>Somente amigos mútuos podem enviar novas mensagens.</p></div></div>
+      <label className="hb-v160-chat-search"><span>Buscar conversa</span><input type="search" value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Nome ou mensagem…" /></label>
+      <label className="hb-v160-unread-toggle"><input type="checkbox" checked={unreadOnly} onChange={e=>setUnreadOnly(e.target.checked)}/> Somente não lidas {summary.unread>0?`(${summary.unread})`:''}</label>
+      <div className="hb-v160-contact-list">{filteredConversations.map(person=><button type="button" key={person.partner_id} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}><span className="hb-social-avatar">{nameOf(person).charAt(0).toUpperCase()}</span><span><strong>{person.display_name}</strong><small>{person.last_message||'Comece uma conversa'}</small></span>{Number(person.unread_count)>0&&<em aria-label={`${person.unread_count} mensagens não lidas`}>{person.unread_count}</em>}</button>)}{!filteredConversations.length&&!!conversations.length&&<p className="hb-v160-no-conversations">Nenhuma conversa corresponde aos filtros.</p>}</div>{!conversations.length&&<div className="hb-social-empty"><strong>Sem conversas.</strong><p>Siga um aventureiro que também segue você para iniciar um chat.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}</div><div className="hb-social-chat-main">{selectedChat?<><header><div className="hb-v160-chat-header-identity"><button type="button" className="hb-v160-chat-back" aria-label="Voltar para conversas" onClick={()=>{messagesRequestRef.current+=1;setSelectedChat(null);setChatMessages([]);setMessageDraft('')}}>‹</button><span className="hb-social-avatar" aria-hidden="true">{nameOf(selectedChat).charAt(0).toUpperCase()}</span><span><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'}</small></span></div><button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil ↗</button></header><div className="hb-social-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">{chatMessages.map((message,index)=><div className="hb-v160-message-row" key={message.message_id}>
+          {(index===0 || dayOf(chatMessages[index-1].created_at)!==dayOf(message.created_at))&&<div className="hb-v160-chat-day" role="separator">{dayOf(message.created_at)}</div>}
+          <div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`}><p>{message.body}</p><small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose"><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={!messageDraft.trim()||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Selecione uma conversa para começar. As mensagens privadas são acessíveis somente aos participantes.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}</div></section>}
 
-    {tab==='invites'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVITES</span><h3>Convites de campanhas</h3><p>Convites de campanha permanecem separados dos seguidores e das amizades.</p></div></div>{invites.map(invite=><div className="hb-social-invite" key={invite.id}><div><strong>{invite.campaign_name}</strong><small>Convite de {invite.sender_name}</small></div><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:true},'Convite aceito!')}>Aceitar</button><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:false},'Convite recusado.')}>Recusar</button></div>)}{!invites.length&&<div className="hb-social-empty"><strong>Nenhum convite pendente.</strong><p>Novas campanhas aparecerão aqui quando você for convidado.</p></div>}{canInvite&&campaignId&&<p className="hb-social-hint">Convites para {campaignName} podem ser enviados pelo perfil público de um jogador, conforme as permissões de campanha existentes.</p>}</section>}
+    {tab==='invites'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVITES</span><h3>Convites de campanhas</h3><p>Convites de campanha permanecem separados dos seguidores e das amizades.</p></div></div>{invites.map(invite=><div className="hb-social-invite" key={invite.id}><span className="hb-v160-invite-icon" aria-hidden="true">⚑</span><div><strong>{invite.campaign_name}</strong><small>Convite de {invite.sender_name} · <time dateTime={invite.created_at}>{new Date(invite.created_at).toLocaleDateString('pt-BR')}</time></small></div><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:true},'Convite aceito!')}>Aceitar</button><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:false},'Convite recusado.')}>Recusar</button></div>)}{!invites.length&&<div className="hb-social-empty"><strong>Nenhum convite pendente.</strong><p>Novas campanhas aparecerão aqui quando você for convidado.</p></div>}{canInvite&&campaignId&&<p className="hb-social-hint">Convites para {campaignName} podem ser enviados pelo perfil público de um jogador, conforme as permissões de campanha existentes.</p>}</section>}
 
       </div>
     </div>
