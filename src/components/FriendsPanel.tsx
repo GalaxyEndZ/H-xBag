@@ -5,6 +5,7 @@ import './FriendsPanel.css'
 import './SocialV156.css'
 import './SocialV160.css'
 import './SocialV161.css'
+import './SocialV162.css'
 
 type Person = {
   person_id: string
@@ -24,6 +25,7 @@ type Post = {
   created_at: string
   like_count: number
   liked: boolean
+  image_paths: string[]
 }
 type Conversation = {
   partner_id: string
@@ -94,6 +96,17 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const avatarsCacheRef = useRef(new Map<string,string>())
   const avatarsLoadingRef = useRef(new Set<string>())
   const [postText,setPostText] = useState('')
+  const [postPhotos,setPostPhotos] = useState<{file:File;preview:string;id:string}[]>([])
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const postPhotosRef = useRef<{file:File;preview:string;id:string}[]>([])
+  const [photoUrls,setPhotoUrls] = useState<Record<string,string>>({})
+  const photoUrlsCacheRef = useRef(new Map<string,{url:string;expires:number}>())
+  const [imageViewer,setImageViewer] = useState<string|null>(null)
+  const [uploadProgress,setUploadProgress] = useState('')
+  const [draggingPhotos,setDraggingPhotos] = useState(false)
+  const photoLimit = 4
+  const photoMaxBytes = 8*1024*1024
+  const bucketName = 'hax-social-posts'
   const [visibility,setVisibility] = useState<Post['visibility']>('public')
   const [feedScope,setFeedScope] = useState<'all'|'following'|'mine'>('all')
   const [hasMore,setHasMore] = useState(false)
@@ -140,7 +153,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setFeedBusy(true)
     if (!add) setFeedLoaded(false)
     try {
-      const rows = await rpc<Post[]>('hax_social_feed',{p_scope:scope,p_before:before,p_limit:20})
+      const rows = await rpc<Post[]>('hax_social_photo_feed_v162',{p_scope:scope,p_before:before,p_limit:20})
       if (requestId !== feedRequestRef.current) return
       setPosts(previous => {
         if (!add) return rows || []
@@ -260,16 +273,78 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     }
   }
   const viewPerson=(person:Person)=>setProfile({id:person.person_id,display_name:person.display_name,username:person.username,status:person.is_friend?'friends':person.following?'following':person.follows_me?'follower':''})
+  const pickPhotos=(files:FileList|File[]|null)=>{
+    if(!files)return
+    const selected=Array.from(files)
+    const slots=photoLimit-postPhotosRef.current.length
+    if(selected.length>slots){setError(`Você pode adicionar até ${photoLimit} fotos por publicação.`)}
+    const newPhotos:{file:File;preview:string;id:string}[]=[]
+    for(const file of selected.slice(0,Math.max(0,slots))){
+      if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)){
+        setError('Use fotos JPG, PNG, WebP ou GIF.');continue
+      }
+      if(file.size>photoMaxBytes){setError(`A foto ${file.name} excede 8 MB.`);continue}
+      newPhotos.push({file,preview:URL.createObjectURL(file),id:crypto.randomUUID()})
+    }
+    setPostPhotos(current=>[...current,...newPhotos])
+    if(photoInputRef.current)photoInputRef.current.value=''
+  }
+  useEffect(()=>{if(!imageViewer)return;const handler=(event:KeyboardEvent)=>{if(event.key==='Escape')setImageViewer(null)};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[imageViewer])
+  const removePhoto=(id:string)=>setPostPhotos(current=>{
+    const removed=current.find(item=>item.id===id)
+    if(removed)URL.revokeObjectURL(removed.preview)
+    return current.filter(item=>item.id!==id)
+  })
+  postPhotosRef.current=postPhotos
+  useEffect(()=>()=>{postPhotosRef.current.forEach(photo=>URL.revokeObjectURL(photo.preview))},[])
+  useEffect(()=>{
+    if(!active || tab!=='feed')return
+    let cancelled=false
+    const paths=[...new Set(posts.flatMap(post=>post.image_paths||[]))]
+      .filter(path=>!photoUrlsCacheRef.current.has(path)||photoUrlsCacheRef.current.get(path)!.expires<Date.now()+60000)
+    if(!paths.length)return
+    const load=async()=>{
+      for(let offset=0;offset<paths.length;offset+=12){
+        const batch=paths.slice(offset,offset+12)
+        const results=await Promise.all(batch.map(async path=>{
+          const {data,error:failure}=await supabase.storage.from(bucketName).createSignedUrl(path,600)
+          return {path,url:failure?'':data?.signedUrl||''}
+        }))
+        if(cancelled)return
+        const fresh:Record<string,string>={}
+        for(const result of results){
+          if(result.url){photoUrlsCacheRef.current.set(result.path,{url:result.url,expires:Date.now()+600000});fresh[result.path]=result.url}
+        }
+        if(Object.keys(fresh).length)setPhotoUrls(current=>({...current,...fresh}))
+      }
+    }
+    void load()
+    return()=>{cancelled=true}
+  },[active,tab,posts])
   async function publish(event:FormEvent){
-    event.preventDefault();if(!postText.trim()||busy)return
+    event.preventDefault()
+    if((!postText.trim()&&!postPhotos.length)||busy||!userId)return
     setBusy('publish');setError('');setNotice('')
+    const uploaded:string[]=[]
     try{
-      await rpc('hax_social_create_post',{p_content:postText.trim(),p_visibility:visibility})
-      setPostText('');setNotice('Sua publicação já está no mural!');setTab('feed')
-      if (feedScope==='all') await loadFeed(null,false,'all')
+      for(const [index,item] of postPhotos.entries()){
+        setUploadProgress(`Enviando foto ${index+1} de ${postPhotos.length}…`)
+        const ext=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif' } as Record<string,string>)[item.file.type]
+        if(!ext||item.file.size>photoMaxBytes)throw new Error('Imagem inválida ou maior que 8 MB.')
+        const path=`${userId}/${crypto.randomUUID()}.${ext}`
+        const {error:failure}=await supabase.storage.from(bucketName).upload(path,item.file,{contentType:item.file.type,upsert:false,cacheControl:'3600'})
+        if(failure)throw new Error(`Não foi possível enviar a foto: ${failure.message}. Verifique se executou o SQL V162.`)
+        uploaded.push(path)
+      }
+      await rpc('hax_social_create_photo_post_v162',{p_content:postText.trim(),p_visibility:visibility,p_image_paths:uploaded})
+      for(const item of postPhotos)URL.revokeObjectURL(item.preview)
+      setPostPhotos([]);setPostText('');setNotice('Publicação compartilhada com sucesso!');setTab('feed')
+      if(feedScope==='all')await loadFeed(null,false,'all')
       else setFeedScope('all')
-    }catch(failure){setError(failure instanceof Error?failure.message:String(failure))}
-    finally{setBusy('')}
+    }catch(failure){
+      if(uploaded.length)await supabase.storage.from(bucketName).remove(uploaded)
+      setError(failure instanceof Error?failure.message:String(failure))
+    }finally{setBusy('');setUploadProgress('')}
   }
   async function like(post:Post){
     if(likeInFlightRef.current.has(post.post_id))return
@@ -286,7 +361,14 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   }
   async function deletePost(post:Post){
     if(!window.confirm('Excluir esta publicação?'))return
-    await action(post.post_id,'hax_social_delete_post',{p_post:post.post_id},'Publicação excluída.',true)
+    setBusy(post.post_id);setError('')
+    try{
+      await rpc('hax_social_delete_post',{p_post:post.post_id})
+      if(post.image_paths?.length)await supabase.storage.from(bucketName).remove(post.image_paths)
+      setPosts(previous=>previous.filter(item=>item.post_id!==post.post_id))
+      setNotice('Publicação excluída.')
+    }catch(failure){setError(failure instanceof Error?failure.message:String(failure))}
+    finally{setBusy('')}
   }
   async function sendMessage(event?:{preventDefault:()=>void}){
     event?.preventDefault()
@@ -371,7 +453,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     </article>
   }
 
-  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
+  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
         <div className="hb-v158-mini-profile">
@@ -413,15 +495,18 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
 
     {tab==='feed'&&<div className="hb-social-feed-layout">
       <section className="hb-social-feed-main">
-        <form className="hb-social-composer hb-v160-composer" onSubmit={e=>void publish(e)}>
-          <div className="hb-v160-composer-author">{avatarFor(userId,profileIdentity?.name||'A')}<div><strong>{profileIdentity?.name||'Você'}</strong><small>Uma nova história para compartilhar</small></div></div>
+        <form className={`hb-social-composer hb-v160-composer ${draggingPhotos?'hb-v162-dragging':''}`} onSubmit={e=>void publish(e)} onDragOver={e=>{if(e.dataTransfer.types.includes('Files')){e.preventDefault();setDraggingPhotos(true)}}} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setDraggingPhotos(false)}} onDrop={e=>{e.preventDefault();setDraggingPhotos(false);pickPhotos(Array.from(e.dataTransfer.files).filter(file=>file.type.startsWith('image/')))}}>
+          <div className="hb-v160-composer-author">{avatarFor(userId,profileIdentity?.name||'A')}<div><strong>{profileIdentity?.name||'Você'}</strong><small>Compartilhe seus momentos com a comunidade</small></div></div>
           <label htmlFor="hb-v160-post-draft" className="hb-v160-editor-label">O que está acontecendo na sua jornada?</label>
           <textarea id="hb-v160-post-draft" rows={3} maxLength={1200} placeholder="Conte uma conquista, compartilhe uma aventura ou convide alguém para conversar…" value={postText} onChange={e=>setPostText(e.target.value)}/>
+          <input ref={photoInputRef} className="hb-v162-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={event=>pickPhotos(event.target.files)} aria-label="Selecionar fotos para a publicação" />
+          {postPhotos.length>0&&<div className="hb-v162-preview-grid" aria-label="Fotos selecionadas">{postPhotos.map((item,index)=><div className="hb-v162-preview" key={item.id}><img src={item.preview} alt={`Prévia da foto ${index+1}`} /><button type="button" onClick={()=>removePhoto(item.id)} title="Remover foto" aria-label={`Remover foto ${index+1}`}>×</button></div>)}</div>}
+          <div className="hb-v162-photo-tools"><button type="button" className="hb-v162-photo-pick" onClick={()=>photoInputRef.current?.click()} disabled={postPhotos.length>=photoLimit||!!busy}>▧ {postPhotos.length?'Adicionar mais fotos':'Adicionar fotos'} <small>{postPhotos.length}/{photoLimit}</small></button><span>JPG, PNG, WebP ou GIF · até 8 MB cada</span></div>
           <div className="hb-v160-writing-prompts" aria-label="Ideias para publicar"><span>Ideias:</span>{['✧ Minha aventura de hoje: ','⚔ Procuro uma mesa de RPG! ','✦ Uma conquista para compartilhar: '].map((template,index)=><button key={index} type="button" onClick={()=>setPostText(value=>value || template)}>{['Minha aventura','Procurar mesa','Conquista'][index]}</button>)}</div>
-          <div className="hb-social-composer-bottom"><label>Visibilidade<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])} aria-label="Quem pode ver esta publicação"><option value="public">🌐 Todas as contas</option><option value="followers">↗ Seguidores</option><option value="friends">♧ Apenas amigos</option></select></label><div className="hb-v160-composer-submit"><span className={postText.length>1080?'near-limit':''}>{postText.length} / 1200</span><button className="hb-social-primary-action" type="submit" disabled={!postText.trim()||!!busy}>{busy==='publish'?'Publicando…':'Publicar ✦'}</button></div></div>
+          <div className="hb-social-composer-bottom"><label>Visibilidade<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])} aria-label="Quem pode ver esta publicação"><option value="public">🌐 Todas as contas</option><option value="followers">↗ Seguidores</option><option value="friends">♧ Apenas amigos</option></select></label><div className="hb-v160-composer-submit"><span className={postText.length>1080?'near-limit':''}>{postText.length} / 1200</span><button className="hb-social-primary-action" type="submit" disabled={(!postText.trim()&&!postPhotos.length)||!!busy}>{busy==='publish'?(uploadProgress||'Publicando…'):'Publicar ✦'}</button></div></div>
         </form>
         <div className="hb-social-feed-header"><div><span className="hb-social-overline">LINHA DO TEMPO</span><h3>Publicações recentes</h3></div><div className="hb-social-segments" role="group" aria-label="Filtrar publicações">{([['all','Para você'],['following','Seguindo'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} aria-pressed={feedScope===key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
-        {feedLoaded&&posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div><p>{post.content}</p><footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
+        {feedLoaded&&posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div>{post.content&&<p>{post.content}</p>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer(photoUrls[path])} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
         {feedLoaded&&!posts.length&&!feedBusy&&<div className="hb-social-empty hb-v160-empty"><span className="hb-v160-empty-icon">✦</span><strong>Nenhuma publicação por enquanto.</strong><p>{feedScope==='following'?'Acompanhe novos jogadores para ver suas publicações aqui.':feedScope==='mine'?'Compartilhe seu primeiro registro no mural.':'Sua comunidade está pronta para novas histórias.'}</p>{feedScope==='following'&&<button type="button" onClick={()=>setTab('discover')}>Encontrar pessoas</button>}</div>}
         {feedBusy&&<div className="hb-v160-skeletons" aria-label="Carregando publicações" aria-busy="true"><div/><div/></div>}
         {hasMore&&!feedBusy&&<button className="hb-social-load-more" type="button" onClick={()=>void loadFeed(posts.at(-1)?.created_at||null,true,feedScope)}>Mostrar mais publicações</button>}
@@ -444,6 +529,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
 
       </div>
     </div>
+    {imageViewer&&<div className="hb-v162-lightbox" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setImageViewer(null)}}><div role="dialog" aria-modal="true" aria-label="Visualizar foto da publicação"><button type="button" className="hb-v162-close-lightbox" onClick={()=>setImageViewer(null)} aria-label="Fechar imagem ampliada">×</button><img src={imageViewer} alt="Foto da publicação ampliada" /></div></div>}
     {profile&&<PublicAdventurerProfile person={profile} onClose={()=>setProfile(null)} onFriendUpdate={()=>{void refresh();void loadFeed(null,false,feedScope)}} onMessage={person=>{
       setProfile(null)
       const current=conversations.find(c=>c.partner_id===person.id)||{partner_id:person.id,display_name:person.display_name,username:person.username||'',last_message:null,last_at:null,unread_count:0,can_message:true}
