@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../supabase'
 import './PublicAdventurerProfile.css'
+import './PublicProfileV151.css'
 
 export type AdventurerRef = {
   id: string
@@ -163,9 +164,8 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
         {loading && <div className="hb-public-progress" role="status"><span className="hb-public-progress-icon" aria-hidden="true">✧</span><strong>Abrindo livro do aventureiro</strong><p>Buscando apenas as informações públicas do perfil…</p></div>}
         {!loading && !view && <div className="hb-public-progress" role="alert"><span className="hb-public-progress-icon" aria-hidden="true">◇</span><strong>Perfil indisponível</strong><p>{error || 'Não foi possível encontrar este aventureiro.'}</p><button type="button" onClick={onClose}>Voltar à comunidade</button></div>}
         {view && <div className="hb-public-content" style={{ '--hb-public-accent': safeAccent(view.accent) } as CSSProperties}>
-          <div className="hb-public-cover" style={view.cover_image ? { backgroundImage: `linear-gradient(180deg,transparent 30%,rgba(10,12,15,.72)),url(${view.cover_image})`, backgroundPosition: `center, center ${view.cover_position ?? 50}%` } : undefined}>
-            <div className="hb-public-cover-top"><span>ARQUIVO DO AVENTUREIRO</span><span>✧ HÄXBAG ✧</span></div>
-            <span className="hb-public-cover-crest" aria-hidden="true">❖</span>
+          <div className={`hb-public-cover ${view.cover_image ? 'has-personal-cover' : 'has-theme-cover'}`} style={view.cover_image ? { backgroundImage: `linear-gradient(180deg,rgba(8,12,17,.12) 0%,rgba(8,12,17,.04) 36%,rgba(8,12,17,.66) 100%),url(${view.cover_image})`, backgroundPosition: `center, center ${view.cover_position ?? 50}%` } : undefined}>
+            <div className="hb-public-cover-top"><span>PERFIL PÚBLICO</span><span>HÄXBAG · AVENTUREIROS</span></div>
           </div>
           <header className="hb-public-identity">
             <div className={`hb-public-avatar frame-${view.frame || 'classic'}`}>
