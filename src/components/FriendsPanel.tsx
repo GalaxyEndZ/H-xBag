@@ -6,6 +6,7 @@ import './SocialV156.css'
 import './SocialV160.css'
 import './SocialV161.css'
 import './SocialV162.css'
+import './SocialV163.css'
 
 type Person = {
   person_id: string
@@ -101,7 +102,10 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const postPhotosRef = useRef<{file:File;preview:string;id:string}[]>([])
   const [photoUrls,setPhotoUrls] = useState<Record<string,string>>({})
   const photoUrlsCacheRef = useRef(new Map<string,{url:string;expires:number}>())
-  const [imageViewer,setImageViewer] = useState<string|null>(null)
+  const [imageViewer,setImageViewer] = useState<{urls:string[];index:number;author:string}|null>(null)
+  const [feedSearch,setFeedSearch] = useState('')
+  const [onlyPhotos,setOnlyPhotos] = useState(false)
+  const [feedOrder,setFeedOrder] = useState<'recent'|'oldest'>('recent')
   const [uploadProgress,setUploadProgress] = useState('')
   const [draggingPhotos,setDraggingPhotos] = useState(false)
   const photoLimit = 4
@@ -289,11 +293,26 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setPostPhotos(current=>[...current,...newPhotos])
     if(photoInputRef.current)photoInputRef.current.value=''
   }
-  useEffect(()=>{if(!imageViewer)return;const handler=(event:KeyboardEvent)=>{if(event.key==='Escape')setImageViewer(null)};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[imageViewer])
+  useEffect(()=>{
+    if(!imageViewer)return
+    const handler=(event:KeyboardEvent)=>{
+      if(event.key==='Escape')setImageViewer(null)
+      if(event.key==='ArrowRight')setImageViewer(view=>view?{...view,index:(view.index+1)%view.urls.length}:null)
+      if(event.key==='ArrowLeft')setImageViewer(view=>view?{...view,index:(view.index-1+view.urls.length)%view.urls.length}:null)
+    }
+    window.addEventListener('keydown',handler)
+    return()=>window.removeEventListener('keydown',handler)
+  },[imageViewer])
   const removePhoto=(id:string)=>setPostPhotos(current=>{
     const removed=current.find(item=>item.id===id)
     if(removed)URL.revokeObjectURL(removed.preview)
     return current.filter(item=>item.id!==id)
+  })
+  const movePhoto=(index:number,direction:-1|1)=>setPostPhotos(current=>{
+    const next=[...current],target=index+direction
+    if(target<0||target>=next.length)return current
+    ;[next[index],next[target]]=[next[target],next[index]]
+    return next
   })
   postPhotosRef.current=postPhotos
   useEffect(()=>()=>{postPhotosRef.current.forEach(photo=>URL.revokeObjectURL(photo.preview))},[])
@@ -387,6 +406,11 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     .filter(p=>foldText(`${p.display_name} ${p.username}`).includes(foldText(filter.trim())))
     .sort((a,b)=>peopleOrder==='az' ? nameOf(a).localeCompare(nameOf(b),'pt-BR') : nameOf(b).localeCompare(nameOf(a),'pt-BR')),
   [currentPeople,filter,peopleOrder])
+  const visiblePosts=useMemo(()=>posts.filter(post=>{
+    if(onlyPhotos && !(post.image_paths?.length))return false
+    const term=foldText(feedSearch.trim())
+    return !term||foldText(`${post.content} ${post.display_name} ${post.username}`).includes(term)
+  }).sort((a,b)=>feedOrder==='recent'?new Date(b.created_at).getTime()-new Date(a.created_at).getTime():new Date(a.created_at).getTime()-new Date(b.created_at).getTime()),[posts,feedSearch,onlyPhotos,feedOrder])
   const filteredConversations=useMemo(()=>conversations.filter(person=>{
     if (unreadOnly && Number(person.unread_count)===0) return false
     return foldText(`${person.display_name} ${person.username} ${person.last_message||''}`).includes(foldText(chatSearch.trim()))
@@ -453,7 +477,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     </article>
   }
 
-  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
+  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
         <div className="hb-v158-mini-profile">
@@ -500,14 +524,17 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
           <label htmlFor="hb-v160-post-draft" className="hb-v160-editor-label">O que está acontecendo na sua jornada?</label>
           <textarea id="hb-v160-post-draft" rows={3} maxLength={1200} placeholder="Conte uma conquista, compartilhe uma aventura ou convide alguém para conversar…" value={postText} onChange={e=>setPostText(e.target.value)}/>
           <input ref={photoInputRef} className="hb-v162-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={event=>pickPhotos(event.target.files)} aria-label="Selecionar fotos para a publicação" />
-          {postPhotos.length>0&&<div className="hb-v162-preview-grid" aria-label="Fotos selecionadas">{postPhotos.map((item,index)=><div className="hb-v162-preview" key={item.id}><img src={item.preview} alt={`Prévia da foto ${index+1}`} /><button type="button" onClick={()=>removePhoto(item.id)} title="Remover foto" aria-label={`Remover foto ${index+1}`}>×</button></div>)}</div>}
+          {postPhotos.length>0&&<div className="hb-v162-preview-grid" aria-label="Fotos selecionadas">{postPhotos.map((item,index)=><div className="hb-v162-preview" key={item.id}><img src={item.preview} alt={`Prévia da foto ${index+1}`} /><button type="button" onClick={()=>removePhoto(item.id)} title="Remover foto" aria-label={`Remover foto ${index+1}`}>×</button><div className="hb-v163-photo-order"><button type="button" disabled={index===0} onClick={()=>movePhoto(index,-1)} aria-label={`Mover foto ${index+1} para a esquerda`}>←</button><span>{index+1}</span><button type="button" disabled={index===postPhotos.length-1} onClick={()=>movePhoto(index,1)} aria-label={`Mover foto ${index+1} para a direita`}>→</button></div></div>)}</div>}
           <div className="hb-v162-photo-tools"><button type="button" className="hb-v162-photo-pick" onClick={()=>photoInputRef.current?.click()} disabled={postPhotos.length>=photoLimit||!!busy}>▧ {postPhotos.length?'Adicionar mais fotos':'Adicionar fotos'} <small>{postPhotos.length}/{photoLimit}</small></button><span>JPG, PNG, WebP ou GIF · até 8 MB cada</span></div>
           <div className="hb-v160-writing-prompts" aria-label="Ideias para publicar"><span>Ideias:</span>{['✧ Minha aventura de hoje: ','⚔ Procuro uma mesa de RPG! ','✦ Uma conquista para compartilhar: '].map((template,index)=><button key={index} type="button" onClick={()=>setPostText(value=>value || template)}>{['Minha aventura','Procurar mesa','Conquista'][index]}</button>)}</div>
           <div className="hb-social-composer-bottom"><label>Visibilidade<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])} aria-label="Quem pode ver esta publicação"><option value="public">🌐 Todas as contas</option><option value="followers">↗ Seguidores</option><option value="friends">♧ Apenas amigos</option></select></label><div className="hb-v160-composer-submit"><span className={postText.length>1080?'near-limit':''}>{postText.length} / 1200</span><button className="hb-social-primary-action" type="submit" disabled={(!postText.trim()&&!postPhotos.length)||!!busy}>{busy==='publish'?(uploadProgress||'Publicando…'):'Publicar ✦'}</button></div></div>
         </form>
         <div className="hb-social-feed-header"><div><span className="hb-social-overline">LINHA DO TEMPO</span><h3>Publicações recentes</h3></div><div className="hb-social-segments" role="group" aria-label="Filtrar publicações">{([['all','Para você'],['following','Seguindo'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} aria-pressed={feedScope===key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
-        {feedLoaded&&posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div>{post.content&&<p>{post.content}</p>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer(photoUrls[path])} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
+        <div className="hb-v163-feed-tools"><label className="hb-v163-feed-search"><span>⌕</span><input type="search" placeholder="Buscar nas publicações carregadas…" aria-label="Buscar no feed" value={feedSearch} onChange={e=>setFeedSearch(e.target.value)} /></label><label className="hb-v163-photo-filter"><input type="checkbox" checked={onlyPhotos} onChange={e=>setOnlyPhotos(e.target.checked)} />▧ Com fotos</label><label className="hb-v163-post-order">Ordem <select value={feedOrder} onChange={e=>setFeedOrder(e.target.value as 'recent'|'oldest')}><option value="recent">Mais recentes</option><option value="oldest">Mais antigas</option></select></label></div>
+        {(feedSearch||onlyPhotos)&&<div className="hb-v163-results">{visiblePosts.length} {visiblePosts.length===1?'publicação encontrada':'publicações encontradas'} nesta página{(feedSearch||onlyPhotos)&&<button type="button" onClick={()=>{setFeedSearch('');setOnlyPhotos(false)}}>Limpar filtros</button>}</div>}
+        {feedLoaded&&visiblePosts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div>{post.content&&<p>{post.content}</p>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer({urls:post.image_paths.map(p=>photoUrls[p]).filter(Boolean),index:post.image_paths.slice(0,index).filter(p=>Boolean(photoUrls[p])).length,author:nameOf(post)})} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
         {feedLoaded&&!posts.length&&!feedBusy&&<div className="hb-social-empty hb-v160-empty"><span className="hb-v160-empty-icon">✦</span><strong>Nenhuma publicação por enquanto.</strong><p>{feedScope==='following'?'Acompanhe novos jogadores para ver suas publicações aqui.':feedScope==='mine'?'Compartilhe seu primeiro registro no mural.':'Sua comunidade está pronta para novas histórias.'}</p>{feedScope==='following'&&<button type="button" onClick={()=>setTab('discover')}>Encontrar pessoas</button>}</div>}
+        {feedLoaded&&posts.length>0&&visiblePosts.length===0&&!feedBusy&&<div className="hb-social-empty hb-v160-empty"><strong>Nenhuma publicação encontrada.</strong><p>Tente outros termos ou remova o filtro de fotos.</p><button type="button" onClick={()=>{setFeedSearch('');setOnlyPhotos(false)}}>Limpar filtros</button></div>}
         {feedBusy&&<div className="hb-v160-skeletons" aria-label="Carregando publicações" aria-busy="true"><div/><div/></div>}
         {hasMore&&!feedBusy&&<button className="hb-social-load-more" type="button" onClick={()=>void loadFeed(posts.at(-1)?.created_at||null,true,feedScope)}>Mostrar mais publicações</button>}
       </section><aside className="hb-social-feed-aside"><span className="hb-social-overline">SEU CÍRCULO</span><h3>Histórias se conectam.</h3><p>Explore a comunidade e acompanhe as aventuras de quem você segue. O chat privado abre quando o seguimento é mútuo.</p><div className="hb-v158-aside-stats"><span><strong>{summary.followers}</strong> seguidores</span><span><strong>{summary.friends}</strong> amigos</span></div><button type="button" onClick={()=>setTab('discover')}>⌕ Encontrar aventureiros</button><button type="button" onClick={()=>setTab('messages')}>✉ Ir às mensagens {summary.unread>0?`(${summary.unread})`:''}</button><div className="hb-social-privacy-note">◈ Você escolhe se cada publicação será pública, para seguidores ou apenas para amigos. Bloqueios valem nos dois sentidos.</div></aside></div>}
@@ -529,7 +556,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
 
       </div>
     </div>
-    {imageViewer&&<div className="hb-v162-lightbox" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setImageViewer(null)}}><div role="dialog" aria-modal="true" aria-label="Visualizar foto da publicação"><button type="button" className="hb-v162-close-lightbox" onClick={()=>setImageViewer(null)} aria-label="Fechar imagem ampliada">×</button><img src={imageViewer} alt="Foto da publicação ampliada" /></div></div>}
+    {imageViewer&&<div className="hb-v162-lightbox hb-v163-lightbox" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setImageViewer(null)}}><div role="dialog" aria-modal="true" aria-label="Visualizar foto da publicação"><button type="button" className="hb-v162-close-lightbox" onClick={()=>setImageViewer(null)} aria-label="Fechar imagem ampliada">×</button><img src={imageViewer.urls[imageViewer.index]} alt={`Foto ${imageViewer.index+1} de ${imageViewer.urls.length}, publicação de ${imageViewer.author}`} /><div className="hb-v163-viewer-controls">{imageViewer.urls.length>1&&<button type="button" onClick={()=>setImageViewer(view=>view?{...view,index:(view.index-1+view.urls.length)%view.urls.length}:null)} aria-label="Foto anterior">←</button>}<span>{imageViewer.author} · {imageViewer.index+1} / {imageViewer.urls.length}</span>{imageViewer.urls.length>1&&<button type="button" onClick={()=>setImageViewer(view=>view?{...view,index:(view.index+1)%view.urls.length}:null)} aria-label="Próxima foto">→</button>}</div></div></div>}
     {profile&&<PublicAdventurerProfile person={profile} onClose={()=>setProfile(null)} onFriendUpdate={()=>{void refresh();void loadFeed(null,false,feedScope)}} onMessage={person=>{
       setProfile(null)
       const current=conversations.find(c=>c.partner_id===person.id)||{partner_id:person.id,display_name:person.display_name,username:person.username||'',last_message:null,last_at:null,unread_count:0,can_message:true}
