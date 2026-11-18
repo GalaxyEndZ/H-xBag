@@ -1,0 +1,109 @@
+/* HäxBag V145 — panorama de condições, atenção por alvo e biblioteca de acesso rápido.
+   Complemento visual da V144: mantém as cores de cada temporada e os gestos de troca existentes. */
+.hb-conditions-panel.hb-conditions-v145{
+  --v145-accent:var(--season-primary,#d9bd8b);
+  --v145-line:var(--season-line,rgba(200,205,210,.16));
+  --v145-text:var(--season-text,#f2eee8);
+  --v145-muted:var(--season-muted,#b4b6bd);
+  --v145-card:var(--season-surface,#1c252c);
+  --v145-under:var(--season-surface-alt,#27323a);
+  gap:19px;
+}
+.hb-conditions-v145 .hb-conditions-hero {
+  background:radial-gradient(circle at 84% 12%,color-mix(in srgb,var(--v145-accent) 16%,transparent),transparent 45%),linear-gradient(135deg,var(--v145-card),var(--v145-under));
+  box-shadow:0 14px 37px rgba(0,0,0,.11),inset 0 1px 0 color-mix(in srgb,var(--v145-accent) 12%,transparent);
+}
+.hb-conditions-v145 .hb-conditions-hero h2{font-size:clamp(1.92rem,3.2vw,3.05rem)}
+.hb-conditions-v145 .hb-conditions-hero-actions .primary-button{box-shadow:0 6px 18px color-mix(in srgb,var(--v145-accent) 13%,transparent)}
+/* Radar: monitoramento sem automatizar a aplicação ou a remoção. */
+.hb-v145-situation{position:relative;display:flex;flex-direction:column;gap:15px;padding:21px 22px;border:1px solid var(--v145-line);border-radius:18px;background:linear-gradient(127deg,var(--v145-card),var(--v145-under));box-shadow:0 8px 32px rgba(0,0,0,.05);min-width:0}
+.hb-v145-situation::before{content:'';position:absolute;left:22px;right:22px;top:0;height:2px;background:linear-gradient(90deg,var(--v145-accent),transparent 72%);opacity:.65}
+.hb-v145-situation-head{display:flex;gap:15px;align-items:center;justify-content:space-between}
+.hb-v145-situation-head>div:first-child{min-width:0}
+.hb-v145-situation-head h3{margin:6px 0 5px;font-size:1.14rem;font-weight:800;letter-spacing:-.018em}
+.hb-v145-situation-head p{margin:0;color:var(--v145-muted);font-size:.78rem;line-height:1.55}
+.hb-v145-critical-count{display:grid;align-items:center;grid-template-columns:auto auto;gap:2px 10px;flex-shrink:0;min-width:130px;padding:13px 17px;border:1px solid var(--v145-line);border-radius:13px;background:var(--v145-card)}
+.hb-v145-critical-count strong{font-size:2rem;line-height:1;color:var(--v145-text);font-variant-numeric:tabular-nums}
+.hb-v145-critical-count span{font-size:.72rem;font-weight:740;line-height:1.3;color:var(--v145-muted);max-width:77px}
+.hb-v145-critical-count.has-critical{border-color:color-mix(in srgb,#d88789 58%,var(--v145-line));background:color-mix(in srgb,#bc5b5f 9%,var(--v145-card))}
+.hb-v145-critical-count.has-critical strong{color:#e7a3a7}
+.hb-v145-targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:9px}
+.hb-v145-target{min-width:0;display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border:1px solid var(--v145-line);border-radius:11px;background:var(--v145-card);color:var(--v145-text);cursor:pointer;transition:border-color .18s,background .18s,transform .18s}
+.hb-v145-target:hover{border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 7%,var(--v145-card));transform:translateY(-1px)}
+.hb-v145-target.is-selected{border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 11%,var(--v145-card));box-shadow:inset 2px 0 0 var(--v145-accent)}
+.hb-v145-target-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;font-size:1.15rem;border-radius:10px;border:1px solid var(--v145-line);background:var(--v145-under)}
+.hb-v145-target-copy{min-width:0;flex:1;display:grid;gap:4px}
+.hb-v145-target-copy strong{font-size:.78rem;line-height:1.3;overflow-wrap:anywhere}
+.hb-v145-target-copy small{font-size:.67rem;line-height:1.35;color:var(--v145-muted)}
+.hb-v145-target-count{font-size:.82rem;font-weight:850;color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 10%,var(--v145-under));padding:5px 7px;border-radius:7px;font-variant-numeric:tabular-nums}
+.hb-v145-no-targets{grid-column:1/-1;display:flex;align-items:center;min-height:57px;padding:12px 14px;border:1px dashed var(--v145-line);border-radius:11px;font-size:.78rem;color:var(--v145-muted)}
+.hb-v145-critical-action{display:flex;align-items:center;gap:8px;align-self:flex-start;padding:9px 13px;border:1px solid color-mix(in srgb,#d8898b 47%,var(--v145-line));border-radius:9px;background:color-mix(in srgb,#d8898b 9%,var(--v145-card));color:var(--v145-text);font-size:.76rem;font-weight:760;cursor:pointer}
+.hb-v145-critical-action span{font-size:1rem;margin-left:7px}
+.hb-v145-critical-action:hover{border-color:#d8898b}
+/* Acesso rápido de modelos favoritos ao preparar aplicação. */
+.hb-v145-quick-apply{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--v145-line);border-radius:12px;background:var(--v145-card)}
+.hb-v145-quick-apply>span{font-size:.65rem;letter-spacing:.14em;font-weight:850;color:var(--v145-accent);flex:0 0 auto}
+.hb-v145-quick-apply>div{display:flex;gap:7px;flex-wrap:wrap;min-width:0}
+.hb-v145-quick-apply button{border:1px solid var(--v145-line);background:var(--v145-under);color:var(--v145-text);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:.72rem;font-weight:710}
+.hb-v145-quick-apply button:hover,.hb-v145-quick-apply button.is-selected{border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 10%,var(--v145-under))}
+/* Prévia de efeitos e conflitos entre condições antes de aplicar. */
+.hb-v145-effect-preview{display:grid;gap:7px;padding:13px;border-radius:11px;background:var(--v145-under);border:1px solid var(--v145-line)}
+.hb-v145-effect-preview strong{font-size:.81rem}
+.hb-v145-effect-preview ul,.hb-v145-active-details ul{padding-left:18px;margin:0;display:grid;gap:6px}
+.hb-v145-effect-preview li,.hb-v145-active-details li{color:var(--v145-text);font-size:.75rem;line-height:1.55;overflow-wrap:anywhere}
+.hb-v145-effect-preview>span{font-size:.73rem;line-height:1.5;color:var(--v145-muted)}
+.hb-v145-conflict{display:grid;gap:5px;padding:12px 13px;background:color-mix(in srgb,var(--v145-accent) 8%,var(--v145-card));border:1px solid color-mix(in srgb,var(--v145-accent) 35%,var(--v145-line));border-radius:10px}
+.hb-v145-conflict strong{font-size:.79rem}
+.hb-v145-conflict span{font-size:.72rem;line-height:1.6;color:var(--v145-text)}
+.hb-v145-conflict.is-blocked{border-color:#c9797b;background:color-mix(in srgb,#c9797b 12%,var(--v145-card))}
+/* Leitura das aplicações ativas: descrição, notas e efeitos separados. */
+.hb-conditions-v145 .hb-conditions-entry{transition:border-color .2s,box-shadow .2s}
+.hb-conditions-v145 .hb-conditions-entry:hover{border-color:color-mix(in srgb,var(--v145-accent) 50%,var(--v145-line));box-shadow:0 12px 27px rgba(0,0,0,.10)}
+.hb-conditions-v145 .hb-conditions-entry .hb-condition-entry-title{cursor:grab;touch-action:none}
+.hb-conditions-v145 .hb-conditions-entry.hb-condition-dragging .hb-condition-entry-title{cursor:grabbing}
+.hb-v145-active-details{margin-top:11px;width:100%;border:1px solid var(--v145-line);border-radius:9px;background:var(--v145-card);overflow:hidden}
+.hb-v145-active-details summary{display:flex;justify-content:space-between;gap:10px;padding:11px 12px;list-style:none;cursor:pointer;font-size:.77rem;font-weight:770;color:var(--v145-text)}
+.hb-v145-active-details summary::-webkit-details-marker{display:none}
+.hb-v145-active-details[open] summary{border-bottom:1px solid var(--v145-line)}
+.hb-v145-active-details[open] summary span{transform:rotate(180deg)}
+.hb-v145-active-details ul{padding:12px 12px 14px 27px}
+.hb-v145-application-note{display:block;padding:8px 10px;border-radius:7px;background:color-mix(in srgb,var(--v145-accent) 7%,var(--v145-under));overflow-wrap:anywhere;color:var(--v145-text)}
+/* Biblioteca do mestre: filtro pessoal de favoritos e foco no nome. */
+.hb-v145-library-view{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:3px 0}
+.hb-v145-library-view button{display:flex;align-items:center;gap:12px;padding:9px 11px;border:1px solid var(--v145-line);border-radius:9px;background:var(--v145-under);color:var(--v145-text);font-size:.77rem;font-weight:730;cursor:pointer}
+.hb-v145-library-view button span{font-size:.69rem;font-weight:800;padding:3px 6px;border-radius:6px;background:var(--v145-card);color:var(--v145-muted)}
+.hb-v145-library-view button.is-active{border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 9%,var(--v145-under))}
+.hb-v145-library-view small{flex:1 1 220px;font-size:.7rem;color:var(--v145-muted);line-height:1.45}
+.hb-conditions-v145 .hb-v144-definition-head>div{flex:1}
+.hb-v145-favorite{display:grid;place-items:center;width:38px;height:38px;flex:none;margin-left:auto;border:1px solid var(--v145-line);border-radius:10px;background:var(--v145-card);font-size:1.25rem;line-height:1;color:var(--v145-muted);cursor:pointer}
+.hb-v145-favorite:hover,.hb-v145-favorite.is-favorite{color:var(--v145-accent);border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 9%,var(--v145-card))}
+.hb-conditions-v145 .hb-v144-effect-details[open]{border-color:color-mix(in srgb,var(--v145-accent) 40%,var(--v145-line))}
+.hb-conditions-v145 .hb-condition-visibility{border-radius:9px}
+.hb-conditions-v145 button:focus-visible,.hb-conditions-v145 summary:focus-visible{outline:2px solid var(--v145-accent);outline-offset:3px}
+@media(max-width:860px){
+  .hb-v145-situation{padding:18px}
+  .hb-v145-situation::before{left:18px;right:18px}
+  .hb-v145-targets{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:540px){
+  .hb-v145-situation-head{align-items:flex-start}
+  .hb-v145-critical-count{grid-template-columns:1fr;gap:4px;min-width:85px;padding:10px}
+  .hb-v145-critical-count span{font-size:.64rem}
+  .hb-v145-targets{grid-template-columns:minmax(0,1fr)}
+  .hb-v145-situation{gap:12px;padding:14px;border-radius:14px}
+  .hb-v145-situation::before{left:14px;right:14px}
+  .hb-v145-quick-apply{align-items:stretch}
+  .hb-v145-quick-apply>span{width:100%}
+  .hb-v145-target-copy strong{font-size:.8rem}
+  .hb-v145-library-view button{flex:1;justify-content:center}
+  .hb-v145-library-view small{flex:1 1 100%}
+}
+@media(prefers-reduced-motion:reduce){.hb-v145-target,.hb-conditions-v145 .hb-conditions-entry{transition:none!important}}
+
+/* Acervo público: atalhos simples de natureza, sem revelar condições ocultas. */
+.hb-v145-public-nature{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.hb-v145-public-nature button{min-width:0;display:flex;justify-content:center;align-items:center;gap:8px;min-height:45px;padding:9px 10px;background:var(--v145-card);color:var(--v145-text);border:1px solid var(--v145-line);border-radius:10px;cursor:pointer;font-size:.76rem;font-weight:740}
+.hb-v145-public-nature button span{font-size:1rem;color:var(--v145-accent)}
+.hb-v145-public-nature button small{display:grid;place-items:center;min-width:23px;padding:3px 6px;border-radius:6px;background:var(--v145-under);font-size:.69rem;color:var(--v145-muted);font-variant-numeric:tabular-nums}
+.hb-v145-public-nature button.is-selected,.hb-v145-public-nature button:hover{border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 9%,var(--v145-card))}
+@media(max-width:580px){.hb-v145-public-nature{grid-template-columns:repeat(2,minmax(0,1fr))}}
