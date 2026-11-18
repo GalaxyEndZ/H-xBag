@@ -38,6 +38,7 @@ import './components/ProfileAtelier.css'
 import './components/ProfilePolish.css'
 import './components/ProfileV132.css'
 import './components/ProfilePersonalTheme.css'
+import './components/ProfileV150.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -7335,12 +7336,20 @@ async function sendItemToCharacter() {
     ? String(session.user.user_metadata.profile_featured_character_id) : null
   const accountAssignedCharacters = characters.filter(character => character.current_player_id === session?.user.id)
   const accountMasterCampaigns = campaigns.filter(campaign => campaign.role === 'master' || campaign.created_by === session?.user.id)
-  const profileCompletion = [Boolean(accountUsername), Boolean(accountAvatar), Boolean(accountBio.trim()), Boolean(storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId))]
-    .filter(Boolean).length * 25
-  const nextProfileStep = !accountUsername ? 'username'
-    : !accountAvatar ? 'avatar'
-    : !accountBio.trim() ? 'bio'
-    : accountAssignedCharacters.length > 0 && !storedFeaturedCharacterId ? 'featured' : null
+  // A foto enviada também conta como avatar; sem personagens, não exigimos um destaque impossível.
+  const profileIdentitySteps = [
+    { id:'username' as const, symbol:'@', label:'Nome de usuário', detail:'Identificação para outros jogadores', done:Boolean(accountUsername) },
+    { id:'avatar' as const, symbol:'◉', label:'Retrato do perfil', detail:'Foto própria ou símbolo de avatar', done:Boolean(accountAvatar || profilePhotoUrls.avatar) },
+    { id:'bio' as const, symbol:'✎', label:'Sua apresentação', detail:'Uma breve história sobre você', done:Boolean(accountBio.trim()) },
+    ...(accountAssignedCharacters.length ? [{ id:'featured' as const, symbol:'⚔', label:'Protagonista', detail:'Um personagem em destaque', done:Boolean((profileFeaturedCharacterId || storedFeaturedCharacterId) && accountAssignedCharacters.some(character => character.id === (profileFeaturedCharacterId || storedFeaturedCharacterId))) }] : []),
+  ]
+  const profileCompletion = Math.round(profileIdentitySteps.filter(step=>step.done).length / profileIdentitySteps.length * 100)
+  const nextProfileStep = profileIdentitySteps.find(step=>!step.done)?.id ?? null
+  const openProfileIdentityStep = (step:typeof profileIdentitySteps[number]['id']) => {
+    if(step==='featured'){switchProfileSection('journey');return}
+    if(step==='avatar') {switchProfileSection('legacy');setProfileAppearanceRequest(n=>n+1);return}
+    switchProfileSection('studio');setProfileEditing(true)
+  }
   const accountCreatedAt = session?.user.created_at
     ? new Date(session.user.created_at).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
     : 'Data indisponível'
@@ -12317,7 +12326,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div className="hb-v131-hero-progress" aria-label="Progresso da identidade">
                     <div className="hb-v131-hero-progress-copy"><span>SEU PERFIL, SUA HISTÓRIA</span><strong>{profileCompletion}% preenchido</strong><small>{nextProfileStep ? 'Há detalhes que podem tornar seu perfil mais completo.' : 'Continue registrando suas aventuras.'}</small></div>
                     <div className="hb-v131-hero-progress-track" role="progressbar" aria-label="Identidade preenchida" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${profileCompletion}%`}}/></div>
-                    <button type="button" onClick={()=>nextProfileStep==='featured' ? switchProfileSection('journey') : switchProfileSection('studio')}>{nextProfileStep ? 'Continuar perfil' : 'Revisar identidade'} <span aria-hidden="true">↗</span></button>
+                    <button type="button" onClick={()=>nextProfileStep ? openProfileIdentityStep(nextProfileStep) : switchProfileSection('legacy')}>{nextProfileStep ? 'Continuar perfil' : 'Revisar identidade'} <span aria-hidden="true">↗</span></button>
                   </div>
                 </div>
               </header>
@@ -12360,7 +12369,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <span className="hb-profile-section-end">NOSSOS REGISTROS</span>
               </div>
               <div className="hb-profile-action-strip" aria-label="Ações do perfil">
-                <button type="button" onClick={() => {switchProfileSection('studio');setProfileEditing(true)}}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Capas, títulos e identidade</small></span></button>
+                <button type="button" onClick={() => {switchProfileSection('studio');setProfileEditing(true)}}><span aria-hidden="true">✎</span><span><strong>Meu ateliê</strong><small>Nome, foto e carta pessoal</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('friends')}><span aria-hidden="true">♧</span><span><strong>Minha companhia</strong><small>Amigos e solicitações</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('journey')}><span aria-hidden="true">⚔</span><span><strong>Minha jornada</strong><small>Personagens e campanhas</small></span></button>
                 <button type="button" onClick={() => switchProfileSection('legacy')}><span aria-hidden="true">✦</span><span><strong>Identidade e legado</strong><small>Aparência, conquistas e vitrine social</small></span></button>
@@ -12376,12 +12385,35 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 <article className="hb-v129-overview-next hb-v131-next-steps">
                   <span className="hb-kicker">SUA PRÓXIMA ETAPA</span>
                   <h3>{nextProfileStep==='username'?'Escolha sua identidade':nextProfileStep==='avatar'?'Dê um rosto ao seu perfil':nextProfileStep==='bio'?'Conte sua história':nextProfileStep==='featured'?'Escolha seu protagonista':'Continue sua jornada'}</h3>
-                  <p>{nextProfileStep==='username'?'Defina um @usuário exclusivo para que outros aventureiros encontrem você.':nextProfileStep==='avatar'?'Selecione um símbolo no Ateliê para identificar seu perfil.':nextProfileStep==='bio'?'Escreva uma breve apresentação para os outros participantes.':nextProfileStep==='featured'?'Destaque um dos personagens vinculados à sua conta.':'Sua identidade principal está pronta. Explore sua jornada, insígnias e companhia.'}</p>
-                  {nextProfileStep && <button type="button" className="hb-v131-step-primary" onClick={()=>nextProfileStep==='featured' ? switchProfileSection('journey') : switchProfileSection('studio')}>✧ {nextProfileStep==='featured'?'Escolher protagonista':'Completar identidade'} <span aria-hidden="true">↗</span></button>}
+                  <p>{nextProfileStep==='username'?'Defina um @usuário exclusivo para que outros aventureiros encontrem você.':nextProfileStep==='avatar'?'Escolha uma foto ou um símbolo em Identidade e Legado → Aparência.':nextProfileStep==='bio'?'Escreva uma breve apresentação para os outros participantes.':nextProfileStep==='featured'?'Destaque um dos personagens vinculados à sua conta.':'Sua identidade principal está pronta. Explore sua jornada, insígnias e companhia.'}</p>
+                  {nextProfileStep && <button type="button" className="hb-v131-step-primary" onClick={()=>nextProfileStep && openProfileIdentityStep(nextProfileStep)}>✧ {nextProfileStep==='featured'?'Escolher protagonista':'Completar identidade'} <span aria-hidden="true">↗</span></button>}
                   <button type="button" onClick={()=>switchProfileSection('journey')}>⚔ Personagens e campanhas <span aria-hidden="true">↗</span></button>
                   <button type="button" onClick={()=>switchProfileSection('friends')}>♧ Encontrar aventureiros <span aria-hidden="true">↗</span></button>
                 </article>
               </div>
+              <section className="hb-v150-profile-guide" aria-label="Guia para completar a identidade">
+                <div className="hb-v150-guide-top">
+                  <div><span className="hb-kicker">✧ CONSTRUINDO SUA IDENTIDADE</span><h3>Os detalhes que contam sua história</h3><p>Veja o que já está pronto e escolha o próximo detalhe para personalizar.</p></div>
+                  <div className="hb-v150-guide-progress"><strong>{profileCompletion}%</strong><span>{profileIdentitySteps.filter(step=>step.done).length} de {profileIdentitySteps.length} etapas</span><div role="progressbar" aria-label="Etapas completas da identidade" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100}><i style={{width:`${profileCompletion}%`}}/></div></div>
+                </div>
+                <div className="hb-v150-steps">
+                  {profileIdentitySteps.map(step=><button type="button" key={step.id} className={`hb-v150-step ${step.done?'is-complete':'is-pending'}`} onClick={()=>openProfileIdentityStep(step.id)} aria-label={`${step.label}: ${step.done?'concluído, revisar':'pendente, configurar'}`}>
+                    <span className="hb-v150-step-symbol" aria-hidden="true">{step.symbol}</span>
+                    <span className="hb-v150-step-copy"><strong>{step.label}</strong><small>{step.detail}</small></span>
+                    <span className="hb-v150-step-indicator" aria-hidden="true">{step.done?'✓':'↗'}</span>
+                  </button>)}
+                </div>
+              </section>
+              <section className="hb-v150-public-teaser" aria-label="Prévia e acesso ao seu perfil público">
+                <div className="hb-v150-public-copy"><span className="hb-kicker">◈ VITRINE PÚBLICA</span><h3>Veja sua identidade pelos olhos de outro aventureiro</h3><p>Confira sua aparência pública, sua Carta de Identidade, personagens e insígnias conforme as opções de privacidade salvas.</p><div className="hb-v150-public-actions"><button type="button" className="hb-v150-public-primary" onClick={()=>setPreviewMyPublicProfile(true)}>◈ Ver meu perfil público <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>switchProfileSection('legacy')}>Ajustar privacidade</button></div></div>
+                <div className="hb-v150-pass" aria-label="Miniatura de sua identidade">
+                  <div className="hb-v150-pass-cover" data-cover={accountCover}>
+                    {profilePhotoUrls.cover ? <img src={profilePhotoUrls.cover} alt="" style={{objectPosition:`center ${profilePhotoUrls.coverPosition}%`}}/> : <span aria-hidden="true">{profileCoverOptions.find(option=>option.id===accountCover)?.symbol || '✦'}</span>}
+                    <small>HÄXBAG · AVENTUREIRO</small>
+                  </div>
+                  <div className="hb-v150-pass-body"><span className="hb-v150-pass-avatar">{profilePhotoUrls.avatar?<img src={profilePhotoUrls.avatar} alt="" style={{objectPosition:`center ${profilePhotoUrls.avatarPosition}%`}}/>:accountAvatar||String(displayName).charAt(0).toUpperCase()}</span><strong>{displayName}</strong><small>{accountUsername?`@${accountUsername}`:'Nome de usuário pendente'}</small><span>{accountTitleName}</span></div>
+                </div>
+              </section>
               <section className="hb-v131-milestones" aria-label="Registros da sua jornada">
                 <div className="hb-v131-milestones-heading"><div><span className="hb-kicker">✦ UM RETRATO DA SUA JORNADA</span><h3>Seus marcos</h3></div><button type="button" onClick={()=>switchProfileSection('journey')}>Explorar jornada ↗</button></div>
                 <div className="hb-v131-milestone-grid">
@@ -12492,7 +12524,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               <div className="hb-v129-section" id="hb-v129-panel-editor" role="tabpanel" aria-labelledby={profileSection==='account'?'hb-v129-tab-account':'hb-v129-tab-studio'} hidden={profileSection!=='studio' && profileSection!=='account'}>
               <div className={`hb-profile-layout ${profileSection==='studio'?'hb-v130-studio-layout':''}`} id="hb-profile-editor-region">
                 {profileSection==='account' ? <article className="hb-profile-card hb-v129-account-guide"><span className="hb-kicker">⌘ ACESSO PESSOAL</span><h2>Seu registro de conta</h2><p>Suas informações de acesso ficam restritas a você. Nome de exibição e nome de usuário são configurados no ateliê, enquanto a visibilidade do seu conteúdo público é controlada em Identidade e Legado.</p><div className="hb-v129-account-guide-actions"><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar minha identidade</button><button type="button" onClick={()=>switchProfileSection('legacy')}>◇ Configurar privacidade</button></div><div className="hb-v129-privacy-note"><span aria-hidden="true">♙</span><div><strong>E-mail privado</strong><small>Seu endereço de e-mail não é exibido nos perfis públicos.</small></div></div>
-                  <div className="hb-v131-account-overview"><div><span>IDENTIFICAÇÃO</span><strong>{accountUsername ? `@${accountUsername}` : 'Nome de usuário pendente'}</strong><small>Visível a outros aventureiros conforme seu perfil.</small></div><div><span>CADASTRO</span><strong>{accountCreatedAt}</strong><small>Primeiro registro no HäxBag.</small></div><div><span>PRIVACIDADE</span><strong>Configuração individual</strong><small>Biografia, personagens, campanhas, insígnias, crônicas e status.</small></div></div>
+                  <div className="hb-v150-account-actions"><button type="button" disabled={!accountUsername} onClick={()=>{void navigator.clipboard.writeText(`@${accountUsername}`).then(()=>setNotice('Nome de usuário copiado!')).catch(()=>setError('Não foi possível copiar o nome de usuário.'))}}>⧉ Copiar @usuário</button><button type="button" onClick={()=>setPreviewMyPublicProfile(true)}>◈ Conferir perfil público</button></div><div className="hb-v131-account-overview"><div><span>IDENTIFICAÇÃO</span><strong>{accountUsername ? `@${accountUsername}` : 'Nome de usuário pendente'}</strong><small>Visível a outros aventureiros conforme seu perfil.</small></div><div><span>CADASTRO</span><strong>{accountCreatedAt}</strong><small>Primeiro registro no HäxBag.</small></div><div><span>PRIVACIDADE</span><strong>Configuração individual</strong><small>Biografia, personagens, campanhas, insígnias, crônicas e status.</small></div></div>
                 </article> : profileEditing ? (
                 <form className="hb-profile-card hb-profile-edit-card hb-v130-studio-form" onSubmit={async event => {
                   event.preventDefault()
@@ -12672,12 +12704,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <div className="hb-profile-legacy-progress"><strong>{profileCompletion}%</strong><div><span>Identidade preenchida</span><span>Detalhes que fazem sua história única</span></div></div>
                     <div className="hb-profile-progress-rail" role="progressbar" aria-label="Identidade preenchida" aria-valuemin={0} aria-valuemax={100} aria-valuenow={profileCompletion}><span style={{width: `${profileCompletion}%`}} /></div>
                     <ul className="hb-profile-legacy-steps">
-                      <li className={accountUsername ? 'done' : ''}>{accountUsername ? '✓' : '○'} Nome de usuário</li>
-                      <li className={accountAvatar ? 'done' : ''}>{accountAvatar ? '✓' : '○'} Símbolo de avatar</li>
-                      <li className={accountBio.trim() ? 'done' : ''}>{accountBio.trim() ? '✓' : '○'} Sua apresentação</li>
-                      <li className={storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId) ? 'done' : ''}>{storedFeaturedCharacterId && accountAssignedCharacters.some(character => character.id === storedFeaturedCharacterId) ? '✓' : '○'} Protagonista escolhido</li>
+                      {profileIdentitySteps.map(step=><li key={step.id} className={step.done?'done':''}>{step.done?'✓':'○'} {step.label}</li>)}
                     </ul>
-                    {profileCompletion < 100 && <button type="button" className="hb-profile-legacy-action" onClick={() => !accountUsername || !accountAvatar || !accountBio.trim() ? (switchProfileSection('studio'),setProfileEditing(true)) : switchProfileSection('journey')}>Completar minha identidade <span aria-hidden="true">↗</span></button>}
+                    {nextProfileStep && <button type="button" className="hb-profile-legacy-action" onClick={()=>openProfileIdentityStep(nextProfileStep)}>Completar minha identidade <span aria-hidden="true">↗</span></button>}
                   </section>
                   </>}
                   {profileSection==='account' && <>
