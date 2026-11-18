@@ -194,7 +194,7 @@
   box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
 }
 .hb-conditions-v145 .hb-condition-visibility input::after{
-  content:'✓';
+  content:'×';
   font-size:.9rem;
   font-weight:900;
   line-height:1;
