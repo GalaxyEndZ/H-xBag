@@ -34,8 +34,26 @@ type Conversation = {
 }
 type ChatMessage = { message_id: string; sender_id: string; body: string; created_at: string; read_at: string|null }
 type Invitation = { id: string; campaign_name: string; sender_name: string; created_at: string }
-type Props = { campaignId: string | null; campaignName: string; canInvite: boolean; active?: boolean }
-type Tab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'
+type Props = {
+  campaignId: string | null
+  campaignName: string
+  canInvite: boolean
+  active?: boolean
+  selectedTab?: SocialTab
+  onSelectTab?: (tab: SocialTab) => void
+  onViewOwnProfile?: () => void
+  onEditOwnProfile?: () => void
+  profileIdentity?: {
+    name: string
+    username?: string
+    avatar?: string
+    cover?: string
+    avatarPosition?: number
+    coverPosition?: number
+  }
+}
+export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'
+type Tab = SocialTab
 type Summary = { followers: number; following: number; friends: number; blocked: number; unread: number }
 const EMPTY_SUMMARY: Summary = { followers: 0, following: 0, friends: 0, blocked: 0, unread: 0 }
 const EMPTY_PEOPLE: Person[] = []
@@ -43,8 +61,10 @@ const visibilityLabels: Record<Post['visibility'],string> = { public:'🌐 Públ
 const formatDate = (date:string) => new Date(date).toLocaleString('pt-BR', { day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit' })
 const nameOf = (person:{display_name:string;username?:string}) => person.display_name || person.username || 'Aventureiro'
 
-export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true }: Props) {
-  const [tab,setTab] = useState<Tab>('feed')
+export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity }: Props) {
+  const [internalTab,setInternalTab] = useState<Tab>('feed')
+  const tab = selectedTab ?? internalTab
+  const setTab = (next:Tab) => {setInternalTab(next);onSelectTab?.(next)}
   const [userId,setUserId] = useState('')
   const [summary,setSummary] = useState<Summary>(EMPTY_SUMMARY)
   const [people,setPeople] = useState<Record<string,Person[]>>({})
@@ -258,10 +278,34 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     </article>
   }
 
-  return <section className="hb-friends-panel hb-social-hub" aria-label="Comunidade do HäxBag">
-    <header className="hb-social-hero"><div><span className="hb-social-overline">HÄXBAG / COMUNIDADE</span><h2>Conexões & histórias</h2><p>Siga outros aventureiros. Quando o seguimento é recíproco, vocês se tornam amigos e podem conversar em particular.</p></div><button type="button" onClick={()=>{void refresh();void loadFeed(null,false,feedScope)}} disabled={loading}>{loading?'Atualizando…':'↻ Atualizar'}</button></header>
+  return <section className="hb-friends-panel hb-social-hub hb-social-v158" aria-label="Comunidade do HäxBag">
+    <div className="hb-v158-social-columns">
+      <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
+        <div className="hb-v158-mini-profile">
+          <div className="hb-v158-mini-cover">
+            {profileIdentity?.cover && <img src={profileIdentity.cover} alt="" style={{objectPosition:`center ${profileIdentity.coverPosition ?? 50}%`}} />}
+            <span aria-hidden="true">✧ HÄXBAG</span>
+          </div>
+          <div className="hb-v158-mini-profile-body">
+            <span className="hb-v158-mini-avatar" aria-hidden="true">
+              {profileIdentity?.avatar ? <img src={profileIdentity.avatar} alt="" style={{objectPosition:`center ${profileIdentity.avatarPosition ?? 50}%`}} /> : (profileIdentity?.name?.slice(0,1).toUpperCase() || '✦')}
+            </span>
+            <strong>{profileIdentity?.name || 'Meu perfil'}</strong>
+            <small>{profileIdentity?.username ? `@${profileIdentity.username}` : 'Seu espaço no HäxBag'}</small>
+            <button type="button" onClick={onViewOwnProfile}>Ver meu perfil ↗</button>
+          </div>
+        </div>
+        <span className="hb-v158-nav-label">EXPLORAR A REDE</span>
+        <nav className="hb-social-tabs" aria-label="Áreas da comunidade">{tabs.map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
+        <div className="hb-v158-sidebar-actions">
+          <button type="button" onClick={onEditOwnProfile}>✎ Personalizar meu perfil</button>
+          <small>Uma amizade começa quando vocês se seguem mutuamente.</small>
+        </div>
+      </aside>
+      <div className="hb-v158-social-content">
+    <header className="hb-social-hero"><div><span className="hb-social-overline">HÄXBAG / COMUNIDADE</span><h2>Seu espaço na comunidade</h2><p>Compartilhe sua jornada, acompanhe amigos e converse com quem faz parte das suas histórias.</p></div><button type="button" onClick={()=>{void refresh();void loadFeed(null,false,feedScope)}} disabled={loading}>{loading?'Atualizando…':'↻ Atualizar'}</button></header>
     <div className="hb-social-stats"><div><strong>{summary.following}</strong><span>Seguindo</span></div><div><strong>{summary.followers}</strong><span>Seguidores</span></div><div><strong>{summary.friends}</strong><span>Amigos mútuos</span></div><div><strong>{summary.unread}</strong><span>Mensagens não lidas</span></div></div>
-    <nav className="hb-social-tabs" aria-label="Áreas da comunidade">{tabs.map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
+    
     {error&&<p className="hb-social-alert" role="alert">{error}</p>}
     {notice&&<p className="hb-social-notice" role="status">{notice}</p>}
 
@@ -269,11 +313,11 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       <section className="hb-social-feed-main">
         <form className="hb-social-composer" onSubmit={e=>void publish(e)}><div className="hb-social-section-title"><span className="hb-social-mark">✦</span><div><strong>Compartilhar uma história</strong><small>Publique acontecimentos, ideias ou novidades para a comunidade.</small></div></div><textarea rows={4} maxLength={1200} placeholder="O que está acontecendo na sua jornada?" value={postText} onChange={e=>setPostText(e.target.value)}/><div className="hb-social-composer-bottom"><label>Quem pode ver?<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])}><option value="public">Público (contas do HäxBag)</option><option value="followers">Meus seguidores</option><option value="friends">Somente amigos mútuos</option></select></label><small>{postText.length}/1200</small><button className="hb-social-primary-action" type="submit" disabled={!postText.trim()||!!busy}> {busy==='publish'?'Publicando…':'Publicar ↗'}</button></div></form>
         <div className="hb-social-feed-header"><div><span className="hb-social-overline">MURAL DA COMUNIDADE</span><h3>Publicações recentes</h3></div><div className="hb-social-segments">{([['all','Para você'],['following','Seguindo'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
-        {posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?setTab('friends'):setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}><span className="hb-social-avatar" aria-hidden="true">{nameOf(post).slice(0,1).toUpperCase()}</span><span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small>{formatDate(post.created_at)} · {visibilityLabels[post.visibility]}</small></div><p>{post.content}</p><footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
+        {posts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}><span className="hb-social-avatar" aria-hidden="true">{nameOf(post).slice(0,1).toUpperCase()}</span><span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small>{formatDate(post.created_at)} · {visibilityLabels[post.visibility]}</small></div><p>{post.content}</p><footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
         {!posts.length&&!feedBusy&&<div className="hb-social-empty"><strong>Ainda não há publicações neste mural.</strong><p>Compartilhe o primeiro capítulo ou acompanhe outros aventureiros.</p></div>}
         {feedBusy&&<p className="hb-social-loading">Carregando publicações…</p>}
         {hasMore&&!feedBusy&&<button className="hb-social-load-more" type="button" onClick={()=>void loadFeed(posts.at(-1)?.created_at||null,true,feedScope)}>Mostrar mais publicações</button>}
-      </section><aside className="hb-social-feed-aside"><span className="hb-social-overline">SEU CÍRCULO</span><h3>Amizade é seguir de volta.</h3><p>Siga pessoas de quem gosta. Quando alguém também seguir você, a amizade é criada automaticamente e o chat privado fica disponível.</p><button type="button" onClick={()=>setTab('discover')}>⌕ Encontrar jogadores</button><div className="hb-social-privacy-note">◈ Você escolhe se cada publicação será pública, para seguidores ou apenas para amigos. Bloqueios valem nos dois sentidos.</div></aside></div>}
+      </section><aside className="hb-social-feed-aside"><span className="hb-social-overline">SEU CÍRCULO</span><h3>Histórias se conectam.</h3><p>Explore a comunidade e acompanhe as aventuras de quem você segue. O chat privado abre quando o seguimento é mútuo.</p><div className="hb-v158-aside-stats"><span><strong>{summary.followers}</strong> seguidores</span><span><strong>{summary.friends}</strong> amigos</span></div><button type="button" onClick={()=>setTab('discover')}>⌕ Encontrar aventureiros</button><button type="button" onClick={()=>setTab('messages')}>✉ Ir às mensagens {summary.unread>0?`(${summary.unread})`:''}</button><div className="hb-social-privacy-note">◈ Você escolhe se cada publicação será pública, para seguidores ou apenas para amigos. Bloqueios valem nos dois sentidos.</div></aside></div>}
 
     {(['friends','following','followers','blocked'] as Tab[]).includes(tab)&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">SUA REDE</span><h3>{{friends:'Amigos mútuos',following:'Quem você segue',followers:'Quem segue você',blocked:'Contas bloqueadas'}[tab as 'friends'|'following'|'followers'|'blocked']}</h3><p>{tab==='friends'?'Vocês se seguem mutuamente e podem conversar em particular.':tab==='following'?'Pessoas cujas novidades você quer acompanhar.':tab==='followers'?'Pessoas que escolheram acompanhar seu perfil.':'Pessoas bloqueadas não podem seguir, enviar mensagens ou aparecer no seu feed.'}</p></div><label>Filtrar pessoas<input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Nome ou @usuário" /></label></div><div className="hb-social-people">{filteredPeople.map(person=>peopleCard(person,tab))}</div>{!filteredPeople.length&&<div className="hb-social-empty"><strong>Nenhum resultado.</strong><p>{filter?'Tente outro termo de busca.':tab==='blocked'?'Você não bloqueou ninguém.':'Explore outros perfis para ampliar sua rede.'}</p>{tab!=='blocked'&&<button type="button" onClick={()=>setTab('discover')}>Descobrir jogadores</button>}</div>}</section>}
 
@@ -283,6 +327,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
 
     {tab==='invites'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVITES</span><h3>Convites de campanhas</h3><p>Convites de campanha permanecem separados dos seguidores e das amizades.</p></div></div>{invites.map(invite=><div className="hb-social-invite" key={invite.id}><div><strong>{invite.campaign_name}</strong><small>Convite de {invite.sender_name}</small></div><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:true},'Convite aceito!')}>Aceitar</button><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:false},'Convite recusado.')}>Recusar</button></div>)}{!invites.length&&<div className="hb-social-empty"><strong>Nenhum convite pendente.</strong><p>Novas campanhas aparecerão aqui quando você for convidado.</p></div>}{canInvite&&campaignId&&<p className="hb-social-hint">Convites para {campaignName} podem ser enviados pelo perfil público de um jogador, conforme as permissões de campanha existentes.</p>}</section>}
 
+      </div>
+    </div>
     {profile&&<PublicAdventurerProfile person={profile} onClose={()=>setProfile(null)} onFriendUpdate={()=>{void refresh();void loadFeed(null,false,feedScope)}} onMessage={person=>{
       setProfile(null)
       const current=conversations.find(c=>c.partner_id===person.id)||{partner_id:person.id,display_name:person.display_name,username:person.username||'',last_message:null,last_at:null,unread_count:0,can_message:true}

@@ -39,6 +39,8 @@ import './components/ProfilePolish.css'
 import './components/ProfileV132.css'
 import './components/ProfilePersonalTheme.css'
 import './components/ProfileV150.css'
+import './components/ProfileSocialV158.css'
+import './components/SocialRpgSpacesV159.css'
 import './DeferredModule.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
@@ -1586,7 +1588,7 @@ const resetCreatureFilters = () => {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
-  const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('friends')
   const [socialOpened, setSocialOpened] = useState(false)
   const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
   const [profileJourneyDisplay,setProfileJourneyDisplay] = useState<'cards'|'compact'>('cards')
@@ -1944,6 +1946,11 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [activePage, setActivePage] = useState<
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
+  const lastRpgPage = useRef<Exclude<typeof activePage,'profile'>>('overview')
+  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'>('feed')
+  useEffect(() => {
+    if (activePage !== 'profile') lastRpgPage.current = activePage
+  }, [activePage])
   useEffect(() => {
     if (activePage === 'profile' && profileSection === 'friends') setSocialOpened(true)
   }, [activePage, profileSection])
@@ -7485,6 +7492,32 @@ async function sendItemToCharacter() {
     setActivePage('profile')
   }
 
+  // Social e RPG são espaços de navegação, não contas ou campanhas distintas.
+  const openSocialSpace = () => {
+    if (activePage !== 'profile') openProfilePage()
+    setProfileSection('friends')
+    setSocialNavigationTab('feed')
+    setSidebarMobileOpen(false)
+    window.scrollTo({top:0,behavior:'instant'})
+  }
+  const openRpgSpace = () => {
+    setActivePage(lastRpgPage.current === 'overview' && !selectedCampaignId ? 'campaigns' : lastRpgPage.current)
+    setSidebarMobileOpen(false)
+    window.scrollTo({top:0,behavior:'instant'})
+  }
+  const openSocialSection = (section:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
+    if (activePage !== 'profile') openProfilePage()
+    switchProfileSection(section)
+    setSidebarMobileOpen(false)
+  }
+  const openSocialTab = (tab:typeof socialNavigationTab) => {
+    if (activePage !== 'profile') openProfilePage()
+    setSocialNavigationTab(tab)
+    setProfileSection('friends')
+    setSidebarMobileOpen(false)
+    window.scrollTo({top:0,behavior:'instant'})
+  }
+
   const selectedCharacter = characters.find(
     (character) => character.id === selectedCharacterId,
   )
@@ -10451,14 +10484,14 @@ counterAttackDT
     {id:'bestiary',label:'Bestiário',symbol:'♞',description:'Criaturas e registros',campaign:true},
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
     {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
-    {id:'profile',label:'Meu perfil',symbol:'♙',description:'Identidade, amigos e personagens'},
+    {id:'profile',label:'Social',symbol:'✦',description:'Feed, perfis, seguidores, amizades e mensagens'},
   ]
   const quickCommands: HaxQuickCommand[] = quickPages
     .filter(item => (!item.master || isMaster) && (!item.campaign || Boolean(selectedCampaignId)))
     .map(item => ({
       id:`page:${item.id}`, label:item.label, description:item.description, symbol:item.symbol, section:'Páginas',
       action:() => {
-        if (item.id === 'profile') openProfilePage()
+        if (item.id === 'profile') openSocialSpace()
         else {
           setActivePage(item.id)
           if (item.id === 'sheets') setSheetCharacterView(false)
@@ -10467,6 +10500,19 @@ counterAttackDT
         }
       },
     }))
+  // Atalhos da rede também estão disponíveis na busca global (Ctrl+K).
+  for (const [tab,label,symbol] of ([
+    ['feed','Feed','✦'],['messages','Mensagens','✉'],['friends','Amigos','♧'],
+    ['followers','Seguidores','↙'],['following','Seguindo','↗'],
+    ['discover','Descobrir pessoas','⌕'],['invites','Convites','⚑'],
+    ['blocked','Contas bloqueadas','⊘'],
+  ] as const)) {
+    quickCommands.push({
+      id:`social:${tab}`,label,symbol,section:'Social',
+      description:`Abrir ${label.toLocaleLowerCase('pt-BR')} na comunidade`,
+      action:() => openSocialTab(tab),
+    })
+  }
   for (const campaign of campaigns) {
     quickCommands.push({
       id:`campaign:${campaign.id}`, label:campaign.name, symbol:'⚑', section:'Campanhas',
@@ -10547,12 +10593,12 @@ counterAttackDT
   if (!session) return <Auth />
 
   return (
-    <div className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
+    <div data-hb-space={activePage === 'profile' ? 'social' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
-        <a className="brand hb-sidebar-brand" href="#inicio" onClick={() => { setActivePage('overview'); setSidebarMobileOpen(false) }} aria-label="HäxBag — ir para visão geral">
+        <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
           <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
           <span className="hb-sidebar-brand-copy">
             <strong>Häx<span className="brand-light">Bag</span></strong>
@@ -10562,6 +10608,12 @@ counterAttackDT
         </a>
         <button type="button" className="hb-sidebar-close" onClick={() => setSidebarMobileOpen(false)} aria-label="Fechar menu lateral" title="Fechar menu lateral">✕</button>
 
+        <div className="hb-v159-space-switch" role="group" aria-label="Escolher espaço do HäxBag">
+          <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace}><span aria-hidden="true">✦</span> Social</button>
+          <button type="button" className={activePage !== 'profile' ? 'is-active' : ''} aria-pressed={activePage !== 'profile'} onClick={openRpgSpace}><span aria-hidden="true">⚔</span> RPG</button>
+        </div>
+
+        {activePage !== 'profile' && <>
         <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
           <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
           <span className="hb-sidebar-style-text">
@@ -10588,7 +10640,7 @@ counterAttackDT
                 setSelectedCampaignId(campaignId)
                 const { error: preferenceError } = await supabase.auth.updateUser({ data: { primary_campaign_id: campaignId || null } })
                 if (preferenceError) setError(`Campanha selecionada, mas não foi possível salvar como principal: ${preferenceError.message}`)
-                else if (activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'missions') setNotice('Campanha principal atualizada para este perfil.')
+                else if (activePage !== 'master-chest' && activePage !== 'missions') setNotice('Campanha principal atualizada para este perfil.')
               }}
               aria-label="Selecionar campanha ativa"
             >
@@ -10602,15 +10654,35 @@ counterAttackDT
           }}><span aria-hidden="true">＋</span> Criar campanha</button>
         </section>
 
+        </>}
         <div className="hb-global-actions" aria-label="Ferramentas rápidas">
           <button type="button" className="hb-quick-launcher" onClick={() => openQuick('search')}
             title="Buscar e navegar pelo HäxBag (Ctrl ou ⌘ + K)" aria-keyshortcuts="Control+K Meta+K">
             <span aria-hidden="true">⌕</span><span>Buscar no HäxBag</span><kbd>Ctrl K</kbd>
           </button>
-          <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
-            aria-label="Abrir notas privadas da sessão" title="Notas privadas da sessão">✎</button>
+          {activePage !== 'profile' && <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
+            aria-label="Abrir notas privadas da sessão" title="Notas privadas da sessão">✎</button>}
         </div>
         <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal" onClick={event => { if ((event.target as HTMLElement).closest('button.nav-link')) setSidebarMobileOpen(false) }}>
+          {activePage === 'profile' ? <>
+            <div className="hb-sidebar-nav-group hb-v159-nav-social">
+              <span className="hb-sidebar-group-title">CONEXÕES</span>
+              {([
+                ['feed','✦','Feed'],['messages','✉','Mensagens'],['friends','♧','Amigos'],
+                ['following','↗','Seguindo'],['followers','↙','Seguidores'],
+                ['discover','⌕','Descobrir'],['invites','⚑','Convites'],['blocked','⊘','Bloqueados'],
+              ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+            </div>
+            <div className="hb-sidebar-nav-group hb-v159-nav-identity">
+              <span className="hb-sidebar-group-title">MINHA IDENTIDADE</span>
+              {([
+                ['overview','♙','Meu perfil'],['journey','⚔','Minha jornada'],
+                ['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],
+                ['account','⌘','Conta e ajustes'],
+              ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+            </div>
+            <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
+          </> : <> 
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">EXPLORAR</span>
             <button type="button" className={`nav-link ${activePage === 'overview' ? 'active' : ''}`} onClick={() => setActivePage('overview')} disabled={!selectedCampaignId} aria-current={activePage === 'overview' ? 'page' : undefined}>
@@ -10667,12 +10739,6 @@ counterAttackDT
             </button>
           </div>
           <div className="hb-sidebar-nav-group">
-            <span className="hb-sidebar-group-title">CONTA</span>
-            <button type="button" className={`nav-link ${activePage === 'profile' ? 'active' : ''}`} onClick={openProfilePage} aria-current={activePage === 'profile' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">♙</span><span className="hb-sidebar-nav-name">Meu perfil</span>
-            </button>
-          </div>
-          <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">COMUNIDADE</span>
             <a
               className="nav-link hb-sidebar-discord-link"
@@ -10687,10 +10753,11 @@ counterAttackDT
               <span className="hb-sidebar-discord-external" aria-hidden="true">↗</span>
             </a>
           </div>
+          </>}
         </nav>
 
         <div className="sidebar-bottom hb-sidebar-footer">
-          <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
+          {activePage !== 'profile' && <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
             <summary className="hb-sidebar-invite-summary">
               <span className="hb-sidebar-invite-glyph" aria-hidden="true">✉</span>
               <span className="hb-sidebar-invite-summary-copy"><strong>Convites e equipe</strong><small>{isMaster && selectedCampaignId ? 'Reúna seus jogadores' : 'Sua próxima aventura'}</small></span>
@@ -10709,8 +10776,8 @@ counterAttackDT
                 setNotice('Link copiado!')
               }}>⧉ Copiar link gerado</button>}
             </div>
-          </details>
-          <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={openProfilePage} title="Abrir meu perfil">
+          </details>}
+          <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={() => openSocialSection('overview')} title="Abrir meu perfil">
             <div className="avatar">{accountAvatar || displayName.charAt(0).toUpperCase()}</div>
             <div className="profile-info"><strong>{displayName}</strong><small>{session.user.email}</small></div>
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
@@ -10796,11 +10863,15 @@ counterAttackDT
             aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" title="Menu do HäxBag">
             <span aria-hidden="true">☰</span><span>Menu</span>
           </button>
+          <div className="hb-v159-top-space-switch" role="group" aria-label="Ambiente ativo">
+            <button type="button" aria-pressed={activePage === 'profile'} className={activePage === 'profile' ? 'is-active' : ''} onClick={openSocialSpace}>✦ <span>Social</span></button>
+            <button type="button" aria-pressed={activePage !== 'profile'} className={activePage !== 'profile' ? 'is-active' : ''} onClick={openRpgSpace}>⚔ <span>RPG</span></button>
+          </div>
           <div className="breadcrumb hb-topbar-trail">
             <span>HäxBag</span><span className="crumb-slash">/</span>
-            <span className="hb-topbar-campaign">{selectedCampaign?.name ?? 'Suas campanhas'}</span>
+            <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -10810,10 +10881,10 @@ counterAttackDT
               aria-label="Buscar páginas, personagens e campanhas (Ctrl K)" title="Busca global (Ctrl K)">
               <span aria-hidden="true">⌕</span><span>Busca global</span><kbd>Ctrl K</kbd>
             </button>
-            <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
+            {activePage !== 'profile' && <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
               <span aria-hidden="true">{activeVisualStyle.symbol}</span>
               <strong>{activeVisualStyle.label}</strong>
-            </span>
+            </span>}
             <span className="online-dot" />
             Conectado
             <button
@@ -12391,7 +12462,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           {activePage === 'conditions' && selectedCampaignId && (
             isMaster ? <ConditionsPanel campaignId={selectedCampaignId} characters={characters.filter(c => c.campaign_id === selectedCampaignId)} enemies={enemies.filter(e => e.campaign_id === selectedCampaignId)} master={isMaster} /> : <PlayerConditionsLibrary campaignId={selectedCampaignId} />
           )}
-          {activePage === 'profile' && <div className="hb-profile-unified hb-profile-v129" data-profile-section={profileSection}>
+          {activePage === 'profile' && <div className="hb-profile-unified hb-profile-v129 hb-profile-v158" data-profile-section={profileSection}>
             <section className="hb-profile-page hb-profile-page-v12 hb-profile-page-v13 hb-profile-page-v15 hb-profile-page-v16 hb-profile-page-v17" data-cover={accountCover} aria-labelledby="hb-profile-title">
               <header className="hb-profile-identity" aria-label="Sua identidade no HäxBag">
                 <div className="hb-profile-identity-cover" data-has-custom-cover={profilePhotoUrls.cover ? 'true' : 'false'}>
@@ -12447,12 +12518,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </header>
 
               <div className="hb-v129-navigation" id="hb-v129-profile-navigation" aria-label="Navegação principal do perfil">
-                <div className="hb-v129-nav-heading"><span>SEU ESPAÇO</span><strong>Explorar o perfil</strong><small>Uma área para cada parte da sua história.</small></div>
+                <div className="hb-v129-nav-heading"><span>NAVEGAÇÃO</span><strong>Seu espaço social</strong><small>Histórias, pessoas e identidade no mesmo lugar.</small></div>
                 {personalProfileTheme && <div className="hb-v136-personal-palette" aria-label="Tema pessoal ativo"><span className="hb-v136-theme-dot" style={{background:profileAppearance.accent}} aria-hidden="true"/><span><strong>Minha paleta</strong><small>{profileFrameNames[profileAppearance.frame]} · só no Perfil</small></span><button type="button" onClick={()=>{switchProfileSection('legacy');setProfileAppearanceRequest(n=>n+1)}}>Ajustar ↗</button></div>}
                 <nav className="hb-v129-tabs" role="tablist" aria-label="Seções do perfil" onKeyDown={event=>{
                   if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return
                   if (!(event.target instanceof HTMLButtonElement)) return
-                  const tabs = ['overview','journey','studio','legacy','friends','account'] as const
+                  const tabs = ['friends','overview','journey','legacy','studio','account'] as const
                   const selected = tabs.indexOf(profileSection)
                   const index = event.key==='Home' ? 0 : event.key==='End' ? tabs.length-1 : (selected + (event.key==='ArrowRight'?1:-1) + tabs.length)%tabs.length
                   event.preventDefault()
@@ -12460,21 +12531,21 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   window.requestAnimationFrame(()=>document.getElementById(`hb-v129-tab-${tabs[index]}`)?.focus({preventScroll:true}))
                 }}>
                   {([
-                    ['overview','◈','Visão geral'],
-                    ['journey','⚔','Minha jornada'],
-                    ['studio','✎','Meu ateliê'],
-                    ['legacy','✦','Identidade e legado'],
-                    ['friends','♧','Amigos'],
-                    ['account','⌘','Conta'],
+                    ['friends','✦','Comunidade'],
+                    ['overview','♙','Meu perfil'],
+                    ['journey','⚔','Personagens'],
+                    ['legacy','✧','Minha vitrine'],
+                    ['studio','✎','Editar perfil'],
+                    ['account','⌘','Configurações'],
                   ] as const).map(([id,icon,label])=><button key={id} type="button" role="tab" id={`hb-v129-tab-${id}`} aria-controls={id==='studio'||id==='account'?'hb-v129-panel-editor':`hb-v129-panel-${id}`} aria-selected={profileSection===id} className={profileSection===id?'is-active':''} onClick={()=>switchProfileSection(id)}><span aria-hidden="true">{icon}</span>{label}{id==='studio' && profileEditing && profileHasChanges && <span className="hb-v129-unsaved-dot" title="Alterações não salvas" aria-label="Alterações não salvas">●</span>}</button>)}
                 </nav>
               </div>
               <div className="hb-v129-section-caption">
                 <div><span>✦ HÄXBAG · {profileSection==='overview'?'VISÃO GERAL':profileSection==='journey'?'JORNADA':profileSection==='studio'?'ATELIÊ':profileSection==='legacy'?'IDENTIDADE E LEGADO':profileSection==='friends'?'COMUNIDADE':'CONTA'}</span>
-                  <h2>{({overview:'Sua história em um só lugar',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua companhia de aventureiros',account:'Informações da conta'} as const)[profileSection]}</h2>
-                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, carta e símbolos pessoais.',legacy:'Escolha a paleta exclusiva desta página e configure protagonistas, conquistas, crônicas e privacidade.',friends:'Abra o perfil de qualquer amigo, conheça aventureiros e acompanhe seus convites.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
+                  <h2>{({overview:'Sua história em um só lugar',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua comunidade',account:'Informações da conta'} as const)[profileSection]}</h2>
+                  <p>{({overview:'Um retrato das aventuras que você viveu e dos próximos passos.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, carta e símbolos pessoais.',legacy:'Escolha a paleta exclusiva desta página e configure protagonistas, conquistas, crônicas e privacidade.',friends:'Publicações, seguidores, amigos e conversas em um só lugar.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
                 </div>
-                {profileSection!=='studio'&&<button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Personalizar</button>}
+                {profileSection!=='studio' && profileSection!=='friends' && <button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Personalizar</button>}
               </div>
               <div className="hb-v129-section" id="hb-v129-panel-overview" role="tabpanel" aria-labelledby="hb-v129-tab-overview" hidden={profileSection!=='overview'}>
               <div id="hb-profile-journey" className="hb-profile-section-heading" aria-hidden="true">
@@ -12888,7 +12959,22 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           /></DeferredModule>}
           </div>
           <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
-            <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <DeferredModule><FriendsPanel active={profileSection === 'friends'} campaignId={selectedCampaignId} campaignName={selectedCampaign?.name ?? 'campanha'} canInvite={Boolean(isMaster && selectedCampaignId)} /></DeferredModule>}</div>
+            <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <DeferredModule><FriendsPanel
+              active={profileSection === 'friends'}
+              selectedTab={socialNavigationTab}
+              onSelectTab={setSocialNavigationTab}
+              campaignId={selectedCampaignId}
+              campaignName={selectedCampaign?.name ?? 'campanha'}
+              canInvite={Boolean(isMaster && selectedCampaignId)}
+              onViewOwnProfile={() => switchProfileSection('overview')}
+              onEditOwnProfile={() => { switchProfileSection('studio'); setProfileEditing(true) }}
+              profileIdentity={{
+                name: String(displayName), username: accountUsername,
+                avatar: profilePhotoUrls.avatar, cover: profilePhotoUrls.cover,
+                avatarPosition: profilePhotoUrls.avatarPosition,
+                coverPosition: profilePhotoUrls.coverPosition,
+              }}
+            /></DeferredModule>}</div>
           </div>
           {previewMyPublicProfile && session && <DeferredModule><PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/></DeferredModule>}
           </div>}
