@@ -749,7 +749,7 @@ export function CharacterConditions({campaignId,characterId,skillTrainings={},ma
      })}</div></>}
    {visibleModifiers.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--mods" aria-label="Saldos dos modificadores ativos">
      <div className="hb-condition-subpanel-head"><strong>Modificadores ativos</strong><small>{visibleModifiers.length} {visibleModifiers.length===1?'alvo ajustado':'alvos ajustados'} · bônus e penalidades se compensam</small></div>
-     <p className="hb-v152-mod-explanation">Os ajustes do mesmo atributo ou perícia são combinados. Percentuais incidem sobre a base; pontos são somados depois. Um saldo de zero significa que os efeitos se anularam.</p>
+     <p className="hb-v152-mod-explanation">Os ajustes da mesma perícia são combinados. Em perícias treinadas, o percentual incide sobre a base; nas concedidas apenas por condições, também incide sobre os pontos concedidos. Um saldo zero indica compensação.</p>
      <div className="hb-condition-token-grid">{visibleModifiers.map(entry=>{
        // Um efeito geral (*) também modifica a perícia específica: a mesma regra já
        // é usada por conditionModifier() no cálculo efetivo da ficha.
@@ -757,7 +757,10 @@ export function CharacterConditions({campaignId,characterId,skillTrainings={},ma
        const percent=entry.percent+(general?.percent||0)
        const flat=entry.flat+(general?.flat||0)
        const base=modifierBaseValue(entry.target,entry.key,skillTrainings,mainSkillBases)
-       const delta=base===null?null:Math.round(base*(1+percent/100)+flat)-base
+       const isConditionGranted=base===0&&(entry.target==='extra_skill'||entry.target==='archetype_skill')
+       const delta=base===null?null:(isConditionGranted
+         ? Math.round(flat*(1+percent/100))
+         : Math.round(base*(1+percent/100)+flat))-base
        const isNeutral=delta===0||(delta===null&&percent===0&&flat===0)
        const isPositive=delta===null?(percent>=0&&flat>=0&&!isNeutral):delta>0
        const isNegative=delta===null?(percent<=0&&flat<=0&&!isNeutral):delta<0

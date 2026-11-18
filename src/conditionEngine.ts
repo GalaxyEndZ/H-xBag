@@ -21,6 +21,13 @@ export function calculateConditionModifiers(assignments: Assignment[], definitio
       if (effect.type !== 'modifier' || !effect.target || !Number.isFinite(effect.value)) continue
       const key = `${effect.unit === 'percent' ? 'percent:' : ''}${effect.target}:${normalize(effect.key || '*')}`
       totals[key] = (totals[key] || 0) + Number(effect.value)
+      // Guarda somente a existência de uma concessão específica. Mesmo que outra
+      // condição anule seus pontos, a perícia ainda deve ser exibida como temporária.
+      if (effect.unit !== 'percent' && Number(effect.value) > 0 && effect.key !== '*' &&
+        (effect.target === 'extra_skill' || effect.target === 'archetype_skill')) {
+        const grantedKey = `grant:${effect.target}:${normalize(effect.key || '')}`
+        totals[grantedKey] = (totals[grantedKey] || 0) + 1
+      }
     }
   }
   return totals
@@ -136,22 +143,49 @@ export function applyConditionModifier(base: number, modifiers: ConditionModifie
   return Math.round(base * (1 + percent / 100) + fixed)
 }
 
-/** Retorna a perícia efetiva sem aplicar o modificador genérico (*) duas vezes.
- *  Mantém compatibilidade com efeitos antigos salvos apenas pelo nome da perícia. */
-export function effectiveConditionSkill(base:number, modifiers:ConditionModifiers, target:'extra_skill'|'archetype_skill', key:string, name?:string):number {
-  const full=normalize(key)
-  const short=normalize(name||key.split(':').slice(1).join(':')||key)
-  const hasExact=Object.prototype.hasOwnProperty.call(modifiers,`${target}:${full}`)||Object.prototype.hasOwnProperty.call(modifiers,`percent:${target}:${full}`)
-  const legacy=short!==full&&(Object.prototype.hasOwnProperty.call(modifiers,`${target}:${short}`)||Object.prototype.hasOwnProperty.call(modifiers,`percent:${target}:${short}`))
-  return applyConditionModifier(base,modifiers,target,!hasExact&&legacy?short:key)
+/** Componentes consolidados de uma perícia, incluindo os efeitos "Todos".
+ * Mantém a preferência pela chave completa e compatibilidade com registros antigos
+ * salvos apenas com o nome da perícia, sem duplicar o curinga. */
+export function conditionSkillComponents(
+  modifiers: ConditionModifiers, target: 'extra_skill'|'archetype_skill', key: string, name?: string,
+): { flat: number; percent: number; specificFlat: number; hasGrant: boolean } {
+  const full = normalize(key)
+  const short = normalize(name || key.split(':').slice(1).join(':') || key)
+  const hasExact = Object.prototype.hasOwnProperty.call(modifiers, `${target}:${full}`)
+    || Object.prototype.hasOwnProperty.call(modifiers, `percent:${target}:${full}`)
+  const hasLegacy = short !== full && (
+    Object.prototype.hasOwnProperty.call(modifiers, `${target}:${short}`)
+    || Object.prototype.hasOwnProperty.call(modifiers, `percent:${target}:${short}`)
+  )
+  const selected = !hasExact && hasLegacy ? short : full
+  return {
+    flat: conditionModifier(modifiers, target, selected),
+    percent: conditionModifier(modifiers, `percent:${target}`, selected),
+    specificFlat: Number(modifiers[`${target}:${selected}`] || 0),
+    hasGrant: Number(modifiers[`grant:${target}:${selected}`] || 0) > 0,
+  }
 }
 
-/** Uma condição com bônus positivo específico pode disponibilizar uma perícia
- *  ainda não aprendida, sem alterar o treinamento permanente da ficha.
- *  Modificadores genéricos (*) não criam automaticamente todas as perícias. */
-export function isConditionGrantedSkill(modifiers:ConditionModifiers,target:'extra_skill'|'archetype_skill',key:string,name?:string):boolean {
-  const full=normalize(key)
-  const short=normalize(name||key.split(':').slice(1).join(':')||key)
-  const specific=Number(modifiers[`${target}:${full}`]||0)+(short!==full?Number(modifiers[`${target}:${short}`]||0):0)
-  return specific>0&&effectiveConditionSkill(0,modifiers,target,key,name)>0
+/** Perícias treinadas mantêm a fórmula existente da V152:
+ * percentual sobre o treinamento-base, seguido dos pontos.
+ * Quando o treinamento-base é zero (perícia concedida exclusivamente por condições),
+ * o percentual também incide sobre os pontos concedidos. Isso permite que -100%
+ * neutralize uma concessão temporária de +20 sem modificar a ficha permanente. */
+export function effectiveConditionSkill(
+  base: number, modifiers: ConditionModifiers,
+  target: 'extra_skill'|'archetype_skill', key: string, name?: string,
+): number {
+  const { flat, percent } = conditionSkillComponents(modifiers, target, key, name)
+  return base === 0
+    ? Math.round(flat * (1 + percent / 100))
+    : Math.round(base * (1 + percent / 100) + flat)
+}
+
+/** O vínculo de concessão permanece visível mesmo que o bônus seja anulado:
+ * uma condição ainda concede a perícia, mas sua pontuação líquida pode ser 0. */
+export function isConditionGrantedSkill(
+  modifiers: ConditionModifiers, target: 'extra_skill'|'archetype_skill', key: string, name?: string,
+): boolean {
+  const parts = conditionSkillComponents(modifiers, target, key, name)
+  return parts.hasGrant || parts.specificFlat > 0
 }

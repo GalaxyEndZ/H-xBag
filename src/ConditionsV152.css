@@ -20,3 +20,7 @@
  .app-shell .hb-sheet-conditions-section .hb-condition-token.hb-v152-modifier{display:grid;grid-template-columns:27px minmax(0,1fr)}
 }
 @media(prefers-reduced-motion:reduce){.app-shell .hb-sheet-conditions-section .hb-v152-modifier *{transition:none}}
+
+/* V153 — perícias temporárias com bônus e penalidades anulados. */
+.app-shell .hb-trained-skills-item-bonus.is-neutral{color:var(--season-muted,#aeb7c3)}
+.app-shell .hb-trained-skills-chip.is-neutral{border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 25%,var(--season-line,rgba(255,255,255,.14)))}

@@ -46,7 +46,7 @@ import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, 
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
-import { useCharacterConditionModifiers, useEnemyConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
+import { useCharacterConditionModifiers, useEnemyConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, conditionSkillComponents, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
 
 /** Marcador decorativo usado apenas nas prévias sem retrato do Bestiário. */
 function bestiaryCategorySymbol(category: string): string {
@@ -342,8 +342,14 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
                                 const kitEntries = [...getKitBonus(skill.name), ...equippedKitSkillBonuses(equippedKitItems,equippedKitItems[0]?.character_id||'',skill.key)]
                                 const kitBonus = kitEntries.reduce((sum, kit) => sum + kit.bonus, 0)
                                 const conditionDelta = conditioned - base
+                                const conditionParts = conditionSkillComponents(modifiers, target, skill.key, skill.name)
+                                const hasConditions = conditionParts.flat !== 0 || conditionParts.percent !== 0 || conditionParts.hasGrant
                                 const total = conditioned + pendingBonus + kitBonus
-                                const hasDetail = conditionDelta !== 0 || pendingBonus !== 0 || kitEntries.length > 0
+                                const hasDetail = hasConditions || pendingBonus !== 0 || kitEntries.length > 0
+                                const conditionBreakdown = [
+                                  conditionParts.percent ? `${conditionParts.percent > 0 ? '+' : ''}${conditionParts.percent}%` : '',
+                                  conditionParts.flat ? `${conditionParts.flat > 0 ? '+' : ''}${conditionParts.flat} pontos` : '',
+                                ].filter(Boolean).join(' · ')
                                 return <>
                                   <span className="hb-trained-skills-item-info">
                                     <strong>{skill.name}</strong>
@@ -352,11 +358,12 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
                                   <span className="hb-trained-skills-item-metrics">
                                     <span className="hb-trained-skills-item-total">
                                       <small>Total</small>
-                                      <strong className="hb-trained-skills-item-bonus">{total >= 0 ? '+' : ''}{total}</strong>
+                                      <strong className={`hb-trained-skills-item-bonus ${total === 0 ? 'is-neutral' : ''}`}>{total === 0 ? '0' : `${total > 0 ? '+' : ''}${total}`}</strong>
                                     </span>
                                     <span className="hb-trained-skills-item-breakdown">
                                       {level === 'condicao' ? <span className="hb-trained-skills-chip is-condition" title="Perícia concedida enquanto a condição estiver ativa">Temporária</span> : <span className="hb-trained-skills-chip is-base" title="Treinamento base">Base {base >= 0 ? '+' : ''}{base}</span>}
-                                      {conditionDelta !== 0 && <span className="hb-trained-skills-chip is-condition" title="Efeito de condições ativas">Condições {conditionDelta > 0 ? '+' : ''}{conditionDelta}</span>}
+                                      {hasConditions && <span className={`hb-trained-skills-chip ${conditionDelta === 0 ? 'is-neutral' : 'is-condition'}`} title={conditionBreakdown || 'Efeitos compensados'}>{conditionDelta === 0 ? 'Condições anuladas' : `Condições ${conditionDelta > 0 ? '+' : ''}${conditionDelta}`}</span>}
+                                      {hasConditions && conditionBreakdown && <span className="hb-trained-skills-chip is-base" title="Parcelas acumuladas das condições, antes da compensação">{conditionBreakdown}</span>}
                                       {pendingBonus !== 0 && <span className="hb-trained-skills-chip is-prep" title="Bônus de ações complexas">Preparo {pendingBonus > 0 ? '+' : ''}{pendingBonus}</span>}
                                       {kitEntries.map(kit => <span key={kit.name} className="hb-trained-skills-chip is-kit" title={kit.name}>Kit {kit.bonus > 0 ? '+' : ''}{kit.bonus}</span>)}
                                       {!hasDetail && <span className="hb-trained-skills-chip is-neutral">Sem modificadores</span>}
