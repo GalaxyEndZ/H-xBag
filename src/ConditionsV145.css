@@ -107,3 +107,124 @@
 .hb-v145-public-nature button small{display:grid;place-items:center;min-width:23px;padding:3px 6px;border-radius:6px;background:var(--v145-under);font-size:.69rem;color:var(--v145-muted);font-variant-numeric:tabular-nums}
 .hb-v145-public-nature button.is-selected,.hb-v145-public-nature button:hover{border-color:var(--v145-accent);background:color-mix(in srgb,var(--v145-accent) 9%,var(--v145-card))}
 @media(max-width:580px){.hb-v145-public-nature{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* V146 — refinamentos do Radar da Campanha e da visibilidade na biblioteca. */
+.hb-v145-situation-head{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(148px,188px);
+  gap:16px;
+  align-items:stretch;
+}
+.hb-v145-situation-head>div:first-child{
+  display:grid;
+  align-content:start;
+  gap:2px;
+}
+.hb-v145-critical-count{
+  align-self:stretch;
+  min-width:0;
+  min-height:88px;
+  padding:14px 16px;
+  border-radius:16px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--v145-accent) 5%,var(--v145-card)),var(--v145-card));
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--v145-accent) 9%,transparent);
+}
+.hb-v145-critical-count strong{font-size:2.2rem}
+.hb-v145-critical-count span{max-width:none;font-size:.74rem}
+.hb-v145-targets{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));
+  gap:12px;
+}
+.hb-v145-target{
+  min-height:72px;
+  padding:13px 14px;
+  border-radius:14px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--v145-accent) 2%,var(--v145-card)),var(--v145-card));
+}
+.hb-v145-target.is-selected{
+  box-shadow:inset 3px 0 0 var(--v145-accent),0 10px 26px rgba(0,0,0,.08);
+}
+.hb-v145-target-icon{
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  background:linear-gradient(145deg,var(--v145-under),color-mix(in srgb,var(--v145-accent) 7%,var(--v145-under)));
+}
+.hb-v145-target-copy{gap:5px}
+.hb-v145-target-copy strong{font-size:.82rem}
+.hb-v145-target-copy small{font-size:.7rem}
+.hb-v145-target-count{
+  min-width:32px;
+  text-align:center;
+  padding:6px 8px;
+  border-radius:999px;
+}
+
+.hb-conditions-v145 .hb-condition-visibility{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  min-height:58px;
+  margin-top:2px;
+  padding:13px 14px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb,var(--v145-accent) 18%,var(--v145-line));
+  background:linear-gradient(145deg,color-mix(in srgb,var(--v145-accent) 5%,var(--v145-card)),var(--v145-under));
+  cursor:pointer;
+}
+.hb-conditions-v145 .hb-condition-visibility span{
+  min-width:0;
+  font-size:.8rem;
+  line-height:1.45;
+  color:var(--v145-text);
+}
+.hb-conditions-v145 .hb-condition-visibility input{
+  appearance:none;
+  -webkit-appearance:none;
+  width:22px;
+  height:22px;
+  margin:0;
+  border-radius:7px;
+  border:1.5px solid color-mix(in srgb,var(--v145-accent) 45%,var(--v145-line));
+  background:var(--v145-card);
+  display:grid;
+  place-items:center;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+.hb-conditions-v145 .hb-condition-visibility input::after{
+  content:'✓';
+  font-size:.9rem;
+  font-weight:900;
+  line-height:1;
+  color:#111;
+  transform:scale(0);
+  transition:transform .14s ease;
+}
+.hb-conditions-v145 .hb-condition-visibility input:checked{
+  background:var(--v145-accent);
+  border-color:var(--v145-accent);
+}
+.hb-conditions-v145 .hb-condition-visibility input:checked::after{transform:scale(1)}
+.hb-conditions-v145 .hb-condition-visibility:hover{
+  border-color:color-mix(in srgb,var(--v145-accent) 42%,var(--v145-line));
+  background:linear-gradient(145deg,color-mix(in srgb,var(--v145-accent) 7%,var(--v145-card)),var(--v145-under));
+}
+.hb-conditions-v145 .hb-condition-visibility:has(input:not(:checked)) span{color:var(--v145-muted)}
+.hb-conditions-v145 .hb-condition-visibility:has(input:focus-visible){
+  outline:2px solid var(--v145-accent);
+  outline-offset:2px;
+}
+
+@media(max-width:760px){
+  .hb-v145-situation-head{grid-template-columns:minmax(0,1fr)}
+  .hb-v145-critical-count{
+    grid-template-columns:auto 1fr;
+    min-height:0;
+  }
+}
+@media(max-width:540px){
+  .hb-v145-target{min-height:0;padding:12px 13px}
+  .hb-conditions-v145 .hb-condition-visibility{padding:12px}
+}
