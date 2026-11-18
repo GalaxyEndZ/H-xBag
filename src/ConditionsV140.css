@@ -5,3 +5,32 @@
 .hb-condition-notice { border:1px solid color-mix(in srgb,var(--season-primary,#d5ac8a) 45%,transparent); border-radius:12px; padding:10px 14px; color:var(--season-text,#eee); background:color-mix(in srgb,var(--season-primary,#d5ac8a) 9%,transparent); }
 .hb-condition-library-description {white-space:pre-wrap;overflow-wrap:anywhere;color:var(--season-text,#eee);font-size:12px;line-height:1.55;margin:7px 0;}
 .hb-public-conditions-library .hb-condition-library-item {cursor:default;}
+
+
+/* V142 — troca individual de cartões nas fichas (sem mover as demais condições) */
+.hb-condition-indicator--sheet .hb-condition-swap-hint{margin:10px 0 12px;font-size:12px;line-height:1.5;color:var(--season-text-muted,var(--season-muted,#a9abb5));}
+.hb-condition-indicator--sheet .hb-condition-chip[draggable="true"]{cursor:grab;user-select:none;-webkit-user-select:none;}
+.hb-condition-indicator--sheet .hb-condition-chip[draggable="true"]:active{cursor:grabbing;}
+.hb-condition-indicator--sheet .hb-condition-chip.hb-condition-chip-dragging{opacity:.42;}
+.hb-condition-indicator--sheet .hb-condition-chip.hb-condition-chip-drop-target,.hb-condition-indicator--sheet .hb-condition-chip.hb-condition-chip-selected{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:2px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 9%,var(--season-surface,#1b1b21));}
+.hb-condition-indicator--sheet .hb-condition-swap-button{display:inline-flex;align-items:center;justify-content:center;min-height:32px;max-width:100%;margin-top:11px;padding:6px 11px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 38%,var(--season-line,#404049));border-radius:9px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,transparent);color:var(--season-text,#eee);font:inherit;font-size:11px;font-weight:750;cursor:pointer;touch-action:manipulation;}
+.hb-condition-indicator--sheet .hb-condition-swap-button:hover,.hb-condition-indicator--sheet .hb-condition-swap-button:focus-visible{background:color-mix(in srgb,var(--season-primary,#d9bd8b) 17%,transparent);border-color:var(--season-primary,#d9bd8b);}
+@media (max-width:580px){.hb-condition-indicator--sheet .hb-condition-swap-button{width:100%;}}
+@media (prefers-reduced-motion:reduce){.hb-condition-indicator--sheet .hb-condition-chip{transition:none!important;}}
+
+/* V142 — troca individual dos cartões de condições ativas (inclui telas touch). */
+.hb-conditions-active .hb-conditions-entry[draggable="true"]{cursor:grab;touch-action:pan-y}
+.hb-conditions-active .hb-conditions-entry[draggable="true"]:active{cursor:grabbing}
+.hb-conditions-active .hb-condition-dragging{opacity:.55;border-style:dashed}
+.hb-conditions-active .hb-condition-drop-target{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:2px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 13%,var(--season-surface-alt,#26262b))}
+.hb-active-condition-mover{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:var(--season-primary,#d9bd8b);font-weight:700;font-size:.76rem;letter-spacing:.015em}
+.hb-active-condition-mover>span:nth-child(2){margin-right:auto;opacity:.9}
+.hb-active-condition-mover button{width:34px;height:31px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--season-line,rgba(255,255,255,.19));background:var(--season-surface-alt,rgba(0,0,0,.1));color:var(--season-text,#eee);cursor:pointer;font-weight:900;font-size:1rem}
+.hb-active-condition-mover button:hover:not(:disabled){border-color:var(--season-primary,#d9bd8b);color:var(--season-primary,#d9bd8b)}
+.hb-active-condition-mover button:disabled{opacity:.34;cursor:not-allowed}
+@media(max-width:620px){.hb-active-condition-mover button{width:41px;height:39px}.hb-active-condition-mover{width:100%}}
+
+/* Troca direta também na central do mestre, acessível por toque e teclado. */
+.hb-conditions-entry .hb-condition-master-swap{display:grid;gap:5px;max-width:min(100%,260px);min-width:180px;font-size:11px;font-weight:750;color:var(--season-text,#eee)}
+.hb-conditions-entry .hb-condition-master-swap select{width:100%;min-height:35px;border-radius:9px;border:1px solid var(--season-line,#555);background:var(--season-surface-alt,#23232b);color:var(--season-text,#eee);padding:5px 9px;font:inherit;cursor:pointer}
+@media(max-width:560px){.hb-conditions-entry .hb-condition-master-swap{min-width:100%;max-width:100%;}}

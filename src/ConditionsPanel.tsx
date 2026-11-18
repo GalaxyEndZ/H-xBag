@@ -102,6 +102,8 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
   const [newEffects,setNewEffects]=useState<ConditionEffect[]>([])
   const [numericDrafts,setNumericDrafts]=useState<Record<string,string>>({})
   const [orderMap,setOrderMap]=useState<Record<string,number>>({})
+  // A ordem das aplicações é global e independente da ordem da biblioteca.
+  const [activeOrderMap,setActiveOrderMap]=useState<Record<string,number>>({})
   const [dragged,setDragged]=useState<string|null>(null)
   const [dragOver,setDragOver]=useState<string|null>(null)
   const dragSource=useRef<string|null>(null)
@@ -113,35 +115,61 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     const bp=orderMap[orderKey(kind,b.id)]??1000000
     return ap-bp
   })
-  const moveCondition=async(kind:'definition'|'character'|'enemy',sourceId:string,destinationId:string)=>{
-    if(!master||busy||sourceId===destinationId)return
-    const source=kind==='definition'?sortBySavedOrder(definitions,'definition'):kind==='character'?sortBySavedOrder(active,'character'):sortBySavedOrder(enemyActive,'enemy')
-    const target=source.find(item=>item.id===destinationId)
-    const moving=source.find(item=>item.id===sourceId)
-    if(!target||!moving)return
-    // Cada personagem ou inimigo mantém uma ordem própria.
-    const scoped=kind==='definition'?source:source.filter(item=>(item as Active).character_id===(target as Active).character_id)
-    if(!scoped.some(item=>item.id===sourceId))return
-    const ids=scoped.map(item=>item.id)
-    // Troca direta: a condição arrastada ocupa o lugar da outra, e vice-versa.
-    // As demais condições permanecem exatamente nas posições anteriores.
-    const sourceIndex=ids.indexOf(sourceId)
-    const destinationIndex=ids.indexOf(destinationId)
-    ;[ids[sourceIndex],ids[destinationIndex]]=[ids[destinationIndex],ids[sourceIndex]]
-    const previous={...orderMap}
-    setOrderMap(current=>{
+  const moveCondition=async(kind:'definition'|'character'|'enemy',sourceId:string,destinationId:string,destinationKind:'definition'|'character'|'enemy'=kind)=>{
+    if(!master||busy||(kind===destinationKind&&sourceId===destinationId))return
+    if(kind==='definition'||destinationKind==='definition'){
+      // A biblioteca possui sua ordenação própria, sem alterar condições aplicadas.
+      if(kind!=='definition'||destinationKind!=='definition')return
+      const definitionsOrdered=sortBySavedOrder(definitions,'definition')
+      const ids=definitionsOrdered.map(item=>item.id)
+      const from=ids.indexOf(sourceId),to=ids.indexOf(destinationId)
+      if(from<0||to<0)return
+      ;[ids[from],ids[to]]=[ids[to],ids[from]]
+      const previous={...orderMap}
+      setOrderMap(current=>{
+        const updated={...current}
+        ids.forEach((id,index)=>{updated[orderKey('definition',id)]=index+1})
+        return updated
+      })
+      setBusy(true)
+      try{
+        const result=await supabase.rpc('hax_reorder_conditions',{p_campaign_id:campaignId,p_kind:'definition',p_ids:ids})
+        if(result.error){setOrderMap(previous);setError(`Não foi possível salvar a ordem da biblioteca: ${result.error.message}`)}
+        else setNotice('A ordem da biblioteca foi atualizada.')
+      }catch(err){setOrderMap(previous);setError(err instanceof Error?err.message:'Erro ao ordenar a biblioteca')}
+      finally{setBusy(false)}
+      return
+    }
+    // Troca *somente* os dois cartões escolhidos, inclusive entre diferentes
+    // personagens e inimigos. Nenhuma outra condição muda de posição.
+    const ordered=[
+      ...active.map(item=>({...item,targetType:'character' as const})),
+      ...enemyActive.map(item=>({...item,targetType:'enemy' as const})),
+    ].sort((a,b)=>(activeOrderMap[orderKey(a.targetType,a.id)]??Number.MAX_SAFE_INTEGER)-(activeOrderMap[orderKey(b.targetType,b.id)]??Number.MAX_SAFE_INTEGER))
+    const positions=ordered.map(item=>({kind:item.targetType,id:item.id}))
+    const from=positions.findIndex(item=>item.kind===kind&&item.id===sourceId)
+    const to=positions.findIndex(item=>item.kind===destinationKind&&item.id===destinationId)
+    if(from<0||to<0)return
+    ;[positions[from],positions[to]]=[positions[to],positions[from]]
+    const previous={...activeOrderMap}
+    setActiveOrderMap(current=>{
       const updated={...current}
-      ids.forEach((id,index)=>{updated[orderKey(kind,id)]=index+1})
+      positions.forEach((item,index)=>{updated[orderKey(item.kind,item.id)]=index+1})
       return updated
     })
-    setBusy(true)
+    setBusy(true);setError('')
     try{
-      const result=await supabase.rpc('hax_reorder_conditions',{p_campaign_id:campaignId,p_kind:kind,p_ids:ids})
-      if(result.error){setOrderMap(previous);setError(`Não foi possível salvar a ordem: ${result.error.message}`)}
-    }catch(err){setOrderMap(previous);setError(err instanceof Error?err.message:'Erro ao salvar a ordem das condições')}
+      const result=await supabase.rpc('hax_reorder_active_conditions_v142',{p_campaign_id:campaignId,p_items:positions})
+      if(result.error){
+        setActiveOrderMap(previous)
+        setError(`Não foi possível salvar a troca de condições. Execute o SQL V142. ${result.error.message}`)
+      }else setNotice('As duas condições trocaram de posição.')
+    }catch(err){setActiveOrderMap(previous);setError(err instanceof Error?err.message:'Erro ao trocar as condições')}
     finally{setBusy(false)}
   }
   const clearDrag=()=>{dragSource.current=null;setDragged(null);setDragOver(null)}
+  const acceptsDrop=(source:string,kind:'definition'|'character'|'enemy',id:string)=>
+    source!==orderKey(kind,id) && (kind==='definition'?source.startsWith('definition:'):/^(character|enemy):/.test(source))
   const dragProps=(kind:'definition'|'character'|'enemy',id:string)=>master?{
     draggable:!busy,
     onDragStart:(event:import('react').DragEvent<HTMLElement>)=>{
@@ -154,26 +182,28 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     },
     onDragEnter:(event:import('react').DragEvent<HTMLElement>)=>{
       const source=dragSource.current||event.dataTransfer.getData('text/plain')
-      if(source.startsWith(`${kind}:`)&&source!==orderKey(kind,id))setDragOver(orderKey(kind,id))
+      if(acceptsDrop(source,kind,id))setDragOver(orderKey(kind,id))
     },
     onDragOver:(event:import('react').DragEvent<HTMLElement>)=>{
       const source=dragSource.current||event.dataTransfer.getData('text/plain')
-      if(source.startsWith(`${kind}:`)&&source!==orderKey(kind,id)){
+      if(acceptsDrop(source,kind,id)){
         event.preventDefault()
         event.dataTransfer.dropEffect='move'
         if(dragOver!==orderKey(kind,id))setDragOver(orderKey(kind,id))
       }
     },
     onDrop:(event:import('react').DragEvent<HTMLElement>)=>{
-      event.preventDefault()
-      event.stopPropagation()
+      event.preventDefault();event.stopPropagation()
       const source=dragSource.current||event.dataTransfer.getData('text/plain')
       clearDrag()
-      if(source.startsWith(`${kind}:`))void moveCondition(kind,source.slice(kind.length+1),id)
+      if(!acceptsDrop(source,kind,id))return
+      const split=source.indexOf(':')
+      const sourceKind=source.slice(0,split) as 'definition'|'character'|'enemy'
+      void moveCondition(sourceKind,source.slice(split+1),id,kind)
     },
     onDragEnd:clearDrag,
-    title:'Arraste o cartão para alterar a ordem',
-  }:{ }
+    title:'Arraste sobre outra condição para trocar as posições',
+  }:{}
   const explainPolarityError=(error:{message:string}|null, selected:string)=> error && selected==='neutra'
     ? {message:`Não foi possível salvar a natureza Neutra. O Supabase pode estar limitando as opções a Boa/Ruim. Execute o SQL de correção da V91 no SQL Editor e tente novamente. Detalhe: ${error.message}`}
     : error
@@ -215,6 +245,8 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     ])
     if(d.error||a.error||ea.error){setError(d.error?.message||a.error?.message||ea.error?.message||'Erro ao consultar condições.');return}
     setOrderMap(Object.fromEntries(((orders.data||[]) as {kind:string;id:string;position:number}[]).map(item=>[`${item.kind}:${item.id}`,item.position])))
+    const activePositions=await supabase.rpc('hax_list_active_condition_order_v142',{p_campaign_id:campaignId})
+    if(!activePositions.error)setActiveOrderMap(Object.fromEntries(((activePositions.data||[]) as {kind:string;id:string;position:number}[]).map(item=>[`${item.kind}:${item.id}`,item.position])))
     setDefinitions(((d.data||[]) as Definition[]).map(item=>({...item,effects:((fx.data||[]) as {id:string;effects:ConditionEffect[]}[]).find(row=>row.id===item.id)?.effects||[],polarity:((polarities.data||[]) as {id:string;polarity:string}[]).find(row=>row.id===item.id)?.polarity||'ruim'})))
     setActive((a.data||[]) as Active[])
     setEnemyActive((ea.data||[]) as Active[])
@@ -306,7 +338,8 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
     </section>
   }
   const filteredDefinitions=sortBySavedOrder(definitions,'definition').filter(d=>(librarySeverity==='todas'||d.severity===librarySeverity)&&(libraryPolarity==='todas'||(d.polarity||'ruim')===libraryPolarity)&&`${d.name} ${d.description} ${d.severity}`.toLocaleLowerCase().includes(libraryFilter.toLocaleLowerCase()))
-  const allActive=[...sortBySavedOrder(active,'character').map(a=>({...a,targetType:'character' as const})),...sortBySavedOrder(enemyActive,'enemy').map(a=>({...a,targetType:'enemy' as const}))]
+  const allActive=[...active.map(a=>({...a,targetType:'character' as const})),...enemyActive.map(a=>({...a,targetType:'enemy' as const}))]
+    .sort((a,b)=>(activeOrderMap[orderKey(a.targetType,a.id)]??Number.MAX_SAFE_INTEGER)-(activeOrderMap[orderKey(b.targetType,b.id)]??Number.MAX_SAFE_INTEGER))
   const targets=[...characters.map(c=>({...c,targetType:'character' as const})),...enemies.map(e=>({...e,targetType:'enemy' as const}))]
   const targetName=(a:{character_id:string;targetType:'character'|'enemy'})=>targets.find(t=>t.id===a.character_id&&t.targetType===a.targetType)?.name||'Alvo removido'
   const visibleActive=allActive.filter(a=>(severityFilter==='todas'||a.severity===severityFilter)&&(activePolarity==='todas'||(definitions.find(d=>d.id===a.definition_id)?.polarity||'ruim')===activePolarity)&&(characterFilter==='todos'||`${a.targetType}:${a.character_id}`===characterFilter)&&`${a.name} ${targetName(a)}`.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))
@@ -386,7 +419,7 @@ export function ConditionsPanel({ campaignId, characters, enemies, master }: {ca
         <div className="hb-condition-form-intro"><span className="hb-condition-form-icon">◎</span><div><h3>Aplicar condição</h3><p>Escolha o alvo e a condição. A duração e as observações são opcionais.</p></div></div><label>Tipo de alvo<select value={targetType} onChange={e=>{setTargetType(e.target.value as 'character'|'enemy');setCharacterId('')}}><option value="character">Personagem</option><option value="enemy">Inimigo</option></select></label><label>{targetType==='enemy'?'Inimigo':'Personagem'}<select required value={characterId} onChange={e=>setCharacterId(e.target.value)}><option value="">Selecione...</option>{targets.filter(t=>t.targetType===targetType).map(t=><option key={`${t.targetType}:${t.id}`} value={t.id}>{t.targetType==='enemy'?'👹':'🧑'} {t.emoji||''} {t.name}</option>)}</select></label><label>Condição<select required value={definitionId} onChange={e=>setDefinitionId(e.target.value)}><option value="">Selecione...</option>{definitions.map(d=><option key={d.id} value={d.id}>{d.emoji} {d.name}</option>)}</select></label><label>Tipo de duração<select value={durationMode} onChange={event=>setDurationMode(event.target.value as typeof durationMode)}><option value="indeterminada">Indeterminada</option><option value="fixa">Fixa</option><option value="dado">Definida por dado</option></select></label>{durationMode==='fixa'&&<label>Duração fixa<input value={duration} onChange={event=>setDuration(event.target.value)} placeholder="Ex.: 3 rodadas / até o fim da cena" /></label>}{durationMode==='dado'&&<label>Dado de duração<select value={durationDice} onChange={event=>setDurationDice(event.target.value)}>{['1d4','1d6','1d8','1d10','1d12','1d20','2d6'].map(d=><option key={d} value={d}>{d}</option>)}</select></label>}<label>Observação<input value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Opcional" /></label><button className="primary-button" disabled={busy||!characterId||!definitionId}>Aplicar condição</button>
       </form>
     </div>}
-    {workspace==='active'&&<div className="hb-condition-card hb-conditions-wide"><div className="hb-conditions-section-head"><div><h3>📋 Condições ativas</h3><small>Consulte e gerencie os efeitos aplicados</small></div><input aria-label="Buscar condição ou personagem" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Buscar personagem ou condição..." /></div><div className="hb-conditions-filter-row"><label>Alvo <select value={characterFilter} onChange={e=>setCharacterFilter(e.target.value)}><option value="todos">Todos os alvos</option>{characters.map(c=><option key={c.id} value={`character:${c.id}`}>{c.emoji||'🧑'} {c.name}</option>)}{enemies.map(e=><option key={e.id} value={`enemy:${e.id}`}>👹 {e.name}</option>)}</select></label><label>Gravidade <select value={severityFilter} onChange={e=>setSeverityFilter(e.target.value)}><option value="todas">Todas</option><option value="normal">Normal</option><option value="grave">Grave</option><option value="critica">Crítica</option></select></label><label>Natureza <select value={activePolarity} onChange={e=>setActivePolarity(e.target.value)}><option value="todas">Todas</option><option value="boa">Boas</option><option value="neutra">Neutras</option><option value="ruim">Ruins</option></select></label><span aria-live="polite">{visibleActive.length} resultado(s)</span>{(filter||characterFilter!=='todos'||severityFilter!=='todas'||activePolarity!=='todas')&&<button type="button" className="secondary-button hb-conditions-clear" onClick={()=>{setFilter('');setCharacterFilter('todos');setSeverityFilter('todas');setActivePolarity('todas')}}>Limpar filtros</button>}</div>{allActive.length===0?<div className="hb-conditions-empty"><span>✧</span><strong>Nenhuma condição ativa</strong><p>Quando uma condição for aplicada, ela aparecerá aqui.</p>{master&&<button type="button" className="primary-button" onClick={()=>setWorkspace('apply')}>Aplicar condição</button>}</div>:<div className="hb-conditions-active">{visibleActive.length===0&&<div className="hb-conditions-filter-empty">Nenhuma condição corresponde aos filtros. <button type="button" className="secondary-button" onClick={()=>{setFilter('');setCharacterFilter('todos');setSeverityFilter('todas');setActivePolarity('todas')}}>Limpar filtros</button></div>}{visibleActive.map(a=><article key={a.id} {...dragProps(a.targetType,a.id)} className={`hb-conditions-entry severity-${a.severity} ${dragged===orderKey(a.targetType,a.id)?'hb-condition-dragging':''} ${dragOver===orderKey(a.targetType,a.id)?'hb-condition-drop-target':''}`}><div><strong>{a.emoji} {a.name}</strong><span className={`hb-condition-polarity ${definitions.find(d=>d.id===a.definition_id)?.polarity==='boa'?'good':definitions.find(d=>d.id===a.definition_id)?.polarity==='neutra'?'neutral':'bad'}`}>{definitions.find(d=>d.id===a.definition_id)?.polarity==='boa'?'✦ Boa':definitions.find(d=>d.id===a.definition_id)?.polarity==='neutra'?'◈ Neutra':'◆ Ruim'}</span><span className={`hb-conditions-severity severity-${a.severity}`}>{a.severity==='critica'?'Crítica':a.severity==='grave'?'Grave':'Normal'}</span><small>{targetName(a)} · {a.duration_label||'Sem duração definida'}</small>{a.description&&<p>{a.description}</p>}{a.notes&&<small>{a.notes}</small>}{definitions.find(d=>d.id===a.definition_id)?.effects?.some(e=>e.type==='round_counter')&&<small>⏳ Rodadas restantes: {rounds[a.id]??'não iniciadas'}</small>}{rollLog[a.id]&&<small role="status">🎲 {rollLog[a.id]} — aplique o dano manualmente</small>}</div>{master&&<div className="hb-condition-actions">{definitions.find(d=>d.id===a.definition_id)?.effects?.some(e=>e.type==='round_counter')&&<button type="button" className="secondary-button" disabled={busy} onClick={()=>advanceRound(a,a.targetType)}>⏳ Avançar rodada</button>}{definitions.find(d=>d.id===a.definition_id)?.effects?.some(e=>e.type==='periodic_damage')&&<button type="button" className="secondary-button" disabled={busy} onClick={()=>rollPeriodic(a)}>🎲 Rolar dano</button>}<button type="button" className="secondary-button" disabled={busy} onClick={()=>{const d=definitions.find(d=>d.id===a.definition_id);if(d)startEditDefinition(d)}}>✏️ Editar condição</button><button type="button" className="secondary-button" disabled={busy} onClick={()=>{setEditingAssignment(`${a.targetType}:${a.id}`);setEditDuration(a.duration_label||'');setEditNotes(a.notes||'')}}>✏️ Editar</button><button type="button" className="secondary-button" disabled={busy} onClick={()=>void execute(async()=>a.targetType==='enemy'?supabase.rpc('hax_remove_enemy_condition',{p_campaign_id:campaignId,p_assignment_id:a.id}):supabase.rpc('hax_remove_condition',{p_campaign_id:campaignId,p_assignment_id:a.id}))}>Remover</button></div>}</article>)}</div>}</div>}
+    {workspace==='active'&&<div className="hb-condition-card hb-conditions-wide"><div className="hb-conditions-section-head"><div><h3>📋 Condições ativas</h3><small>Arraste uma condição sobre outra para trocar as posições, ou use ↑ e ↓ no celular. A ordem é independente da biblioteca.</small></div><input aria-label="Buscar condição ou personagem" value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Buscar personagem ou condição..." /></div><div className="hb-conditions-filter-row"><label>Alvo <select value={characterFilter} onChange={e=>setCharacterFilter(e.target.value)}><option value="todos">Todos os alvos</option>{characters.map(c=><option key={c.id} value={`character:${c.id}`}>{c.emoji||'🧑'} {c.name}</option>)}{enemies.map(e=><option key={e.id} value={`enemy:${e.id}`}>👹 {e.name}</option>)}</select></label><label>Gravidade <select value={severityFilter} onChange={e=>setSeverityFilter(e.target.value)}><option value="todas">Todas</option><option value="normal">Normal</option><option value="grave">Grave</option><option value="critica">Crítica</option></select></label><label>Natureza <select value={activePolarity} onChange={e=>setActivePolarity(e.target.value)}><option value="todas">Todas</option><option value="boa">Boas</option><option value="neutra">Neutras</option><option value="ruim">Ruins</option></select></label><span aria-live="polite">{visibleActive.length} resultado(s)</span>{(filter||characterFilter!=='todos'||severityFilter!=='todas'||activePolarity!=='todas')&&<button type="button" className="secondary-button hb-conditions-clear" onClick={()=>{setFilter('');setCharacterFilter('todos');setSeverityFilter('todas');setActivePolarity('todas')}}>Limpar filtros</button>}</div>{allActive.length===0?<div className="hb-conditions-empty"><span>✧</span><strong>Nenhuma condição ativa</strong><p>Quando uma condição for aplicada, ela aparecerá aqui.</p>{master&&<button type="button" className="primary-button" onClick={()=>setWorkspace('apply')}>Aplicar condição</button>}</div>:<div className="hb-conditions-active">{visibleActive.length===0&&<div className="hb-conditions-filter-empty">Nenhuma condição corresponde aos filtros. <button type="button" className="secondary-button" onClick={()=>{setFilter('');setCharacterFilter('todos');setSeverityFilter('todas');setActivePolarity('todas')}}>Limpar filtros</button></div>}{visibleActive.map(a=><article key={a.id} {...dragProps(a.targetType,a.id)} className={`hb-conditions-entry severity-${a.severity} ${dragged===orderKey(a.targetType,a.id)?'hb-condition-dragging':''} ${dragOver===orderKey(a.targetType,a.id)?'hb-condition-drop-target':''}`}><div>{master&&<div className="hb-active-condition-mover"><span aria-hidden="true">⠿</span><span>Trocar posição</span><button type="button" aria-label={`Trocar ${a.name} com a condição anterior`} title="Trocar com anterior" disabled={busy||visibleActive[0]?.id===a.id&&visibleActive[0]?.targetType===a.targetType} onClick={()=>{const index=visibleActive.findIndex(item=>item.id===a.id&&item.targetType===a.targetType);const neighbor=visibleActive[index-1];if(neighbor)void moveCondition(a.targetType,a.id,neighbor.id,neighbor.targetType)}}>↑</button><button type="button" aria-label={`Trocar ${a.name} com a próxima condição`} title="Trocar com próxima" disabled={busy||visibleActive[visibleActive.length-1]?.id===a.id&&visibleActive[visibleActive.length-1]?.targetType===a.targetType} onClick={()=>{const index=visibleActive.findIndex(item=>item.id===a.id&&item.targetType===a.targetType);const neighbor=visibleActive[index+1];if(neighbor)void moveCondition(a.targetType,a.id,neighbor.id,neighbor.targetType)}}>↓</button></div>}<strong>{a.emoji} {a.name}</strong><span className={`hb-condition-polarity ${definitions.find(d=>d.id===a.definition_id)?.polarity==='boa'?'good':definitions.find(d=>d.id===a.definition_id)?.polarity==='neutra'?'neutral':'bad'}`}>{definitions.find(d=>d.id===a.definition_id)?.polarity==='boa'?'✦ Boa':definitions.find(d=>d.id===a.definition_id)?.polarity==='neutra'?'◈ Neutra':'◆ Ruim'}</span><span className={`hb-conditions-severity severity-${a.severity}`}>{a.severity==='critica'?'Crítica':a.severity==='grave'?'Grave':'Normal'}</span><small>{targetName(a)} · {a.duration_label||'Sem duração definida'}</small>{a.description&&<p>{a.description}</p>}{a.notes&&<small>{a.notes}</small>}{definitions.find(d=>d.id===a.definition_id)?.effects?.some(e=>e.type==='round_counter')&&<small>⏳ Rodadas restantes: {rounds[a.id]??'não iniciadas'}</small>}{rollLog[a.id]&&<small role="status">🎲 {rollLog[a.id]} — aplique o dano manualmente</small>}</div>{master&&<div className="hb-condition-actions">{allActive.some(other=>other.id!==a.id&&other.targetType===a.targetType&&other.character_id===a.character_id)&&<label className="hb-condition-master-swap">↔ Trocar posição<select aria-label={`Trocar posição de ${a.name} com outra condição de ${targetName(a)}`} value="" disabled={busy} onChange={event=>{if(event.target.value)void moveCondition(a.targetType,a.id,event.target.value)}}><option value="">Escolha outra condição…</option>{allActive.filter(other=>other.id!==a.id&&other.targetType===a.targetType&&other.character_id===a.character_id).map(other=><option key={other.id} value={other.id}>{other.emoji} {other.name}</option>)}</select></label>}{definitions.find(d=>d.id===a.definition_id)?.effects?.some(e=>e.type==='round_counter')&&<button type="button" className="secondary-button" disabled={busy} onClick={()=>advanceRound(a,a.targetType)}>⏳ Avançar rodada</button>}{definitions.find(d=>d.id===a.definition_id)?.effects?.some(e=>e.type==='periodic_damage')&&<button type="button" className="secondary-button" disabled={busy} onClick={()=>rollPeriodic(a)}>🎲 Rolar dano</button>}<button type="button" className="secondary-button" disabled={busy} onClick={()=>{const d=definitions.find(d=>d.id===a.definition_id);if(d)startEditDefinition(d)}}>✏️ Editar condição</button><button type="button" className="secondary-button" disabled={busy} onClick={()=>{setEditingAssignment(`${a.targetType}:${a.id}`);setEditDuration(a.duration_label||'');setEditNotes(a.notes||'')}}>✏️ Editar</button><button type="button" className="secondary-button" disabled={busy} onClick={()=>void execute(async()=>a.targetType==='enemy'?supabase.rpc('hax_remove_enemy_condition',{p_campaign_id:campaignId,p_assignment_id:a.id}):supabase.rpc('hax_remove_condition',{p_campaign_id:campaignId,p_assignment_id:a.id}))}>Remover</button></div>}</article>)}</div>}</div>}
     {master&&workspace==='library'&&<div className="hb-condition-card"><div className="hb-conditions-section-head"><div><h3>📚 Biblioteca de condições</h3><small>O mestre decide quais condições aparecem na biblioteca dos jogadores</small></div><span className="hb-conditions-count">{definitions.length} cadastradas</span></div><label className="hb-conditions-library-search">Buscar na biblioteca<input aria-label="Buscar condições cadastradas" value={libraryFilter} onChange={e=>setLibraryFilter(e.target.value)} placeholder="Nome, descrição ou gravidade..." /></label><div className="hb-conditions-library-tools"><label>Gravidade<select value={librarySeverity} onChange={e=>setLibrarySeverity(e.target.value)}><option value="todas">Todas</option><option value="normal">Normal</option><option value="grave">Grave</option><option value="critica">Crítica</option></select></label><label>Natureza<select value={libraryPolarity} onChange={e=>setLibraryPolarity(e.target.value)}><option value="todas">Todas</option><option value="boa">Boas</option><option value="neutra">Neutras</option><option value="ruim">Ruins</option></select></label><span aria-live="polite">{filteredDefinitions.length} de {definitions.length} condições</span>{(libraryFilter||librarySeverity!=='todas'||libraryPolarity!=='todas')&&<button type="button" className="secondary-button" onClick={()=>{setLibraryFilter('');setLibrarySeverity('todas');setLibraryPolarity('todas')}}>Limpar filtros</button>}</div><div className="hb-condition-library">{definitions.length>0&&filteredDefinitions.length===0&&<div className="hb-conditions-filter-empty">Nenhuma condição encontrada com esses filtros.</div>}{definitions.length===0&&<p className="hb-conditions-empty">Nenhuma condição cadastrada. Use a aba Criar para adicionar uma.</p>}{filteredDefinitions.map(d=><div key={d.id} {...dragProps('definition',d.id)} className={`hb-condition-library-item severity-${d.severity} ${dragged===orderKey('definition',d.id)?'hb-condition-dragging':''} ${dragOver===orderKey('definition',d.id)?'hb-condition-drop-target':''}`}><strong>{d.emoji} {d.name}</strong><span className={`hb-condition-polarity ${d.polarity==='boa'?'good':d.polarity==='neutra'?'neutral':'bad'}`}>{d.polarity==='boa'?'✦ Boa':d.polarity==='neutra'?'◈ Neutra':'◆ Ruim'}</span><span className={`hb-conditions-severity severity-${d.severity}`}>{d.severity==='critica'?'Crítica':d.severity==='grave'?'Grave':'Normal'}</span><small>{d.description||'Sem descrição'}</small><small>{(d.effects||[]).length} efeito(s) configurado(s)</small>
     <label className="hb-condition-visibility" title="Ocultar somente desta biblioteca; condições já aplicadas continuam visíveis aos jogadores afetados">
       <input type="checkbox" checked={libraryVisibility[d.id]!==false} disabled={busy} onChange={e=>void updateLibraryVisibility(d.id,e.target.checked)}/>
@@ -433,17 +466,77 @@ function describeConditionRule(effect:ConditionEffect){
   return ''
 }
 
+/** Organização visual pessoal: troca exata de dois cartões, sem alterar a atribuição,
+ * os efeitos ou a ordem das demais condições. Funciona também por toque. */
+function useActiveConditionCardSwap(campaignId:string,kind:'character'|'enemy',targetId:string,items:Active[],serverOrder:Record<string,number>={}){
+  const storageKey=`haxbag.condition-card-order.v142:${campaignId}:${kind}:${targetId}`
+  const [savedIds,setSavedIds]=useState<string[]>([])
+  const [selectedId,setSelectedId]=useState<string|null>(null)
+  const [draggedId,setDraggedId]=useState<string|null>(null)
+  const [overId,setOverId]=useState<string|null>(null)
+  useEffect(()=>{
+    try{
+      const parsed:unknown=JSON.parse(window.localStorage.getItem(storageKey)||'[]')
+      setSavedIds(Array.isArray(parsed)?parsed.filter((id):id is string=>typeof id==='string').slice(0,300):[])
+    }catch{setSavedIds([])}
+    setSelectedId(null);setDraggedId(null);setOverId(null)
+  },[storageKey])
+  const fallback=[...items].sort((a,b)=>(serverOrder[a.id]??1000000)-(serverOrder[b.id]??1000000))
+  const indexes=new Map(savedIds.map((id,index)=>[id,index]))
+  const sorted=[...fallback].sort((a,b)=>{
+    const ia=indexes.get(a.id),ib=indexes.get(b.id)
+    if(ia!==undefined&&ib!==undefined)return ia-ib
+    if(ia!==undefined)return -1
+    if(ib!==undefined)return 1
+    return 0
+  })
+  const swap=(source:string,destination:string)=>{
+    if(source===destination||!sorted.some(item=>item.id===source)||!sorted.some(item=>item.id===destination))return
+    const ids=sorted.map(item=>item.id)
+    const from=ids.indexOf(source),to=ids.indexOf(destination)
+    ;[ids[from],ids[to]]=[ids[to],ids[from]]
+    setSavedIds(ids)
+    try{window.localStorage.setItem(storageKey,JSON.stringify(ids))}catch{/* Sem armazenamento: vale até sair da tela. */}
+    setSelectedId(null);setDraggedId(null);setOverId(null)
+  }
+  const choose=(id:string)=>{
+    if(!selectedId){setSelectedId(id);return}
+    if(selectedId===id){setSelectedId(null);return}
+    swap(selectedId,id)
+  }
+  const dragProps=(id:string)=>({
+    draggable:sorted.length>1,
+    onDragStart:(event:import('react').DragEvent<HTMLElement>)=>{
+      if((event.target as HTMLElement).closest('button,input,textarea,select,a')){event.preventDefault();return}
+      setDraggedId(id);event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',id)
+    },
+    onDragOver:(event:import('react').DragEvent<HTMLElement>)=>{
+      const source=draggedId||event.dataTransfer.getData('text/plain')
+      if(source!==id&&sorted.some(item=>item.id===source)){event.preventDefault();event.dataTransfer.dropEffect='move';setOverId(id)}
+    },
+    onDragLeave:()=>setOverId(current=>current===id?null:current),
+    onDrop:(event:import('react').DragEvent<HTMLElement>)=>{
+      event.preventDefault();event.stopPropagation()
+      const source=draggedId||event.dataTransfer.getData('text/plain')
+      swap(source,id);setDraggedId(null);setOverId(null)
+    },
+    onDragEnd:()=>{setDraggedId(null);setOverId(null)},
+  })
+  return {sorted,selectedId,draggedId,overId,choose,dragProps}
+}
+
 export function CharacterConditions({campaignId,characterId}:{campaignId:string;characterId:string}){
  const [active,setActive]=useState<Active[]>([])
  const [definitions,setDefinitions]=useState<Definition[]>([])
  const [displayOrder,setDisplayOrder]=useState<Record<string,number>>({})
  const [error,setError]=useState('')
+ const cards=useActiveConditionCardSwap(campaignId,'character',characterId,active,displayOrder)
  useEffect(()=>{let live=true;const load=async()=>{
    const [assignments,defs,effects,orders]=await Promise.all([
      supabase.rpc('hax_list_active_conditions',{p_campaign_id:campaignId,p_character_id:characterId}),
      supabase.rpc('hax_list_condition_definitions',{p_campaign_id:campaignId}),
      supabase.rpc('hax_list_condition_effects',{p_campaign_id:campaignId}),
-     supabase.rpc('hax_list_condition_order',{p_campaign_id:campaignId})
+     supabase.rpc('hax_list_active_condition_order_v142',{p_campaign_id:campaignId})
    ])
    if(!live)return
    if(assignments.error||defs.error||effects.error||orders.error){setError('Não foi possível consultar os efeitos das condições.');return}
@@ -461,7 +554,7 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
      modifiers.set(key,(modifiers.get(key)||0)+(effect.value||0))
    }
  }
- const sortedActive=[...active].sort((a,b)=>(displayOrder[a.id]??999999)-(displayOrder[b.id]??999999))
+ const sortedActive=cards.sorted
  const visibleModifiers=[...modifiers.entries()].filter(([,value])=>value!==0)
  const goodCount=sortedActive.filter(a=>getConditionPolarity(definitions.find(d=>d.id===a.definition_id))==='good').length
  const badCount=sortedActive.filter(a=>getConditionPolarity(definitions.find(d=>d.id===a.definition_id))==='bad').length
@@ -485,14 +578,15 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
    </div>
    {sortedActive.length===0
      ? <div className="hb-condition-empty-state"><span aria-hidden="true">✦</span><div><strong>Nenhuma condição ativa</strong><small>Quando houver condições aplicadas, elas aparecerão aqui com seus modificadores e regras extras.</small></div></div>
-     : <div className="hb-condition-chip-grid">{sortedActive.map(a=>{
+     : <><p className="hb-condition-swap-hint">↔ Arraste uma condição sobre outra para trocar os lugares. No celular, toque em “Trocar” nos dois cartões. As demais condições não mudam de posição.</p><div className="hb-condition-chip-grid">{sortedActive.map(a=>{
        const polarity=getConditionPolarity(definitions.find(d=>d.id===a.definition_id))
-       return <article key={a.id} className={`hb-condition-chip severity-${a.severity} polarity-${polarity}`} title={[a.description,a.duration_label,a.notes].filter(Boolean).join(' · ')}>
+       return <article key={a.id} {...cards.dragProps(a.id)} className={`hb-condition-chip severity-${a.severity} polarity-${polarity} ${cards.draggedId===a.id?'hb-condition-chip-dragging':''} ${cards.overId===a.id?'hb-condition-chip-drop-target':''} ${cards.selectedId===a.id?'hb-condition-chip-selected':''}`} title={[a.description,a.duration_label,a.notes].filter(Boolean).join(' · ')}>
          <div className="hb-condition-chip-top"><span className="hb-condition-chip-name"><span className="hb-condition-chip-avatar" aria-hidden="true">{a.emoji||conditionPolarityIcon[polarity]}</span>{a.name}</span><span className={`hb-condition-chip-severity severity-${a.severity}`}>{conditionSeverityIcon[a.severity]||'●'} {conditionSeverityName[a.severity]||'Normal'}</span></div>
          <div className="hb-condition-chip-meta"><span className={`hb-condition-polarity-label polarity-${polarity}`}>{conditionPolarityIcon[polarity]} {conditionPolarityName[polarity]}</span><small>⌛ {a.duration_label||'Indeterminada'}{a.notes?` · ${a.notes}`:''}</small></div>
          {(a.description||definitions.find(d=>d.id===a.definition_id)?.description)&&<p className="hb-condition-player-description">{a.description||definitions.find(d=>d.id===a.definition_id)?.description}</p>}
+         {sortedActive.length>1&&<button type="button" className="hb-condition-swap-button" aria-pressed={cards.selectedId===a.id} onClick={()=>cards.choose(a.id)}>{cards.selectedId===a.id?'✕ Cancelar troca':cards.selectedId?'↔ Trocar com esta':'↔ Trocar lugar'}</button>}
        </article>
-     })}</div>}
+     })}</div></>}
    {visibleModifiers.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--mods" aria-label="Modificadores cumulativos ativos">
      <div className="hb-condition-subpanel-head"><strong>Modificadores ativos</strong><small>{visibleModifiers.length} ajuste(s) cumulativo(s)</small></div>
      <div className="hb-condition-token-grid">{visibleModifiers.map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className={`hb-condition-token ${value>0?'is-positive':'is-negative'}`}><span className="hb-condition-token-icon" aria-hidden="true">{value>0?'↗':'↘'}</span><em>{conditionTargetLabels[target]||target}{rest.join(':')?` · ${formatConditionTargetKey(rest.join(':'),target)}`:''}</em><strong>{value>0?'+':''}{value}{isPercent?'%':''}</strong></span>})}</div>
@@ -509,6 +603,7 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
 export function EnemyConditions({campaignId,enemyId}:{campaignId:string;enemyId:string}){
   const [active,setActive]=useState<Active[]>([])
   const [definitions,setDefinitions]=useState<Definition[]>([])
+  const cards=useActiveConditionCardSwap(campaignId,'enemy',enemyId,active)
   useEffect(()=>{
     let live=true
     const load=async()=>{
@@ -528,14 +623,15 @@ export function EnemyConditions({campaignId,enemyId}:{campaignId:string;enemyId:
     <div className="hb-condition-header"><div><strong>🩸 Condições do inimigo</strong><small>Visão rápida dos estados que estão afetando o alvo.</small></div><span className="hb-condition-count-pill">{active.length} ativa{active.length===1?'':'s'}</span></div>
     {active.length===0
       ? <div className="hb-condition-empty-state"><span aria-hidden="true">✦</span><div><strong>Nenhuma condição ativa</strong><small>O inimigo ainda não possui efeitos aplicados.</small></div></div>
-      : <div className="hb-condition-chip-grid">{active.map(condition=>{
+      : <><p className="hb-condition-swap-hint">↔ Arraste uma condição sobre outra para trocar os lugares ou use “Trocar lugar” no celular.</p><div className="hb-condition-chip-grid">{cards.sorted.map(condition=>{
         const polarity=getConditionPolarity(definitions.find(d=>d.id===condition.definition_id))
-        return <article key={condition.id} className={`hb-condition-chip severity-${condition.severity} polarity-${polarity}`} title={condition.description}>
+        return <article key={condition.id} {...cards.dragProps(condition.id)} className={`hb-condition-chip severity-${condition.severity} polarity-${polarity} ${cards.draggedId===condition.id?'hb-condition-chip-dragging':''} ${cards.overId===condition.id?'hb-condition-chip-drop-target':''} ${cards.selectedId===condition.id?'hb-condition-chip-selected':''}`} title={condition.description}>
           <div className="hb-condition-chip-top"><span className="hb-condition-chip-name"><span className="hb-condition-chip-avatar" aria-hidden="true">{condition.emoji||conditionPolarityIcon[polarity]}</span>{condition.name}</span><span className={`hb-condition-chip-severity severity-${condition.severity}`}>{conditionSeverityIcon[condition.severity]||'●'} {conditionSeverityName[condition.severity]||'Normal'}</span></div>
           <div className="hb-condition-chip-meta"><span className={`hb-condition-polarity-label polarity-${polarity}`}>{conditionPolarityIcon[polarity]} {conditionPolarityName[polarity]}</span><small>⌛ {condition.duration_label||'Indeterminada'}</small></div>
           {condition.description&&<p className="hb-condition-player-description">{condition.description}</p>}
+          {cards.sorted.length>1&&<button type="button" className="hb-condition-swap-button" aria-pressed={cards.selectedId===condition.id} onClick={()=>cards.choose(condition.id)}>{cards.selectedId===condition.id?'✕ Cancelar troca':cards.selectedId?'↔ Trocar com esta':'↔ Trocar lugar'}</button>}
         </article>
-      })}</div>}
+      })}</div></>}
   </div>
 }
 
