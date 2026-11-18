@@ -1,8 +1,9 @@
-import { KISATSUTAI_SKILL_GROUPS } from './systems/kisatsutai/extendedData'
+import { KISATSUTAI_SKILL_GROUPS, KISATSUTAI_TRAINING } from './systems/kisatsutai/extendedData'
 import './ConditionsEnhancements.css'
 import './ConditionsV140.css'
 import './ConditionsV144.css'
 import './ConditionsV145.css'
+import './ConditionsV152.css'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase'
 
@@ -648,7 +649,52 @@ function useActiveConditionCardSwap(campaignId:string,kind:'character'|'enemy',t
   return {sorted,...gesture}
 }
 
-export function CharacterConditions({campaignId,characterId}:{campaignId:string;characterId:string}){
+/** Exibe um saldo por alvo, sem somar percentuais diretamente a pontos.
+ * A compensação real é calculada sobre o valor-base com a mesma fórmula da ficha.
+ * Registros anulados (ex.: -10 +10) continuam visíveis como saldo zero. */
+const normalizedModifierKey=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLocaleLowerCase('pt-BR')
+type CombinedModifier={id:string;target:string;key:string;flat:number;percent:number;sources:number}
+function combineActiveModifiers(active:Active[],definitions:Definition[]):CombinedModifier[]{
+  const definitionsById=new Map(definitions.map(d=>[d.id,d]))
+  const grouped=new Map<string,CombinedModifier>()
+  for(const assignment of active){
+    const definition=definitionsById.get(assignment.definition_id)
+    for(const effect of definition?.effects||[]){
+      if(effect.type!=='modifier'||!effect.target||!Number.isFinite(effect.value))continue
+      const target=effect.target
+      const originalKey=(effect.key||'*').trim()||'*'
+      const id=`${target}:${normalizedModifierKey(originalKey)}`
+      let item=grouped.get(id)
+      if(!item){item={id,target,key:originalKey,flat:0,percent:0,sources:0};grouped.set(id,item)}
+      if(effect.unit==='percent')item.percent+=Number(effect.value)
+      else item.flat+=Number(effect.value)
+      item.sources++
+    }
+  }
+  return [...grouped.values()]
+}
+const signedConditionValue=(value:number,unit='')=>`${value>0?'+':''}${Number(value.toFixed(3))}${unit}`
+function modifierBaseValue(
+  target:string,key:string,trainings:Record<string,string>,mainBases:Record<string,number>,
+):number|null{
+  const normalized=normalizedModifierKey(key)
+  if(normalized==='*')return null
+  if(target==='main_skill'){
+    const result=Object.entries(mainBases).find(([name])=>normalizedModifierKey(name)===normalized)?.[1]
+    return typeof result==='number'&&Number.isFinite(result)?result:null
+  }
+  if(target!=='extra_skill'&&target!=='archetype_skill')return null
+  const full=Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group,skills])=>skills.map(skill=>({group,name:skill.name,key:`${group}:${skill.name}`})))
+    .filter(item=>(['Sociais','Conhecimentos Gerais','Naturais'].includes(item.group)?'extra_skill':'archetype_skill')===target)
+  const entry=full.find(item=>normalizedModifierKey(item.key)===normalized)
+    || (()=>{const matched=full.filter(item=>normalizedModifierKey(item.name)===normalized);return matched.length===1?matched[0]:undefined})()
+  if(!entry)return null
+  const raw=Object.entries(trainings).find(([name])=>normalizedModifierKey(name)===normalizedModifierKey(entry.key))?.[1]
+  return Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING,raw||'')
+    ? KISATSUTAI_TRAINING[raw as keyof typeof KISATSUTAI_TRAINING]:0
+}
+
+export function CharacterConditions({campaignId,characterId,skillTrainings={},mainSkillBases={}}:{campaignId:string;characterId:string;skillTrainings?:Record<string,string>;mainSkillBases?:Record<string,number>}){
  const [active,setActive]=useState<Active[]>([])
  const [definitions,setDefinitions]=useState<Definition[]>([])
  const [displayOrder,setDisplayOrder]=useState<Record<string,number>>({})
@@ -668,17 +714,8 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
    setActive((assignments.data||[]) as Active[])
    setDefinitions(((defs.data||[]) as Definition[]).map(d=>({...d,effects:((effects.data||[]) as {id:string;effects:ConditionEffect[]}[]).find(e=>e.id===d.id)?.effects||[]})))
  };void load();const t=setInterval(()=>void load(),15000);return()=>{live=false;clearInterval(t)}},[campaignId,characterId])
- const modifiers=new Map<string,number>()
- for(const assignment of active){
-   const def=definitions.find(d=>d.id===assignment.definition_id)
-   for(const effect of def?.effects||[]){
-     if(effect.type!=='modifier'||!Number.isFinite(effect.value))continue
-     const key=`${effect.unit==='percent'?'% ':''}${effect.target||'status'}:${(effect.key||'').trim().toLocaleLowerCase()}`
-     modifiers.set(key,(modifiers.get(key)||0)+(effect.value||0))
-   }
- }
+ const visibleModifiers=combineActiveModifiers(active,definitions)
  const sortedActive=cards.sorted
- const visibleModifiers=[...modifiers.entries()].filter(([,value])=>value!==0)
  const goodCount=sortedActive.filter(a=>getConditionPolarity(definitions.find(d=>d.id===a.definition_id))==='good').length
  const badCount=sortedActive.filter(a=>getConditionPolarity(definitions.find(d=>d.id===a.definition_id))==='bad').length
  const ruleHints=sortedActive.flatMap(a=>{
@@ -710,9 +747,29 @@ export function CharacterConditions({campaignId,characterId}:{campaignId:string;
 
        </article>
      })}</div></>}
-   {visibleModifiers.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--mods" aria-label="Modificadores cumulativos ativos">
-     <div className="hb-condition-subpanel-head"><strong>Modificadores ativos</strong><small>{visibleModifiers.length} ajuste(s) cumulativo(s)</small></div>
-     <div className="hb-condition-token-grid">{visibleModifiers.map(([key,value])=>{const [rawTarget,...rest]=key.split(':');const isPercent=rawTarget.startsWith('% ');const target=isPercent?rawTarget.slice(2):rawTarget;return <span key={key} className={`hb-condition-token ${value>0?'is-positive':'is-negative'}`}><span className="hb-condition-token-icon" aria-hidden="true">{value>0?'↗':'↘'}</span><em>{conditionTargetLabels[target]||target}{rest.join(':')?` · ${formatConditionTargetKey(rest.join(':'),target)}`:''}</em><strong>{value>0?'+':''}{value}{isPercent?'%':''}</strong></span>})}</div>
+   {visibleModifiers.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--mods" aria-label="Saldos dos modificadores ativos">
+     <div className="hb-condition-subpanel-head"><strong>Modificadores ativos</strong><small>{visibleModifiers.length} {visibleModifiers.length===1?'alvo ajustado':'alvos ajustados'} · bônus e penalidades se compensam</small></div>
+     <p className="hb-v152-mod-explanation">Os ajustes do mesmo atributo ou perícia são combinados. Percentuais incidem sobre a base; pontos são somados depois. Um saldo de zero significa que os efeitos se anularam.</p>
+     <div className="hb-condition-token-grid">{visibleModifiers.map(entry=>{
+       // Um efeito geral (*) também modifica a perícia específica: a mesma regra já
+       // é usada por conditionModifier() no cálculo efetivo da ficha.
+       const general=entry.key==='*'?undefined:visibleModifiers.find(other=>other.target===entry.target&&normalizedModifierKey(other.key)==='*')
+       const percent=entry.percent+(general?.percent||0)
+       const flat=entry.flat+(general?.flat||0)
+       const base=modifierBaseValue(entry.target,entry.key,skillTrainings,mainSkillBases)
+       const delta=base===null?null:Math.round(base*(1+percent/100)+flat)-base
+       const isNeutral=delta===0||(delta===null&&percent===0&&flat===0)
+       const isPositive=delta===null?(percent>=0&&flat>=0&&!isNeutral):delta>0
+       const isNegative=delta===null?(percent<=0&&flat<=0&&!isNeutral):delta<0
+       const parts=[percent!==0?signedConditionValue(percent,'%'):null,flat!==0?signedConditionValue(flat,' pts'):null].filter((x):x is string=>!!x)
+       const expression=parts.length?parts.join(' · '):'Compensação completa'
+       const summary=delta===null?(entry.sources>1||general?'Ajustes combinados':'Ajuste ativo'):delta===0?'Anulados':signedConditionValue(delta,' pts de saldo')
+       return <div key={entry.id} className={`hb-condition-token hb-v152-modifier ${isNeutral?'is-neutral':isPositive?'is-positive':isNegative?'is-negative':'is-mixed'}`} title={base===null?'Ajustes combinados. O resultado final depende do valor-base.':`Base ${base} · Resultado ${base+delta!}`}>
+         <span className="hb-condition-token-icon" aria-hidden="true">{isNeutral?'↔':isPositive?'↗':isNegative?'↘':'±'}</span>
+         <div className="hb-v152-modifier-content"><em>{conditionTargetLabels[entry.target]||entry.target}{entry.key!=='*'?` · ${formatConditionTargetKey(entry.key,entry.target)}`:' · Todos'}</em><small>{expression}{general?' · inclui efeitos gerais':''}</small></div>
+         <strong>{summary}</strong>
+       </div>
+     })}</div>
    </div>}
    {ruleHints.length>0&&<div className="hb-condition-subpanel hb-condition-subpanel--rules">
      <div className="hb-condition-subpanel-head"><strong>Regras adicionais configuradas</strong><small>Restrições, recursos e efeitos especiais da condição.</small></div>

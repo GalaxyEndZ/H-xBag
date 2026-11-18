@@ -8533,7 +8533,7 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                       return (
                         <>
                         <div className="hb-sheet-conditions-section" id={forEnemy ? 'inimigo-condicoes' : 'ficha-condicoes'}>
-                          {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} />}
+                          {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} skillTrainings={(read('skills.extraTrainings', {})||{}) as Record<string,string>} mainSkillBases={Object.fromEntries(['vigor','mental','combat','dexterity','resistance','ability'].map(key=>[key,Number(read(`skills.${key}`,0))||0]))} />}
                           {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
                         </div>
                         <section
