@@ -228,3 +228,52 @@
   .hb-v145-target{min-height:0;padding:12px 13px}
   .hb-conditions-v145 .hb-condition-visibility{padding:12px}
 }
+
+
+/* V149 — usar toda a largura no preparo de aplicação e dar respiro aos indicadores. */
+.hb-conditions-v145 .hb-conditions-grid.hb-conditions-single {
+  width:100%;
+  max-width:none;
+  min-width:0;
+  grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);
+  gap:clamp(16px,2vw,26px);
+  align-items:start;
+}
+.hb-conditions-v145 .hb-conditions-grid.hb-conditions-single > .hb-condition-form,
+.hb-conditions-v145 .hb-conditions-grid.hb-conditions-single > .hb-v144-form-preview {
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+.hb-conditions-v145 .hb-conditions-grid.hb-conditions-single > .hb-v144-form-preview {
+  align-self:start;
+}
+.hb-conditions-v145 .hb-v149-condition-tags {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:9px 11px;
+  margin:7px 0 11px;
+  min-width:0;
+}
+.hb-conditions-v145 .hb-v149-condition-tags > .hb-v144-target-tag,
+.hb-conditions-v145 .hb-v149-condition-tags > .hb-condition-polarity,
+.hb-conditions-v145 .hb-v149-condition-tags > .hb-conditions-severity {
+  display:inline-flex;
+  align-items:center;
+  flex:0 1 auto;
+  max-width:100%;
+  margin:0;
+  white-space:normal;
+  line-height:1.4;
+}
+.hb-conditions-v145 .hb-v149-condition-tags > .hb-v144-target-tag {overflow-wrap:anywhere;}
+.hb-conditions-v145 .hb-v149-condition-tags > .hb-condition-polarity {padding:5px 10px;}
+.hb-conditions-v145 .hb-v149-condition-tags > .hb-conditions-severity {padding:5px 10px;}
+@media(max-width:890px){
+  .hb-conditions-v145 .hb-conditions-grid.hb-conditions-single {grid-template-columns:minmax(0,1fr);}
+  .hb-conditions-v145 .hb-conditions-grid.hb-conditions-single > .hb-v144-form-preview {position:static;}
+}
+@media(max-width:560px){
+  .hb-conditions-v145 .hb-v149-condition-tags {gap:8px;margin:8px 0 10px;}
+}
