@@ -199,6 +199,11 @@ export default function PongGame({ userId, onArcadeUpdated }: { userId: string; 
     setPhase('playing'); setStarting(false)
     canvasRef.current?.focus({ preventScroll: true })
   }
+  const endRun = () => {
+    if (phase !== 'playing' && phase !== 'paused') return
+    setPhase('over')
+    void finish(engineRef.current.score)
+  }
   const handlePointer = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect()
     targetYRef.current = clamp((event.clientY - bounds.top) / bounds.height * HEIGHT, 0, HEIGHT)
@@ -212,13 +217,13 @@ export default function PongGame({ userId, onArcadeUpdated }: { userId: string; 
     <div className="hb-arcade-grid">
       <div className="hb-arcade-main">
         <div className="hb-arcade-game-card">
-          <div className="hb-arcade-card-head"><div><span className="hb-arcade-eyebrow">01 / CLÁSSICOS</span><h2>Pong <span>✦</span></h2><p>Devolva a bola para marcar pontos. Marque um gol para ganhar bônus!</p></div><span className="hb-arcade-status">{phase === 'playing' ? '● AO VIVO' : phase === 'paused' ? 'Ⅱ PAUSADO' : phase === 'over' ? '◆ FIM DE JOGO' : '○ PRONTO'}</span></div>
+          <div className="hb-arcade-card-head"><div><span className="hb-arcade-eyebrow">01 / CLÁSSICOS</span><h2>Pong <span>✦</span></h2><p>Partida contínua: marque gols e aumente seu recorde até perder as três vidas ou encerrar.</p></div><span className="hb-arcade-status">{phase === 'playing' ? '● AO VIVO' : phase === 'paused' ? 'Ⅱ PAUSADO' : phase === 'over' ? '◆ FIM DE JOGO' : '○ PRONTO'}</span></div>
           <div className="hb-arcade-metrics"><div><small>PONTOS</small><strong>{formatNumber(score)}</strong></div><div><small>VIDAS</small><strong className="hb-arcade-lives">{'♥'.repeat(lives)}{'♡'.repeat(STARTING_LIVES - lives)}</strong></div><div><small>SEQUÊNCIA</small><strong>{rally}</strong></div><div><small>PLACAR</small><strong>{games.player} : {games.opponent}</strong></div></div>
           <div className="hb-pong-frame">
             <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} tabIndex={0} onPointerDown={handlePointer} onPointerMove={handlePointer} onPointerLeave={() => { targetYRef.current = null }} aria-label="Pong: mova a raquete com o mouse, toque ou teclas W, S e setas" />
             {phase !== 'playing' && <div className="hb-pong-overlay"><div className="hb-pong-overlay-content"><span className="hb-pong-overlay-symbol" aria-hidden="true">◈</span><h3>{phase === 'ready' ? 'Pronto para jogar?' : phase === 'paused' ? 'Partida pausada' : 'Fim de jogo'}</h3><p>{phase === 'ready' ? 'Você tem 3 vidas. Cada devolução vale 1 ponto e cada gol vale 5.' : phase === 'paused' ? 'A bola está parada até você continuar.' : `Você fez ${formatNumber(score)} pontos nesta partida.`}</p><button type="button" onClick={() => phase === 'paused' ? setPhase('playing') : void start()} disabled={starting}>{starting ? 'Preparando…' : phase === 'paused' ? '▶ Continuar' : phase === 'over' ? '↻ Jogar novamente' : '▶ Começar partida'}</button></div></div>}
           </div>
-          <div className="hb-arcade-controls"><div><span>W / S</span> ou <span>↑ / ↓</span> para mover · mouse / toque na quadra · <span>Espaço</span> para pausar</div><div>{phase === 'playing' && <button type="button" onClick={() => setPhase('paused')}>Ⅱ Pausar</button>}{phase === 'paused' && <button type="button" onClick={() => setPhase('playing')}>▶ Retomar</button>}</div></div>
+          <div className="hb-arcade-controls"><div><span>W / S</span> ou <span>↑ / ↓</span> para mover · mouse / toque na quadra · <span>Espaço</span> para pausar</div><div>{phase === 'playing' && <button type="button" onClick={() => setPhase('paused')}>Ⅱ Pausar</button>}{phase === 'paused' && <button type="button" onClick={() => setPhase('playing')}>▶ Retomar</button>}{(phase === 'playing' || phase === 'paused') && <button type="button" onClick={endRun}>✓ Encerrar e registrar</button>}</div></div>
           {saveStatus && <p className="hb-arcade-save" role="status">{saveStatus}</p>}
         </div>
         <div className="hb-arcade-how"><div><strong>+1</strong><span>Por devolução</span></div><div><strong>+5</strong><span>Por gol no computador</span></div><div><strong>3</strong><span>Vidas por partida</span></div><div><strong>♛</strong><span>Seu melhor recorde</span></div></div>

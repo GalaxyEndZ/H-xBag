@@ -10,7 +10,7 @@ type DailyChallenge = { challenge_id: string; game_id: ArcadeGameId; title: stri
 type Wallet = { coins: number; earned_total: number; completed_today: number; reward_today: number; claimed_today: boolean }
 type Rank = { placement: number; user_id: string; player_name: string; username: string | null; best_score: number; games_played: number }
 type MyScore = { placement?: number | null; best_score?: number; games_played?: number }
-type Phase = 'ready' | 'starting' | 'playing' | 'over'
+type Phase = 'ready' | 'starting' | 'playing' | 'paused' | 'over'
 const nf = (n: number) => new Intl.NumberFormat('pt-BR').format(n)
 const daysInBrasilia = (date: Date) => {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
@@ -27,6 +27,7 @@ export default function MinigamesHub({ userId }: { userId: string }) {
   const [gameKey, setGameKey] = useState(0)
   const [result, setResult] = useState<number | null>(null)
   const [saveStatus, setSaveStatus] = useState('')
+  const [savingResult, setSavingResult] = useState(false)
   const [daily, setDaily] = useState<DailyChallenge[]>([])
   const [wallet, setWallet] = useState<Wallet>(EMPTY_WALLET)
   const [dailyError, setDailyError] = useState('')
@@ -36,6 +37,8 @@ export default function MinigamesHub({ userId }: { userId: string }) {
   const [rankingLoading, setRankingLoading] = useState(false)
   const [day, setDay] = useState(() => daysInBrasilia(new Date()))
   const runId = useRef<string | null>(null)
+  const startVersion = useRef(0)
+  const arenaRef = useRef<HTMLElement>(null)
   const selectedGameRef = useRef<ArcadeGameId>(selectedGame)
   selectedGameRef.current = selectedGame
   const saving = useRef(false)
@@ -71,6 +74,18 @@ export default function MinigamesHub({ userId }: { userId: string }) {
   useEffect(() => { void refreshChallenges() }, [refreshChallenges])
   useEffect(() => { void refreshRanking(selectedGame) }, [refreshRanking, selectedGame])
   useEffect(() => {
+    const onHidden = () => { if (document.hidden) setPhase(current => current === 'playing' ? 'paused' : current) }
+    const onKeys = (event: KeyboardEvent) => {
+      if (selectedGameRef.current === 'pong' || event.repeat || !(event.key.toLowerCase() === 'p' || event.key === 'Escape')) return
+      if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable]')) return
+      event.preventDefault()
+      setPhase(current => current === 'playing' ? 'paused' : current === 'paused' ? 'playing' : current)
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    window.addEventListener('keydown', onKeys)
+    return () => { document.removeEventListener('visibilitychange', onHidden); window.removeEventListener('keydown', onKeys) }
+  }, [])
+  useEffect(() => {
     const timer = window.setInterval(() => {
       const nextDay = daysInBrasilia(new Date())
       if (nextDay !== day) { setDay(nextDay); void refreshChallenges() }
@@ -78,23 +93,28 @@ export default function MinigamesHub({ userId }: { userId: string }) {
     return () => clearInterval(timer)
   }, [day, refreshChallenges])
 
-  const selectGame = (next: ArcadeGameId) => {
-    if (next === selectedGame) return
-    if (phase === 'playing' && !window.confirm('Sair da partida atual? A pontuação desta partida não será registrada.')) return
-    runId.current = null
-    saving.current = false
-    setPhase('ready'); setResult(null); setSaveStatus('')
-    setSelectedGame(next)
+  const selectGame = (next: ArcadeGameId, scroll = false) => {
+    if (saving.current || phase === 'starting') return
+    if (next !== selectedGame) {
+      if ((phase === 'playing' || phase === 'paused') && !window.confirm('Sair da partida atual? A pontuação desta partida não será registrada.')) return
+      startVersion.current++
+      runId.current = null
+      setPhase('ready'); setResult(null); setSaveStatus('')
+      setSelectedGame(next)
+    }
+    if (scroll) window.requestAnimationFrame(() => arenaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   const finishGame = useCallback(async (score: number) => {
     if (saving.current) return
     saving.current = true
+    setSavingResult(true)
+    const finishedGameId = selectedGameRef.current
     setResult(score)
     setPhase('over')
     const id = runId.current
     runId.current = null
-    if (!id) { setSaveStatus('Partida concluída. Sem acesso ao servidor: resultado não registrado no ranking.'); return }
+    if (!id) { setSaveStatus('Partida concluída. Sem acesso ao servidor: resultado não registrado no ranking.'); saving.current = false; setSavingResult(false); return }
     setSaveStatus('Registrando pontuação…')
     const { data, error } = await supabase.rpc('hax_arcade_finish', { p_run: id, p_score: score })
     if (error) setSaveStatus(`Não foi possível registrar: ${error.message}`)
@@ -102,17 +122,20 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       const award = data && typeof data === 'object' && !Array.isArray(data) ? Number((data as {coins_earned?:number}).coins_earned || 0) : 0
       setSaveStatus(award ? `3/3 desafios! Você recebeu ${award} moedinhas!` : 'Partida salva no ranking global!')
       void refreshChallenges()
-      void refreshRanking(selectedGameRef.current)
+      void refreshRanking(finishedGameId)
     }
     saving.current = false
+    setSavingResult(false)
   }, [refreshChallenges, refreshRanking])
 
   // O callback de término precisa permanecer estável durante toda a partida (RAF/intervalos).
   const startGame = async () => {
-    if (phase === 'starting') return
+    if (phase === 'starting' || saving.current) return
+    const version = ++startVersion.current
+    const requestedGame = selectedGame
     setPhase('starting'); setResult(null); setSaveStatus('')
-    saving.current = false
-    const { data, error } = await supabase.rpc('hax_arcade_start', { p_game: selectedGame })
+    const { data, error } = await supabase.rpc('hax_arcade_start', { p_game: requestedGame })
+    if (version !== startVersion.current) return
     runId.current = !error && typeof data === 'string' ? data : null
     if (error) setSaveStatus('Modo local: não foi possível iniciar a partida pontuada. Verifique a migração V190.')
     setGameKey(k => k + 1)
@@ -124,7 +147,7 @@ export default function MinigamesHub({ userId }: { userId: string }) {
   const completed = daily.filter(ch => ch.completed).length
   const reward = daily[0]?.reward || wallet.reward_today || 0
   const gameComponent = () => {
-    const props = { onFinish: finishGame }
+    const props = { onFinish: finishGame, paused: phase === 'paused' }
     switch (selectedGame) {
       case 'snake': return <SnakeGame {...props} />
       case 'breakout': return <BreakoutGame {...props} />
@@ -139,7 +162,7 @@ export default function MinigamesHub({ userId }: { userId: string }) {
   }
 
   return <section className="hb-arcade hb-arcade-v190" aria-labelledby="hb-arcade-heading">
-    <header className="hb-arcade-hero"><div><span className="hb-arcade-eyebrow">HÄXBAG / ARCADE</span><h1 id="hb-arcade-heading">Minigames<span>.</span></h1><p>Nove jogos, rankings globais e três desafios diferentes a cada dia. Jogue e ganhe moedinhas ao completar o conjunto!</p><div className="hb-arcade-chips"><span>🎮 9 jogos</span><span>🏆 Rankings globais</span><span>🗓 3 desafios por dia</span></div></div><div className="hb-arcade-hero-mark" aria-hidden="true"><span>◈</span><b>ARCADE</b></div></header>
+    <header className="hb-arcade-hero"><div><span className="hb-arcade-eyebrow">HÄXBAG / ARCADE</span><h1 id="hb-arcade-heading">Minigames<span>.</span></h1><p>Nove jogos de progressão contínua, rankings globais e três desafios diferentes a cada dia. Jogue e ganhe moedinhas ao completar o conjunto!</p><div className="hb-arcade-chips"><span>♾️ 9 jogos infinitos</span><span>🏆 Rankings globais</span><span>🗓 3 desafios por dia</span></div></div><div className="hb-arcade-hero-mark" aria-hidden="true"><span>◈</span><b>ARCADE</b></div></header>
 
     <section className="hb-arcade-daily" aria-labelledby="hb-arcade-daily-heading">
       <div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">MISSÕES DO DIA · HORÁRIO DE BRASÍLIA</span><h2 id="hb-arcade-daily-heading">Desafios diários</h2><p>O mesmo trio é sorteado para toda a comunidade. Novas metas à meia-noite.</p></div><div className="hb-arcade-wallet"><span>🪙 SALDO DO ARCADE</span><strong>{nf(wallet.coins || 0)}</strong><small>{wallet.claimed_today ? 'Recompensa de hoje recebida ✓' : `Conjunto completo: +${reward} moedas`}</small></div></div>
@@ -147,19 +170,23 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       {dailyError && <p className="hb-arcade-error" role="alert">{dailyError}</p>}
       <div className="hb-arcade-daily-grid">{daily.map((challenge, i) => {
         const info = ARCADE_GAMES.find(item => item.id === challenge.game_id)
-        return <button type="button" key={challenge.challenge_id} className={`hb-arcade-challenge ${challenge.completed ? 'is-done':''}`} onClick={() => selectGame(challenge.game_id)}><span className="hb-arcade-challenge-number">{String(i + 1).padStart(2,'0')} · {difficultyLabel(challenge.difficulty)}</span><span className="hb-arcade-challenge-icon" aria-hidden="true">{info?.icon || '◈'}</span><strong>{challenge.title}</strong><span className="hb-arcade-challenge-game">{info?.title}</span><span className="hb-arcade-challenge-foot">{challenge.completed ? '✓ Concluído' : `→ Jogar ${info?.title || challenge.game_id}`}</span></button>
+        return <button type="button" key={challenge.challenge_id} className={`hb-arcade-challenge ${challenge.completed ? 'is-done':''}`} onClick={() => selectGame(challenge.game_id, true)}><span className="hb-arcade-challenge-number">{String(i + 1).padStart(2,'0')} · {difficultyLabel(challenge.difficulty)}</span><span className="hb-arcade-challenge-icon" aria-hidden="true">{info?.icon || '◈'}</span><strong>{challenge.title}</strong><span className="hb-arcade-challenge-game">{info?.title}</span><span className="hb-arcade-challenge-foot">{challenge.completed ? '✓ Concluído' : `→ Jogar ${info?.title || challenge.game_id}`}</span></button>
       })}</div>
       <p className="hb-arcade-daily-info">O catálogo tem 27 desafios predefinidos, com níveis fácil, médio e difícil. O sorteio seleciona 3 desafios de jogos diferentes. Prêmio único de 1 a 10 moedas, dependendo da dificuldade do conjunto.</p>
     </section>
 
-    <section className="hb-arcade-library" aria-label="Biblioteca de minigames"><div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">SUA COLEÇÃO DE JOGOS</span><h2>Escolha um minigame</h2></div><small>Selecione um jogo para abrir a arena e o ranking.</small></div><div className="hb-arcade-games-grid">{ARCADE_GAMES.map(item => <button type="button" key={item.id} className={`hb-arcade-game-choice ${selectedGame===item.id?'is-selected':''}`} onClick={()=>selectGame(item.id)} aria-pressed={selectedGame===item.id}><span aria-hidden="true">{item.icon}</span><strong>{item.title}</strong><small>{item.description}</small></button>)}</div></section>
+    <section className="hb-arcade-library" aria-label="Biblioteca de minigames"><div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">SUA COLEÇÃO DE JOGOS</span><h2>Escolha um minigame</h2></div><small>Selecione um jogo para abrir a arena e o ranking.</small></div><div className="hb-arcade-games-grid">{ARCADE_GAMES.map(item => <button type="button" key={item.id} className={`hb-arcade-game-choice ${selectedGame===item.id?'is-selected':''}`} onClick={()=>selectGame(item.id, true)} aria-pressed={selectedGame===item.id}><span aria-hidden="true">{item.icon}</span><strong>{item.title}</strong><small>{item.description}</small></button>)}</div></section>
 
-    {showPong ? <div className="hb-arcade-embedded-pong"><PongGame userId={userId} onArcadeUpdated={refreshChallenges} /></div> : <div className="hb-arcade-grid">
-      <section className="hb-arcade-main"><div className="hb-arcade-game-card">
-        <div className="hb-arcade-card-head"><div><span className="hb-arcade-eyebrow">{game.icon} MINIGAME</span><h2>{game.title} <span>✦</span></h2><p>{game.description}</p></div><span className="hb-arcade-status">{phase==='playing'?'● JOGANDO':phase==='starting'?'◌ PREPARANDO':phase==='over'?'◆ FIM DE JOGO':'○ PRONTO'}</span></div>
-        {phase==='playing' || phase==='over' ? <div key={`${selectedGame}-${gameKey}`} className="hb-mini-stage">{gameComponent()}{phase==='over' && <div className="hb-mini-result"><strong>Partida encerrada · {nf(result || 0)} pontos</strong><button type="button" onClick={replay}>↻ Jogar novamente</button></div>}</div> : <div className="hb-mini-ready"><span aria-hidden="true">{game.icon}</span><h3>Pronto para jogar {game.title}?</h3><p>{game.description}. Sua melhor pontuação entra no ranking global.</p><button type="button" disabled={phase==='starting'} onClick={()=>void startGame()}>{phase==='starting'?'Preparando…':'▶ Iniciar partida'}</button></div>}
+    {showPong ? <div ref={arenaRef as React.RefObject<HTMLDivElement>} className="hb-arcade-embedded-pong"><PongGame userId={userId} onArcadeUpdated={refreshChallenges} /></div> : <div className="hb-arcade-grid">
+      <section ref={arenaRef} className="hb-arcade-main"><div className="hb-arcade-game-card">
+        <div className="hb-arcade-card-head"><div><span className="hb-arcade-eyebrow">{game.icon} MINIGAME</span><h2>{game.title} <span>✦</span></h2><p>{game.description}</p></div><span className="hb-arcade-status">{phase==='playing'?'● JOGANDO':phase==='paused'?'Ⅱ PAUSADO':phase==='starting'?'◌ PREPARANDO':phase==='over'?'◆ FIM DE JOGO':'○ PRONTO'}</span></div>
+        {phase==='playing' || phase==='paused' || phase==='over' ? <div key={`${selectedGame}-${gameKey}`} className="hb-mini-stage">
+          <div className="hb-mini-session-bar"><span>✦ Partida {phase==='over' ? 'concluída' : 'em andamento'}</span>{(phase==='playing' || phase==='paused') && <button type="button" onClick={() => setPhase(current => current === 'playing' ? 'paused' : 'playing')}>{phase==='paused' ? '▶ Continuar' : 'Ⅱ Pausar'} <small>P / Esc</small></button>}</div>
+          {gameComponent()}
+          {phase==='paused' && <div className="hb-mini-pause-overlay" role="status"><div><span aria-hidden="true">Ⅱ</span><h3>Partida pausada</h3><p>Seu progresso está preservado. Pressione P, Esc ou o botão abaixo para continuar.</p><button type="button" onClick={() => setPhase('playing')}>▶ Retomar partida</button></div></div>}
+          {phase==='over' && <div className="hb-mini-result"><div><small>RESULTADO DA PARTIDA</small><strong>{nf(result || 0)} pontos</strong></div><button type="button" disabled={savingResult} onClick={replay}>{savingResult ? 'Salvando…' : '↻ Jogar novamente'}</button></div>}
+        </div> : <div className="hb-mini-ready"><span aria-hidden="true">{game.icon}</span><h3>Pronto para jogar {game.title}?</h3><p>{game.description}. Continue até perder ou decida encerrar e salvar sua pontuação no ranking global.</p><button type="button" disabled={phase==='starting'} onClick={()=>void startGame()}>{phase==='starting'?'Preparando…':'▶ Iniciar partida'}</button></div>}
         {saveStatus && <p role="status" className="hb-arcade-save">{saveStatus}</p>}
-        {phase==='over' && <button type="button" className="hb-mini-finish" onClick={replay}>↻ Nova partida</button>}
       </div></section>
       <aside className="hb-arcade-ranking" aria-labelledby="hb-arcade-ranking-title"><div className="hb-arcade-ranking-head"><span className="hb-arcade-eyebrow">COMPETIÇÃO GLOBAL</span><h2 id="hb-arcade-ranking-title">🏆 Ranking {game.title}</h2><p>Melhores pontuações de cada jogador.</p><button type="button" disabled={rankingLoading} onClick={()=>void refreshRanking(selectedGame)}>{rankingLoading?'Atualizando…':'↻ Atualizar ranking'}</button></div>
       <div className="hb-arcade-my-rank"><small>SUA POSIÇÃO</small><strong>{myScore?.placement ? `#${myScore.placement}` : '—'}</strong><div><span>Recorde</span><b>{nf(myScore?.best_score || 0)}</b></div><div><span>Partidas</span><b>{nf(myScore?.games_played || 0)}</b></div></div>

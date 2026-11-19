@@ -1,14 +1,14 @@
 /** Catálogo pré-definido do Arcade. O SQL V190 espelha estes desafios e escolhe três por dia. */
 export const ARCADE_GAMES = [
   { id: 'pong', title: 'Pong', icon: '🏓', description: 'Clássico de reflexos' },
-  { id: 'snake', title: 'Snake', icon: '🐍', description: 'Coma frutas e cresça' },
-  { id: 'breakout', title: 'Breakout', icon: '🧱', description: 'Quebre blocos e faça combos' },
-  { id: '2048', title: '2048', icon: '🔢', description: 'Combine peças numéricas' },
+  { id: 'snake', title: 'Snake', icon: '🐍', description: 'Cresça e passe de tabuleiro sem perder pontos' },
+  { id: 'breakout', title: 'Breakout', icon: '🧱', description: 'Blocos infinitos e ondas progressivas' },
+  { id: '2048', title: '2048', icon: '🔢', description: 'Continue além do 2048, até ficar sem movimentos' },
   { id: 'asteroids', title: 'Asteroids', icon: '🚀', description: 'Sobreviva no espaço' },
-  { id: 'minesweeper', title: 'Campo Minado', icon: '💣', description: 'Encontre todas as casas seguras' },
+  { id: 'minesweeper', title: 'Campo Minado', icon: '💣', description: 'Limpe campos sucessivos sem estourar minas' },
   { id: 'flappy', title: 'Voo Infinito', icon: '🪽', description: 'Desvie de obstáculos' },
-  { id: 'arena', title: 'Arena Infinita', icon: '⚔️', description: 'Sobreviva às hordas' },
-  { id: 'memory', title: 'Memória Arcana', icon: '🔮', description: 'Combine os pares de runas' },
+  { id: 'arena', title: 'Arena Infinita', icon: '⚔️', description: 'Mire, atire e sobreviva às hordas' },
+  { id: 'memory', title: 'Memória Arcana', icon: '🔮', description: 'Complete sequências infinitas de pares' },
 ] as const
 export type ArcadeGameId = typeof ARCADE_GAMES[number]['id']
 export type ArcadeChallenge = { id: string; gameId: ArcadeGameId; description: string; target: number; difficulty: number }

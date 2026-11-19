@@ -124,3 +124,51 @@
 @media(max-width:1250px){.hb-arcade-games-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(max-width:800px){.hb-arcade-games-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hb-arcade-daily-grid{grid-template-columns:1fr}.hb-arcade-challenge{min-height:0}.hb-arcade-wallet{flex:1}.hb-arcade-v190 .hb-arcade-library,.hb-arcade-v190 .hb-arcade-daily{padding:14px}}
 @media(max-width:490px){.hb-arcade-games-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-arcade-game-choice{min-height:95px}.hb-mini-hud{justify-content:center;text-align:center}.hb-2048-board,.hb-mine-board,.hb-memory-board{max-width:92vw}}
+
+/* V191 — controles, pausa e feedback visual unificados */
+.hb-mini-stage{position:relative;isolation:isolate}
+.hb-mini-session-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--arcade-border);border-radius:11px;padding:9px 13px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 6%,var(--arcade-surface));font-size:11px;color:var(--arcade-muted)}
+.hb-mini-session-bar>span{font-weight:750;letter-spacing:.035em}
+.hb-mini-session-bar button{border:1px solid var(--arcade-border);border-radius:9px;padding:7px 11px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 10%,var(--arcade-surface));color:var(--season-text,#fff);cursor:pointer;font:inherit;font-weight:800}
+.hb-mini-session-bar button:hover,.hb-mini-session-bar button:focus-visible{border-color:var(--season-primary,#d9bd8b);outline:none}
+.hb-mini-session-bar button small{margin-left:5px;font-size:10px;font-weight:500;opacity:.75}
+.hb-mini-pause-overlay{position:absolute;z-index:8;inset:0;display:grid;place-items:center;min-height:180px;padding:18px;background:rgba(7,12,21,.78);border-radius:14px;backdrop-filter:blur(7px)}
+.hb-mini-pause-overlay>div{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:340px;text-align:center;padding:25px 19px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 25%,#ffffff12);border-radius:18px;background:color-mix(in srgb,var(--season-surface,#24202b) 92%,transparent);box-shadow:0 15px 50px #0008}
+.hb-mini-pause-overlay>div>span{font-size:28px;color:var(--season-primary,#d9bd8b)}
+.hb-mini-pause-overlay h3{font-size:clamp(19px,2.5vw,26px);margin:0}
+.hb-mini-pause-overlay p{font-size:12px;color:var(--arcade-muted);line-height:1.6;margin:0}
+.hb-mini-pause-overlay button{font:inherit;font-weight:850;font-size:12px;padding:10px 15px;border-radius:10px;border:1px solid var(--season-primary,#d9bd8b);background:var(--season-primary,#d9bd8b);color:var(--season-on-primary,#171820);cursor:pointer}
+.hb-mini-pause-overlay button:hover{filter:brightness(1.1)}
+.hb-mini-pad button:focus-visible,.hb-mini-finish:focus-visible{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:2px}
+.hb-mini-pad button:disabled{opacity:.4;cursor:not-allowed}
+.hb-snake-board,.hb-2048-board{touch-action:none;user-select:none;-webkit-user-select:none}
+.hb-snake-board>span,.hb-2048-tile{pointer-events:none}
+.hb-snake-board .head{box-shadow:0 0 12px #d4c29580}
+.hb-snake-board .fruit{box-shadow:0 0 10px #ef8d9a80}
+.hb-2048-tile.has-value{transition:background .14s ease,transform .14s ease}
+.hb-mini-inner .hb-mini-hud{background:color-mix(in srgb,var(--season-primary,#d9bd8b) 5%,var(--arcade-surface));border-radius:12px}
+.hb-arena-tip,.hb-breakout-tip{width:100%;padding:10px 14px;border-left:3px solid var(--season-primary,#d9bd8b);border-radius:8px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 7%,transparent);color:var(--arcade-muted);font-size:11px;line-height:1.55}
+.hb-arena-tip strong{color:var(--season-text,#fff)}
+.hb-arena-canvas{cursor:crosshair}
+.hb-mini-arena-pad .hb-mini-fire{min-width:115px;border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 55%,var(--arcade-border));background:color-mix(in srgb,var(--season-primary,#d9bd8b) 19%,var(--arcade-surface));color:var(--season-text,#fff);letter-spacing:.06em}
+.hb-mini-arena-pad .hb-mini-fire.is-firing,.hb-mini-arena-pad .hb-mini-fire:active{background:var(--season-primary,#d9bd8b);color:var(--season-on-primary,#171820)}
+.hb-mini-arena-pad,.hb-breakout-v191 .hb-mini-pad{width:100%}
+@media(max-width:600px){
+  .hb-mini-session-bar{padding:8px 10px;font-size:10px}
+  .hb-mini-session-bar button small{display:none}
+  .hb-mini-arena-pad .hb-mini-fire{min-width:105px;flex:1}
+  .hb-arena-tip,.hb-breakout-tip{font-size:10px}
+  .hb-mini-pause-overlay>div{width:min(100%,310px);padding:17px}
+  .hb-mini-pad button{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+  .hb-2048-tile.has-value{transition:none}
+}
+.hb-mini-end-run{font-size:11px;padding:10px 15px;justify-self:center;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,var(--arcade-surface));color:var(--season-text,#fff)}
+.hb-mini-end-run:hover{border-color:var(--season-primary,#d9bd8b);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 22%,var(--arcade-surface))}
+
+/* V192: indicação de passagem de rodada sem ocultar controles ou bloquear o ranking. */
+.hb-mini-endless-hint,.hb-mini-next-notice{width:100%;max-width:440px;padding:9px 13px;border-radius:10px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 25%,transparent);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 7%,transparent);color:var(--arcade-muted);font-size:12px;text-align:center;line-height:1.55;margin:0}
+.hb-mini-next-notice{color:var(--season-primary,#d9bd8b)}
+.hb-mini-endless .hb-mini-finish{width:min(100%,405px);max-width:100%}
+.hb-arcade-embedded-pong .hb-arcade-controls>div:last-child{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
