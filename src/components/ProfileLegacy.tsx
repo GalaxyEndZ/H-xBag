@@ -22,6 +22,7 @@ const officialBadgeCatalog = [
   {id:'fundador',title:'Fundador',description:'Participe da fundação do HäxBag',symbol:'✦',origin:'Concedida exclusivamente pelo administrador'},
   {id:'primordial',title:'Primordial',description:'Participe da beta do HäxBag',symbol:'◈',origin:'Concedida automaticamente durante a beta'},
   {id:'embaixador',title:'Embaixador',description:'Convide pessoas para o HäxBag',symbol:'✧',origin:'Recebida ao indicar a primeira pessoa'},
+  {id:'cacador_de_bugs',title:'Caçador de Bugs',description:'Ajudou a identificar e relatar bugs do HäxBag',symbol:'⌁',origin:'Concedida pelo administrador do HäxBag'},
 ] as const
 const statusOptions=[['available','Disponível para jogar'],['preparing','Preparando campanha'],['looking','Procurando grupo'],['busy','Em aventura'],['offline','Indisponível'],['custom','Personalizado']]
 const clampImage=(file:File,kind:'avatar'|'cover'):Promise<string>=>new Promise((resolve,reject)=>{
