@@ -72,9 +72,39 @@
 
 
 /* V188 — Três ambientes: Social / RPG / Minigames. */
-.app-shell.hb-polish .hb-v159-space-switch{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
-.app-shell.hb-polish .hb-v159-space-switch button{font-size:11px;gap:5px;padding:8px 5px;white-space:nowrap}
+.app-shell.hb-polish .hb-sidebar-v20 .hb-v159-space-switch {
+  grid-template-columns:minmax(0,.94fr) minmax(0,.78fr) minmax(0,1.4fr);
+  gap:4px;
+  margin:9px 0 12px;
+  padding:5px;
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+.app-shell.hb-polish .hb-sidebar-v20 .hb-v159-space-switch button {
+  box-sizing:border-box;
+  min-width:0;
+  min-height:43px;
+  padding:9px 2px;
+  gap:4px;
+  font-size:10.5px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.app-shell.hb-polish .hb-sidebar-v20 .hb-v159-space-switch button > span {
+  flex:0 0 auto;
+  font-size:11px;
+}
+.app-shell.hb-polish .hb-sidebar-v20 .hb-v159-space-switch button.is-active {
+  border-radius:11px;
+}
+@media(max-width:800px) {
+  .app-shell.hb-polish .hb-sidebar-v20 .hb-v159-space-switch {
+    margin:9px 0 12px;
+  }
+}
+
 .app-shell.hb-polish .hb-v159-top-space-switch{gap:3px}
 .app-shell.hb-polish .hb-v159-top-space-switch button{min-width:64px;padding:7px 9px}
 @media(max-width:1050px){.app-shell.hb-polish .hb-v159-top-space-switch button{min-width:42px;padding:7px}}
-@media(max-width:570px){.app-shell.hb-polish .hb-v159-space-switch button{font-size:10px;padding:9px 3px;gap:3px}.app-shell.hb-polish .hb-v159-top-space-switch button{min-width:35px}}
+@media(max-width:570px){.app-shell.hb-polish .hb-v159-top-space-switch button{min-width:35px}}

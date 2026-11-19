@@ -10742,50 +10742,6 @@ counterAttackDT
 
   if (!session) return <Auth />
 
-  const sidebarSpaceSummary = activePage === 'profile'
-    ? {
-        eyebrow: '✦ ESPAÇO SOCIAL',
-        title: 'Sua rede dentro do HäxBag',
-        description: 'Acompanhe o feed, abra conversas, descubra jogadores e cuide do seu perfil público.',
-        chip: `◈ ${socialNavigationTab === 'feed' ? 'Feed' : socialNavigationTab === 'messages' ? 'Mensagens' : socialNavigationTab === 'friends' ? 'Amigos' : socialNavigationTab === 'discover' ? 'Descobrir' : socialNavigationTab === 'followers' ? 'Seguidores' : socialNavigationTab === 'following' ? 'Seguindo' : socialNavigationTab === 'blocked' ? 'Bloqueados' : 'Convite social'}`,
-        primaryLabel: 'Abrir feed',
-        onPrimary: () => openSocialTab('feed'),
-        secondaryLabel: 'Meu perfil',
-        onSecondary: () => openSocialSection('overview'),
-      }
-    : activePage === 'minigames'
-      ? {
-          eyebrow: '◉ ESPAÇO ARCADE',
-          title: 'Arcade do HäxBag',
-          description: 'Jogue os minigames, acompanhe o ranking global e complete os três desafios diários.',
-          chip: '♾️ 9 jogos infinitos',
-          primaryLabel: 'Abrir minigames',
-          onPrimary: () => openMinigamesSpace(),
-          secondaryLabel: 'Desafios do dia',
-          onSecondary: () => openMinigamesSpace(),
-        }
-      : {
-          eyebrow: '⚔ ESPAÇO RPG',
-          title: selectedCampaign?.name?.trim() || 'Seu espaço de aventuras',
-          description: selectedCampaign?.name
-            ? 'Campanha principal ativa para suas fichas, temporadas, sessões e utilidades de mesa.'
-            : 'Campanhas, fichas, temporadas, bestiário e ferramentas de mesa em um só lugar.',
-          chip: selectedCampaign?.name ? `⚑ ${selectedCampaign.name}` : `${campaigns.length} campanha${campaigns.length === 1 ? '' : 's'}`,
-          tertiaryChip: isMaster ? 'Mestre' : 'Jogador',
-          primaryLabel: 'Ver campanhas',
-          onPrimary: () => setActivePage('campaigns'),
-          secondaryLabel: 'Criar campanha',
-          onSecondary: () => {
-            setActivePage('campaigns')
-            setEditingCampaignId(null)
-            setShowCampaignForm(true)
-            setCampaignName('')
-            setCampaignDescription('')
-            setSystemName('')
-            setCampaignSystemChoice('')
-          },
-        }
-
   return (
     <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
@@ -10818,23 +10774,6 @@ counterAttackDT
           <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
         </div>}
 
-        <section className="hb-sidebar-space-summary" aria-label={sidebarSpaceSummary.title}>
-          <div className="hb-sidebar-space-summary-top">
-            <span className="hb-sidebar-eyebrow">{sidebarSpaceSummary.eyebrow}</span>
-            <div className="hb-sidebar-space-summary-chips">
-              <span className="hb-sidebar-space-summary-chip">{sidebarSpaceSummary.chip}</span>
-              {'tertiaryChip' in sidebarSpaceSummary && sidebarSpaceSummary.tertiaryChip ? <span className="hb-sidebar-space-summary-chip is-soft">{sidebarSpaceSummary.tertiaryChip}</span> : null}
-            </div>
-          </div>
-          <div className="hb-sidebar-space-summary-copy">
-            <strong>{sidebarSpaceSummary.title}</strong>
-            <p>{sidebarSpaceSummary.description}</p>
-          </div>
-          <div className="hb-sidebar-space-summary-actions">
-            <button type="button" className="hb-sidebar-space-summary-primary" onClick={sidebarSpaceSummary.onPrimary}>{sidebarSpaceSummary.primaryLabel}</button>
-            <button type="button" className="hb-sidebar-space-summary-secondary" onClick={sidebarSpaceSummary.onSecondary}>{sidebarSpaceSummary.secondaryLabel}</button>
-          </div>
-        </section>
         <div className="hb-global-actions" aria-label="Ferramentas rápidas">
           <button type="button" className="hb-quick-launcher" onClick={() => openQuick('search')}
             title="Buscar e navegar pelo HäxBag (Ctrl ou ⌘ + K)" aria-keyshortcuts="Control+K Meta+K">
