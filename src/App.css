@@ -16668,78 +16668,83 @@ button:disabled { opacity: .58; }
 }
 
 
-/* V178 — Recompensas ficam exclusivas do espaço RPG; notificações viram um sino no topo direito. */
-.app-shell .hb-v172-floating-actions.hb-v178-notifications-bell {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  bottom: auto;
-  z-index: 1080;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  pointer-events: none;
-}
-.app-shell .hb-v172-floating-actions.hb-v178-notifications-bell > button {
+/* V179 — Sino integrado ao cabeçalho, alinhado à conexão e ao botão Sair. */
+.app-shell .topbar-right .hb-v178-notifications-bell {
   position: relative;
+  inset: auto;
+  z-index: 10;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin: 0 2px 0 5px;
   pointer-events: auto;
-  width: 46px;
-  height: 46px;
-  min-height: 46px;
+}
+.app-shell .topbar-right .hb-v178-notifications-bell > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--season-line,#ffffff35);
-  border-radius: 999px;
-  background: var(--season-surface,#22202b);
-  color: var(--season-text,#fafafa);
-  box-shadow: 0 8px 25px #0007;
+  border: 1px solid var(--season-line,rgba(255,255,255,.16));
+  border-radius: 11px;
+  background: var(--season-surface-alt,rgba(255,255,255,.05));
+  color: var(--season-text,#f7f4f0);
+  box-shadow: none;
   cursor: pointer;
-  font-weight: 700;
-  font-size: 20px;
+  transition: border-color .15s ease, background .15s ease;
 }
-.app-shell .hb-v172-floating-actions.hb-v178-notifications-bell > button:hover {
-  transform: translateY(-2px);
-  filter: brightness(1.12);
+.app-shell .topbar-right .hb-v178-notifications-bell > button:hover,
+.app-shell .topbar-right .hb-v178-notifications-bell > button[aria-expanded="true"] {
+  transform: none;
+  filter: none;
+  border-color: var(--season-primary,#d9bd8b);
+  background: color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,var(--season-surface-alt,#252127));
 }
-.app-shell .hb-v178-notification-badge {
+.app-shell .topbar-right .hb-v178-notifications-bell > button:focus-visible {
+  outline: 2px solid var(--season-primary,#d9bd8b);
+  outline-offset: 2px;
+}
+.app-shell .topbar-right .hb-v178-notification-badge {
   position: absolute;
-  top: -5px;
-  right: -3px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 999px;
+  top: -6px;
+  right: -5px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 999px;
   background: var(--season-primary,#d9bd8b);
-  color: var(--season-on-primary,#151316);
-  font-size: 11px;
+  color: var(--season-on-primary,#161418);
+  font-size: 10px;
   font-weight: 900;
   line-height: 1;
 }
-.app-shell .hb-v172-notification-panel {
-  top: calc(100% + 10px);
-  bottom: auto;
+.app-shell .topbar-right .hb-v178-notifications-bell .hb-v172-notification-panel {
+  position: absolute;
+  top: calc(100% + 12px);
   right: 0;
-  margin-top: 0;
-  margin-bottom: 0;
+  bottom: auto;
+  width: min(345px,calc(100vw - 24px));
+  margin: 0;
+  z-index: 20;
 }
-@media (max-width: 700px) {
-  .app-shell .hb-v172-floating-actions.hb-v178-notifications-bell {
-    top: 10px;
-    right: 10px;
-    bottom: auto;
+@media (max-width:700px) {
+  .app-shell .topbar-right .hb-v178-notifications-bell { margin: 0 1px; inset: auto; }
+  .app-shell .topbar-right .hb-v178-notifications-bell > button {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
   }
-  .app-shell .hb-v172-floating-actions.hb-v178-notifications-bell > button {
-    width: 44px;
-    height: 44px;
-    min-height: 44px;
-  }
-  .app-shell .hb-v172-notification-panel {
-    width: min(320px, calc(100vw - 20px));
+  .app-shell .topbar-right .hb-v178-notifications-bell .hb-v172-notification-panel {
+    width: min(325px,calc(100vw - 20px));
   }
 }

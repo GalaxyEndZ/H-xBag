@@ -10960,6 +10960,20 @@ counterAttackDT
             </span>}
             <span className="online-dot" />
             Conectado
+          <div className="hb-v172-floating-actions hb-v178-notifications-bell" aria-label="Acesso rápido às notificações">
+            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" aria-label={`Notificações${unreadMessages+pendingCampaignInvites>0?`, ${unreadMessages+pendingCampaignInvites} pendentes`:''}`} title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+              {unreadMessages + pendingCampaignInvites > 0 && <span className="hb-v178-notification-badge">{unreadMessages + pendingCampaignInvites > 99 ? '99+' : unreadMessages + pendingCampaignInvites}</span>}
+            </button>
+            {notificationsOpen&&<section id="hb-v172-notification-panel" className="hb-v172-notification-panel" aria-label="Suas notificações">
+              <header><strong>Notificações</strong><button type="button" onClick={()=>setNotificationsOpen(false)} aria-label="Fechar notificações">✕</button></header>
+              {notificationBusy&&<small>Atualizando…</small>}
+              <button type="button" onClick={()=>{setNotificationsOpen(false);openSocialTab('messages')}}>✉ Mensagens não lidas <strong>{unreadMessages}</strong></button>
+              <button type="button" onClick={()=>{setNotificationsOpen(false);setActivePage('campaigns')}}>⚑ Convites de campanha <strong>{pendingCampaignInvites}</strong></button>
+              {!notificationBusy&&unreadMessages+pendingCampaignInvites===0&&<small>Nenhuma mensagem ou convite pendente.</small>}
+              <button type="button" onClick={()=>void refreshNotifications()} disabled={notificationBusy}>↻ Atualizar</button>
+            </section>}
+          </div>
             <button
               type="button"
               className="hb-topbar-logout"
@@ -16939,20 +16953,6 @@ style={{cursor:'pointer'}}>
   </section>
 )}
 
-          <div className="hb-v172-floating-actions hb-v178-notifications-bell" aria-label="Acesso rápido às notificações">
-            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" aria-label={`Notificações${unreadMessages+pendingCampaignInvites>0?`, ${unreadMessages+pendingCampaignInvites} pendentes`:''}`} title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>
-              <span aria-hidden="true">🔔</span>
-              {unreadMessages + pendingCampaignInvites > 0 && <span className="hb-v178-notification-badge">{unreadMessages + pendingCampaignInvites > 99 ? '99+' : unreadMessages + pendingCampaignInvites}</span>}
-            </button>
-            {notificationsOpen&&<section id="hb-v172-notification-panel" className="hb-v172-notification-panel" aria-label="Suas notificações">
-              <header><strong>Notificações</strong><button type="button" onClick={()=>setNotificationsOpen(false)} aria-label="Fechar notificações">✕</button></header>
-              {notificationBusy&&<small>Atualizando…</small>}
-              <button type="button" onClick={()=>{setNotificationsOpen(false);openSocialTab('messages')}}>✉ Mensagens não lidas <strong>{unreadMessages}</strong></button>
-              <button type="button" onClick={()=>{setNotificationsOpen(false);setActivePage('campaigns')}}>⚑ Convites de campanha <strong>{pendingCampaignInvites}</strong></button>
-              {!notificationBusy&&unreadMessages+pendingCampaignInvites===0&&<small>Nenhuma mensagem ou convite pendente.</small>}
-              <button type="button" onClick={()=>void refreshNotifications()} disabled={notificationBusy}>↻ Atualizar</button>
-            </section>}
-          </div>
           <FloatingChat onOpenFullChat={()=>openSocialTab('messages')} />
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel hb-campaigns-page">
             <header className="hb-hero hb-campaigns-hero">
