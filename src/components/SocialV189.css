@@ -1,0 +1,242 @@
+/* HäxBag V189 — acabamento social e melhorias de uso, sem substituir cores dos temas. */
+.hb-social-v189 {
+  --hs189-edge: color-mix(in srgb, var(--hs-accent) 18%, var(--hs-line));
+  --hs189-hover: color-mix(in srgb, var(--hs-accent) 9%, var(--hs-surface));
+  --hs189-quiet: color-mix(in srgb, var(--hs-muted) 94%, var(--hs-ink));
+  --hs189-card: color-mix(in srgb, var(--hs-soft) 88%, var(--hs-surface));
+}
+
+/* Uma hierarquia mais clara para a navegação sem perder o perfil lateral. */
+.hb-social-v189 .hb-v158-social-columns { gap: clamp(14px, 2vw, 26px); }
+.hb-social-v189 .hb-v158-social-content { gap: 15px; }
+.hb-social-v189 .hb-v158-social-sidebar { gap: 11px; }
+.hb-social-v189 .hb-v158-mini-profile,
+.hb-social-v189 .hb-social-hero,
+.hb-social-v189 .hb-v180-quickbar { border-color: var(--hs189-edge); }
+.hb-social-v189 .hb-social-tabs button.selected {
+  box-shadow: inset 3px 0 0 var(--hs-accent);
+  background: color-mix(in srgb, var(--hs-accent) 13%, var(--hs-surface));
+}
+.hb-social-v189 .hb-social-tabs button:focus-visible,
+.hb-social-v189 .hb-v180-quickbar button:focus-visible {
+  outline: 2px solid var(--hs-accent);
+  outline-offset: 2px;
+}
+.hb-social-v189 .hb-v180-quickbar { padding: 10px; gap: 8px; }
+.hb-social-v189 .hb-v180-quickbar button { border-radius: 12px; min-height: 41px; }
+.hb-social-v189 .hb-v160-stats>button {
+  border-color: var(--hs189-edge);
+  background: var(--hs189-card);
+  border-radius: 14px;
+}
+.hb-social-v189 .hb-v160-stats>button:hover {
+  box-shadow: 0 8px 22px rgba(0,0,0,.10);
+  border-color: color-mix(in srgb,var(--hs-accent) 45%,var(--hs-line));
+}
+
+/* Editor de publicações: foco no texto, fotos e visibilidade. */
+.hb-social-v189 .hb-v160-composer { border-color: var(--hs189-edge); gap: 12px; }
+.hb-social-v189 .hb-v160-composer-author { padding-bottom: 13px; }
+.hb-social-v189 .hb-v160-composer textarea {
+  border-radius: 15px;
+  padding: 17px 18px;
+  background: var(--hs-surface);
+  border-color: var(--hs189-edge);
+  line-height: 1.65;
+}
+.hb-social-v189 .hb-v160-composer textarea:focus {
+  outline: 2px solid color-mix(in srgb,var(--hs-accent) 42%,transparent);
+  border-color: var(--hs-accent);
+}
+.hb-social-v189 .hb-v160-writing-prompts button { border-radius: 999px; }
+.hb-social-v189 .hb-v162-photo-tools { gap: 10px; }
+.hb-social-v189 .hb-social-composer-bottom { flex-wrap: wrap; }
+.hb-social-v189 .hb-v160-composer-submit { margin-left: auto; }
+
+/* Filtros do feed unificados, com espaço para leitura e ordenação local transparente. */
+.hb-social-v189 .hb-social-feed-header { gap: 15px; }
+.hb-social-v189 .hb-v163-feed-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid var(--hs189-edge);
+  border-radius: 14px;
+  background: var(--hs189-card);
+}
+.hb-social-v189 .hb-v163-feed-search { flex: 1 1 190px; min-width: 0; }
+.hb-social-v189 .hb-v163-photo-filter { flex: 0 0 auto; }
+.hb-social-v189 .hb-v163-post-order { margin-left: auto; }
+.hb-social-v189 .hb-v189-sort-hint {
+  margin: -3px 3px 4px;
+  color: var(--hs189-quiet);
+  font-size: .72rem;
+  line-height: 1.45;
+}
+.hb-social-v189 .hb-social-post {
+  border-color: var(--hs189-edge);
+  background: var(--hs189-card);
+  border-radius: 19px;
+  box-shadow: 0 7px 22px rgba(0,0,0,.065);
+}
+.hb-social-v189 .hb-social-post:hover {
+  border-color: color-mix(in srgb, var(--hs-accent) 32%, var(--hs-line));
+}
+.hb-social-v189 .hb-social-post-top { padding-bottom: 4px; }
+.hb-social-v189 .hb-social-post-top>button { min-width: 0; }
+.hb-social-v189 .hb-social-post-top>button:hover strong { color: var(--hs-accent); }
+.hb-social-v189 .hb-v189-post-text { margin: 14px 0; }
+.hb-social-v189 .hb-v189-post-text>p {
+  margin: 0;
+  font-size: .92rem;
+  line-height: 1.74;
+  color: var(--hs-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.hb-social-v189 .hb-v189-read-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--hs-accent);
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.hb-social-v189 .hb-v189-read-more:hover { text-decoration: underline; }
+.hb-social-v189 .hb-v189-read-more:focus-visible { outline: 2px solid var(--hs-accent); outline-offset: 3px; }
+.hb-social-v189 .hb-v162-post-gallery { border: 1px solid var(--hs189-edge); border-radius: 14px; }
+.hb-social-v189 .hb-social-post footer { margin-top: 14px; border-top-color: var(--hs189-edge); }
+.hb-social-v189 .hb-social-post footer>button,
+.hb-social-v189 .hb-social-post footer .hb-v181-comments-toggle {
+  transition: background .16s ease, border-color .16s ease;
+}
+
+/* Comentários como parte do mesmo cartão, sem blocos aninhados pesados. */
+.hb-social-v189 .hb-v182-comments-panel {
+  background: color-mix(in srgb,var(--hs-surface) 52%,var(--hs-soft));
+  border: 1px solid var(--hs189-edge);
+  border-radius: 15px;
+  padding: clamp(12px, 2vw, 18px);
+}
+.hb-social-v189 .hb-v182-comment .hb-v181-comment-content {
+  border-color: var(--hs189-edge);
+  background: var(--hs189-card);
+}
+.hb-social-v189 .hb-v182-comment .hb-v182-comment-actions { padding-left: 5px; }
+.hb-social-v189 .hb-v182-comment .hb-v181-comment-avatar { flex-shrink: 0; }
+.hb-social-v189 .hb-v182-comments-form textarea { border-radius: 12px; }
+
+/* Contatos e mensagens: ações legíveis e uma pesquisa própria dentro da conversa. */
+.hb-social-v189 .hb-social-person {
+  border-color: var(--hs189-edge);
+  background: var(--hs189-card);
+  border-radius: 16px;
+  transition: border-color .16s, background .16s, transform .16s;
+}
+.hb-social-v189 .hb-social-person:hover {
+  transform: translateY(-2px);
+  background: var(--hs189-hover);
+}
+.hb-social-v189 .hb-social-person-actions { gap: 7px; }
+.hb-social-v189 .hb-social-person-actions button { min-height: 37px; }
+.hb-social-v189 .hb-social-chat-shell { border-color: var(--hs189-edge); }
+.hb-social-v189 .hb-social-chat-main { min-width: 0; }
+.hb-social-v189 .hb-social-chat-main>header { flex-wrap: wrap; gap: 9px; }
+.hb-social-v189 .hb-v189-message-search {
+  display: grid;
+  gap: 7px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--hs-line);
+  background: var(--hs-soft);
+}
+.hb-social-v189 .hb-v189-message-search label {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--hs189-quiet);
+  font-size: .72rem;
+  font-weight: 750;
+}
+.hb-social-v189 .hb-v189-message-search>div { display: flex; gap: 8px; align-items: center; }
+.hb-social-v189 .hb-v189-message-search input {
+  min-width: 0;
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--hs189-edge);
+  border-radius: 10px;
+  background: var(--hs-surface);
+  color: var(--hs-ink);
+  font: inherit;
+  font-size: .78rem;
+}
+.hb-social-v189 .hb-v189-message-search button {
+  border: 1px solid var(--hs189-edge);
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: var(--hs-surface);
+  color: var(--hs-ink);
+  font-size: .72rem;
+  cursor: pointer;
+}
+.hb-social-v189 .hb-v189-message-search>small { color: var(--hs189-quiet); font-size: .68rem; }
+.hb-social-v189 .hb-v189-message-search button:hover { border-color: var(--hs-accent); }
+.hb-social-v189 .hb-v189-copy-message {
+  display: inline-flex;
+  align-items: center;
+  margin: 5px 7px 0 0;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--hs189-quiet);
+  font-size: .69rem;
+  cursor: pointer;
+}
+.hb-social-v189 .hb-v189-copy-message:hover {
+  color: var(--hs-accent);
+  background: color-mix(in srgb, var(--hs-accent) 10%, transparent);
+}
+.hb-social-v189 .hb-v189-message-empty { margin: auto; }
+.hb-social-v189 .hb-social-chat-contact { border-radius: 12px; }
+.hb-social-v189 .hb-social-chat-contact:hover { background: var(--hs189-hover); }
+.hb-social-v189 .hb-social-chat-compose { gap: 9px; }
+
+@media (max-width: 1000px) {
+  .hb-social-v189 .hb-v158-social-columns { gap: 12px; }
+  .hb-social-v189 .hb-v163-feed-tools { gap: 8px; }
+}
+@media (max-width: 760px) {
+  .hb-social-v189 .hb-social-tabs {
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 8px;
+    overscroll-behavior-x: contain;
+  }
+  .hb-social-v189 .hb-social-tabs button { scroll-snap-align: start; }
+  .hb-social-v189 .hb-v180-quickbar { scroll-snap-type: x proximity; }
+  .hb-social-v189 .hb-v180-quickbar button { scroll-snap-align: start; }
+  .hb-social-v189 .hb-v160-stats>button { min-height: 78px; }
+  .hb-social-v189 .hb-social-chat-main>header { padding-inline: 12px; }
+  .hb-social-v189 .hb-v189-message-search { padding: 10px 12px; }
+}
+@media (max-width: 520px) {
+  .hb-social-v189 .hb-v163-feed-tools { flex-direction: column; align-items: stretch; }
+  .hb-social-v189 .hb-v163-feed-search { flex: initial; }
+  .hb-social-v189 .hb-v163-photo-filter { width: 100%; }
+  .hb-social-v189 .hb-v163-post-order { margin: 0; width: 100%; justify-content: space-between; }
+  .hb-social-v189 .hb-social-composer-bottom { align-items: stretch; }
+  .hb-social-v189 .hb-v160-composer-submit { width: 100%; justify-content: space-between; }
+  .hb-social-v189 .hb-social-post { padding: 15px; }
+  .hb-social-v189 .hb-v189-post-text>p { font-size: .88rem; }
+  .hb-social-v189 .hb-v182-comments-panel { padding: 12px; }
+  .hb-social-v189 .hb-v189-message-search input { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hb-social-v189 .hb-social-person { transition: none; transform: none; }
+}

@@ -8,6 +8,7 @@ import './SocialV161.css'
 import './SocialV162.css'
 import './SocialV163.css'
 import './SocialV180.css'
+import './SocialV189.css'
 import SocialReferralPanel from './SocialReferralPanel'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 
@@ -100,6 +101,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [filter,setFilter] = useState('')
   const [peopleOrder,setPeopleOrder] = useState<'az'|'za'>('az')
   const [chatSearch,setChatSearch] = useState('')
+  const [messageSearch,setMessageSearch] = useState('')
+  const [copiedMessageId,setCopiedMessageId] = useState<string|null>(null)
   const [unreadOnly,setUnreadOnly] = useState(false)
   const [posts,setPosts] = useState<Post[]>([])
   const { counts:commentCounts, updateCount:updateCommentCount } = useSocialCommentCounts(posts.map(post=>post.post_id),active && tab==='feed')
@@ -117,7 +120,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [imageViewer,setImageViewer] = useState<{urls:string[];index:number;author:string}|null>(null)
   const [feedSearch,setFeedSearch] = useState('')
   const [onlyPhotos,setOnlyPhotos] = useState(false)
-  const [feedOrder,setFeedOrder] = useState<'recent'|'oldest'>('recent')
+  const [feedOrder,setFeedOrder] = useState<'recent'|'oldest'|'popular'>('recent')
+  const [expandedPosts,setExpandedPosts] = useState<Set<string>>(() => new Set())
   const [uploadProgress,setUploadProgress] = useState('')
   const [draggingPhotos,setDraggingPhotos] = useState(false)
   const photoLimit = 4
@@ -263,6 +267,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setSelectedChat(person)
     setChatMessages([])
     setMessageDraft('')
+    setMessageSearch('')
+    setCopiedMessageId(null)
     setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return null})
     setTab('messages')
   },[onSelectTab])
@@ -452,6 +458,15 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return {file,preview:URL.createObjectURL(file)}})
     setError('')
   }
+  async function copyChatMessage(message:ChatMessage) {
+    if (message.deleted_at || message.body === '📷 Foto' || !message.body.trim()) return
+    try {
+      await navigator.clipboard.writeText(message.body)
+      setCopiedMessageId(message.message_id)
+    } catch {
+      setError('Não foi possível copiar a mensagem. Verifique a permissão do navegador.')
+    }
+  }
   async function deleteChatMessage(message:ChatMessage){
     if(message.sender_id!==userId||!selectedChat||!window.confirm('Apagar esta mensagem para todos?'))return
     setBusy('delete-message');setError('')
@@ -492,11 +507,23 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     if(onlyPhotos && !(post.image_paths?.length))return false
     const term=foldText(feedSearch.trim())
     return !term||foldText(`${post.content} ${post.display_name} ${post.username}`).includes(term)
-  }).sort((a,b)=>feedOrder==='recent'?new Date(b.created_at).getTime()-new Date(a.created_at).getTime():new Date(a.created_at).getTime()-new Date(b.created_at).getTime()),[posts,feedSearch,onlyPhotos,feedOrder])
+  }).sort((a,b)=>{
+    const dateDifference=new Date(b.created_at).getTime()-new Date(a.created_at).getTime()
+    if (feedOrder==='popular') {
+      // Ordenação local: somente publicações já carregadas, sem alterar a paginação da API.
+      const engagement=(post:Post)=>Math.max(0,Number(post.like_count)||0)+Math.max(0,commentCounts[post.post_id]||0)
+      return engagement(b)-engagement(a)||dateDifference
+    }
+    return feedOrder==='recent'?dateDifference:-dateDifference
+  }),[posts,feedSearch,onlyPhotos,feedOrder,commentCounts])
   const filteredConversations=useMemo(()=>conversations.filter(person=>{
     if (unreadOnly && Number(person.unread_count)===0) return false
     return foldText(`${person.display_name} ${person.username} ${person.last_message||''}`).includes(foldText(chatSearch.trim()))
   }),[conversations,chatSearch,unreadOnly])
+  const visibleChatMessages=useMemo(()=>{
+    const term=foldText(messageSearch.trim())
+    return !term?chatMessages:chatMessages.filter(message=>!message.deleted_at && foldText(message.body).includes(term))
+  },[chatMessages,messageSearch])
   // Usa a mesma foto do perfil público, sem expor buckets privados nem alterar as RPCs existentes.
   // O cache impede novas consultas a cada atualização automática do chat.
   const visibleAvatarIds=useMemo(()=>{
@@ -559,7 +586,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     </article>
   }
 
-  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
+  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-v189 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
         <div className="hb-v158-mini-profile">
@@ -621,9 +648,13 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
           <div className="hb-social-composer-bottom"><label>Visibilidade<select value={visibility} onChange={e=>setVisibility(e.target.value as Post['visibility'])} aria-label="Quem pode ver esta publicação"><option value="public">🌐 Todas as contas</option><option value="followers">↗ Seguidores</option><option value="friends">♧ Apenas amigos</option></select></label><div className="hb-v160-composer-submit"><span className={postText.length>1080?'near-limit':''}>{postText.length} / 1200</span><button className="hb-social-primary-action" type="submit" disabled={(!postText.trim()&&!postPhotos.length)||!!busy}>{busy==='publish'?(uploadProgress||'Publicando…'):'Publicar ✦'}</button></div></div>
         </form>
         <div className="hb-social-feed-header"><div><span className="hb-social-overline">LINHA DO TEMPO</span><h3>Publicações recentes</h3></div><div className="hb-social-segments" role="group" aria-label="Filtrar publicações">{([['all','Para você'],['following','Seguindo'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} aria-pressed={feedScope===key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
-        <div className="hb-v163-feed-tools"><label className="hb-v163-feed-search"><span>⌕</span><input type="search" placeholder="Buscar nas publicações carregadas…" aria-label="Buscar no feed" value={feedSearch} onChange={e=>setFeedSearch(e.target.value)} /></label><label className="hb-v163-photo-filter"><input type="checkbox" checked={onlyPhotos} onChange={e=>setOnlyPhotos(e.target.checked)} />▧ Com fotos</label><label className="hb-v163-post-order">Ordem <select value={feedOrder} onChange={e=>setFeedOrder(e.target.value as 'recent'|'oldest')}><option value="recent">Mais recentes</option><option value="oldest">Mais antigas</option></select></label></div>
+        <div className="hb-v163-feed-tools"><label className="hb-v163-feed-search"><span>⌕</span><input type="search" placeholder="Buscar nas publicações carregadas…" aria-label="Buscar no feed" value={feedSearch} onChange={e=>setFeedSearch(e.target.value)} /></label><label className="hb-v163-photo-filter"><input type="checkbox" checked={onlyPhotos} onChange={e=>setOnlyPhotos(e.target.checked)} />▧ Com fotos</label><label className="hb-v163-post-order">Ordem <select value={feedOrder} onChange={e=>setFeedOrder(e.target.value as 'recent'|'oldest'|'popular')}><option value="recent">Mais recentes</option><option value="popular">Mais interações</option><option value="oldest">Mais antigas</option></select></label></div>
+        {feedOrder==='popular'&&<p className="hb-v189-sort-hint">✦ Mais interações considera curtidas e comentários das publicações já carregadas.</p>}
         {(feedSearch||onlyPhotos)&&<div className="hb-v163-results">{visiblePosts.length} {visiblePosts.length===1?'publicação encontrada':'publicações encontradas'} nesta página{(feedSearch||onlyPhotos)&&<button type="button" onClick={()=>{setFeedSearch('');setOnlyPhotos(false)}}>Limpar filtros</button>}</div>}
-        {feedLoaded&&visiblePosts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at} title={new Date(post.created_at).toLocaleString('pt-BR')}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div>{post.content&&<p>{post.content}</p>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer({urls:post.image_paths.map(p=>photoUrls[p]).filter(Boolean),index:post.image_paths.slice(0,index).filter(p=>Boolean(photoUrls[p])).length,author:nameOf(post)})} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button><SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount} onOpenProfile={person=>person.id===userId ? onViewOwnProfile?.() : setProfile({id:person.id,display_name:person.display_name,username:person.username})}/>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
+        {feedLoaded&&visiblePosts.map(post=><article key={post.post_id} className="hb-social-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at} title={new Date(post.created_at).toLocaleString('pt-BR')}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div>{post.content&&<div className="hb-v189-post-text">
+          <p id={`hb-v189-post-text-${post.post_id}`}>{post.content.length>420&&!expandedPosts.has(post.post_id)?`${post.content.slice(0,420).trimEnd()}…`:post.content}</p>
+          {post.content.length>420&&<button type="button" className="hb-v189-read-more" aria-expanded={expandedPosts.has(post.post_id)} aria-controls={`hb-v189-post-text-${post.post_id}`} onClick={()=>setExpandedPosts(current=>{const next=new Set(current);if(next.has(post.post_id))next.delete(post.post_id);else next.add(post.post_id);return next})}>{expandedPosts.has(post.post_id)?'Mostrar menos ↑':'Ler publicação completa ↓'}</button>}
+        </div>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer({urls:post.image_paths.map(p=>photoUrls[p]).filter(Boolean),index:post.image_paths.slice(0,index).filter(p=>Boolean(photoUrls[p])).length,author:nameOf(post)})} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button><SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount} onOpenProfile={person=>person.id===userId ? onViewOwnProfile?.() : setProfile({id:person.id,display_name:person.display_name,username:person.username})}/>{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>)}
         {feedLoaded&&!posts.length&&!feedBusy&&<div className="hb-social-empty hb-v160-empty"><span className="hb-v160-empty-icon">✦</span><strong>Nenhuma publicação por enquanto.</strong><p>{feedScope==='following'?'Acompanhe novos jogadores para ver suas publicações aqui.':feedScope==='mine'?'Compartilhe seu primeiro registro no mural.':'Sua comunidade está pronta para novas histórias.'}</p>{feedScope==='following'&&<button type="button" onClick={()=>setTab('discover')}>Encontrar pessoas</button>}</div>}
         {feedLoaded&&posts.length>0&&visiblePosts.length===0&&!feedBusy&&<div className="hb-social-empty hb-v160-empty"><strong>Nenhuma publicação encontrada.</strong><p>Tente outros termos ou remova o filtro de fotos.</p><button type="button" onClick={()=>{setFeedSearch('');setOnlyPhotos(false)}}>Limpar filtros</button></div>}
         {feedBusy&&<div className="hb-v160-skeletons" aria-label="Carregando publicações" aria-busy="true"><div/><div/></div>}
@@ -637,17 +668,21 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
 
     {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat ${selectedChat?'has-active-chat':''}`}><div className="hb-social-chat-sidebar"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVERSAS PRIVADAS</span><h3>Conversas</h3><p>Somente amigos mútuos podem enviar novas mensagens.</p></div></div>
-      <label className="hb-v160-chat-search"><span>Buscar conversa</span><input type="search" value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Nome ou mensagem…" /></label>
+      <label className="hb-v160-chat-search"><span>Encontrar contato</span><input type="search" value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Nome ou mensagem…" /></label>
       <label className="hb-v160-unread-toggle"><input type="checkbox" checked={unreadOnly} onChange={e=>setUnreadOnly(e.target.checked)}/> Somente não lidas {summary.unread>0?`(${summary.unread})`:''}</label>
-      <div className="hb-v160-contact-list">{filteredConversations.map(person=><button type="button" key={person.partner_id} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}>{avatarFor(person.partner_id,nameOf(person))}<span><strong>{person.display_name}</strong><small>{person.last_message||'Comece uma conversa'}</small></span>{Number(person.unread_count)>0&&<em aria-label={`${person.unread_count} mensagens não lidas`}>{person.unread_count}</em>}</button>)}{!filteredConversations.length&&!!conversations.length&&<p className="hb-v160-no-conversations">Nenhuma conversa corresponde aos filtros.</p>}</div>{!conversations.length&&<div className="hb-social-empty"><strong>Sem conversas.</strong><p>Siga um aventureiro que também segue você para iniciar um chat.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}</div><div className="hb-social-chat-main">{selectedChat?<><header><div className="hb-v160-chat-header-identity"><button type="button" className="hb-v160-chat-back" aria-label="Voltar para conversas" onClick={()=>{messagesRequestRef.current+=1;setSelectedChat(null);setChatMessages([]);setMessageDraft('');setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return null})}}>‹</button>{avatarFor(selectedChat.partner_id,nameOf(selectedChat))}<span><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'}</small></span></div><button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil ↗</button></header><div className="hb-social-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">{chatMessages.map((message,index)=><div className="hb-v160-message-row" key={message.message_id}>
-          {(index===0 || dayOf(chatMessages[index-1].created_at)!==dayOf(message.created_at))&&<div className="hb-v160-chat-day" role="separator">{dayOf(message.created_at)}</div>}
+      <div className="hb-v160-contact-list">{filteredConversations.map(person=><button type="button" key={person.partner_id} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}>{avatarFor(person.partner_id,nameOf(person))}<span><strong>{person.display_name}</strong><small>{person.last_message||'Comece uma conversa'}</small></span>{Number(person.unread_count)>0&&<em aria-label={`${person.unread_count} mensagens não lidas`}>{person.unread_count}</em>}</button>)}{!filteredConversations.length&&!!conversations.length&&<p className="hb-v160-no-conversations">Nenhuma conversa corresponde aos filtros.</p>}</div>{!conversations.length&&<div className="hb-social-empty"><strong>Sem conversas.</strong><p>Siga um aventureiro que também segue você para iniciar um chat.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}</div><div className="hb-social-chat-main">{selectedChat?<><header><div className="hb-v160-chat-header-identity"><button type="button" className="hb-v160-chat-back" aria-label="Voltar para conversas" onClick={()=>{messagesRequestRef.current+=1;setSelectedChat(null);setChatMessages([]);setMessageDraft('');setMessageSearch('');setCopiedMessageId(null);setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return null})}}>‹</button>{avatarFor(selectedChat.partner_id,nameOf(selectedChat))}<span><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'}</small></span></div><button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil ↗</button></header>
+      <div className="hb-v189-message-search"><label htmlFor="hb-v189-search-messages"><span aria-hidden="true">⌕</span> Buscar nesta conversa</label><div><input id="hb-v189-search-messages" type="search" value={messageSearch} onChange={event=>setMessageSearch(event.target.value)} placeholder="Pesquisar nas últimas mensagens carregadas" />{messageSearch&&<button type="button" onClick={()=>setMessageSearch('')}>Limpar</button>}</div>{messageSearch&&<small>{visibleChatMessages.length} de {chatMessages.length} mensagens carregadas</small>}</div>
+      <div className="hb-social-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">{visibleChatMessages.map((message,index)=><div className="hb-v160-message-row" key={message.message_id}>
+          {(index===0 || dayOf(visibleChatMessages[index-1].created_at)!==dayOf(message.created_at))&&<div className="hb-v160-chat-day" role="separator">{dayOf(message.created_at)}</div>}
           <div className={`hb-v161-chat-message ${message.sender_id===userId?'own':''}`}>{avatarFor(message.sender_id,message.sender_id===userId?(profileIdentity?.name||'Você'):nameOf(selectedChat))}<div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`}>
             {message.deleted_at?<p><em>Mensagem apagada</em></p>:<>
               {message.image_path&&chatImageUrls[message.message_id]&&<a href={chatImageUrls[message.message_id]} target="_blank" rel="noopener noreferrer"><img className="hb-v172-chat-image" src={chatImageUrls[message.message_id]} alt="Foto enviada na conversa" loading="lazy" /></a>}
               {message.body!=='📷 Foto'&&<p>{message.body}</p>}
+              {message.body!=='📷 Foto'&&Boolean(message.body.trim())&&<button className="hb-v189-copy-message" type="button" onClick={()=>void copyChatMessage(message)} aria-label="Copiar texto desta mensagem">{copiedMessageId===message.message_id?'✓ Copiado':'⧉ Copiar'}</button>}
               {message.sender_id===userId&&<button className="hb-v172-delete-message" type="button" disabled={!!busy} onClick={()=>void deleteChatMessage(message)} title="Apagar mensagem para todos">Apagar</button>}
             </>}
-            <small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose">
+            <small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}
+          {messageSearch.trim()&&chatMessages.length>0&&!visibleChatMessages.length&&<div className="hb-social-empty hb-v189-message-empty"><strong>Nenhuma mensagem encontrada.</strong><p>A busca considera as últimas {chatMessages.length} mensagens carregadas desta conversa.</p><button type="button" onClick={()=>setMessageSearch('')}>Mostrar todas</button></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose">
             <input ref={chatFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={event=>{chooseChatPhoto(event.target.files?.[0]);event.target.value=''}} />
             {messagePhoto&&<div className="hb-v172-chat-preview"><img src={messagePhoto.preview} alt="Prévia da foto"/><span>{messagePhoto.file.name}</span><button type="button" onClick={()=>{URL.revokeObjectURL(messagePhoto.preview);setMessagePhoto(null)}}>Remover</button></div>}
             <button type="button" className="hb-v172-photo-button" title="Enviar foto" onClick={()=>chatFileInputRef.current?.click()} disabled={!!busy}>📷 Foto</button><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={(!messageDraft.trim()&&!messagePhoto)||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Selecione uma conversa para começar. As mensagens privadas são acessíveis somente aos participantes.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}</div></section>}
