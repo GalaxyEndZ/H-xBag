@@ -8639,7 +8639,7 @@ const attribute =
                       void persistRenderConditions(next)
 
                       setCombatActionResult(
-                        previous => `${previous} Dano recebido: ${incoming}. Dano negado pela reação: ${reactionPrevented}. Dano reduzido pela armadura e proteções: ${armorPrevented}. Redução total: ${totalPrevented}. Dano aplicado aos PV: ${remaining}. PV restantes: ${nextPV}.`
+                        `${combatActionResult} Dano recebido: ${incoming}. Dano negado pela reação: ${reactionPrevented}. Dano reduzido pela armadura e proteções: ${armorPrevented}. Redução total: ${totalPrevented}. Dano aplicado aos PV: ${remaining}. PV restantes: ${nextPV}.`
                       )
 
                       setBlockDamageReduction(null)
