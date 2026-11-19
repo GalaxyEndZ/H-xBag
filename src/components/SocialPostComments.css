@@ -23,3 +23,76 @@
 .hb-v181-comments-form button{border:1px solid var(--season-primary,#d9bd8b);border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 19%,var(--season-surface,#24202b));color:inherit;font:inherit;font-size:.76rem;font-weight:760;padding:9px 12px;cursor:pointer}
 .hb-v181-comments-form button:disabled,.hb-v181-comments-more:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:600px){.hb-v181-comments-panel{padding:11px}.hb-v181-comment-meta time{margin-left:0}.hb-v181-comments-form>div{align-items:stretch}}
+
+/* V182 · Publicações e respostas em um fluxo compacto, com fotos e curtidas. */
+.hb-v182-comments { min-width:0; }
+.hb-v182-comments .hb-v181-comments-toggle { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:38px; padding:8px 13px; border:1px solid transparent; border-radius:10px; font-size:.78rem; font-weight:750; background:transparent; color:inherit; cursor:pointer; }
+.hb-v182-comments .hb-v181-comments-toggle:hover,.hb-v182-comments .hb-v181-comments-toggle.is-open{ border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 30%,transparent); background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent); }
+.hb-v182-comments-panel { width:100%; margin-top:9px; padding:16px; border-radius:15px; background:color-mix(in srgb,var(--season-surface,#24202b) 85%,transparent); display:grid; gap:14px; }
+.hb-v182-comments-panel>header { border:0; padding:0; display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0; }
+.hb-v182-comments-panel>header strong { display:flex; align-items:center; gap:8px; font-size:.9rem; }
+.hb-v182-comment-count { opacity:.65; font-size:.72rem; font-weight:650; }
+.hb-v182-comments-panel>header small { opacity:.75; font-size:.72rem; }
+.hb-v182-comments-panel .hb-v181-comments-list { display:grid; gap:13px; }
+.hb-v182-comment { display:flex; gap:9px; align-items:flex-start; }
+.hb-v182-comment .hb-v181-comment-avatar { position:relative; flex:0 0 34px; width:34px; height:34px; overflow:hidden; border-radius:50%; }
+.hb-v182-comment .hb-v181-comment-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }
+.hb-v182-comment-main { min-width:0; flex:1; }
+.hb-v182-comment .hb-v181-comment-content { background:color-mix(in srgb,var(--season-surface-alt,#29242f) 87%,transparent); border:1px solid var(--season-line,#ffffff18); border-radius:13px; padding:11px 13px; }
+.hb-v182-comment .hb-v181-comment-meta { display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+.hb-v182-comment .hb-v181-comment-meta time{margin-left:auto;white-space:nowrap}
+.hb-v182-comment .hb-v181-comment-content p { font-size:.82rem; line-height:1.55; margin:6px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.hb-v182-comment .hb-v182-comment-actions { display:flex; align-items:center; flex-wrap:wrap; gap:4px; padding:4px 4px 0; }
+.hb-v182-comment .hb-v182-comment-actions button { border:0; border-radius:7px; background:transparent; color:var(--season-muted,#b9b4c2); padding:4px 8px; font:inherit; font-size:.71rem; font-weight:650; cursor:pointer; }
+.hb-v182-comment .hb-v182-comment-actions button:hover { background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent); color:var(--season-text,#fff); }
+.hb-v182-comment .hb-v182-comment-actions .is-liked { color:#f2a2b2; }
+.hb-v182-comment .hb-v182-comment-actions .hb-v181-comment-delete { color:var(--season-muted,#b9b4c2); }
+.hb-v182-comment .hb-v182-comment-actions button:disabled { opacity:.5; cursor:wait; }
+.hb-v182-comment-image { display:block; padding:0; margin-top:9px; max-width:min(260px,100%); width:fit-content; border:1px solid var(--season-line,#ffffff25); border-radius:11px; background:#111; overflow:hidden; cursor:zoom-in; }
+.hb-v182-comment-image img { display:block; width:100%; max-width:260px; max-height:225px; height:auto; object-fit:contain; }
+.hb-v182-image-loading { margin-top:8px; font-size:.72rem; opacity:.7; padding:8px; }
+.hb-v182-comments-form { gap:7px; border-top:1px solid var(--season-line,#ffffff18); padding-top:12px; }
+.hb-v182-comments-form>label { font-size:.76rem; font-weight:750; }
+.hb-v182-compose-box { border:1px solid var(--season-line,#ffffff2a); border-radius:13px; background:var(--season-surface-alt,#1d1a20); overflow:hidden; transition:border-color .15s; }
+.hb-v182-compose-box:focus-within { border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 68%,transparent); }
+.hb-v182-compose-box textarea { display:block; width:100%; min-height:48px; max-height:180px; padding:13px 14px 8px; border:0; outline:0; background:transparent; color:inherit; font:inherit; font-size:.82rem; line-height:1.55; resize:vertical; box-shadow:none; }
+.hb-v182-compose-box textarea:focus { outline:0; }
+.hb-v182-file-input { display:none; }
+.hb-v182-compose-toolbar { display:flex; align-items:center; justify-content:flex-end; gap:9px; padding:6px 9px 9px; }
+.hb-v182-comments-form .hb-v182-compose-toolbar>button { border-radius:9px; font-size:.75rem; padding:8px 11px; min-height:34px; font-weight:750; }
+.hb-v182-comments-form .hb-v182-compose-toolbar .hb-v182-attach-button { margin-right:auto; display:flex; gap:6px; align-items:center; color:var(--season-text,#fff); border:1px solid var(--season-line,#ffffff24); background:transparent; }
+.hb-v182-comments-form .hb-v182-compose-toolbar .hb-v182-send-button { color:var(--season-on-primary,#181418); border:1px solid var(--season-primary,#d9bd8b); background:var(--season-primary,#d9bd8b); }
+.hb-v182-comments-form .hb-v182-compose-toolbar .hb-v182-send-button:disabled { opacity:.42; }
+.hb-v182-photo-preview { display:flex; align-items:center; gap:10px; padding:7px 11px; margin:5px 9px; border:1px solid var(--season-line,#ffffff1f); border-radius:10px; background:color-mix(in srgb,var(--season-primary,#d9bd8b) 5%,transparent); }
+.hb-v182-photo-preview img { height:64px; width:75px; object-fit:cover; border-radius:7px; }
+.hb-v182-photo-preview small { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.hb-v182-comments-form .hb-v182-photo-preview button { order:5; border:0; padding:5px 10px; font-size:1rem; background:transparent; }
+.hb-v182-lightbox { position:fixed; inset:0; z-index:100010; display:grid; place-items:center; background:rgba(5,5,9,.94); padding:25px; cursor:zoom-out; }
+.hb-v182-lightbox img { max-width:min(94vw,1280px); max-height:88dvh; object-fit:contain; border-radius:9px; cursor:default; }
+.hb-v182-lightbox>button { position:absolute; top:14px; right:17px; border:1px solid #ffffff45; border-radius:50%; background:#222a; color:#fff; padding:3px; width:39px; height:39px; font-size:1.55rem; cursor:pointer; }
+@media(max-width:600px) { .hb-v182-comments-panel{padding:12px 10px}.hb-v182-comment .hb-v181-comment-meta time{margin-left:0}.hb-v182-comment .hb-v181-comment-avatar{width:31px;height:31px;flex-basis:31px}.hb-v182-comment-image img{max-height:210px}.hb-v182-comments-panel>header small{display:none} }
+/* Barra única de ações no feed e nos perfis; painel ocupa uma linha própria ao abrir. */
+.hb-social-post footer:has(.hb-v182-comments) { justify-content:flex-start; align-items:center; flex-wrap:wrap; gap:6px; }
+.hb-v164-post-actions:has(.hb-v182-comments) { display:flex; justify-content:flex-start; align-items:center; flex-wrap:wrap; gap:6px; }
+.hb-social-post footer:has(.hb-v182-comments) > .hb-v182-comments,
+.hb-v164-post-actions:has(.hb-v182-comments) > .hb-v182-comments { display:contents; }
+.hb-social-post footer:has(.hb-v182-comments) > .hb-v182-comments > .hb-v181-comments-toggle,
+.hb-v164-post-actions:has(.hb-v182-comments) > .hb-v182-comments > .hb-v181-comments-toggle { flex:0 0 auto; }
+.hb-social-post footer:has(.hb-v182-comments) > .hb-v182-comments > .hb-v182-comments-panel,
+.hb-v164-post-actions:has(.hb-v182-comments) > .hb-v182-comments > .hb-v182-comments-panel { flex:0 0 100%; order:10; text-align:left; color:var(--season-text,#fff); }
+.hb-v164-post-actions:has(.hb-v182-comments) > .hb-v182-photo-count { margin-left:auto; }
+.hb-social-post footer:has(.hb-v182-comments) button.hb-v182-send-button { color:var(--season-on-primary,#161418); background:var(--season-primary,#d9bd8b); border-color:var(--season-primary,#d9bd8b); }
+.hb-social-post footer:has(.hb-v182-comments) .hb-v182-comment-actions button { font-weight:650; min-height:0; padding:4px 8px; }
+
+/* Acabamento dos cartões do mural: identidade clara, ações no mesmo nível e respostas sem blocos enormes. */
+.hb-social-v180 .hb-social-post:has(.hb-v182-comments) { padding:clamp(15px,2.2vw,22px); border-radius:18px; }
+.hb-social-v180 .hb-social-post:has(.hb-v182-comments) .hb-social-post-top { align-items:center; padding:0 0 3px; }
+.hb-social-v180 .hb-social-post:has(.hb-v182-comments)>p { margin:13px 0 16px; line-height:1.62; }
+.hb-social-v180 .hb-social-post:has(.hb-v182-comments) footer { border-top:1px solid var(--hs-line,#ffffff20); padding-top:10px; margin-top:13px; }
+.hb-social-v180 .hb-social-post:has(.hb-v182-comments) footer>button:first-child,
+.hb-v164-post:has(.hb-v182-comments) .hb-v164-post-actions>button:first-child { border:1px solid transparent; padding:8px 13px; border-radius:10px; background:transparent; min-height:38px; font-size:.78rem; }
+.hb-social-v180 .hb-social-post:has(.hb-v182-comments) footer>button:first-child:hover,
+.hb-v164-post:has(.hb-v182-comments) .hb-v164-post-actions>button:first-child:hover { border-color:var(--season-line,#ffffff25); background:color-mix(in srgb,var(--season-primary,#d9bd8b) 10%,transparent); }
+.hb-v164-post:has(.hb-v182-comments) { padding:clamp(14px,2.1vw,21px); }
+.hb-v164-post:has(.hb-v182-comments) .hb-v164-post-actions { border-top:1px solid var(--season-line,#ffffff21); margin-top:12px; padding-top:10px; }
+.hb-v164-post:has(.hb-v182-comments) .hb-v164-post-actions .hb-v182-photo-count { font-size:.71rem; color:var(--season-muted,#b9b4c2); }
