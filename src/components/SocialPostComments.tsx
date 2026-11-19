@@ -258,7 +258,7 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
       {onOpenProfile ? <button type="button" className="hb-v183-comment-profile-trigger hb-v181-comment-avatar" onClick={() => openProfile(comment)} aria-label={`Abrir o perfil de ${comment.display_name || 'Aventureiro'}`}><span aria-hidden="true">{(comment.display_name || 'A').slice(0, 1).toUpperCase()}</span>{avatars[comment.author_id] && <img src={avatars[comment.author_id]} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }}/>}</button> : <span className="hb-v181-comment-avatar" aria-hidden="true">{(comment.display_name || 'A').slice(0, 1).toUpperCase()}{avatars[comment.author_id] && <img src={avatars[comment.author_id]} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }}/>}</span>}
       <div className="hb-v182-comment-main">
         <div className="hb-v181-comment-content">
-          <div className="hb-v181-comment-meta">{onOpenProfile ? <button type="button" className="hb-v183-comment-author" onClick={() => openProfile(comment)}><strong>{comment.display_name || 'Aventureiro'}</strong>{comment.username && <small>@{comment.username}</small>}</button> : <><strong>{comment.display_name || 'Aventureiro'}</strong>{comment.username && <small className="hb-v184-mention">@{comment.username}</small>}</>}<time dateTime={comment.created_at}>{new Date(comment.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</time></div>
+          <div className="hb-v181-comment-meta">{onOpenProfile ? <button type="button" className="hb-v183-comment-author" onClick={() => openProfile(comment)}><strong>{comment.display_name || 'Aventureiro'}</strong>{comment.username && <small>@{comment.username}</small>}</button> : <><strong>{comment.display_name || 'Aventureiro'}</strong>{comment.username && <small className="hb-v184-mention">@{comment.username}</small>}</>}<time dateTime={comment.created_at} title={new Date(comment.created_at).toLocaleString('pt-BR')}>{new Date(comment.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</time></div>
           {comment.parent_comment_id && !loadedIds.has(comment.parent_comment_id) && <small className="hb-v184-reply-context">↳ Resposta a um comentário anterior</small>}
           {comment.content && <p>{commentText(comment.content)}</p>}
           {comment.image_path && (imageUrls[comment.image_path]
@@ -274,13 +274,13 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
     </article>
   }
 
-  return <div className="hb-v181-comments hb-v182-comments hb-v184-comments">
+  return <div className="hb-v181-comments hb-v182-comments hb-v184-comments hb-v185-comments">
     <button type="button" className={`hb-v181-comments-toggle ${open ? 'is-open' : ''}`}
       aria-expanded={open} onClick={() => { const next = !open; setOpen(next); if (next && !comments.length) void load() }}>
       <span aria-hidden="true">▤</span> Comentar{typeof count === 'number' ? ` · ${count}` : ''}
     </button>
     {open && <section className="hb-v181-comments-panel hb-v182-comments-panel" aria-label="Comentários da publicação">
-      <header><strong>Comentários <span className="hb-v182-comment-count">{typeof count === 'number' ? count : ''}</span></strong><small>Participe da conversa</small></header>
+      <header className="hb-v185-comments-heading"><div className="hb-v185-comments-title"><span className="hb-v185-title-mark" aria-hidden="true">▤</span><strong>Comentários</strong><span className="hb-v182-comment-count" aria-label={`${typeof count === 'number' ? count : comments.length} comentários`}>{typeof count === 'number' ? count : comments.length}</span></div><small>Faça parte da conversa</small></header>
       {loading && !comments.length && <p className="hb-v181-comments-hint" role="status">Carregando comentários…</p>}
       {!loading && !comments.length && !error && <p className="hb-v181-comments-hint">Ainda não há comentários. Seja o primeiro!</p>}
       <div className="hb-v181-comments-list hb-v184-comments-list">
@@ -294,7 +294,7 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
       {hasMore && <button type="button" className="hb-v181-comments-more" disabled={loading || busy} onClick={() => void load(comments[comments.length - 1]?.created_at || null)}>{loading ? 'Carregando…' : 'Ver comentários anteriores'}</button>}
       {error && <p className="hb-v181-comments-error" role="alert">{error}</p>}
       <form onSubmit={event => void submit(event)} className="hb-v181-comments-form hb-v182-comments-form">
-        <label htmlFor={`hb-comment-${postId}`}>{replyTo ? 'Escreva sua resposta' : 'Escreva um comentário'}</label>
+        <label htmlFor={`hb-comment-${postId}`}><span aria-hidden="true">✎</span> {replyTo ? 'Sua resposta' : 'Deixe seu comentário'}</label>
         {replyTo && <div className="hb-v184-reply-banner" role="status"><span>↳ Respondendo a <strong>{replyTo.username ? `@${replyTo.username}` : replyTo.name}</strong></span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancelar resposta">✕ Cancelar</button></div>}
         <div className="hb-v182-compose-box">
           <textarea ref={textRef} id={`hb-comment-${postId}`} rows={1} maxLength={800} value={draft} onChange={event => setDraft(event.target.value)} placeholder={replyTo ? "Sua resposta…" : "Escreva algo ou compartilhe uma foto…"} onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); event.currentTarget.form?.requestSubmit() } }} />

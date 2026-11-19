@@ -168,3 +168,315 @@
   .hb-v184-comments .hb-v181-comment-meta time { margin-left:0; }
   .hb-v184-comments .hb-v184-comment .hb-v181-comment-content { padding:10px; }
 }
+
+
+/* V185 — Mural mais limpo, com hierarquia de rede social e superfícies suaves. */
+.hb-v185-comments {
+  --hb185-border: color-mix(in srgb, var(--season-line, #ffffff28) 60%, transparent);
+  --hb185-accent: var(--season-primary, #d9bd8b);
+  --hb185-ink: var(--season-text, #fafafa);
+  --hb185-muted: var(--season-muted, #b9b4c2);
+}
+/* Um único painel visual: sem aninhar cartões pesados. */
+.hb-v185-comments .hb-v182-comments-panel {
+  gap: 18px;
+  margin-top: 12px;
+  padding: clamp(14px, 2.1vw, 21px);
+  border: 1px solid var(--hb185-border);
+  border-radius: 18px;
+  background: linear-gradient(155deg,
+    color-mix(in srgb, var(--hb185-accent) 3%, var(--season-surface, #24202b)),
+    var(--season-surface, #24202b) 72%);
+  box-shadow: 0 5px 20px rgba(0,0,0,.045);
+}
+.hb-v185-comments .hb-v185-comments-heading {
+  padding: 0 1px 13px;
+  border-bottom: 1px solid var(--hb185-border);
+  align-items: center;
+}
+.hb-v185-comments .hb-v185-comments-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.hb-v185-comments .hb-v185-title-mark {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border: 1px solid color-mix(in srgb,var(--hb185-accent) 21%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb,var(--hb185-accent) 8%, transparent);
+  color: var(--hb185-accent);
+  font-size: .84rem;
+}
+.hb-v185-comments .hb-v185-comments-title strong {
+  font-size: .91rem;
+  letter-spacing: -.01em;
+}
+.hb-v185-comments .hb-v182-comment-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 7px;
+  background: color-mix(in srgb,var(--hb185-accent) 12%,transparent);
+  color: var(--hb185-accent);
+  font-size: .69rem;
+  font-weight: 800;
+  opacity: 1;
+}
+.hb-v185-comments .hb-v185-comments-heading>small {
+  color: var(--hb185-muted);
+  font-size: .73rem;
+  opacity: .85;
+}
+.hb-v185-comments .hb-v184-comments-list { gap: 15px; }
+.hb-v185-comments .hb-v184-thread { gap: 9px; }
+.hb-v185-comments .hb-v184-thread+.hb-v184-thread {
+  border-color: var(--hb185-border);
+  padding-top: 15px;
+}
+.hb-v185-comments .hb-v184-comment { gap: 11px; }
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-avatar {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  border: 1px solid color-mix(in srgb,var(--hb185-accent) 24%, var(--hb185-border));
+  box-shadow: 0 2px 8px rgba(0,0,0,.09);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.hb-v185-comments .hb-v184-comment .hb-v183-comment-profile-trigger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 2px color-mix(in srgb,var(--hb185-accent) 33%,transparent);
+}
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-content {
+  border: 1px solid color-mix(in srgb,var(--season-line,#ffffff22) 58%,transparent);
+  border-radius: 13px 13px 13px 5px;
+  padding: 12px 15px;
+  background: color-mix(in srgb,var(--season-surface-alt,#302a32) 45%,var(--season-surface,#24202b));
+  box-shadow: none;
+  transition: background .16s ease,border-color .16s ease;
+}
+.hb-v185-comments .hb-v184-comment:hover .hb-v181-comment-content {
+  background: color-mix(in srgb,var(--season-surface-alt,#302a32) 60%,var(--season-surface,#24202b));
+  border-color: color-mix(in srgb,var(--hb185-accent) 19%,var(--season-line,#ffffff20));
+}
+.hb-v185-comments .hb-v181-comment-meta { gap: 8px; align-items: center; }
+.hb-v185-comments .hb-v181-comment-meta .hb-v183-comment-author strong {
+  font-size: .8rem;
+  font-weight: 780;
+  color: var(--hb185-ink);
+}
+.hb-v185-comments .hb-v181-comment-meta .hb-v183-comment-author small {
+  font-size: .7rem;
+  font-weight: 680;
+  color: var(--hb185-accent);
+}
+.hb-v185-comments .hb-v181-comment-meta time {
+  margin-left: auto;
+  color: var(--hb185-muted);
+  font-size: .68rem;
+  font-weight: 500;
+}
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-content p {
+  margin: 8px 0 0;
+  font-size: .85rem;
+  line-height: 1.65;
+  color: var(--hb185-ink);
+}
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 1px 0;
+}
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions button {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  color: var(--hb185-muted);
+  font-size: .72rem;
+  font-weight: 730;
+  transition: background .15s,color .15s;
+}
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions button:hover,
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions button:focus-visible {
+  background: color-mix(in srgb,var(--hb185-accent) 10%,transparent);
+  color: var(--hb185-accent);
+}
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions .is-liked { color: #f5a6b9; }
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions .hb-v181-comment-delete { margin-left: auto; }
+.hb-v185-comments .hb-v184-thread-replies {
+  margin-left: 46px;
+  padding-left: 15px;
+  border-left: 1px solid color-mix(in srgb,var(--hb185-accent) 27%,transparent);
+  gap: 13px;
+}
+.hb-v185-comments .hb-v184-is-reply .hb-v181-comment-avatar {
+  width: 31px;
+  height: 31px;
+  flex-basis: 31px;
+}
+.hb-v185-comments .hb-v184-is-reply .hb-v181-comment-content {
+  border-radius: 12px 12px 12px 5px;
+  background: color-mix(in srgb,var(--season-surface-alt,#302a32) 31%,var(--season-surface,#24202b));
+}
+.hb-v185-comments .hb-v182-comment-image { border-radius: 10px; }
+/* Campo de resposta integrado: uma única superfície de escrita e ações. */
+.hb-v185-comments .hb-v182-comments-form {
+  gap: 9px;
+  border-top: 1px solid var(--hb185-border);
+  padding-top: 16px;
+}
+.hb-v185-comments .hb-v182-comments-form>label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .78rem;
+  color: var(--hb185-ink);
+  font-weight: 770;
+}
+.hb-v185-comments .hb-v182-comments-form>label>span { color: var(--hb185-accent); font-size: .97rem; }
+.hb-v185-comments .hb-v182-compose-box {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb,var(--season-line,#ffffff28) 85%,transparent);
+  border-radius: 13px;
+  background: color-mix(in srgb,var(--season-surface-alt,#221f26) 50%,var(--season-surface,#24202b));
+  transition: border-color .17s, box-shadow .17s;
+}
+.hb-v185-comments .hb-v182-compose-box:focus-within {
+  border-color: color-mix(in srgb,var(--hb185-accent) 65%,transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--hb185-accent) 10%,transparent);
+}
+.hb-v185-comments .hb-v182-compose-box textarea {
+  min-height: 54px;
+  padding: 14px 15px 9px;
+  background: transparent;
+  border: 0;
+  font-size: .83rem;
+  line-height: 1.55;
+}
+.hb-v185-comments .hb-v182-compose-box textarea::placeholder {
+  color: var(--hb185-muted);
+  opacity: .78;
+}
+.hb-v185-comments .hb-v182-compose-toolbar {
+  margin: 0 10px;
+  padding: 8px 0 9px;
+  border-top: 1px solid var(--hb185-border);
+  gap: 10px;
+}
+.hb-v185-comments .hb-v182-compose-toolbar small {
+  color: var(--hb185-muted);
+  font-size: .69rem;
+  font-variant-numeric: tabular-nums;
+}
+.hb-v185-comments .hb-v182-compose-toolbar .hb-v182-attach-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--hb185-muted);
+}
+.hb-v185-comments .hb-v182-compose-toolbar .hb-v182-attach-button:hover {
+  border-color: var(--hb185-border);
+  background: color-mix(in srgb,var(--hb185-accent) 8%,transparent);
+  color: var(--hb185-ink);
+}
+.hb-v185-comments .hb-v182-compose-toolbar .hb-v182-send-button {
+  min-height: 35px;
+  border: 1px solid var(--hb185-accent);
+  background: var(--hb185-accent);
+  color: var(--season-on-primary,#161418);
+  border-radius: 9px;
+  font-size: .75rem;
+  font-weight: 820;
+  padding: 8px 14px;
+  box-shadow: none;
+}
+.hb-v185-comments .hb-v182-compose-toolbar .hb-v182-send-button:not(:disabled):hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.hb-v185-comments .hb-v182-compose-toolbar .hb-v182-send-button:disabled { opacity: .42; }
+/* Botões de Curtir / Comentar no mesmo plano, sem bloco laranja dominante. */
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) footer,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-actions {
+  padding-top: 11px;
+  gap: 7px;
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) footer > button:first-child,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-actions > button:first-child,
+.hb-v185-comments .hb-v181-comments-toggle {
+  min-height: 37px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--hb185-ink);
+  transition: background .16s ease,border-color .16s ease;
+}
+.hb-v185-comments .hb-v181-comments-toggle.is-open,
+.hb-v185-comments .hb-v181-comments-toggle:hover {
+  background: color-mix(in srgb,var(--hb185-accent) 9%,transparent);
+  border-color: color-mix(in srgb,var(--hb185-accent) 20%,transparent);
+}
+@media (max-width: 620px) {
+  .hb-v185-comments .hb-v182-comments-panel { padding: 12px; gap: 14px; border-radius: 14px; }
+  .hb-v185-comments .hb-v185-comments-heading>small { display: none; }
+  .hb-v185-comments .hb-v184-comment { gap: 8px; }
+  .hb-v185-comments .hb-v184-comment .hb-v181-comment-avatar { width: 32px; height: 32px; flex-basis: 32px; }
+  .hb-v185-comments .hb-v184-thread-replies { margin-left: 26px; padding-left: 9px; }
+  .hb-v185-comments .hb-v184-comment .hb-v181-comment-content { padding: 10px 11px; }
+  .hb-v185-comments .hb-v181-comment-meta time { flex-basis: 100%; margin-left: 0; }
+  .hb-v185-comments .hb-v182-compose-toolbar { gap: 5px; margin: 0 8px; }
+  .hb-v185-comments .hb-v182-compose-toolbar .hb-v182-send-button { padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hb-v185-comments *, .hb-v185-comments *::before, .hb-v185-comments *::after { transition-duration: .01ms !important; }
+}
+
+/* V185 — o cartão da publicação também acompanha a nova linguagem dos comentários. */
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments),
+.hb-v164-post:has(.hb-v185-comments) {
+  border: 1px solid color-mix(in srgb,var(--season-line,#ffffff25) 68%,transparent);
+  border-radius: 19px;
+  background: linear-gradient(165deg,
+    color-mix(in srgb,var(--season-primary,#d9bd8b) 2.5%,var(--season-surface,#252027)),
+    var(--season-surface,#252027) 77%);
+  box-shadow: 0 8px 28px rgba(0,0,0,.075);
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) .hb-social-post-top,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-meta {
+  align-items: center;
+  gap: 11px;
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) .hb-social-post-top .hb-social-avatar,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-mini-avatar {
+  border: 1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 34%,transparent);
+  box-shadow: 0 2px 9px rgba(0,0,0,.09);
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments)>p,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-body {
+  margin-block: 16px;
+  line-height: 1.68;
+  font-size: .9rem;
+  letter-spacing: .003em;
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) footer,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-actions {
+  border-top: 1px solid color-mix(in srgb,var(--season-line,#ffffff28) 64%,transparent);
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) footer>button:first-child:hover,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-actions>button:first-child:hover {
+  background: color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,transparent);
+  border-color: color-mix(in srgb,var(--season-primary,#d9bd8b) 20%,transparent);
+}
+.hb-social-v180 .hb-social-post:has(.hb-v185-comments) footer>button.liked,
+.hb-v164-post:has(.hb-v185-comments) .hb-v164-post-actions>button.liked {
+  color: #ef9eb2;
+}
