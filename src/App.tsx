@@ -10668,7 +10668,7 @@ counterAttackDT
   return (
     <div data-hb-space={activePage === 'profile' ? 'social' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
-      <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />
+      {activePage !== 'profile' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
@@ -16939,8 +16939,11 @@ style={{cursor:'pointer'}}>
   </section>
 )}
 
-          <div className="hb-v172-floating-actions" aria-label="Acesso rápido às conversas e notificações">
-            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>🔔 <span>Notificações{unreadMessages+pendingCampaignInvites>0?` (${unreadMessages+pendingCampaignInvites})`:''}</span></button>
+          <div className="hb-v172-floating-actions hb-v178-notifications-bell" aria-label="Acesso rápido às notificações">
+            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" aria-label={`Notificações${unreadMessages+pendingCampaignInvites>0?`, ${unreadMessages+pendingCampaignInvites} pendentes`:''}`} title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>
+              <span aria-hidden="true">🔔</span>
+              {unreadMessages + pendingCampaignInvites > 0 && <span className="hb-v178-notification-badge">{unreadMessages + pendingCampaignInvites > 99 ? '99+' : unreadMessages + pendingCampaignInvites}</span>}
+            </button>
             {notificationsOpen&&<section id="hb-v172-notification-panel" className="hb-v172-notification-panel" aria-label="Suas notificações">
               <header><strong>Notificações</strong><button type="button" onClick={()=>setNotificationsOpen(false)} aria-label="Fechar notificações">✕</button></header>
               {notificationBusy&&<small>Atualizando…</small>}
@@ -16949,7 +16952,6 @@ style={{cursor:'pointer'}}>
               {!notificationBusy&&unreadMessages+pendingCampaignInvites===0&&<small>Nenhuma mensagem ou convite pendente.</small>}
               <button type="button" onClick={()=>void refreshNotifications()} disabled={notificationBusy}>↻ Atualizar</button>
             </section>}
-
           </div>
           <FloatingChat onOpenFullChat={()=>openSocialTab('messages')} />
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel hb-campaigns-page">

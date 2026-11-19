@@ -16666,3 +16666,80 @@ button:disabled { opacity: .58; }
     bottom: 140px;
   }
 }
+
+
+/* V178 — Recompensas ficam exclusivas do espaço RPG; notificações viram um sino no topo direito. */
+.app-shell .hb-v172-floating-actions.hb-v178-notifications-bell {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  bottom: auto;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+.app-shell .hb-v172-floating-actions.hb-v178-notifications-bell > button {
+  position: relative;
+  pointer-events: auto;
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--season-line,#ffffff35);
+  border-radius: 999px;
+  background: var(--season-surface,#22202b);
+  color: var(--season-text,#fafafa);
+  box-shadow: 0 8px 25px #0007;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 20px;
+}
+.app-shell .hb-v172-floating-actions.hb-v178-notifications-bell > button:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+.app-shell .hb-v178-notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -3px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--season-primary,#d9bd8b);
+  color: var(--season-on-primary,#151316);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+.app-shell .hb-v172-notification-panel {
+  top: calc(100% + 10px);
+  bottom: auto;
+  right: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+@media (max-width: 700px) {
+  .app-shell .hb-v172-floating-actions.hb-v178-notifications-bell {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+  }
+  .app-shell .hb-v172-floating-actions.hb-v178-notifications-bell > button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  .app-shell .hb-v172-notification-panel {
+    width: min(320px, calc(100vw - 20px));
+  }
+}
