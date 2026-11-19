@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../supabase'
 import './PublicAdventurerProfile.css'
 import './PublicProfileV151.css'
+import ProfilePostsV164 from './ProfilePostsV164'
 
 export type AdventurerRef = {
   id: string
@@ -41,7 +42,7 @@ type PublicProfile = {
   character_count?: number
   privacy?: Privacy
 }
-type Tab = 'presentation' | 'identity' | 'characters' | 'badges' | 'chronicles'
+type Tab = 'presentation' | 'posts' | 'identity' | 'characters' | 'badges' | 'chronicles'
 
 type Props = {
   person: AdventurerRef
@@ -168,7 +169,8 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
   const chronicles = [...(view?.journal || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
   const allow = (key: keyof Privacy) => privacy[key] !== false
   const tabs: { id: Tab; label: string; symbol: string; count?: number }[] = [
-    { id: 'presentation', label: 'Visão geral', symbol: '✦' },
+    { id: 'presentation', label: 'Sobre', symbol: '✦' },
+    { id: 'posts', label: 'Publicações', symbol: '▦' },
     ...(view?.identity_card_visible ? [{ id: 'identity' as Tab, label: 'Carta de Identidade', symbol: '♙' }] : []),
     ...(allow('show_characters') ? [{ id: 'characters' as Tab, label: 'Personagens', symbol: '⚔', count: heroes.length }] : []),
     ...(allow('show_badges') ? [{ id: 'badges' as Tab, label: 'Insígnias', symbol: '✧', count: badges.length }] : []),
@@ -179,27 +181,32 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
     <div className="hb-public-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
       <section ref={dialogRef} className="hb-public-dialog" role="dialog" aria-modal="true" aria-labelledby="hb-public-profile-name">
         <div className="hb-public-toolbar">
-          <div className="hb-public-toolbar-caption"><span aria-hidden="true">✦</span><span>HÄXBAG</span><span className="hb-public-toolbar-divider" aria-hidden="true"/><span>PERFIL DO AVENTUREIRO</span></div>
+          <div className="hb-public-toolbar-caption"><span aria-hidden="true">✦</span><span>HÄXBAG</span><span className="hb-public-toolbar-divider" aria-hidden="true"/><span>PERFIL SOCIAL</span></div>
           <button ref={closeRef} className="hb-public-close" type="button" onClick={onClose} aria-label="Fechar perfil">✕</button>
         </div>
         {loading && <div className="hb-public-progress" role="status"><span className="hb-public-progress-icon" aria-hidden="true">✧</span><strong>Abrindo livro do aventureiro</strong><p>Buscando apenas as informações públicas do perfil…</p></div>}
         {!loading && !view && <div className="hb-public-progress" role="alert"><span className="hb-public-progress-icon" aria-hidden="true">◇</span><strong>Perfil indisponível</strong><p>{error || 'Não foi possível encontrar este aventureiro.'}</p>{relationship.blocked_by_me&&<button type="button" disabled={actionBusy} onClick={()=>void toggleBlock()}>Desbloquear esta pessoa</button>}<button type="button" onClick={onClose}>Voltar à comunidade</button></div>}
         {view && <div className="hb-public-content" style={{ '--hb-public-accent': safeAccent(view.accent) } as CSSProperties}>
           <div className={`hb-public-cover ${view.cover_image ? 'has-personal-cover' : 'has-theme-cover'}`} style={view.cover_image ? { backgroundImage: `linear-gradient(180deg,rgba(8,12,17,.12) 0%,rgba(8,12,17,.04) 36%,rgba(8,12,17,.66) 100%),url(${view.cover_image})`, backgroundPosition: `center, center ${view.cover_position ?? 50}%` } : undefined}>
-            <div className="hb-public-cover-top"><span>PERFIL PÚBLICO</span><span>HÄXBAG · AVENTUREIROS</span></div>
+            <div className="hb-public-cover-top"><span>PERFIL DA COMUNIDADE</span><span>HÄXBAG · AVENTUREIROS</span></div>
           </div>
           <header className="hb-public-identity">
             <div className={`hb-public-avatar frame-${view.frame || 'classic'}`}>
               {view.avatar_image ? <img src={view.avatar_image} alt={`Avatar de ${view.display_name}`} style={{ objectPosition: `center ${view.avatar_position ?? 50}%` }} /> : <span>{(view.display_name || person.display_name || 'A').slice(0,1).toUpperCase()}</span>}
             </div>
             <div className="hb-public-identity-copy">
-              <span className="hb-public-eyebrow">✧ UM NOVO CAMINHO SE CRUZA COM O SEU</span>
+              <span className="hb-public-eyebrow">✦ CONHEÇA QUEM ESTÁ POR AQUI</span>
               <h2 id="hb-public-profile-name">{view.display_name || person.display_name}</h2>
               <span className="hb-public-handle">@{view.username || person.username || 'aventureiro'}</span>
               {view.status && allow('show_status') && <span className="hb-public-status"><i aria-hidden="true"/>{view.status}</span>}
             </div>
             <div className="hb-public-relationship">{isSelf ? '✦ Prévia do seu perfil público' : relationship.friends ? '✧ Vocês são amigos' : relationship.following ? '↗ Você segue este aventureiro' : relationship.follows_me ? '↙ Esta pessoa segue você' : '◇ Aventureiro da comunidade'}</div>
           </header>
+          <div className="hb-v164-profile-social-actions">
+            {!isSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" className="hb-v164-follow-action" onClick={()=>void toggleFollow()} disabled={actionBusy}>{relationship.following?'✓ Seguindo':relationship.follows_me?'+ Seguir de volta':'+ Seguir'}</button>}
+            {!isSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(person)}>✉ Enviar mensagem</button>}
+            <button type="button" onClick={()=>setTab('posts')}>▦ Ver publicações</button>
+          </div>
           <div className="hb-public-stats">
             {typeof view.character_count === 'number' && view.character_count >= 0 && allow('show_characters') && <div><span aria-hidden="true">⚔</span><strong>{view.character_count}</strong><small>Personagens</small></div>}
             {typeof view.campaign_count === 'number' && view.campaign_count >= 0 && allow('show_campaigns') && <div><span aria-hidden="true">⚑</span><strong>{view.campaign_count}</strong><small>Campanhas</small></div>}
@@ -210,9 +217,10 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
             {tabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} className={tab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)}><span aria-hidden="true">{item.symbol}</span>{item.label}{item.count !== undefined && <small>{item.count}</small>}</button>)}
           </nav>
           <main className="hb-public-main">
+            <div hidden={tab!=='posts'}><ProfilePostsV164 authorId={person.id} active={tab==='posts'} isSelf={isSelf}/></div>
             {tab === 'presentation' && <div className="hb-public-overview">
-              <section className="hb-public-panel hb-public-about"><span className="hb-public-overline">A HISTÓRIA POR TRÁS DO NOME</span><h3>Sobre o aventureiro</h3>{view.bio && allow('show_bio') ? <p className="hb-public-biography">{view.bio}</p> : <p className="hb-public-muted">{!allow('show_bio') ? 'Esta apresentação é privada.' : 'O aventureiro ainda não escreveu sua apresentação.'}</p>}</section>
-              <section className="hb-public-panel hb-public-glimpse"><span className="hb-public-overline">DESTAQUES DA JORNADA</span><h3>Fragmentos do legado</h3>
+              <section className="hb-public-panel hb-public-about"><span className="hb-public-overline">CONHEÇA ESTA PESSOA</span><h3>Sobre</h3>{view.bio && allow('show_bio') ? <p className="hb-public-biography">{view.bio}</p> : <p className="hb-public-muted">{!allow('show_bio') ? 'Esta apresentação é privada.' : 'O aventureiro ainda não escreveu sua apresentação.'}</p>}</section>
+              <section className="hb-public-panel hb-public-glimpse"><span className="hb-public-overline">UNIVERSO RPG</span><h3>Personagens e conquistas</h3>
                 {view.identity_card_visible && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('identity')}><span>♙</span><strong>Carta de Identidade personalizada</strong><span>Ver ↗</span></button>}
                 {allow('show_characters') && heroes.length > 0 && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('characters')}><span>⚔</span><strong>{heroes.length} personagem{heroes.length === 1 ? '' : 's'} em destaque</strong><span>Ver ↗</span></button>}
                 {allow('show_badges') && badges.length > 0 && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('badges')}><span>✧</span><strong>{badges.length} insígnia{badges.length === 1 ? '' : 's'}</strong><span>Ver ↗</span></button>}
