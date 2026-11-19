@@ -16651,3 +16651,18 @@ button:disabled { opacity: .58; }
     width: 44px; height: 44px; padding: 0; justify-content: center;
   }
 }
+
+/* V176 — Pilha de atalhos: Notificações / Recompensas / Chat.
+   O correio de recompensas (ChestMessages) também usa position:fixed.
+   Coordenar os três elimina a sobreposição, inclusive na aba Social. */
+.app-shell .hb-v172-floating-actions {
+  right: 18px;
+  bottom: 148px;
+  z-index: 1070;
+}
+@media (max-width: 700px) {
+  .app-shell .hb-v172-floating-actions {
+    right: 10px;
+    bottom: 140px;
+  }
+}

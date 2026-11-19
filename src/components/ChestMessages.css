@@ -41,3 +41,17 @@
 .hbn-root button:focus-visible{outline:2px solid var(--hbn-accent);outline-offset:3px}
 .hbn-root button:disabled{opacity:.6;cursor:wait}
 @media(max-width:680px){.hbn-content{grid-template-columns:1fr}.hbn-list{max-height:185px}.hbn-trigger{bottom:14px;right:14px}.hbn-trigger-label{display:none}.hbn-dialog{max-height:93vh}}
+
+/* V176 — Correio entre o Chat e as Notificações, sem disputar a mesma posição. */
+.hbn-root .hbn-trigger {
+  right: 18px;
+  bottom: 82px;
+  z-index: 1065;
+  min-height: 44px;
+}
+@media (max-width: 700px) {
+  .hbn-root .hbn-trigger {
+    right: 10px;
+    bottom: 74px;
+  }
+}
