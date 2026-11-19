@@ -39,7 +39,6 @@ type Conversation = {
   can_message: boolean
 }
 type ChatMessage = { message_id: string; sender_id: string; body: string; created_at: string; read_at: string|null }
-type Invitation = { id: string; campaign_name: string; sender_name: string; created_at: string }
 type Props = {
   campaignId: string | null
   campaignName: string
@@ -58,7 +57,7 @@ type Props = {
     coverPosition?: number
   }
 }
-export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'|'referral'
+export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'
 type Tab = SocialTab
 type Summary = { followers: number; following: number; friends: number; blocked: number; unread: number }
 const EMPTY_SUMMARY: Summary = { followers: 0, following: 0, friends: 0, blocked: 0, unread: 0 }
@@ -76,7 +75,6 @@ const pageInfo:Record<SocialTab,{kicker:string;title:string;description:string;i
   discover:{kicker:'EXPLORAR',title:'Encontre aventureiros',description:'Busque jogadores por nome ou identificador para ampliar seu círculo.',icon:'⌕'},
   messages:{kicker:'CONVERSAS',title:'Mensagens privadas',description:'Um espaço reservado para conversar com seus amigos mútuos.',icon:'✉'},
   blocked:{kicker:'PRIVACIDADE',title:'Contas bloqueadas',description:'Gerencie os perfis com os quais você não deseja interagir.',icon:'⊘'},
-  invites:{kicker:'CAMPANHAS',title:'Seus convites',description:'Convites para participar de aventuras, separados das suas conexões sociais.',icon:'⚑'},
   referral:{kicker:'CONVITE SOCIAL',title:'Convide pessoas para o HäxBag',description:'Seu link pessoal de convite e o progresso da insígnia Embaixador.',icon:'✧'},
 }
 
@@ -123,7 +121,6 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [selectedChat,setSelectedChat] = useState<Conversation|null>(null)
   const [chatMessages,setChatMessages] = useState<ChatMessage[]>([])
   const [messageDraft,setMessageDraft] = useState('')
-  const [invites,setInvites] = useState<Invitation[]>([])
   const [profile,setProfile] = useState<AdventurerRef|null>(null)
   const [busy,setBusy] = useState('')
   const [loading,setLoading] = useState(true)
@@ -172,11 +169,6 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     }
     finally {if (requestId === feedRequestRef.current) {setFeedBusy(false);setFeedLoaded(true)}}
   },[rpc])
-  const loadInvites = useCallback(async () => {
-    const {data,error:failure}=await supabase.rpc('hb_list_direct_invites')
-    if(failure) throw new Error(failure.message)
-    setInvites((data||[]) as Invitation[])
-  },[])
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
@@ -184,14 +176,13 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       const listKind = tab === 'friends' || tab === 'following' || tab === 'followers' || tab === 'blocked' ? tab : null
       await Promise.all([
         loadCounts(),
-        loadInvites(),
         ...(listKind ? [loadPeople(listKind)] : []),
         ...(tab === 'messages' ? [loadConversations()] : []),
       ])
       setError('')
     } catch (failure) {setError(`Não foi possível carregar a comunidade. Execute o SQL V156. ${failure instanceof Error?failure.message:String(failure)}`)}
     finally {setLoading(false)}
-  },[tab,loadCounts,loadPeople,loadConversations,loadInvites])
+  },[tab,loadCounts,loadPeople,loadConversations])
   useEffect(()=>{
     if (!active) return
     let cancelled = false
@@ -461,7 +452,6 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     {id:'discover',label:'⌕ Descobrir'},
     {id:'messages',label:'✉ Mensagens',count:summary.unread},
     {id:'blocked',label:'⊘ Bloqueados',count:summary.blocked},
-    {id:'invites',label:'⚑ Convites',count:invites.length},
     {id:'referral',label:'✧ Convite social'},
   ]
   const peopleCard=(person:Person,kind:Tab)=>{
@@ -556,7 +546,6 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
           <div className={`hb-v161-chat-message ${message.sender_id===userId?'own':''}`}>{avatarFor(message.sender_id,message.sender_id===userId?(profileIdentity?.name||'Você'):nameOf(selectedChat))}<div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`}><p>{message.body}</p><small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose"><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={!messageDraft.trim()||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Selecione uma conversa para começar. As mensagens privadas são acessíveis somente aos participantes.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}</div></section>}
 
     {tab==='referral'&&<SocialReferralPanel active={active&&tab==='referral'}/>}
-    {tab==='invites'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVITES</span><h3>Convites de campanhas</h3><p>Convites de campanha permanecem separados dos seguidores e das amizades.</p></div></div>{invites.map(invite=><div className="hb-social-invite" key={invite.id}><span className="hb-v160-invite-icon" aria-hidden="true">⚑</span><div><strong>{invite.campaign_name}</strong><small>Convite de {invite.sender_name} · <time dateTime={invite.created_at}>{new Date(invite.created_at).toLocaleDateString('pt-BR')}</time></small></div><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:true},'Convite aceito!')}>Aceitar</button><button type="button" disabled={!!busy} onClick={()=>void action(invite.id,'hb_answer_direct_invite',{p_invite:invite.id,p_accept:false},'Convite recusado.')}>Recusar</button></div>)}{!invites.length&&<div className="hb-social-empty"><strong>Nenhum convite pendente.</strong><p>Novas campanhas aparecerão aqui quando você for convidado.</p></div>}{canInvite&&campaignId&&<p className="hb-social-hint">Convites para {campaignName} podem ser enviados pelo perfil público de um jogador, conforme as permissões de campanha existentes.</p>}</section>}
 
       </div>
     </div>

@@ -16602,3 +16602,12 @@ button:disabled { opacity: .58; }
   .hb-profile-page-v17 .hb-profile-character-filters .hb-profile-character-filter-footer{justify-content:stretch}
   .hb-profile-page-v17 .hb-profile-character-filters .hb-profile-clear-search{flex:1 1 125px}
 }
+
+/* V169 — convites recebidos no contexto das campanhas, fora do Social. */
+.hb-campaign-direct-invites { margin-bottom: 18px; }
+.hb-campaign-invite-list { display: grid; gap: 10px; padding: 0 18px 18px; }
+.hb-campaign-invite-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border: 1px solid var(--border, #604c3a); border-radius: 12px; }
+.hb-campaign-invite-item > div:first-child { display: grid; gap: 5px; }
+.hb-campaign-invite-item small { opacity: .7; }
+.hb-campaign-invite-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media(max-width: 640px) { .hb-campaign-invite-item { align-items: stretch; flex-direction: column; } }

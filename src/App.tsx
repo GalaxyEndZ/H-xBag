@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import Auth from './Auth'
+import CampaignDirectInvites from './components/CampaignDirectInvites'
 import './App.css'
 import './themes/seasonThemes.css'
 import './themes/seasonThemes-enhanced.css'
@@ -1951,7 +1952,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
   const lastRpgPage = useRef<Exclude<typeof activePage,'profile'>>('overview')
-  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'|'referral'>('feed')
+  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'>('feed')
   useEffect(() => {
     if (activePage !== 'profile') lastRpgPage.current = activePage
   }, [activePage])
@@ -10508,7 +10509,7 @@ counterAttackDT
   for (const [tab,label,symbol] of ([
     ['feed','Feed','✦'],['messages','Mensagens','✉'],['friends','Amigos','♧'],
     ['followers','Seguidores','↙'],['following','Seguindo','↗'],
-    ['discover','Descobrir pessoas','⌕'],['invites','Convites','⚑'],['referral','Convite social · Embaixador','✧'],
+    ['discover','Descobrir pessoas','⌕'],['referral','Convite social · Embaixador','✧'],
     ['blocked','Contas bloqueadas','⊘'],
   ] as const)) {
     quickCommands.push({
@@ -10674,7 +10675,7 @@ counterAttackDT
               {([
                 ['feed','✦','Feed'],['messages','✉','Mensagens'],['friends','♧','Amigos'],
                 ['following','↗','Seguindo'],['followers','↙','Seguidores'],
-                ['discover','⌕','Descobrir'],['invites','⚑','Convites'],['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],
+                ['discover','⌕','Descobrir'],['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],
               ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">
@@ -16875,6 +16876,7 @@ style={{cursor:'pointer'}}>
               <div><span className="hb-kicker">⚑ ADMINISTRAÇÃO</span><h2>Campanhas<span className="hb-title-dot">.</span></h2><p>Organize mundos, temporadas, participantes e o acesso aos personagens.</p><div className="hb-hero-tags"><span>{campaigns.length} {campaigns.length === 1 ? 'campanha' : 'campanhas'}</span><span>{seasons.length} temporadas na atual</span><span>{campaignMembers.length} membros</span></div></div>
               <button type="button" className="primary-button" onClick={() => { setShowCampaignForm(true); setEditingCampaignId(null); setCampaignName(''); setCampaignDescription(''); setCampaignSystemChoice(''); setSystemName('') }}>＋ Criar campanha</button>
             </header>
+            <CampaignDirectInvites />
             <div className="hb-campaign-chooser hb-panel"><div className="hb-panel-heading"><div><span className="hb-kicker">MUNDOS DISPONÍVEIS</span><h3>Suas campanhas</h3><p>Escolha a campanha que deseja administrar.</p></div><span className="hb-heading-icon">⚑</span></div>
               {campaigns.length ? <div className="hb-campaign-chooser-grid">{campaigns.map(campaign => <button type="button" key={campaign.id} className={`hb-campaign-option ${selectedCampaignId === campaign.id ? 'is-selected' : ''}`} onClick={async () => {
                   setSelectedCampaignId(campaign.id)
