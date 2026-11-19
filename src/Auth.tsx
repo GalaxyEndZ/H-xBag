@@ -12,6 +12,10 @@ export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
+  const inviteParams = new URLSearchParams(window.location.search)
+  const personalInvite = inviteParams.get('ref')
+  const campaignInvite = inviteParams.get('invite')
+  const hasReferral = Boolean(personalInvite || campaignInvite)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -37,7 +41,7 @@ export default function Auth() {
           email,
           password,
           options: {
-            data: { display_name: cleanName, username: cleanUsername },
+            data: { display_name: cleanName, username: cleanUsername, hax_referral_token: personalInvite || undefined, hax_campaign_invite_token: campaignInvite || undefined },
           },
         })
 
@@ -114,6 +118,7 @@ export default function Auth() {
             <h2>{isSignUp ? 'Crie sua conta' : 'Bem-vindo de volta'}</h2>
             <p>{isSignUp ? 'Um novo capítulo da sua aventura começa aqui.' : 'Entre na sua conta para continuar de onde sua aventura parou.'}</p>
           </div>
+          {hasReferral && <p className="auth-referral-note">✧ {campaignInvite ? 'Você recebeu um convite para uma campanha. Crie sua conta e depois entre na aventura pelo convite!' : 'Você recebeu um convite para conhecer o HäxBag. Crie sua conta para participar!'}</p>}
           <form onSubmit={handleSubmit} className="auth-form">
             {isSignUp && <label>Nome de exibição<input type="text" value={name} onChange={event => setName(event.target.value)} placeholder="Como quer ser chamado?" minLength={2} maxLength={60} autoComplete="nickname" required /></label>}
             {isSignUp && <label>Nome de usuário<input type="text" value={username} onChange={event => setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} placeholder="ex.: aventureiro_01" minLength={3} maxLength={24} autoComplete="username" required /><small>Único na plataforma · 3–24 caracteres · letras, números e _</small></label>}

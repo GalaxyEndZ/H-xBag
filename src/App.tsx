@@ -1951,7 +1951,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
 >('overview')
   const lastRpgPage = useRef<Exclude<typeof activePage,'profile'>>('overview')
-  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'>('feed')
+  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'invites'|'referral'>('feed')
   useEffect(() => {
     if (activePage !== 'profile') lastRpgPage.current = activePage
   }, [activePage])
@@ -5196,7 +5196,7 @@ async function handleCurrencyConversion() {
 
       const link = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`
       setCampaignInviteLink(link)
-      setNotice('Convite criado. Copie o link e compartilhe com os jogadores.')
+      setNotice('Convite criado! Se uma pessoa nova se cadastrar por este link e confirmar a conta, você também evoluirá a insígnia Embaixador.')
     } catch (inviteError) {
       const message = inviteError instanceof Error
         ? inviteError.message
@@ -10508,7 +10508,7 @@ counterAttackDT
   for (const [tab,label,symbol] of ([
     ['feed','Feed','✦'],['messages','Mensagens','✉'],['friends','Amigos','♧'],
     ['followers','Seguidores','↙'],['following','Seguindo','↗'],
-    ['discover','Descobrir pessoas','⌕'],['invites','Convites','⚑'],
+    ['discover','Descobrir pessoas','⌕'],['invites','Convites','⚑'],['referral','Convite social · Embaixador','✧'],
     ['blocked','Contas bloqueadas','⊘'],
   ] as const)) {
     quickCommands.push({
@@ -10674,7 +10674,7 @@ counterAttackDT
               {([
                 ['feed','✦','Feed'],['messages','✉','Mensagens'],['friends','♧','Amigos'],
                 ['following','↗','Seguindo'],['followers','↙','Seguidores'],
-                ['discover','⌕','Descobrir'],['invites','⚑','Convites'],['blocked','⊘','Bloqueados'],
+                ['discover','⌕','Descobrir'],['invites','⚑','Convites'],['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],
               ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">

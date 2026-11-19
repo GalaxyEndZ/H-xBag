@@ -21,6 +21,7 @@ const defaultProfile = (id:string):Showcase => ({user_id:id,avatar_image:'',cove
 const officialBadgeCatalog = [
   {id:'fundador',title:'Fundador',description:'Participe da fundação do HäxBag',symbol:'✦',origin:'Concedida exclusivamente pelo administrador'},
   {id:'primordial',title:'Primordial',description:'Participe da beta do HäxBag',symbol:'◈',origin:'Concedida automaticamente durante a beta'},
+  {id:'embaixador',title:'Embaixador',description:'Convide pessoas para o HäxBag',symbol:'✧',origin:'Recebida ao indicar a primeira pessoa'},
 ] as const
 const statusOptions=[['available','Disponível para jogar'],['preparing','Preparando campanha'],['looking','Procurando grupo'],['busy','Em aventura'],['offline','Indisponível'],['custom','Personalizado']]
 const clampImage=(file:File,kind:'avatar'|'cover'):Promise<string>=>new Promise((resolve,reject)=>{
@@ -54,6 +55,10 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   const [savedProfile,setSavedProfile]=useState<Showcase>(()=>defaultProfile(userId))
   const [activeTab,setActiveTab]=useState<'overview'|'appearance'|'heroes'|'badges'|'chronicles'|'community'|'privacy'>('overview')
   const [awards,setAwards]=useState<Award[]>([])
+  const [referralToken,setReferralToken]=useState('')
+  const [referralCount,setReferralCount]=useState(0)
+  const [referralBusy,setReferralBusy]=useState(false)
+  const [inviteDialogOpen,setInviteDialogOpen]=useState(false)
   const [completedMissions,setCompletedMissions]=useState<Chronicle[]>([])
   const [completedSeasons,setCompletedSeasons]=useState<Chronicle[]>([])
   const [loading,setLoading]=useState(true)
@@ -137,6 +142,39 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     },350)
     return()=>{cancelled=true;window.clearTimeout(handle)}
   },[search,userId])
+  useEffect(()=>{
+    let cancelled=false
+    void supabase.rpc('hax_referral_my_stats').then(({data,error})=>{
+      if(cancelled||error)return
+      const info=data as {token?:string;count?:number}|null
+      setReferralToken(info?.token||'')
+      setReferralCount(Number(info?.count||0))
+    })
+    return()=>{cancelled=true}
+  },[userId])
+  const personalReferralUrl=referralToken?`${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(referralToken)}`:''
+  async function ensureReferralLink(){
+    if(referralToken)return personalReferralUrl
+    setReferralBusy(true)
+    const {data,error:failure}=await supabase.rpc('hax_referral_my_link')
+    setReferralBusy(false)
+    if(failure){setError(failure.message);return ''}
+    const token=String(data||'')
+    if(!token){setError('Não foi possível criar o link de convite.');return ''}
+    setReferralToken(token)
+    return `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(token)}`
+  }
+  async function copyReferralLink(){
+    const url=await ensureReferralLink()
+    if(!url)return
+    try{await navigator.clipboard.writeText(url);setNotice('Link pessoal copiado!')}catch{setNotice('Copie o endereço: '+url)}
+  }
+  async function shareReferralLink(){
+    const url=await ensureReferralLink()
+    if(!url)return
+    const message=`Venha conhecer o HäxBag e criar suas aventuras comigo! ${url}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`,'_blank','noopener,noreferrer')
+  }
   // O banco é a única fonte de verdade para insígnias.
   const allBadges=awards
   const hasChanges=JSON.stringify(profile)!==JSON.stringify(savedProfile)
@@ -307,7 +345,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
           <div><span>Disposição</span><strong>{profile.layout==='gallery'?'Galeria':profile.layout==='compact'?'Compacta':'Clássica'}</strong></div>
           <div><span>Informações públicas</span><strong>{publiclyVisible} de 7 áreas</strong></div>
         </div>
-        <div className="hpl-overview-actions"><button type="button" className="hpl-primary" onClick={()=>setActiveTab('appearance')}>Ajustar minha identidade <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setActiveTab('privacy')}>Definir o que mostrar</button></div>
+        <div className="hpl-overview-actions"><button type="button" className="hpl-primary" onClick={()=>setInviteDialogOpen(true)}>✧ Convidar amigos · Embaixador</button><button type="button" className="hpl-primary" onClick={()=>setActiveTab('appearance')}>Ajustar minha identidade <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setActiveTab('privacy')}>Definir o que mostrar</button></div>
       </article>
       <article className="hpl-panel hpl-v136-theme-overview">
         <div className="hpl-panel-heading"><span className="hpl-overline">PALETA PESSOAL · SÓ NO PERFIL</span><h3>Seu mundo, suas cores</h3><p>Esta paleta acompanha todas as seções do seu Perfil, mas não altera os temas das campanhas.</p></div>
@@ -354,16 +392,17 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
 
     {activeTab==='badges'&&<div className="hpl-badge-section">
       <section className="hpl-panel">
-        <div className="hpl-panel-heading hpl-heading-row"><div><span className="hpl-overline">HONRAS OFICIAIS DO HÄXBAG</span><h3>Insígnias e reconhecimento</h3><p>Somente insígnias registradas pelo site são exibidas no seu perfil. Nesta fase existem duas.</p></div><span className="hpl-count">{allBadges.length} de 2 recebidas</span></div>
+        <div className="hpl-panel-heading hpl-heading-row"><div><span className="hpl-overline">HONRAS OFICIAIS DO HÄXBAG</span><h3>Insígnias e reconhecimento</h3><p>Somente insígnias registradas pelo site são exibidas no seu perfil. O catálogo inclui reconhecimentos permanentes e progressivos.</p></div><span className="hpl-count">{allBadges.length} recebidas</span></div>
         <div className="hpl-v137-badge-banner"><span>✦</span><div><strong>Reconhecimento verdadeiro</strong><p>Insígnias não são escolhidas nem criadas pelos jogadores ou mestres. A Primordial é automática durante a beta; a Fundador é exclusiva da administração.</p></div><span className={`hpl-v137-beta-status ${betaActive?'is-open':''}`}>{betaActive?'◉ Beta ativa':'◈ Beta encerrada'}</span></div>
         <div className="hpl-badges hpl-v137-badge-grid">{officialBadgeCatalog.map(badge=>{
           const owned=allBadges.find(item=>item.id===badge.id)
           return <article key={badge.id} className={`hpl-badge hpl-v137-official-badge badge-${badge.id} ${owned?'selected is-earned':'is-locked'}`}>
             <span className="hpl-badge-art" aria-hidden="true">{badge.symbol}</span>
-            <div><strong>{badge.title}</strong><small>{badge.description}</small><span>{owned?`✓ Recebida${owned.created_at?' em '+new Date(owned.created_at).toLocaleDateString('pt-BR'):''}`:badge.origin}</span></div>
+            <div><strong>{badge.title}{badge.id==='embaixador'&&owned?` · Nível ${referralCount}`:''}</strong><small>{owned?.description||badge.description}</small><span>{owned?`✓ Recebida${owned.created_at?' em '+new Date(owned.created_at).toLocaleDateString('pt-BR'):''}`:badge.origin}</span></div>
             <span className="hpl-v137-badge-seal" aria-label={owned?'Insígnia concedida':'Ainda não recebida'}>{owned?'✓':'◇'}</span>
           </article>
         })}</div>
+        <div className="hpl-referral-card hpl-referral-v167"><div className="hpl-referral-symbol" aria-hidden="true">✧</div><div><span className="hpl-overline">SEU PROGRAMA DE INDICAÇÕES</span><h3>Embaixador {referralCount>0?`· Nível ${referralCount}`:''}</h3><p>{referralCount>0?`Chamou ${referralCount} ${referralCount===1?'pessoa':'pessoas'} para o HäxBag`:'Convide alguém novo para conquistar sua insígnia Embaixador.'}</p><small>Convites pessoais e links de campanha contam para o mesmo nível.</small></div><div className="hpl-referral-actions"><button type="button" className="hpl-primary" onClick={()=>setInviteDialogOpen(true)}>✧ Chamar amigos</button></div></div>
         <p className="hpl-v137-badge-help">As insígnias recebidas aparecem automaticamente na vitrine e no perfil público, caso a opção “Insígnias” esteja visível nas suas configurações de privacidade.</p>
       </section>
       {isSiteAdmin&&<section className="hpl-panel hpl-v137-admin-panel">
@@ -413,6 +452,25 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
       <section className="hpl-panel"><div className="hpl-panel-heading"><span className="hpl-overline">CONTROLE DE VISIBILIDADE</span><h3>Quem pode ver o quê?</h3><p>Suas informações privadas e seus dados de conta não são exibidos na vitrine pública.</p></div><div className="hpl-privacy">{([['show_bio','Biografia','A sua apresentação pessoal'],['show_characters','Personagens','Protagonistas escolhidos'],['show_campaigns','Campanhas','Contagem de campanhas'],['show_badges','Insígnias','Conquistas em destaque'],['show_journal','Crônicas','Registros da sua jornada'],['show_status','Status','A sua disponibilidade'],['show_identity_card','Carta de Identidade','Exibir sua carta personalizada no perfil público']] as [PrivacyKey,string,string][]).map(([key,label,subtitle])=><label key={key} className="hpl-privacy-row"><span className="hpl-privacy-copy"><strong>{label}</strong><small>{subtitle}</small></span><input type="checkbox" checked={profile.privacy[key]} onChange={e=>setProfile(p=>({...p,privacy:{...p.privacy,[key]:e.target.checked}}))}/><span className="hpl-switch" aria-hidden="true"/></label>)}</div><div className="hpl-privacy-footer"><span aria-hidden="true">⌘</span><p>As permissões são aplicadas no Supabase; ocultar uma seção não é apenas um efeito visual.</p></div><div className="hpl-v132-privacy-preview"><div><strong>Conferir minha vitrine pública</strong><small>Veja como as pessoas enxergam seu perfil. Salve as alterações de privacidade antes de abrir a prévia.</small></div><button type="button" onClick={()=>setVisitorPerson({id:userId,display_name:displayName,username})}>◈ Ver como visitante</button></div></section></div>}
     </div>
     {hasChanges&&<div className="hpl-bottom-save"><span><strong>Alterações não salvas</strong><small>Salve para aplicar a personalização na sua conta.</small></span><div><button type="button" onClick={()=>setProfile(savedProfile)} disabled={saving}>Descartar</button><button type="button" className="hpl-primary" disabled={saving} onClick={()=>void save()}>{saving?'Salvando…':'Salvar alterações'}</button></div></div>}
+    {inviteDialogOpen&&<div className="hpl-invite-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setInviteDialogOpen(false)}}>
+      <section className="hpl-invite-dialog" role="dialog" aria-modal="true" aria-labelledby="hpl-invite-title">
+        <button className="hpl-invite-close" type="button" aria-label="Fechar" onClick={()=>setInviteDialogOpen(false)}>✕</button>
+        <div className="hpl-invite-emblem" aria-hidden="true">✧</div>
+        <span className="hpl-overline">PROGRAMA EMBAIXADOR</span>
+        <h2 id="hpl-invite-title">Chame seus amigos</h2>
+        <p className="hpl-invite-subtitle">Compartilhe o HäxBag. Cada pessoa nova que criar uma conta por um dos seus convites e confirmar o cadastro aumenta seu nível em 1.</p>
+        <div className="hpl-invite-steps"><span>⌁ Envie um link</span><b>→</b><span>♧ Nova conta</span><b>→</b><span>✓ Confirmação</span><b>→</b><span>✧ +1 nível</span></div>
+        <div className="hpl-invite-inner">
+          <button type="button" className="hpl-invite-whatsapp" disabled={referralBusy} onClick={()=>void shareReferralLink()}>◉ Compartilhar no WhatsApp</button>
+          <div className="hpl-invite-copyrow"><input readOnly aria-label="Seu link pessoal de convite" value={personalReferralUrl||'Gere seu link pessoal para começar'} onFocus={event=>event.target.select()}/><button type="button" disabled={referralBusy} onClick={()=>void copyReferralLink()}>{referralBusy?'Aguarde…':'Copiar'}</button></div>
+          <div className="hpl-invite-progress-header"><span>Você já trouxe <strong>{referralCount} {referralCount===1?'pessoa':'pessoas'}</strong></span><strong>{referralCount>0?`Nível ${referralCount}`:'Ainda não conquistada'}</strong></div>
+          <div className="hpl-invite-progress" role="progressbar" aria-label="Progresso de indicações no grupo atual de cinco" aria-valuemin={0} aria-valuemax={5} aria-valuenow={referralCount%5}><div style={{width:`${(referralCount%5)*20}%`}}/></div>
+          <p className="hpl-invite-next">{5-(referralCount%5)} {5-(referralCount%5)===1?'indicação':'indicações'} até completar mais um grupo de 5 níveis.</p>
+          <div className="hpl-invite-campaign"><strong>⚑ Convites de campanha também valem</strong><p>Se uma pessoa nova criar a conta usando o link de uma campanha que você gerou, ela conta para a mesma insígnia. Você não precisa enviar o link pessoal junto.</p></div>
+        </div>
+        <small className="hpl-invite-footer">Uma conta nova vale apenas uma vez. Cliques, entradas de usuários antigos e indicações não confirmadas não geram nível.</small>
+      </section>
+    </div>}
     {visitorPerson && <PublicAdventurerProfile person={visitorPerson} isSelf={visitorPerson.id===userId} onClose={()=>setVisitorPerson(null)} campaigns={visitorPerson.id===userId?[]:campaigns.filter(c=>c.master).map(c=>({id:c.id,name:c.name}))}/>}
   </section>
 }
