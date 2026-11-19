@@ -135,3 +135,8 @@
 .hb-public-content .hb-public-identity-card-v135{box-shadow:0 22px 48px rgba(0,0,0,.36)}
 .hb-public-content .hb-public-identity-card-description{overflow-wrap:anywhere}
 @media(max-width:740px){.hb-public-dialog{border-radius:17px}.hb-public-content .hb-public-panel{border-radius:13px}}
+
+/* V184 · Navegação entre perfis através dos autores dos comentários. */
+.hb-v184-public-toolbar-actions { display:inline-flex; align-items:center; gap:8px; margin-left:auto; }
+.hb-v184-profile-back { border:1px solid var(--season-line,rgba(255,255,255,.22)); border-radius:10px; background:transparent; color:inherit; padding:9px 11px; cursor:pointer; font:inherit; font-size:12px; }
+.hb-v184-profile-back:hover,.hb-v184-profile-back:focus-visible { border-color:var(--season-primary,#d9bd8b); color:var(--season-primary,#d9bd8b); }

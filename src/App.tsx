@@ -1636,6 +1636,7 @@ const resetCreatureFilters = () => {
   }
   const [socialOpened, setSocialOpened] = useState(false)
   const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
+  const [commentAuthorProfile, setCommentAuthorProfile] = useState<{ id: string; display_name: string; username?: string } | null>(null)
   const [profileJourneyDisplay,setProfileJourneyDisplay] = useState<'cards'|'compact'>('cards')
   const [profileJourneyOrder,setProfileJourneyOrder] = useState<'name'|'campaign'>('name')
   const switchProfileSection = (next:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
@@ -12660,7 +12661,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                       <button type="button" className="hb-v165-compose-prompt" onClick={()=>openSocialTab('feed')}>No que você está pensando?</button>
                       <button type="button" className="hb-v165-compose-photo" onClick={()=>openSocialTab('feed')}>▧ <span>Foto</span></button>
                     </div>
-                    <DeferredModule><ProfilePostsV164 authorId={session.user.id} active={profileSection==='overview'} isSelf avatarUrl={profilePhotoUrls.avatar}/></DeferredModule>
+                    <DeferredModule><ProfilePostsV164 authorId={session.user.id} active={profileSection==='overview'} isSelf avatarUrl={profilePhotoUrls.avatar} onOpenProfile={person=>setCommentAuthorProfile(person)}/></DeferredModule>
                   </div>
                   <aside className="hb-v165-timeline-aside" aria-label="Sobre seu perfil">
                     <div className="hb-v165-aside-panel"><small>✦ SOBRE MIM</small><h3>{displayName}</h3><p>{accountBio.trim()||'Escreva uma biografia e conte um pouco sobre você.'}</p><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar biografia</button></div>
@@ -13099,6 +13100,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             /></DeferredModule>}</div>
           </div>
           {previewMyPublicProfile && session && <DeferredModule><PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/></DeferredModule>}
+          {commentAuthorProfile && session && <DeferredModule><PublicAdventurerProfile person={commentAuthorProfile} isSelf={commentAuthorProfile.id===session.user.id} onClose={()=>setCommentAuthorProfile(null)}/></DeferredModule>}
           </div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">

@@ -4,9 +4,9 @@ import './ProfileSocialV164.css'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 
 type ProfilePost = {post_id:string;author_id:string;display_name:string;username:string;content:string;visibility:'public'|'followers'|'friends';created_at:string;like_count:number;liked:boolean;image_paths:string[]}
-type Props = {authorId:string;active:boolean;isSelf?:boolean;avatarUrl?:string}
+type Props = {authorId:string;active:boolean;isSelf?:boolean;avatarUrl?:string;onOpenProfile?:(person:{id:string;display_name:string;username?:string})=>void}
 const BUCKET = 'hax-social-posts'
-export default function ProfilePostsV164({authorId,active,isSelf=false,avatarUrl}:Props){
+export default function ProfilePostsV164({authorId,active,isSelf=false,avatarUrl,onOpenProfile}:Props){
  const [postFilter,setPostFilter]=useState<'all'|'photos'>('all')
  const [posts,setPosts]=useState<ProfilePost[]>([])
  const {counts:commentCounts,updateCount:updateCommentCount}=useSocialCommentCounts(posts.map(post=>post.post_id),active)
@@ -88,7 +88,7 @@ export default function ProfilePostsV164({authorId,active,isSelf=false,avatarUrl
    <div className="hb-v164-post-meta"><div className="hb-v164-mini-avatar">{avatarUrl ? <img src={avatarUrl} alt="" loading="lazy"/> : (post.display_name||'A').slice(0,1).toUpperCase()}</div><div><strong>{post.display_name}</strong><span>@{post.username} · {new Date(post.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div><small>{post.visibility==='public'?'🌐 Público':post.visibility==='friends'?'♧ Amigos':'◉ Seguidores'}</small></div>
    {post.content&&<p className="hb-v164-post-body">{post.content}</p>}
    {!!urls.length&&<div className={`hb-v164-photo-grid count-${urls.length}`}>{urls.map((url,i)=><button key={`${post.post_id}-${i}`} type="button" onClick={()=>setViewer({urls,index:i})} aria-label={`Ampliar foto ${i+1} de ${urls.length}`}><img src={url} loading="lazy" alt={`Foto ${i+1} da publicação de ${post.display_name}`}/></button>)}</div>}
-   <div className="hb-v164-post-actions"><button type="button" disabled={busy} onClick={()=>void toggleLike(post)} aria-pressed={post.liked} className={post.liked?'liked':''}>{post.liked?'♥':'♡'} {Number(post.like_count)||0} curtida{Number(post.like_count)===1?'':'s'}</button><SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount}/><span className="hb-v182-photo-count">{post.image_paths?.length||0} foto{post.image_paths?.length===1?'':'s'}</span></div>
+   <div className="hb-v164-post-actions"><button type="button" disabled={busy} onClick={()=>void toggleLike(post)} aria-pressed={post.liked} className={post.liked?'liked':''}>{post.liked?'♥':'♡'} {Number(post.like_count)||0} curtida{Number(post.like_count)===1?'':'s'}</button><SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount} onOpenProfile={onOpenProfile}/><span className="hb-v182-photo-count">{post.image_paths?.length||0} foto{post.image_paths?.length===1?'':'s'}</span></div>
   </article>})}
   {more&&<button type="button" className="hb-v164-load-more" disabled={busy} onClick={()=>void loadMore()}>{busy?'Carregando…':'Ver mais publicações'}</button>}
   {viewer&&<div className="hb-v164-lightbox" role="dialog" aria-modal="true" aria-label="Visualizar foto" onMouseDown={e=>{if(e.target===e.currentTarget)setViewer(null)}}><button type="button" className="hb-v164-close" onClick={()=>setViewer(null)} aria-label="Fechar">✕</button>{viewer.urls.length>1&&<button type="button" onClick={()=>setViewer(v=>v?{...v,index:(v.index-1+v.urls.length)%v.urls.length}:null)} aria-label="Foto anterior">‹</button>}<img src={viewer.urls[viewer.index]} alt={`Foto ampliada ${viewer.index+1}`}/>{viewer.urls.length>1&&<button type="button" onClick={()=>setViewer(v=>v?{...v,index:(v.index+1)%v.urls.length}:null)} aria-label="Próxima foto">›</button>}<span>{viewer.index+1} / {viewer.urls.length}</span></div>}

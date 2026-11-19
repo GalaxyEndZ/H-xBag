@@ -96,3 +96,75 @@
 .hb-v164-post:has(.hb-v182-comments) { padding:clamp(14px,2.1vw,21px); }
 .hb-v164-post:has(.hb-v182-comments) .hb-v164-post-actions { border-top:1px solid var(--season-line,#ffffff21); margin-top:12px; padding-top:10px; }
 .hb-v164-post:has(.hb-v182-comments) .hb-v164-post-actions .hb-v182-photo-count { font-size:.71rem; color:var(--season-muted,#b9b4c2); }
+
+
+/* V183 — foto, nome e @usuário do comentário levam ao perfil. */
+.hb-v182-comment .hb-v183-comment-profile-trigger {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.hb-v182-comment .hb-v183-comment-profile-trigger:hover,
+.hb-v182-comment .hb-v183-comment-profile-trigger:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb,var(--season-primary,#d9bd8b) 45%,transparent);
+  outline: none;
+}
+.hb-v182-comment .hb-v183-comment-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.hb-v182-comment .hb-v183-comment-author:hover strong,
+.hb-v182-comment .hb-v183-comment-author:hover small,
+.hb-v182-comment .hb-v183-comment-author:focus-visible strong,
+.hb-v182-comment .hb-v183-comment-author:focus-visible small {
+  color: var(--season-primary,#d9bd8b);
+}
+.hb-v182-comment .hb-v183-comment-author:focus-visible {
+  outline: none;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb,var(--season-primary,#d9bd8b) 38%,transparent);
+}
+
+/* V184 · Comentários e respostas com hierarquia visual mais leve. */
+.hb-v184-comments .hb-v184-comments-list { display:grid; gap:16px; }
+.hb-v184-comments .hb-v184-thread { display:grid; gap:5px; min-width:0; }
+.hb-v184-comments .hb-v184-thread + .hb-v184-thread { border-top:1px solid color-mix(in srgb,var(--season-line,#ffffff24) 60%,transparent); padding-top:14px; }
+.hb-v184-comments .hb-v184-thread-replies { margin-left:43px; padding-left:14px; border-left:2px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 32%,transparent); display:grid; gap:10px; min-width:0; }
+.hb-v184-comments .hb-v184-comment .hb-v181-comment-content { background:color-mix(in srgb,var(--season-surface-alt,#29242f) 50%,transparent); border-color:color-mix(in srgb,var(--season-line,#ffffff18) 72%,transparent); border-radius:13px; padding:11px 13px; transition:border-color .16s ease, background .16s ease; }
+.hb-v184-comments .hb-v184-comment:hover .hb-v181-comment-content { border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 24%,var(--season-line,#ffffff18)); }
+.hb-v184-comments .hb-v184-is-reply .hb-v181-comment-content { background:color-mix(in srgb,var(--season-surface-alt,#29242f) 37%,transparent); }
+.hb-v184-comments .hb-v184-is-reply .hb-v181-comment-avatar { width:30px; height:30px; flex-basis:30px; font-size:.68rem; }
+.hb-v184-comments .hb-v181-comment-meta { gap:8px; min-width:0; }
+.hb-v184-comments .hb-v181-comment-meta .hb-v183-comment-author { gap:7px; flex-wrap:wrap; }
+.hb-v184-comments .hb-v181-comment-meta .hb-v183-comment-author small { color:var(--season-primary,#d9bd8b); opacity:.9; font-size:.7rem; }
+.hb-v184-comments .hb-v181-comment-meta time { color:var(--season-muted,#b9b4c2); font-size:.66rem; opacity:.8; }
+.hb-v184-comments .hb-v184-mention { color:var(--season-primary,#d9bd8b); font-weight:750; }
+.hb-v184-comments .hb-v184-reply-context { display:block; margin-top:6px; font-size:.68rem; color:var(--season-muted,#b9b4c2); }
+.hb-v184-comments .hb-v184-comment .hb-v182-comment-actions { padding:3px 2px 0; gap:2px; }
+.hb-v184-comments .hb-v184-comment .hb-v182-comment-actions button { min-height:30px; padding:5px 8px; border-radius:8px; font-size:.72rem; }
+.hb-v184-comments .hb-v184-comment .hb-v182-comment-actions button.is-liked { color:#f0a0b7; }
+.hb-v184-comments .hb-v184-reply-banner { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 28%,transparent); background:color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,transparent); border-radius:10px; padding:8px 11px; color:var(--season-text,#fff); font-size:.75rem; }
+.hb-v184-comments .hb-v184-reply-banner strong { color:var(--season-primary,#d9bd8b); }
+.hb-v184-comments .hb-v184-reply-banner button { border:0; background:transparent; color:var(--season-muted,#b9b4c2); font:inherit; cursor:pointer; }
+.hb-v184-comments .hb-v184-reply-banner button:hover { color:var(--season-text,#fff); }
+.hb-v184-comments .hb-v182-comments-panel { gap:12px; padding:clamp(11px,2vw,17px); }
+.hb-v184-comments .hb-v182-comments-form textarea { min-height:44px; }
+.hb-v184-public-toolbar-actions { display:flex; align-items:center; gap:8px; }
+.hb-v184-profile-back { padding:8px 12px; border:1px solid var(--season-line,#ffffff33); border-radius:9px; background:transparent; color:inherit; font:inherit; font-size:.77rem; cursor:pointer; }
+.hb-v184-profile-back:hover { border-color:var(--season-primary,#d9bd8b); }
+@media(max-width:620px) {
+  .hb-v184-comments .hb-v184-thread-replies { margin-left:23px; padding-left:9px; }
+  .hb-v184-comments .hb-v181-comment-meta time { margin-left:0; }
+  .hb-v184-comments .hb-v184-comment .hb-v181-comment-content { padding:10px; }
+}

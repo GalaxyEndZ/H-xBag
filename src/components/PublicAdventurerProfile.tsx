@@ -60,6 +60,10 @@ const noRelationship:SocialRelationship = { following:false,follows_me:false,fri
 const safeAccent = (value: string | undefined) => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#d9bd8b'
 
 export default function PublicAdventurerProfile({ person, onClose, campaigns = [], onFriendUpdate, onMessage, isSelf = false }: Props) {
+  const [selectedPerson, setSelectedPerson] = useState<AdventurerRef>(person)
+  const [profileHistory, setProfileHistory] = useState<AdventurerRef[]>([])
+  const viewingSelf = isSelf && selectedPerson.id === person.id
+  useEffect(() => { setSelectedPerson(person); setProfileHistory([]) }, [person.id])
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -72,6 +76,21 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
   const dialogRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
+  const openCommentAuthorProfile = (target: AdventurerRef) => {
+    if (target.id === selectedPerson.id) return
+    setProfileHistory(previous => [...previous.slice(-11), selectedPerson])
+    setSelectedPerson(target)
+    setTab('posts')
+    dialogRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const returnToPreviousProfile = () => {
+    const previous = profileHistory[profileHistory.length - 1]
+    if (!previous) return
+    setProfileHistory(history => history.slice(0, -1))
+    setSelectedPerson(previous)
+    setTab('posts')
+    dialogRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -84,8 +103,8 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
     setRelationship(noRelationship)
     void (async () => {
       const [profileResponse, relationshipResponse] = await Promise.all([
-        supabase.rpc('hax_social_public_profile', { p_user_id: person.id }),
-        isSelf ? Promise.resolve({data:noRelationship,error:null}) : supabase.rpc('hax_social_relationship',{p_person:person.id}),
+        supabase.rpc('hax_social_public_profile', { p_user_id: selectedPerson.id }),
+        viewingSelf ? Promise.resolve({data:noRelationship,error:null}) : supabase.rpc('hax_social_relationship',{p_person:selectedPerson.id}),
       ])
       if (cancelled) return
       if (relationshipResponse.data) setRelationship(relationshipResponse.data as SocialRelationship)
@@ -96,7 +115,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
       setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [person.id, isSelf])
+  }, [selectedPerson.id, viewingSelf])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -128,18 +147,18 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
   }, [])
 
   async function toggleFollow() {
-    if (actionBusy || isSelf || relationship.blocked_by_me || relationship.blocked_me) return
+    if (actionBusy || viewingSelf || relationship.blocked_by_me || relationship.blocked_me) return
     setActionBusy(true); setError(''); setNotice('')
-    const { data, error: failure } = await supabase.rpc('hax_social_follow', {p_target:person.id,p_follow:!relationship.following})
+    const { data, error: failure } = await supabase.rpc('hax_social_follow', {p_target:selectedPerson.id,p_follow:!relationship.following})
     setActionBusy(false)
     if (failure) setError(failure.message)
     else {setRelationship((data||noRelationship) as SocialRelationship);setNotice(relationship.following?'Você deixou de seguir este perfil.':'Agora você segue este aventureiro.');onFriendUpdate?.()}
   }
   async function toggleBlock() {
-    if (actionBusy || isSelf) return
-    if (!relationship.blocked_by_me && !window.confirm(`Bloquear ${person.display_name}? Isso interrompe o seguimento mútuo, as mensagens e a exibição de publicações.`)) return
+    if (actionBusy || viewingSelf) return
+    if (!relationship.blocked_by_me && !window.confirm(`Bloquear ${selectedPerson.display_name}? Isso interrompe o seguimento mútuo, as mensagens e a exibição de publicações.`)) return
     setActionBusy(true); setError(''); setNotice('')
-    const { data, error: failure } = await supabase.rpc('hax_social_block', {p_target:person.id,p_block:!relationship.blocked_by_me})
+    const { data, error: failure } = await supabase.rpc('hax_social_block', {p_target:selectedPerson.id,p_block:!relationship.blocked_by_me})
     setActionBusy(false)
     if(failure) setError(failure.message)
     else {
@@ -147,7 +166,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
       setRelationship(state)
       if(state.blocked_by_me) {setProfile(null);setNotice('Conta bloqueada.')} else {
         setNotice('Conta desbloqueada.')
-        const response=await supabase.rpc('hax_social_public_profile',{p_user_id:person.id})
+        const response=await supabase.rpc('hax_social_public_profile',{p_user_id:selectedPerson.id})
         if(response.data)setProfile(response.data as PublicProfile)
       }
       onFriendUpdate?.()
@@ -157,7 +176,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
     if (!selectedCampaign || actionBusy || !campaigns.some(campaign => campaign.id === selectedCampaign)) return
     setActionBusy(true)
     setError('')
-    const { error: failure } = await supabase.rpc('hb_invite_friend_to_campaign', { p_friend: person.id, p_campaign: selectedCampaign })
+    const { error: failure } = await supabase.rpc('hb_invite_friend_to_campaign', { p_friend: selectedPerson.id, p_campaign: selectedCampaign })
     setActionBusy(false)
     if (failure) setError(failure.message)
     else setNotice('Convite enviado para a campanha.')
@@ -183,7 +202,10 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
       <section ref={dialogRef} className="hb-public-dialog" role="dialog" aria-modal="true" aria-labelledby="hb-public-profile-name">
         <div className="hb-public-toolbar">
           <div className="hb-public-toolbar-caption"><span aria-hidden="true">✦</span><span>HÄXBAG</span><span className="hb-public-toolbar-divider" aria-hidden="true"/><span>PERFIL SOCIAL</span></div>
-          <button ref={closeRef} className="hb-public-close" type="button" onClick={onClose} aria-label="Fechar perfil">✕</button>
+          <div className="hb-v184-public-toolbar-actions">
+            {profileHistory.length > 0 && <button type="button" className="hb-v184-profile-back" onClick={returnToPreviousProfile}>← Voltar</button>}
+            <button ref={closeRef} className="hb-public-close" type="button" onClick={onClose} aria-label="Fechar perfil">✕</button>
+          </div>
         </div>
         {loading && <div className="hb-public-progress" role="status"><span className="hb-public-progress-icon" aria-hidden="true">✧</span><strong>Abrindo livro do aventureiro</strong><p>Buscando apenas as informações públicas do perfil…</p></div>}
         {!loading && !view && <div className="hb-public-progress" role="alert"><span className="hb-public-progress-icon" aria-hidden="true">◇</span><strong>Perfil indisponível</strong><p>{error || 'Não foi possível encontrar este aventureiro.'}</p>{relationship.blocked_by_me&&<button type="button" disabled={actionBusy} onClick={()=>void toggleBlock()}>Desbloquear esta pessoa</button>}<button type="button" onClick={onClose}>Voltar à comunidade</button></div>}
@@ -193,19 +215,19 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
           </div>
           <header className="hb-public-identity">
             <div className={`hb-public-avatar frame-${view.frame || 'classic'}`}>
-              {view.avatar_image ? <img src={view.avatar_image} alt={`Avatar de ${view.display_name}`} style={{ objectPosition: `center ${view.avatar_position ?? 50}%` }} /> : <span>{(view.display_name || person.display_name || 'A').slice(0,1).toUpperCase()}</span>}
+              {view.avatar_image ? <img src={view.avatar_image} alt={`Avatar de ${view.display_name}`} style={{ objectPosition: `center ${view.avatar_position ?? 50}%` }} /> : <span>{(view.display_name || selectedPerson.display_name || 'A').slice(0,1).toUpperCase()}</span>}
             </div>
             <div className="hb-public-identity-copy">
               <span className="hb-public-eyebrow">PERFIL NA COMUNIDADE</span>
-              <h2 id="hb-public-profile-name">{view.display_name || person.display_name}</h2>
-              <span className="hb-public-handle">@{view.username || person.username || 'aventureiro'}</span>
+              <h2 id="hb-public-profile-name">{view.display_name || selectedPerson.display_name}</h2>
+              <span className="hb-public-handle">@{view.username || selectedPerson.username || 'aventureiro'}</span>
               {view.status && allow('show_status') && <span className="hb-public-status"><i aria-hidden="true"/>{view.status}</span>}
             </div>
-            <div className="hb-public-relationship">{isSelf ? '✦ Prévia do seu perfil público' : relationship.friends ? '✧ Vocês são amigos' : relationship.following ? '↗ Você segue este aventureiro' : relationship.follows_me ? '↙ Esta pessoa segue você' : '◇ Aventureiro da comunidade'}</div>
+            <div className="hb-public-relationship">{viewingSelf ? '✦ Prévia do seu perfil público' : relationship.friends ? '✧ Vocês são amigos' : relationship.following ? '↗ Você segue este aventureiro' : relationship.follows_me ? '↙ Esta pessoa segue você' : '◇ Aventureiro da comunidade'}</div>
           </header>
           <div className="hb-v164-profile-social-actions">
-            {!isSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" className="hb-v164-follow-action" onClick={()=>void toggleFollow()} disabled={actionBusy}>{relationship.following?'✓ Seguindo':relationship.follows_me?'+ Seguir de volta':'+ Seguir'}</button>}
-            {!isSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(person)}>✉ Enviar mensagem</button>}
+            {!viewingSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" className="hb-v164-follow-action" onClick={()=>void toggleFollow()} disabled={actionBusy}>{relationship.following?'✓ Seguindo':relationship.follows_me?'+ Seguir de volta':'+ Seguir'}</button>}
+            {!viewingSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(selectedPerson)}>✉ Enviar mensagem</button>}
             <button type="button" onClick={()=>setTab('posts')}>▦ Publicações e fotos</button>
           </div>
           <div className="hb-public-stats">
@@ -218,7 +240,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
             {tabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} className={tab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)}><span aria-hidden="true">{item.symbol}</span>{item.label}{item.count !== undefined && <small>{item.count}</small>}</button>)}
           </nav>
           <main className="hb-public-main">
-            <div hidden={tab!=='posts'}><ProfilePostsV164 authorId={person.id} active={tab==='posts'} isSelf={isSelf} avatarUrl={view.avatar_image}/></div>
+            <div hidden={tab!=='posts'}><ProfilePostsV164 authorId={selectedPerson.id} active={tab==='posts'} isSelf={viewingSelf} avatarUrl={view.avatar_image} onOpenProfile={openCommentAuthorProfile}/></div>
             {tab === 'presentation' && <div className="hb-public-overview">
               <section className="hb-public-panel hb-public-about"><span className="hb-public-overline">CONHEÇA ESTA PESSOA</span><h3>Sobre</h3>{view.bio && allow('show_bio') ? <p className="hb-public-biography">{view.bio}</p> : <p className="hb-public-muted">{!allow('show_bio') ? 'Esta apresentação é privada.' : 'O aventureiro ainda não escreveu sua apresentação.'}</p>}</section>
               <section className="hb-public-panel hb-public-glimpse"><span className="hb-public-overline">UNIVERSO RPG</span><h3>Personagens e conquistas</h3>
@@ -266,10 +288,10 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
           <footer className="hb-public-footer">
             <div className="hb-public-footer-note"><span aria-hidden="true">♧</span><div><strong>Uma comunidade de histórias</strong><small>O perfil mostra apenas as informações que o jogador tornou públicas.</small></div></div>
             <div className="hb-public-footer-actions">
-              {!isSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" onClick={() => void toggleFollow()} disabled={actionBusy}>{relationship.following ? '✓ Seguindo · Deixar de seguir' : relationship.follows_me ? '↗ Seguir de volta' : '+ Seguir'}</button>}
-              {!isSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(person)}>✉ Mensagem privada</button>}
-              {!isSelf && <button type="button" className="hb-public-block-control" onClick={()=>void toggleBlock()} disabled={actionBusy}>{relationship.blocked_by_me ? 'Desbloquear' : '⊘ Bloquear'}</button>}
-              {!isSelf && campaigns.length > 0 && relationship.friends && <div className="hb-public-invite"><select aria-label="Campanha para convidar" value={selectedCampaign} onChange={event => setSelectedCampaign(event.target.value)}><option value="">Selecionar campanha</option>{campaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select><button type="button" disabled={!selectedCampaign || actionBusy} onClick={() => void inviteToCampaign()}>Convidar</button></div>}
+              {!viewingSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" onClick={() => void toggleFollow()} disabled={actionBusy}>{relationship.following ? '✓ Seguindo · Deixar de seguir' : relationship.follows_me ? '↗ Seguir de volta' : '+ Seguir'}</button>}
+              {!viewingSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(selectedPerson)}>✉ Mensagem privada</button>}
+              {!viewingSelf && <button type="button" className="hb-public-block-control" onClick={()=>void toggleBlock()} disabled={actionBusy}>{relationship.blocked_by_me ? 'Desbloquear' : '⊘ Bloquear'}</button>}
+              {!viewingSelf && campaigns.length > 0 && relationship.friends && <div className="hb-public-invite"><select aria-label="Campanha para convidar" value={selectedCampaign} onChange={event => setSelectedCampaign(event.target.value)}><option value="">Selecionar campanha</option>{campaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}</select><button type="button" disabled={!selectedCampaign || actionBusy} onClick={() => void inviteToCampaign()}>Convidar</button></div>}
               <button type="button" className="hb-public-dismiss" onClick={onClose}>Voltar</button>
             </div>
           </footer>
