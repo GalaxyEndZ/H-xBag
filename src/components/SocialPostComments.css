@@ -1,0 +1,25 @@
+/* V181 — comentários responsivos no Feed e nos perfis sociais. */
+.hb-v181-comments{min-width:0;color:inherit}
+.hb-v181-comments-toggle{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:inherit;font:inherit;font-size:.79rem;font-weight:740;cursor:pointer;padding:8px 10px;border-radius:9px}
+.hb-v181-comments-toggle:hover,.hb-v181-comments-toggle.is-open{background:color-mix(in srgb,var(--season-primary,#d9bd8b) 14%,transparent)}
+.hb-v181-comments-panel{display:grid;gap:14px;margin-top:11px;padding:15px;border:1px solid var(--season-line,#ffffff28);border-radius:14px;background:color-mix(in srgb,var(--season-surface,#24202b) 76%,transparent);color:var(--season-text,#fafafa)}
+.hb-v181-comments-panel header{display:flex;align-items:baseline;flex-wrap:wrap;justify-content:space-between;gap:6px}
+.hb-v181-comments-panel header strong{font-size:.89rem}.hb-v181-comments-panel header small,.hb-v181-comments-hint{color:var(--season-muted,#b9b4c2);font-size:.75rem}
+.hb-v181-comments-hint{margin:0;padding:6px 0}
+.hb-v181-comments-list{display:grid;gap:10px;min-width:0}
+.hb-v181-comment{display:flex;gap:9px;align-items:flex-start;min-width:0}
+.hb-v181-comment-avatar{display:grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 19%,var(--season-surface,#25202b));border:1px solid var(--season-line,#ffffff25);font-size:.76rem;font-weight:800}
+.hb-v181-comment-content{min-width:0;flex:1;padding:9px 12px;border:1px solid var(--season-line,#ffffff1d);border-radius:12px;background:color-mix(in srgb,var(--season-surface-alt,#29242f) 88%,transparent)}
+.hb-v181-comment-meta{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}.hb-v181-comment-meta strong{font-size:.79rem}.hb-v181-comment-meta small,.hb-v181-comment-meta time{font-size:.68rem;color:var(--season-muted,#b9b4c2)}.hb-v181-comment-meta time{margin-left:auto}
+.hb-v181-comment-content p{margin:7px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8rem;line-height:1.56}
+.hb-v181-comment-delete{border:0;background:transparent;padding:4px 0;color:var(--season-muted,#b9b4c2);font-size:.7rem;cursor:pointer}.hb-v181-comment-delete:hover{color:#ff9999}
+.hb-v181-comments-more{border:1px solid var(--season-line,#ffffff28);border-radius:9px;background:transparent;color:inherit;padding:9px 11px;font-size:.76rem;cursor:pointer}
+.hb-v181-comments-error{margin:0;font-size:.75rem;color:#ffa9a9;overflow-wrap:anywhere}
+.hb-v181-comments-form{display:grid;gap:8px;border-top:1px solid var(--season-line,#ffffff21);padding-top:12px}
+.hb-v181-comments-form label{font-weight:740;font-size:.75rem}
+.hb-v181-comments-form textarea{width:100%;min-height:65px;resize:vertical;padding:11px 12px;border:1px solid var(--season-line,#ffffff28);border-radius:10px;background:var(--season-surface-alt,#1c1922);color:inherit;font:inherit;font-size:.81rem}
+.hb-v181-comments-form textarea:focus{outline:2px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 46%,transparent)}
+.hb-v181-comments-form>div{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}.hb-v181-comments-form small{color:var(--season-muted,#b9b4c2);font-size:.66rem}
+.hb-v181-comments-form button{border:1px solid var(--season-primary,#d9bd8b);border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 19%,var(--season-surface,#24202b));color:inherit;font:inherit;font-size:.76rem;font-weight:760;padding:9px 12px;cursor:pointer}
+.hb-v181-comments-form button:disabled,.hb-v181-comments-more:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:600px){.hb-v181-comments-panel{padding:11px}.hb-v181-comment-meta time{margin-left:0}.hb-v181-comments-form>div{align-items:stretch}}
