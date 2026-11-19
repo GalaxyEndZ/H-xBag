@@ -1947,7 +1947,29 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
 
   const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
   const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
-  const [combatActionResult, setCombatActionResult] = useState<string>('')
+  const [combatActionResult, setCombatActionResultState] = useState<string>('')
+  const [combatActionResultSequence, setCombatActionResultSequence] = useState(0)
+  const setCombatActionResult = (result: string) => {
+    setCombatActionResultState(result)
+    // Mesmo que duas rolagens gerem texto idêntico, o segundo clique também rola a tela.
+    setCombatActionResultSequence(previous => previous + 1)
+  }
+  // Leva o jogador ao resultado assim que uma ação, reação ou ação complementar
+  // publicar sua rolagem. Funciona tanto na ficha quanto no painel de inimigos.
+  useEffect(() => {
+    if (!combatActionResult) return
+    const frame = window.requestAnimationFrame(() => {
+      const results = Array.from(document.querySelectorAll<HTMLElement>('.combat-action-result'))
+      const visibleResult = results.find(element =>
+        element.getClientRects().length > 0 &&
+        window.getComputedStyle(element).visibility !== 'hidden'
+      )
+      if (!visibleResult) return
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      visibleResult.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [combatActionResultSequence, combatActionResult])
   const [selectedSkillTest, setSelectedSkillTest] = useState<string>('')
   const [skillTestOpen, setSkillTestOpen] = useState(false)
   const [restActionsOpen, setRestActionsOpen] = useState(false)
