@@ -12,7 +12,7 @@ function useActiveTimer(running: boolean, paused: boolean) {
     const timer = window.setInterval(() => {
       const elapsed = accumulatedMs.current + (start.current === null ? 0 : Date.now() - start.current)
       setSeconds(Math.floor(elapsed / 1000))
-    }, 250)
+    }, 1000)
     return () => {
       window.clearInterval(timer)
       if (start.current !== null) accumulatedMs.current += Date.now() - start.current

@@ -172,3 +172,12 @@
 .hb-mini-next-notice{color:var(--season-primary,#d9bd8b)}
 .hb-mini-endless .hb-mini-finish{width:min(100%,405px);max-width:100%}
 .hb-arcade-embedded-pong .hb-arcade-controls>div:last-child{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+
+/* V193 — Arena Infinita: exploração e câmera livre, sem grades nem paredes. */
+.hb-arena-v193{gap:12px}
+.hb-arena-v193 .hb-mini-hud{margin-bottom:0}
+.hb-arena-world-info{display:flex;flex-wrap:wrap;align-items:center;gap:7px 18px;padding:10px 13px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 6%,var(--arcade-surface));border:1px solid var(--arcade-border);border-radius:11px;color:var(--arcade-muted);font-size:11px;line-height:1.4}
+.hb-arena-world-info strong{color:var(--season-text,#fff)}
+.hb-arena-v193 .hb-arena-canvas{border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 36%,var(--arcade-border));background:#101c21;touch-action:none;cursor:crosshair;box-shadow:0 12px 35px #0005}
+.hb-arena-v193 .hb-arena-tip{margin:0;line-height:1.65}
+@media(max-width:600px){.hb-arena-world-info{gap:6px 12px;padding:9px 10px;font-size:10px}.hb-arena-v193 .hb-arena-tip{padding:9px 11px}}

@@ -16,26 +16,50 @@ type MyScore = { placement?: number | null; best_score?: number; games_played?: 
 type Engine = { ballX: number; ballY: number; vx: number; vy: number; playerY: number; aiY: number; score: number; lives: number; rally: number; opponentGoals: number; playerGoals: number }
 const initialEngine = (): Engine => ({ ballX: WIDTH / 2, ballY: HEIGHT / 2, vx: -320, vy: 115, playerY: (HEIGHT - PADDLE_HEIGHT) / 2, aiY: (HEIGHT - PADDLE_HEIGHT) / 2, score: 0, lives: STARTING_LIVES, rally: 0, opponentGoals: 0, playerGoals: 0 })
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
-const formatNumber = (value: number) => new Intl.NumberFormat('pt-BR').format(value)
+const pongNumberFormatter = new Intl.NumberFormat('pt-BR')
+const formatNumber = (value: number) => pongNumberFormatter.format(value)
+
+// O fundo estático (grade, quadra, rótulos) só é rasterizado uma vez por escala de tela.
+// Dentro do loop desenhamos a imagem pronta e apenas raquetes e bola em movimento.
+const pongBackgrounds = new Map<number, HTMLCanvasElement>()
+function pongBackground(dpr: number): HTMLCanvasElement {
+  const cached = pongBackgrounds.get(dpr)
+  if (cached) return cached
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(WIDTH * dpr); canvas.height = Math.round(HEIGHT * dpr)
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT)
+    bg.addColorStop(0, '#101a24'); bg.addColorStop(.52, '#0c101b'); bg.addColorStop(1, '#171525')
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, WIDTH, HEIGHT)
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(179,199,223,.055)'
+    for (let x = 22; x < WIDTH; x += 38) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, HEIGHT); ctx.stroke() }
+    for (let y = 22; y < HEIGHT; y += 38) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke() }
+    ctx.strokeStyle = 'rgba(201,214,239,.23)'; ctx.setLineDash([7, 12])
+    ctx.beginPath(); ctx.moveTo(WIDTH / 2, 20); ctx.lineTo(WIDTH / 2, HEIGHT - 20); ctx.stroke(); ctx.setLineDash([])
+    ctx.beginPath(); ctx.arc(WIDTH / 2, HEIGHT / 2, 75, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(201,214,239,.10)'; ctx.stroke()
+    ctx.textAlign = 'center'; ctx.font = '700 14px system-ui, sans-serif'
+    ctx.fillStyle = '#84c4d3'; ctx.fillText('VOCÊ', WIDTH * .25, 36)
+    ctx.fillStyle = '#c4a08b'; ctx.fillText('COMPUTADOR', WIDTH * .75, 36)
+  }
+  if (pongBackgrounds.size >= 3) pongBackgrounds.clear()
+  pongBackgrounds.set(dpr, canvas)
+  return canvas
+}
 
 function paint(canvas: HTMLCanvasElement, engine: Engine) {
   const dpr = Math.min(2, window.devicePixelRatio || 1)
-  const desiredWidth = Math.round(WIDTH * dpr)
-  const desiredHeight = Math.round(HEIGHT * dpr)
-  if (canvas.width !== desiredWidth || canvas.height !== desiredHeight) { canvas.width = desiredWidth; canvas.height = desiredHeight }
+  const desiredWidth = Math.round(WIDTH * dpr), desiredHeight = Math.round(HEIGHT * dpr)
+  if (canvas.width !== desiredWidth || canvas.height !== desiredHeight) {
+    canvas.width = desiredWidth; canvas.height = desiredHeight
+  }
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, WIDTH, HEIGHT)
-  const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT)
-  bg.addColorStop(0, '#101a24'); bg.addColorStop(.52, '#0c101b'); bg.addColorStop(1, '#171525')
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, WIDTH, HEIGHT)
-  ctx.lineWidth = 1
-  ctx.strokeStyle = 'rgba(179,199,223,.055)'
-  for (let x = 22; x < WIDTH; x += 38) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, HEIGHT); ctx.stroke() }
-  for (let y = 22; y < HEIGHT; y += 38) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(WIDTH, y); ctx.stroke() }
-  ctx.strokeStyle = 'rgba(201,214,239,.23)'; ctx.setLineDash([7, 12]); ctx.beginPath(); ctx.moveTo(WIDTH / 2, 20); ctx.lineTo(WIDTH / 2, HEIGHT - 20); ctx.stroke(); ctx.setLineDash([])
-  ctx.beginPath(); ctx.arc(WIDTH / 2, HEIGHT / 2, 75, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(201,214,239,.10)'; ctx.stroke()
+  ctx.drawImage(pongBackground(dpr), 0, 0, WIDTH, HEIGHT)
   ctx.shadowBlur = 24; ctx.shadowColor = '#8de4ff'; ctx.fillStyle = '#8de4ff'
   ctx.fillRect(PADDLE_MARGIN, engine.playerY, PADDLE_WIDTH, PADDLE_HEIGHT)
   ctx.shadowColor = '#e4b78d'; ctx.fillStyle = '#e4b78d'
@@ -43,9 +67,6 @@ function paint(canvas: HTMLCanvasElement, engine: Engine) {
   ctx.shadowBlur = 26; ctx.shadowColor = '#f2f8ff'; ctx.fillStyle = '#f2f8ff'
   ctx.beginPath(); ctx.arc(engine.ballX, engine.ballY, BALL_RADIUS, 0, Math.PI * 2); ctx.fill()
   ctx.shadowBlur = 0
-  ctx.textAlign = 'center'; ctx.font = '700 14px system-ui, sans-serif'; 
-  ctx.fillStyle = '#84c4d3'; ctx.fillText('VOCÊ', WIDTH * .25, 36)
-  ctx.fillStyle = '#c4a08b'; ctx.fillText('COMPUTADOR', WIDTH * .75, 36)
 }
 
 export default function PongGame({ userId, onArcadeUpdated }: { userId: string; onArcadeUpdated?: () => void }) {
