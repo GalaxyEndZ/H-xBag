@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 
 export type ArcadeGameProps = { onFinish: (score: number) => void; paused?: boolean }
 const clamp = (v: number, low: number, high: number) => Math.max(low, Math.min(high, v))
@@ -19,11 +19,23 @@ function useArcadeKeyboard(keys: string[], handler: (key: string, down: boolean)
   }, [keys.join('|')]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+// Fundo estático compartilhado: evita recriar linhas de grade em todos os frames.
+const backdropCache = new Map<string, HTMLCanvasElement>()
 function frame(ctx: CanvasRenderingContext2D, width = BASE_W, height = BASE_H) {
-  ctx.fillStyle = '#0b1420'; ctx.fillRect(0, 0, width, height)
-  ctx.strokeStyle = '#ffffff0e'; ctx.lineWidth = 1
-  for (let x = 0; x <= width; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke() }
-  for (let y = 0; y <= height; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke() }
+  const key = `${width}x${height}`
+  let background = backdropCache.get(key)
+  if (!background) {
+    background = document.createElement('canvas')
+    background.width = width; background.height = height
+    const bg = background.getContext('2d')
+    if (!bg) { ctx.fillStyle = '#0b1420'; ctx.fillRect(0, 0, width, height); return }
+    bg.fillStyle = '#0b1420'; bg.fillRect(0, 0, width, height)
+    bg.strokeStyle = '#ffffff0e'; bg.lineWidth = 1
+    for (let x = 0; x <= width; x += 30) { bg.beginPath(); bg.moveTo(x, 0); bg.lineTo(x, height); bg.stroke() }
+    for (let y = 0; y <= height; y += 30) { bg.beginPath(); bg.moveTo(0, y); bg.lineTo(width, y); bg.stroke() }
+    backdropCache.set(key, background)
+  }
+  ctx.drawImage(background, 0, 0)
 }
 function canvasPointer(e: ReactPointerEvent<HTMLCanvasElement>, w = BASE_W, h = BASE_H) {
   const rect = e.currentTarget.getBoundingClientRect()
@@ -34,9 +46,11 @@ function canvasPointer(e: ReactPointerEvent<HTMLCanvasElement>, w = BASE_W, h = 
 type Point = { x: number; y: number }
 const SNAKE_SIZE = 20
 function spawnFood(snake: Point[]): Point {
-  const free: Point[] = []
-  for (let y = 0; y < SNAKE_SIZE; y++) for (let x = 0; x < SNAKE_SIZE; x++) if (!snake.some(s => s.x === x && s.y === y)) free.push({ x, y })
-  return free[rand(free.length)] || { x: 0, y: 0 }
+  const occupied = new Set(snake.map(part => part.y * SNAKE_SIZE + part.x))
+  const free: number[] = []
+  for (let i = 0; i < SNAKE_SIZE * SNAKE_SIZE; i++) if (!occupied.has(i)) free.push(i)
+  const chosen = free[rand(free.length)] ?? 0
+  return { x: chosen % SNAKE_SIZE, y: Math.floor(chosen / SNAKE_SIZE) }
 }
 export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
   const snakeRef = useRef<Point[]>([{ x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }])
@@ -50,6 +64,8 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
   const [round, setRound] = useState(1)
   const [snake, setSnake] = useState<Point[]>(snakeRef.current)
   const [food, setFood] = useState(foodRef.current)
+  // O corpo era percorrido até 400 vezes por render. A busca por posição agora é O(1).
+  const snakeCells = useMemo(() => new Map<number, number>(snake.map((part, index): [number, number] => [part.y * SNAKE_SIZE + part.x, index])), [snake])
   const turn = (dx: number, dy: number) => {
     if (paused || ended.current) return
     const now = direction.current
@@ -103,7 +119,7 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
     else turn(0, Math.sign(dy))
   }
   const finish = () => { if (ended.current || paused) return; ended.current = true; onFinish(scoreRef.current) }
-  return <div className="hb-mini-inner"><div className="hb-mini-hud"><strong>🍎 {score} pontos</strong><span>Rodada {round} · {snake.length} segmentos · Velocidade {Math.floor(score/50)+1} · Setas, WASD ou deslize</span></div><div className="hb-snake-board" role="img" aria-label={`Jogo Snake, ${score} pontos`} onPointerDown={e=>{swipeStart.current={x:e.clientX,y:e.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = Math.floor(i / 20); const body = snake.findIndex(p => p.x === x && p.y === y); return <span key={i} className={`${body === 0 ? 'head' : body > 0 ? 'body' : ''} ${food.x === x && food.y === y ? 'fruit' : ''}`} /> })}</div><div className="hb-mini-pad" aria-label="Direção da serpente"><button type="button" disabled={paused} onClick={() => turn(-1, 0)}>←</button><button type="button" disabled={paused} onClick={() => turn(0, -1)}>↑</button><button type="button" disabled={paused} onClick={() => turn(0, 1)}>↓</button><button type="button" disabled={paused} onClick={() => turn(1, 0)}>→</button></div><button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || ended.current} onClick={finish}>✓ Encerrar e registrar {score} pontos</button></div>
+  return <div className="hb-mini-inner"><div className="hb-mini-hud"><strong>🍎 {score} pontos</strong><span>Rodada {round} · {snake.length} segmentos · Velocidade {Math.floor(score/50)+1} · Setas, WASD ou deslize</span></div><div className="hb-snake-board" role="img" aria-label={`Jogo Snake, ${score} pontos`} onPointerDown={e=>{swipeStart.current={x:e.clientX,y:e.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = Math.floor(i / 20); const body = snakeCells.get(i) ?? -1; return <span key={i} className={`${body === 0 ? 'head' : body > 0 ? 'body' : ''} ${food.x === x && food.y === y ? 'fruit' : ''}`} /> })}</div><div className="hb-mini-pad" aria-label="Direção da serpente"><button type="button" disabled={paused} onClick={() => turn(-1, 0)}>←</button><button type="button" disabled={paused} onClick={() => turn(0, -1)}>↑</button><button type="button" disabled={paused} onClick={() => turn(0, 1)}>↓</button><button type="button" disabled={paused} onClick={() => turn(1, 0)}>→</button></div><button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || ended.current} onClick={finish}>✓ Encerrar e registrar {score} pontos</button></div>
 }
 
 type Brick = { x: number; y: number; hp: number; maxHp: number; row: number }
@@ -144,7 +160,7 @@ export function BreakoutGame({ onFinish, paused = false }: ArcadeGameProps) {
   }, [paused])
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d')
-    if (!ctx) return
+    if (!ctx || paused) return
     let id = 0, last = 0
     const tick = (now: number) => {
       const dt = last ? Math.min(.035, (now - last) / 1000) : .016
@@ -262,7 +278,7 @@ export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
   useEffect(()=>{if(paused)keys.current.clear()},[paused])
   useEffect(()=>{const clear=()=>keys.current.clear();window.addEventListener('blur',clear);return()=>window.removeEventListener('blur',clear)},[])
   useEffect(()=>{
-    const ctx=canvas.current?.getContext('2d');if(!ctx)return
+    const ctx=canvas.current?.getContext('2d');if(!ctx || paused)return
     let last=0,id=0
     const tick=(now:number)=>{
       const dt=last?Math.min(.035,(now-last)/1000):.016;last=now
@@ -278,7 +294,7 @@ export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
       if(k.has(' ')&&g.cooldown<=0){g.shots.push({x:g.x+Math.cos(g.angle)*18,y:g.y+Math.sin(g.angle)*18,vx:g.vx+Math.cos(g.angle)*480,vy:g.vy+Math.sin(g.angle)*480,life:1.2});g.cooldown=.17}
       g.shots=g.shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;return s.life>0&&s.x>=0&&s.x<=720&&s.y>=0&&s.y<=420})
       for(const r of g.rocks){r.x=(r.x+r.vx*dt+720)%720;r.y=(r.y+r.vy*dt+420)%420}
-      for(let i=g.rocks.length-1;i>=0;i--){const r=g.rocks[i];if(!r)continue;const shotIndex=g.shots.findIndex(s=>Math.hypot(s.x-r.x,s.y-r.y)<r.radius+3);if(shotIndex>=0){g.shots.splice(shotIndex,1);g.rocks.splice(i,1);g.score+=20;setScore(g.score);continue}if(g.invulnerable<=0&&Math.hypot(g.x-r.x,g.y-r.y)<r.radius+13){g.lives--;setLives(g.lives);g.invulnerable=2;g.x=360;g.y=210;g.vx=0;g.vy=0}}
+      for(let i=g.rocks.length-1;i>=0;i--){const r=g.rocks[i];if(!r)continue;const shotIndex=g.shots.findIndex(s=>(s.x-r.x)**2+(s.y-r.y)**2<(r.radius+3)**2);if(shotIndex>=0){g.shots.splice(shotIndex,1);g.rocks.splice(i,1);g.score+=20;setScore(g.score);continue}if(g.invulnerable<=0&&(g.x-r.x)**2+(g.y-r.y)**2<(r.radius+13)**2){g.lives--;setLives(g.lives);g.invulnerable=2;g.x=360;g.y=210;g.vx=0;g.vy=0}}
       frame(ctx)
       ctx.strokeStyle='#b7c8dc';ctx.lineWidth=2
       for(const r of g.rocks){ctx.beginPath();ctx.arc(r.x,r.y,r.radius,0,Math.PI*2);ctx.stroke()}
@@ -302,7 +318,7 @@ export function FlappyGame({onFinish,paused=false}:ArcadeGameProps){
   const [score,setScore]=useState(0)
   useArcadeKeyboard([' ','arrowup','w'],(_key,down)=>{if(down&&!paused&&!flap.current)flap.current=true})
   useEffect(()=>{
-    const ctx=canvas.current?.getContext('2d');if(!ctx)return
+    const ctx=canvas.current?.getContext('2d');if(!ctx || paused)return
     let id=0,last=0
     const tick=(now:number)=>{
       const dt=last?Math.min(.033,(now-last)/1000):.016;last=now
@@ -343,6 +359,7 @@ const arenaNoise = (x: number, y: number, seed = 0) => {
 const screenX = (x: number, camera: ArenaCamera) => x - camera.x + BASE_W / 2
 const screenY = (y: number, camera: ArenaCamera) => y - camera.y + BASE_H / 2
 
+<<<<<<< HEAD
 function drawArenaWorld(ctx: CanvasRenderingContext2D, camera: ArenaCamera) {
   ctx.fillStyle = '#101c21'
   ctx.fillRect(0, 0, BASE_W, BASE_H)
@@ -367,6 +384,33 @@ function drawArenaWorld(ctx: CanvasRenderingContext2D, camera: ArenaCamera) {
     const dy = y + 13 + arenaNoise(col, row, 9) * 54
     if (detail > .91) {
       // Fragmentos de pedra e antigos círculos rúnicos são apenas cenário.
+=======
+// A Arena só redesenha terrenos novos. Os tiles já vistos são reutilizados em um
+// LRU limitado (180 × 81² × 4 bytes ≈ 4,7 MB); a exploração continua ilimitada.
+const ARENA_CACHE_LIMIT = 180
+const arenaTileCache = new Map<string, HTMLCanvasElement>()
+function arenaTile(col: number, row: number): HTMLCanvasElement {
+  const key = `${col}:${row}`
+  const cached = arenaTileCache.get(key)
+  if (cached) {
+    arenaTileCache.delete(key); arenaTileCache.set(key, cached)
+    return cached
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = ARENA_TILE + 1; canvas.height = ARENA_TILE + 1
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const nature = arenaNoise(col, row)
+    const path = ((col % 16) + 16) % 16 === 0 || ((row % 15) + 15) % 15 === 0
+    ctx.fillStyle = path ? '#28302d' : nature > .79 ? '#1b302b' : nature < .18 ? '#14252b' : '#172826'
+    ctx.fillRect(0, 0, ARENA_TILE + 1, ARENA_TILE + 1)
+    ctx.strokeStyle = '#d3ddcb07'; ctx.lineWidth = 1
+    ctx.strokeRect(.5, .5, ARENA_TILE, ARENA_TILE)
+    const detail = arenaNoise(col, row, 7)
+    const dx = 13 + arenaNoise(col, row, 8) * 54
+    const dy = 13 + arenaNoise(col, row, 9) * 54
+    if (detail > .91) {
+>>>>>>> f030e9cd76fc8a8be5e647c5501ed6dfe8539f36
       ctx.fillStyle = '#44514d'
       ctx.beginPath(); ctx.ellipse(dx, dy, 11, 7, -.35, 0, Math.PI * 2); ctx.fill()
       ctx.fillStyle = '#67766a'; ctx.beginPath(); ctx.arc(dx - 2, dy - 2, 3, 0, Math.PI * 2); ctx.fill()
@@ -380,7 +424,11 @@ function drawArenaWorld(ctx: CanvasRenderingContext2D, camera: ArenaCamera) {
       ctx.fillStyle = '#67775e'; ctx.fillRect(dx + 9, dy - 9, 2, 2)
     }
     if (((col % 11) + 11) % 11 === 4 && ((row % 9) + 9) % 9 === 3) {
+<<<<<<< HEAD
       const cx = x + 40, cy = y + 40
+=======
+      const cx = 40, cy = 40
+>>>>>>> f030e9cd76fc8a8be5e647c5501ed6dfe8539f36
       ctx.strokeStyle = '#acac8160'; ctx.lineWidth = 2
       ctx.beginPath(); ctx.arc(cx, cy, 21, 0, Math.PI * 2); ctx.stroke()
       ctx.beginPath(); ctx.moveTo(cx, cy - 15); ctx.lineTo(cx + 12, cy)
@@ -388,6 +436,27 @@ function drawArenaWorld(ctx: CanvasRenderingContext2D, camera: ArenaCamera) {
       ctx.fillStyle = '#d2b87755'; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill()
     }
   }
+<<<<<<< HEAD
+=======
+  arenaTileCache.set(key, canvas)
+  if (arenaTileCache.size > ARENA_CACHE_LIMIT) {
+    const oldest = arenaTileCache.keys().next().value
+    if (oldest !== undefined) arenaTileCache.delete(oldest)
+  }
+  return canvas
+}
+
+function drawArenaWorld(ctx: CanvasRenderingContext2D, camera: ArenaCamera) {
+  ctx.fillStyle = '#101c21'; ctx.fillRect(0, 0, BASE_W, BASE_H)
+  const left = camera.x - BASE_W / 2, top = camera.y - BASE_H / 2
+  const colStart = Math.floor(left / ARENA_TILE) - 1
+  const colEnd = Math.ceil((left + BASE_W) / ARENA_TILE) + 1
+  const rowStart = Math.floor(top / ARENA_TILE) - 1
+  const rowEnd = Math.ceil((top + BASE_H) / ARENA_TILE) + 1
+  for (let row = rowStart; row <= rowEnd; row++) for (let col = colStart; col <= colEnd; col++) {
+    ctx.drawImage(arenaTile(col, row), Math.floor(col * ARENA_TILE - left), Math.floor(row * ARENA_TILE - top))
+  }
+>>>>>>> f030e9cd76fc8a8be5e647c5501ed6dfe8539f36
 }
 
 function drawArenaRadar(ctx: CanvasRenderingContext2D, x: number, y: number, enemies: Enemy[]) {
@@ -432,7 +501,11 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
     return () => window.removeEventListener('blur', clear)
   }, [])
   useEffect(() => {
+<<<<<<< HEAD
     const ctx = canvas.current?.getContext('2d'); if (!ctx) return
+=======
+    const ctx = canvas.current?.getContext('2d'); if (!ctx || paused) return
+>>>>>>> f030e9cd76fc8a8be5e647c5501ed6dfe8539f36
     let id = 0, last = 0
     const tick = (now: number) => {
       const dt = last ? Math.min(.035, (now - last) / 1000) : .016; last = now
@@ -470,6 +543,7 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
         }
         g.spawn = Math.max(.24, .92 - g.wave * .085)
       }
+<<<<<<< HEAD
       const nearest = g.enemies.reduce<Enemy | null>((best, e) => !best || Math.hypot(e.x - g.x, e.y - g.y) < Math.hypot(best.x - g.x, best.y - g.y) ? e : best, null)
       const aim = pointer.current
       // O mouse mira na janela da câmera; o alvo é convertido para coordenadas do mundo.
@@ -492,11 +566,46 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
       for (let i = g.enemies.length - 1; i >= 0; i--) {
         const enemy = g.enemies[i]; if (!enemy) continue
         const hit = g.shots.findIndex(s => Math.hypot(s.x - enemy.x, s.y - enemy.y) < enemy.radius + 5)
+=======
+      const aim = pointer.current
+      let nearest: Enemy | null = null
+      if (!aim) {
+        let bestDistanceSq = Infinity
+        for (const enemy of g.enemies) {
+          const vx = enemy.x - g.x, vy = enemy.y - g.y, distanceSq = vx * vx + vy * vy
+          if (distanceSq < bestDistanceSq) { bestDistanceSq = distanceSq; nearest = enemy }
+        }
+      }
+      // O mouse mira na janela da câmera; o alvo é convertido para coordenadas do mundo.
+      const targetX = aim ? aim.x - BASE_W / 2 + cam.x - g.x : nearest ? nearest.x - g.x : lastDirection.current.x
+      const targetY = aim ? aim.y - BASE_H / 2 + cam.y - g.y : nearest ? nearest.y - g.y : lastDirection.current.y
+      const aimLen = Math.hypot(targetX, targetY) || 1
+      const aimX = targetX / aimLen, aimY = targetY / aimLen
+      // Mantém disparos totalmente manuais: clique, Espaço, J ou botão ATIRAR.
+      if ((firing.current || k.has(' ') || k.has('j')) && g.shoot <= 0) {
+        g.shots.push({ x: g.x + aimX * 18, y: g.y + aimY * 18, vx: aimX * 525, vy: aimY * 525, life: .95 })
+        g.shoot = .235
+      }
+      for (const enemy of g.enemies) {
+        const ox = g.x - enemy.x, oy = g.y - enemy.y, length = Math.hypot(ox, oy) || 1
+        enemy.x += ox / length * enemy.speed * dt; enemy.y += oy / length * enemy.speed * dt
+      }
+      // Apenas inimigos absurdamente distantes são descartados (quando se foge de uma horda).
+      g.enemies = g.enemies.filter(e => { const dx = e.x - g.x, dy = e.y - g.y; return dx * dx + dy * dy < 1250 * 1250 })
+      g.shots = g.shots.filter(s => { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; return s.life > 0 })
+      for (let i = g.enemies.length - 1; i >= 0; i--) {
+        const enemy = g.enemies[i]; if (!enemy) continue
+        const hit = g.shots.findIndex(s => { const dx = s.x - enemy.x, dy = s.y - enemy.y, radius = enemy.radius + 5; return dx * dx + dy * dy < radius * radius })
+>>>>>>> f030e9cd76fc8a8be5e647c5501ed6dfe8539f36
         if (hit >= 0) {
           g.shots.splice(hit, 1); enemy.hp--; g.hitFlash = .09
           if (enemy.hp <= 0) { g.enemies.splice(i, 1); g.score += enemy.kind === 'brute' ? 30 : enemy.kind === 'runner' ? 15 : 10; setScore(g.score); continue }
         }
+<<<<<<< HEAD
         if (g.invulnerable <= 0 && Math.hypot(g.x - enemy.x, g.y - enemy.y) < enemy.radius + 12) {
+=======
+        if (g.invulnerable <= 0 && (g.x - enemy.x) ** 2 + (g.y - enemy.y) ** 2 < (enemy.radius + 12) ** 2) {
+>>>>>>> f030e9cd76fc8a8be5e647c5501ed6dfe8539f36
           g.health--; setHealth(g.health); g.invulnerable = 1.05; g.enemies.splice(i, 1); g.hitFlash = .28
         }
       }

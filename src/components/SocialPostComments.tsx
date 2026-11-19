@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../supabase'
 import './SocialPostComments.css'
 
@@ -240,18 +240,23 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
     )
   }
 
-  const loadedIds = new Set(comments.map(comment => comment.comment_id))
-  const repliesByParent = new Map<string, Comment[]>()
-  for (const comment of comments) {
-    if (!comment.parent_comment_id || !loadedIds.has(comment.parent_comment_id)) continue
-    const siblings = repliesByParent.get(comment.parent_comment_id) || []
-    siblings.push(comment)
-    repliesByParent.set(comment.parent_comment_id, siblings)
-  }
-  for (const siblings of repliesByParent.values()) {
-    siblings.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.comment_id.localeCompare(b.comment_id))
-  }
-  const rootComments = comments.filter(comment => !comment.parent_comment_id || !loadedIds.has(comment.parent_comment_id))
+  // Respostas encadeadas só são reagrupadas quando os comentários mudam,
+  // não a cada tecla digitada ou alteração de estado do editor.
+  const { loadedIds, repliesByParent, rootComments } = useMemo(() => {
+    const loadedIds = new Set(comments.map(comment => comment.comment_id))
+    const repliesByParent = new Map<string, Comment[]>()
+    for (const comment of comments) {
+      if (!comment.parent_comment_id || !loadedIds.has(comment.parent_comment_id)) continue
+      const siblings = repliesByParent.get(comment.parent_comment_id) || []
+      siblings.push(comment)
+      repliesByParent.set(comment.parent_comment_id, siblings)
+    }
+    for (const siblings of repliesByParent.values()) {
+      siblings.sort((a, b) => a.created_at.localeCompare(b.created_at) || a.comment_id.localeCompare(b.comment_id))
+    }
+    const rootComments = comments.filter(comment => !comment.parent_comment_id || !loadedIds.has(comment.parent_comment_id))
+    return { loadedIds, repliesByParent, rootComments }
+  }, [comments])
 
   function renderComment(comment: Comment, isReply = false) {
     return <article className={`hb-v181-comment hb-v182-comment hb-v184-comment ${isReply ? 'hb-v184-is-reply' : ''}`} key={comment.comment_id}>

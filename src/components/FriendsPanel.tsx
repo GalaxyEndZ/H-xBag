@@ -499,15 +499,18 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     finally{setBusy('')}
   }
   const currentPeople=people[tab]||EMPTY_PEOPLE
-  const filteredPeople=useMemo(()=>currentPeople
-    .filter(p=>foldText(`${p.display_name} ${p.username}`).includes(foldText(filter.trim())))
-    .sort((a,b)=>peopleOrder==='az' ? nameOf(a).localeCompare(nameOf(b),'pt-BR') : nameOf(b).localeCompare(nameOf(a),'pt-BR')),
-  [currentPeople,filter,peopleOrder])
-  const visiblePosts=useMemo(()=>posts.filter(post=>{
-    if(onlyPhotos && !(post.image_paths?.length))return false
+  const filteredPeople=useMemo(()=>{
+    const term=foldText(filter.trim())
+    return currentPeople
+      .filter(p=>!term||foldText(`${p.display_name} ${p.username}`).includes(term))
+      .sort((a,b)=>peopleOrder==='az' ? nameOf(a).localeCompare(nameOf(b),'pt-BR') : nameOf(b).localeCompare(nameOf(a),'pt-BR'))
+  },[currentPeople,filter,peopleOrder])
+  const visiblePosts=useMemo(()=>{
     const term=foldText(feedSearch.trim())
-    return !term||foldText(`${post.content} ${post.display_name} ${post.username}`).includes(term)
-  }).sort((a,b)=>{
+    return posts.filter(post=>{
+      if(onlyPhotos && !(post.image_paths?.length))return false
+      return !term||foldText(`${post.content} ${post.display_name} ${post.username}`).includes(term)
+    }).sort((a,b)=>{
     const dateDifference=new Date(b.created_at).getTime()-new Date(a.created_at).getTime()
     if (feedOrder==='popular') {
       // Ordenação local: somente publicações já carregadas, sem alterar a paginação da API.
@@ -515,11 +518,15 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       return engagement(b)-engagement(a)||dateDifference
     }
     return feedOrder==='recent'?dateDifference:-dateDifference
-  }),[posts,feedSearch,onlyPhotos,feedOrder,commentCounts])
-  const filteredConversations=useMemo(()=>conversations.filter(person=>{
-    if (unreadOnly && Number(person.unread_count)===0) return false
-    return foldText(`${person.display_name} ${person.username} ${person.last_message||''}`).includes(foldText(chatSearch.trim()))
-  }),[conversations,chatSearch,unreadOnly])
+    })
+  },[posts,feedSearch,onlyPhotos,feedOrder,commentCounts])
+  const filteredConversations=useMemo(()=>{
+    const term=foldText(chatSearch.trim())
+    return conversations.filter(person=>{
+      if (unreadOnly && Number(person.unread_count)===0) return false
+      return !term||foldText(`${person.display_name} ${person.username} ${person.last_message||''}`).includes(term)
+    })
+  },[conversations,chatSearch,unreadOnly])
   const visibleChatMessages=useMemo(()=>{
     const term=foldText(messageSearch.trim())
     return !term?chatMessages:chatMessages.filter(message=>!message.deleted_at && foldText(message.body).includes(term))

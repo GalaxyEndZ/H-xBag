@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 import { ARCADE_GAMES, type ArcadeGameId } from './ArcadeChallengeCatalog'
-import PongGame from './PongGame'
-import { SnakeGame, BreakoutGame, AsteroidsGame, FlappyGame, ArenaGame } from './ArcadeCanvasGames'
-import { Game2048, MinesweeperGame, MemoryGame } from './ArcadePuzzleGames'
+// Cada família de jogos só é transferida quando o jogador a seleciona.
+const PongGame = lazy(() => import('./PongGame'))
+const loadCanvasGames = () => import('./ArcadeCanvasGames')
+const loadPuzzleGames = () => import('./ArcadePuzzleGames')
+const SnakeGame = lazy(() => loadCanvasGames().then(m => ({ default: m.SnakeGame })))
+const BreakoutGame = lazy(() => loadCanvasGames().then(m => ({ default: m.BreakoutGame })))
+const AsteroidsGame = lazy(() => loadCanvasGames().then(m => ({ default: m.AsteroidsGame })))
+const FlappyGame = lazy(() => loadCanvasGames().then(m => ({ default: m.FlappyGame })))
+const ArenaGame = lazy(() => loadCanvasGames().then(m => ({ default: m.ArenaGame })))
+const Game2048 = lazy(() => loadPuzzleGames().then(m => ({ default: m.Game2048 })))
+const MinesweeperGame = lazy(() => loadPuzzleGames().then(m => ({ default: m.MinesweeperGame })))
+const MemoryGame = lazy(() => loadPuzzleGames().then(m => ({ default: m.MemoryGame })))
 import './MinigamesHub.css'
 
 type DailyChallenge = { challenge_id: string; game_id: ArcadeGameId; title: string; target: number; difficulty: number; completed: boolean; completed_at: string | null; reward: number }
@@ -11,9 +20,11 @@ type Wallet = { coins: number; earned_total: number; completed_today: number; re
 type Rank = { placement: number; user_id: string; player_name: string; username: string | null; best_score: number; games_played: number }
 type MyScore = { placement?: number | null; best_score?: number; games_played?: number }
 type Phase = 'ready' | 'starting' | 'playing' | 'paused' | 'over'
-const nf = (n: number) => new Intl.NumberFormat('pt-BR').format(n)
+const numberFormatter = new Intl.NumberFormat('pt-BR')
+const brazilDateFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' })
+const nf = (n: number) => numberFormatter.format(n)
 const daysInBrasilia = (date: Date) => {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date)
+  const parts = brazilDateFormatter.formatToParts(date)
   const part = (type: string) => parts.find(item => item.type === type)?.value || ''
   return `${part('year')}-${part('month')}-${part('day')}`
 }
@@ -177,12 +188,12 @@ export default function MinigamesHub({ userId }: { userId: string }) {
 
     <section className="hb-arcade-library" aria-label="Biblioteca de minigames"><div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">SUA COLEÇÃO DE JOGOS</span><h2>Escolha um minigame</h2></div><small>Selecione um jogo para abrir a arena e o ranking.</small></div><div className="hb-arcade-games-grid">{ARCADE_GAMES.map(item => <button type="button" key={item.id} className={`hb-arcade-game-choice ${selectedGame===item.id?'is-selected':''}`} onClick={()=>selectGame(item.id, true)} aria-pressed={selectedGame===item.id}><span aria-hidden="true">{item.icon}</span><strong>{item.title}</strong><small>{item.description}</small></button>)}</div></section>
 
-    {showPong ? <div ref={arenaRef as React.RefObject<HTMLDivElement>} className="hb-arcade-embedded-pong"><PongGame userId={userId} onArcadeUpdated={refreshChallenges} /></div> : <div className="hb-arcade-grid">
+    {showPong ? <div ref={arenaRef as React.RefObject<HTMLDivElement>} className="hb-arcade-embedded-pong"><Suspense fallback={<div className="hb-mini-ready" role="status">Preparando Pong…</div>}><PongGame userId={userId} onArcadeUpdated={refreshChallenges} /></Suspense></div> : <div className="hb-arcade-grid">
       <section ref={arenaRef} className="hb-arcade-main"><div className="hb-arcade-game-card">
         <div className="hb-arcade-card-head"><div><span className="hb-arcade-eyebrow">{game.icon} MINIGAME</span><h2>{game.title} <span>✦</span></h2><p>{game.description}</p></div><span className="hb-arcade-status">{phase==='playing'?'● JOGANDO':phase==='paused'?'Ⅱ PAUSADO':phase==='starting'?'◌ PREPARANDO':phase==='over'?'◆ FIM DE JOGO':'○ PRONTO'}</span></div>
         {phase==='playing' || phase==='paused' || phase==='over' ? <div key={`${selectedGame}-${gameKey}`} className="hb-mini-stage">
           <div className="hb-mini-session-bar"><span>✦ Partida {phase==='over' ? 'concluída' : 'em andamento'}</span>{(phase==='playing' || phase==='paused') && <button type="button" onClick={() => setPhase(current => current === 'playing' ? 'paused' : 'playing')}>{phase==='paused' ? '▶ Continuar' : 'Ⅱ Pausar'} <small>P / Esc</small></button>}</div>
-          {gameComponent()}
+          <Suspense fallback={<div className="hb-mini-ready" role="status">Carregando {game.title}…</div>}>{gameComponent()}</Suspense>
           {phase==='paused' && <div className="hb-mini-pause-overlay" role="status"><div><span aria-hidden="true">Ⅱ</span><h3>Partida pausada</h3><p>Seu progresso está preservado. Pressione P, Esc ou o botão abaixo para continuar.</p><button type="button" onClick={() => setPhase('playing')}>▶ Retomar partida</button></div></div>}
           {phase==='over' && <div className="hb-mini-result"><div><small>RESULTADO DA PARTIDA</small><strong>{nf(result || 0)} pontos</strong></div><button type="button" disabled={savingResult} onClick={replay}>{savingResult ? 'Salvando…' : '↻ Jogar novamente'}</button></div>}
         </div> : <div className="hb-mini-ready"><span aria-hidden="true">{game.icon}</span><h3>Pronto para jogar {game.title}?</h3><p>{game.description}. Continue até perder ou decida encerrar e salvar sua pontuação no ranking global.</p><button type="button" disabled={phase==='starting'} onClick={()=>void startGame()}>{phase==='starting'?'Preparando…':'▶ Iniciar partida'}</button></div>}
