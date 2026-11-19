@@ -1,0 +1,158 @@
+/* HäxBag V180 — Social: uma linguagem de rede social, mantendo os temas da temporada. */
+.hb-social-v180 {
+  --hs180-edge: color-mix(in srgb,var(--hs-accent) 22%,var(--hs-line));
+  --hs180-dim: color-mix(in srgb,var(--hs-muted) 88%,var(--hs-ink));
+  --hs180-glass: color-mix(in srgb,var(--hs-surface) 88%,transparent);
+  --hs180-raised: color-mix(in srgb,var(--hs-accent) 5%,var(--hs-soft));
+  --hs180-shadow: 0 12px 34px rgba(0,0,0,.11);
+  color: var(--hs-ink);
+}
+.hb-social-v180 .hb-v158-social-columns{grid-template-columns:minmax(204px,225px) minmax(0,1fr);gap:20px}
+.hb-social-v180 .hb-v158-social-content{max-width:1420px;gap:16px}
+.hb-social-v180 .hb-v158-social-sidebar{top:18px;gap:12px}
+.hb-social-v180 .hb-v158-mini-profile{border-radius:18px;box-shadow:var(--hs180-shadow);border-color:var(--hs180-edge)}
+.hb-social-v180 .hb-v158-mini-cover{height:103px}
+.hb-social-v180 .hb-v158-mini-avatar{border-radius:50%;width:68px;height:68px;margin-top:-33px}
+.hb-social-v180 .hb-v158-mini-profile-body{padding-bottom:19px;gap:6px}
+.hb-social-v180 .hb-v158-mini-profile-body>strong{font-size:1rem}
+.hb-social-v180 .hb-v158-mini-profile-body>button{margin-top:12px}
+.hb-social-v180 .hb-social-tabs{border-radius:15px;padding:7px;gap:3px}
+.hb-social-v180 .hb-social-tabs button{border-radius:10px;min-height:43px;font-size:.78rem;font-weight:720;transition:background .16s,border-color .16s}
+.hb-social-v180 .hb-social-tabs button:hover:not(.selected){background:color-mix(in srgb,var(--hs-accent) 8%,var(--hs-soft))}
+.hb-social-v180 .hb-social-tabs button.selected{border-color:var(--hs180-edge);background:color-mix(in srgb,var(--hs-accent) 12%,var(--hs-surface))}
+.hb-social-v180 .hb-v180-sidebar-secondary-label{margin-top:6px}
+.hb-social-v180 .hb-v180-secondary-nav{border-style:dashed;background:color-mix(in srgb,var(--hs-surface) 85%,transparent)}
+.hb-social-v180 .hb-social-hero.hb-v160-hero{
+  min-height:135px;padding:clamp(19px,2.5vw,31px);border-radius:20px;
+  background:radial-gradient(ellipse at 3% 2%,color-mix(in srgb,var(--hs-accent) 24%,transparent),transparent 54%),
+    radial-gradient(ellipse at 100% 100%,color-mix(in srgb,var(--hs-accent) 8%,transparent),transparent 50%),
+    var(--hs-soft);border-color:var(--hs180-edge);
+  box-shadow:var(--hs180-shadow);
+}
+.hb-social-v180 .hb-social-hero .hb-social-overline{letter-spacing:.15em}
+.hb-social-v180 .hb-v160-hero-copy h2{font-size:clamp(1.45rem,2.5vw,2.06rem);letter-spacing:-.04em}
+.hb-social-v180 .hb-v160-hero-icon{width:45px;height:45px;border-radius:14px}
+.hb-social-v180 .hb-v160-hero-actions button{border-radius:12px}
+.hb-social-v180 .hb-v180-quickbar{
+  display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:11px 12px;
+  border:1px solid var(--hs-line);border-radius:15px;background:var(--hs-soft);
+}
+.hb-social-v180 .hb-v180-quickbar button{
+  display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:9px 13px;
+  border:1px solid var(--hs-line);border-radius:10px;background:var(--hs-surface);color:var(--hs-ink);
+  font:inherit;font-size:.77rem;font-weight:740;white-space:nowrap;cursor:pointer;
+  transition:background .16s,border-color .16s;
+}
+.hb-social-v180 .hb-v180-quickbar button:hover{border-color:var(--hs-accent);background:color-mix(in srgb,var(--hs-accent) 9%,var(--hs-surface))}
+.hb-social-v180 .hb-v180-quickbar .hb-v180-quickbar-primary{background:var(--hs-accent);color:var(--season-on-primary,#161617);border-color:var(--hs-accent)}
+.hb-social-v180 .hb-v180-quickbar .hb-v180-quickbar-primary:hover{filter:brightness(1.07)}
+.hb-social-v180 .hb-v180-quickbar button>span{font-size:1rem}
+.hb-social-v180 .hb-v180-quickbar em{display:grid;place-items:center;min-width:20px;height:20px;border-radius:20px;padding:0 5px;background:var(--hs-accent);color:var(--season-on-primary,#161617);font-size:.68rem;font-style:normal}
+/* Compactar as métricas: são atalhos de rede, não painéis de administração. */
+.hb-social-v180 .hb-v160-stats{gap:9px}
+.hb-social-v180 .hb-v160-stats>button{min-height:70px;padding:12px 14px;border-radius:13px;background:var(--hs-soft)}
+.hb-social-v180 .hb-v160-stat-icon{width:36px;height:36px;border-radius:11px}
+.hb-social-v180 .hb-v160-stats strong{font-size:1.13rem}
+.hb-social-v180 .hb-v160-stat-arrow{opacity:.45}
+/* Área de criação e linha do tempo. */
+.hb-social-v180 .hb-social-feed-layout{grid-template-columns:minmax(0,1fr) minmax(215px,255px);gap:19px}
+.hb-social-v180 .hb-social-feed-main{gap:15px}
+.hb-social-v180 .hb-v160-composer{border:1px solid var(--hs180-edge);border-radius:19px;background:var(--hs-soft);box-shadow:var(--hs180-shadow);padding:clamp(17px,2.6vw,26px);gap:13px}
+.hb-social-v180 .hb-v160-composer-author{padding-bottom:10px;border-bottom:1px solid var(--hs-line)}
+.hb-social-v180 .hb-v160-composer-author .hb-social-avatar{width:47px;height:47px;border:2px solid var(--hs180-edge)}
+.hb-social-v180 .hb-v160-editor-label{font-size:.89rem}
+.hb-social-v180 .hb-v160-composer textarea{min-height:118px;border-radius:13px;border-color:var(--hs180-edge);background:var(--hs-surface);font-size:.9rem;line-height:1.7}
+.hb-social-v180 .hb-v160-composer textarea:focus{outline:2px solid color-mix(in srgb,var(--hs-accent) 45%,transparent);outline-offset:1px}
+.hb-social-v180 .hb-v180-draft-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;margin-top:-2px}
+.hb-social-v180 .hb-v180-draft-actions>span{font-size:.7rem;color:var(--hs180-dim)}
+.hb-social-v180 .hb-v180-draft-actions>button{border:0;background:none;color:var(--hs-accent);font-size:.7rem;font-weight:770;cursor:pointer;padding:5px}
+.hb-social-v180 .hb-v180-draft-actions>button:hover{text-decoration:underline}
+.hb-social-v180 .hb-v160-writing-prompts{gap:7px}
+.hb-social-v180 .hb-v160-writing-prompts button{border-radius:9px}
+.hb-social-v180 .hb-social-composer-bottom{padding-top:15px}
+.hb-social-v180 .hb-v160-composer-submit>button{min-width:122px;border-radius:11px}
+.hb-social-v180 .hb-social-feed-header{padding:16px 4px 0;gap:12px}
+.hb-social-v180 .hb-social-feed-header h3{font-size:1.3rem}
+.hb-social-v180 .hb-v163-feed-tools{margin:8px 0 6px;padding:10px;border:1px solid var(--hs-line);border-radius:14px;background:var(--hs-soft)}
+.hb-social-v180 .hb-v163-feed-search{border-radius:10px}
+.hb-social-v180 .hb-social-post{border:1px solid var(--hs-line);border-radius:18px;background:var(--hs-soft);box-shadow:0 6px 18px rgba(0,0,0,.06);padding:clamp(17px,2.5vw,24px);transition:border-color .2s,box-shadow .2s}
+.hb-social-v180 .hb-social-post:hover{border-color:var(--hs180-edge);box-shadow:var(--hs180-shadow);transform:none}
+.hb-social-v180 .hb-social-post-top{gap:12px}
+.hb-social-v180 .hb-social-post-top>button{gap:11px}
+.hb-social-v180 .hb-social-post-top .hb-social-avatar{width:48px;height:48px;border:2px solid var(--hs180-edge)}
+.hb-social-v180 .hb-social-post>p{margin:15px 0;font-size:.91rem;line-height:1.72;white-space:pre-wrap;overflow-wrap:anywhere}
+.hb-social-v180 .hb-v160-post-date{color:var(--hs180-dim)}
+.hb-social-v180 .hb-v160-visibility{font-size:.66rem;border-radius:8px}
+.hb-social-v180 .hb-v162-post-gallery{margin:12px 0;border-radius:12px;overflow:hidden}
+.hb-social-v180 .hb-v162-post-gallery img{transition:transform .22s}
+.hb-social-v180 .hb-v162-post-gallery button:hover img{transform:scale(1.025)}
+.hb-social-v180 .hb-social-post footer{border-top:1px solid var(--hs-line);margin-top:14px;padding-top:12px;gap:10px}
+.hb-social-v180 .hb-social-post footer button{min-height:36px;padding:8px 12px;border-radius:10px}
+.hb-social-v180 .hb-social-post footer button.liked{background:color-mix(in srgb,#eaa9b2 12%,var(--hs-surface));color:#f4a0ac}
+.hb-social-v180 .hb-social-feed-aside{top:18px;padding:19px;background:var(--hs180-raised);border-color:var(--hs180-edge);border-radius:17px;gap:14px}
+.hb-social-v180 .hb-social-feed-aside h3{font-size:1.22rem}
+.hb-social-v180 .hb-social-privacy-note{border-top:1px solid var(--hs-line);padding-top:13px}
+/* Pessoas, conexões e busca. */
+.hb-social-v180 .hb-social-list-pane{padding:clamp(18px,2.4vw,28px);border-radius:18px;gap:18px}
+.hb-social-v180 .hb-v160-people-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.hb-social-v180 .hb-social-person{border-radius:14px;padding:17px;gap:15px;border:1px solid var(--hs-line);background:var(--hs-surface)}
+.hb-social-v180 .hb-social-person:hover{box-shadow:var(--hs180-shadow);border-color:var(--hs180-edge)}
+.hb-social-v180 .hb-social-person-name .hb-social-avatar{width:53px;height:53px;border:2px solid var(--hs180-edge)}
+.hb-social-v180 .hb-social-person-actions>button{min-height:40px;border-radius:10px}
+.hb-social-v180 .hb-v160-discover-search{border-radius:12px}
+/* Mensagens: painel de conversas familiar e agradável em desktop e celular. */
+.hb-social-v180 .hb-social-chat-shell{overflow:hidden;border:1px solid var(--hs180-edge);border-radius:18px;box-shadow:var(--hs180-shadow);background:var(--hs-soft)}
+.hb-social-v180 .hb-social-chat-sidebar{background:color-mix(in srgb,var(--hs-surface) 72%,var(--hs-soft));border-right:1px solid var(--hs-line)}
+.hb-social-v180 .hb-social-chat-contact{border-radius:11px;min-height:63px}
+.hb-social-v180 .hb-social-chat-contact.selected{background:color-mix(in srgb,var(--hs-accent) 12%,var(--hs-surface));outline:1px solid var(--hs180-edge)}
+.hb-social-v180 .hb-v160-chat-search input{border-radius:11px}
+.hb-social-v180 .hb-social-chat-main>header{background:var(--hs-soft);border-bottom:1px solid var(--hs-line)}
+.hb-social-v180 .hb-social-chat-messages{background:radial-gradient(circle at 50% 0,color-mix(in srgb,var(--hs-accent) 6%,transparent),transparent 66%),var(--hs-surface)}
+.hb-social-v180 .hb-social-bubble{border-radius:14px;padding:11px 14px;line-height:1.5}
+.hb-social-v180 .hb-social-bubble.own{border-bottom-right-radius:5px}
+.hb-social-v180 .hb-social-chat-compose{border-top:1px solid var(--hs-line)}
+.hb-social-v180 .hb-social-chat-compose textarea{border-radius:12px}
+.hb-social-v180 .hb-social-chat-compose button{border-radius:10px}
+.hb-social-v180 .hb-social-chat-welcome{padding:30px}
+.hb-social-v180 button:focus-visible,.hb-social-v180 input:focus-visible,.hb-social-v180 select:focus-visible,.hb-social-v180 textarea:focus-visible{outline:2px solid var(--hs-accent);outline-offset:2px}
+@media(max-width:1250px){.hb-social-v180 .hb-social-feed-layout{grid-template-columns:minmax(0,1fr)}.hb-social-v180 .hb-social-feed-aside{position:static;display:none}}
+@media(max-width:960px){.hb-social-v180 .hb-v158-social-columns{grid-template-columns:minmax(176px,205px) minmax(0,1fr);gap:13px}.hb-social-v180 .hb-v180-quickbar{gap:7px}.hb-social-v180 .hb-v180-quickbar button{padding:8px 10px}.hb-social-v180 .hb-v160-stats>button{padding:11px;gap:9px}}
+@media(max-width:760px){
+  .hb-social-v180 .hb-v158-social-columns{grid-template-columns:minmax(0,1fr);gap:12px}
+  .hb-social-v180 .hb-v158-social-sidebar{position:static;gap:9px}
+  .hb-social-v180 .hb-v158-mini-profile{grid-template-columns:92px minmax(0,1fr);min-height:96px}
+  .hb-social-v180 .hb-v158-mini-cover{min-height:96px;height:100%}
+  .hb-social-v180 .hb-v158-mini-profile-body{padding:12px}
+  .hb-social-v180 .hb-social-tabs{display:flex;overflow-x:auto;flex-wrap:nowrap;gap:5px;scrollbar-width:thin}
+  .hb-social-v180 .hb-social-tabs button{flex:0 0 auto;width:auto;white-space:nowrap;min-height:39px}
+  .hb-social-v180 .hb-v180-secondary-nav{margin-top:-2px}
+  .hb-social-v180 .hb-v180-quickbar{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}
+  .hb-social-v180 .hb-v180-quickbar button{flex:0 0 auto}
+  .hb-social-v180 .hb-v160-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+  .hb-social-v180 .hb-v160-stats>button{display:grid;justify-items:center;text-align:center;gap:5px;padding:10px 4px;min-height:74px}
+  .hb-social-v180 .hb-v160-stats>button>span:nth-child(2){gap:2px}
+  .hb-social-v180 .hb-v160-stat-icon{width:29px;height:29px;border-radius:8px}
+  .hb-social-v180 .hb-v160-stats strong{font-size:1rem}
+  .hb-social-v180 .hb-v160-stats small{font-size:.62rem}
+  .hb-social-v180 .hb-v160-stat-arrow{display:none}
+  .hb-social-v180 .hb-social-chat-shell{max-height:calc(100dvh - 220px);min-height:480px}
+  .hb-social-v180 .hb-social-chat-sidebar{border-right:0}
+}
+@media(max-width:520px){
+  .hb-social-v180 .hb-social-hero.hb-v160-hero{padding:17px;min-height:0;border-radius:17px}
+  .hb-social-v180 .hb-v160-hero-copy h2{font-size:1.38rem;gap:8px}
+  .hb-social-v180 .hb-v160-hero-icon{width:36px;height:36px;border-radius:10px}
+  .hb-social-v180 .hb-v160-hero-actions{gap:7px}
+  .hb-social-v180 .hb-v180-quickbar{margin-inline:-1px;padding:8px}
+  .hb-social-v180 .hb-v160-stats small{font-size:.57rem}
+  .hb-social-v180 .hb-v160-composer{padding:16px}
+  .hb-social-v180 .hb-v180-draft-actions>span{font-size:.65rem}
+  .hb-social-v180 .hb-social-post{padding:16px}
+  .hb-social-v180 .hb-social-post-top .hb-social-avatar{width:42px;height:42px}
+  .hb-social-v180 .hb-v160-post-date{padding-left:0;width:100%;justify-content:flex-start}
+  .hb-social-v180 .hb-v163-feed-tools{padding:8px}
+  .hb-social-v180 .hb-social-chat-shell{min-height:450px;max-height:calc(100dvh - 165px)}
+  .hb-social-v180 .hb-social-chat-messages{padding:13px}
+  .hb-social-v180 .hb-social-bubble{max-width:88%}
+}
+@media(prefers-reduced-motion:reduce){.hb-social-v180 *, .hb-social-v180 *::before, .hb-social-v180 *::after{transition:none!important;scroll-behavior:auto!important}}
