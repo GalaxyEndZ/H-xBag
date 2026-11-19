@@ -1,0 +1,69 @@
+.hb-arcade{--arcade-border:var(--season-line,rgba(255,255,255,.15));--arcade-surface:var(--season-surface,#25212a);--arcade-muted:var(--season-muted,#aeb5c1);color:var(--season-text,#faf9f7);max-width:1500px;margin:0 auto;display:grid;gap:22px;min-width:0}
+.hb-arcade *{box-sizing:border-box}
+.hb-arcade-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;overflow:hidden;position:relative;padding:clamp(22px,3.4vw,38px);border-radius:22px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 27%,var(--arcade-border));background:radial-gradient(ellipse at 88% 8%,color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent),transparent 45%),linear-gradient(135deg,var(--arcade-surface),var(--season-bg,#111419));box-shadow:0 18px 45px #0002}
+.hb-arcade-hero>div:first-child{position:relative;z-index:1}
+.hb-arcade-eyebrow{color:var(--season-primary,#d9bd8b);font-size:10px;font-weight:850;letter-spacing:.16em}
+.hb-arcade-hero h1{margin:11px 0;font-size:clamp(32px,4vw,52px);letter-spacing:-.04em;line-height:1.1}
+.hb-arcade-hero h1 span{color:var(--season-primary,#d9bd8b)}
+.hb-arcade-hero p{max-width:610px;color:var(--arcade-muted);font-size:13px;line-height:1.7;margin:0}
+.hb-arcade-chips{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.hb-arcade-chips span{font-size:11px;padding:7px 10px;border:1px solid var(--arcade-border);border-radius:99px;background:#ffffff06}
+.hb-arcade-hero-mark{display:grid;place-items:center;min-width:125px;opacity:.72;gap:0}
+.hb-arcade-hero-mark span{font-size:76px;line-height:1;color:var(--season-primary,#d9bd8b);text-shadow:0 0 50px #ffffff22}
+.hb-arcade-hero-mark b{font-size:11px;letter-spacing:.42em;color:var(--arcade-muted)}
+.hb-arcade-grid{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(275px,.85fr);align-items:start;gap:18px}
+.hb-arcade-main{display:grid;min-width:0;gap:14px}
+.hb-arcade-game-card,.hb-arcade-ranking,.hb-arcade-how{border:1px solid var(--arcade-border);background:var(--arcade-surface);border-radius:20px;box-shadow:0 12px 25px #0001}
+.hb-arcade-game-card{padding:clamp(12px,1.7vw,20px);min-width:0}
+.hb-arcade-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.hb-arcade-card-head h2{font-size:25px;margin:6px 0;line-height:1.2;letter-spacing:-.04em}
+.hb-arcade-card-head h2 span{color:var(--season-primary,#d9bd8b)}
+.hb-arcade-card-head p{color:var(--arcade-muted);font-size:11px;margin:0}
+.hb-arcade-status{border:1px solid var(--arcade-border);border-radius:99px;padding:7px 11px;white-space:nowrap;font-size:10px;font-weight:850;color:var(--season-primary,#d9bd8b)}
+.hb-arcade-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:13px}
+.hb-arcade-metrics>div{padding:10px 13px;background:color-mix(in srgb,var(--season-bg,#141518) 55%,transparent);border:1px solid var(--arcade-border);border-radius:12px;min-width:0}
+.hb-arcade-metrics small{display:block;letter-spacing:.12em;font-size:9px;color:var(--arcade-muted);font-weight:750}
+.hb-arcade-metrics strong{display:block;font-size:clamp(19px,2.2vw,29px);font-variant-numeric:tabular-nums;margin-top:5px;line-height:1.2}
+.hb-arcade-metrics .hb-arcade-lives{color:#f18d9b;letter-spacing:.12em;font-size:21px}
+.hb-pong-frame{position:relative;overflow:hidden;border-radius:13px;border:1px solid #44505f;background:#0c101b;box-shadow:inset 0 0 35px #0006}
+.hb-pong-frame canvas{display:block;width:100%;height:auto;aspect-ratio:900/508;touch-action:none;cursor:crosshair}
+.hb-pong-frame canvas:focus{outline:none}
+.hb-pong-overlay{position:absolute;inset:0;display:grid;place-items:center;padding:15px;background:#080d18b4;backdrop-filter:blur(3px)}
+.hb-pong-overlay-content{text-align:center;max-width:400px;display:grid;justify-items:center;gap:10px}
+.hb-pong-overlay-symbol{font-size:40px;color:var(--season-primary,#d9bd8b)}
+.hb-pong-overlay h3{font-size:clamp(19px,3vw,31px);margin:0;letter-spacing:-.03em;color:#f8f8ff}
+.hb-pong-overlay p{font-size:12px;line-height:1.6;color:#c4c8d5;margin:0}
+.hb-pong-overlay button{border:0;border-radius:11px;padding:12px 20px;margin-top:7px;background:var(--season-primary,#d9bd8b);color:var(--season-on-primary,#191718);font-weight:850;cursor:pointer}
+.hb-pong-overlay button:disabled{opacity:.6;cursor:wait}
+.hb-arcade-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:13px;font-size:11px;line-height:1.6;color:var(--arcade-muted)}
+.hb-arcade-controls span{border:1px solid var(--arcade-border);border-radius:5px;padding:2px 5px;font-weight:750;color:var(--season-text,#fff)}
+.hb-arcade-controls button,.hb-arcade-ranking-head button{border:1px solid var(--arcade-border);border-radius:9px;padding:7px 10px;background:var(--season-surface-alt,#302c35);color:inherit;font-weight:750;font-size:11px;cursor:pointer}
+.hb-arcade-save{font-size:11px;color:var(--arcade-muted);margin:12px 0 0}
+.hb-arcade-how{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:17px}
+.hb-arcade-how>div{min-width:0;display:grid;gap:5px;text-align:center}
+.hb-arcade-how strong{font-size:23px;color:var(--season-primary,#d9bd8b)}
+.hb-arcade-how span{font-size:10px;color:var(--arcade-muted)}
+.hb-arcade-ranking{padding:19px;display:grid;gap:17px;min-width:0}
+.hb-arcade-ranking-head h2{font-size:22px;letter-spacing:-.035em;margin:8px 0}
+.hb-arcade-ranking-head p{font-size:12px;line-height:1.5;color:var(--arcade-muted);margin:0 0 13px}
+.hb-arcade-ranking-head button{width:100%;min-height:38px}
+.hb-arcade-my-rank{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:16px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 28%,var(--arcade-border));background:color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,transparent);border-radius:14px}
+.hb-arcade-my-rank>small{grid-column:1/-1;color:var(--arcade-muted);font-size:10px;font-weight:800;letter-spacing:.12em}
+.hb-arcade-my-rank>strong{grid-column:1/-1;font-size:37px;font-weight:900;line-height:1}
+.hb-arcade-my-rank>div{display:grid;gap:4px}
+.hb-arcade-my-rank>div span{font-size:10px;color:var(--arcade-muted)}
+.hb-arcade-my-rank>div b{font-size:17px}
+.hb-arcade-ranking-list{list-style:none;display:grid;gap:6px;padding:0;margin:0}
+.hb-arcade-ranking-list li{display:flex;align-items:center;gap:10px;border-radius:11px;padding:10px 9px;background:color-mix(in srgb,var(--season-bg,#15131b) 60%,transparent);border:1px solid transparent}
+.hb-arcade-ranking-list li.is-self{border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 35%,transparent);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 9%,transparent)}
+.hb-arcade-place{flex:0 0 35px;text-align:center;font-size:12px;font-weight:850;color:var(--arcade-muted)}
+.hb-arcade-place.is-podium{font-size:18px}
+.hb-arcade-player{display:grid;flex:1;min-width:0;gap:3px}
+.hb-arcade-player strong{font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.hb-arcade-player small{font-size:10px;color:var(--arcade-muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.hb-arcade-ranking-list li>b{font-size:14px;font-variant-numeric:tabular-nums}
+.hb-arcade-ranking-note,.hb-arcade-muted,.hb-arcade-empty,.hb-arcade-error{font-size:11px;line-height:1.7;color:var(--arcade-muted);margin:0}
+.hb-arcade-error{padding:12px;background:rgba(250,160,140,.07);border:1px solid rgba(250,160,140,.2);border-radius:10px;color:#f4b7ae}
+.hb-arcade-empty{text-align:center;padding:20px}
+@media(max-width:1150px){.hb-arcade-grid{grid-template-columns:minmax(0,1fr)}.hb-arcade-ranking-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.hb-arcade{gap:13px}.hb-arcade-hero{padding:20px}.hb-arcade-hero-mark{display:none}.hb-arcade-chips{gap:5px}.hb-arcade-chips span{font-size:10px;padding:5px 7px}.hb-arcade-card-head{align-items:flex-start}.hb-arcade-card-head h2{font-size:22px}.hb-arcade-status{font-size:9px}.hb-arcade-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-arcade-how{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-arcade-ranking-list{grid-template-columns:1fr}.hb-pong-overlay-content{gap:5px}.hb-pong-overlay-symbol{font-size:26px}.hb-pong-overlay p{font-size:10px}.hb-pong-overlay button{padding:8px 12px;font-size:11px;margin:0}.hb-arcade-controls{font-size:10px}}

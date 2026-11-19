@@ -1,4 +1,5 @@
 import FloatingChat from './components/FloatingChat'
+import { readHaxLocation, haxLocationUrl, haxShouldPush, type HaxLocation, type HaxPage } from './siteNavigation'
 import './components/ProfileSocialV164.css'
 import './components/ProfileSocialV165.css'
 import {
@@ -58,6 +59,7 @@ import { useCharacterConditionModifiers, useEnemyConditionModifiers, useCharacte
 
 const HaxTable = lazy(() => import('./components/HaxTable'))
 const DiceTower = lazy(() => import('./components/DiceTower'))
+const MinigamesHub = lazy(() => import('./components/MinigamesHub'))
 const MasterChest = lazy(() => import('./components/MasterChest'))
 const CampaignMissions = lazy(() => import('./components/CampaignMissions'))
 const InvestigationBoard = lazy(() => import('./components/InvestigationBoard'))
@@ -1039,13 +1041,18 @@ function RestActionsPanel({ onApply, canApply, maxPR, breathing, vigor, breathin
   </section>
 }
 
-function App() {                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+function App() {
+  const initialHaxLocation = useRef(readHaxLocation(typeof window !== 'undefined' ? window.location.search : ''))
+  const haxHistoryReadyRef = useRef(false)
+  const haxHistoryRestoreRef = useRef(false)
+  const lastHaxLocationRef = useRef<HaxLocation | null>(null)
+  const [haxHistoryRevision, setHaxHistoryRevision] = useState(0)                                                                                                                                                                                                                                                                                                                                                                                                                                                                
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [selectedCampaignId, setSelectedCampaignId] = useState('')
+  const [selectedCampaignId, setSelectedCampaignId] = useState(initialHaxLocation.current.campaign)
   const [campaignNews, setCampaignNews] = useState<Array<{id:string;title:string;body:string;image_url:string|null;created_at:string;updated_at:string}>>([])
   const [newsLoading, setNewsLoading] = useState(false)
   const [newsError, setNewsError] = useState('')
@@ -1237,7 +1244,7 @@ function App() {
       return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, string[]> : {}
     } catch { return {} }
   })
-  const [selectedCharacterId, setSelectedCharacterId] = useState('')
+  const [selectedCharacterId, setSelectedCharacterId] = useState(initialHaxLocation.current.character)
   const conditionModifiers = useCharacterConditionModifiers(selectedCampaignId, selectedCharacterId)
   const conditionRules = useCharacterConditionRules(selectedCampaignId, selectedCharacterId)
 
@@ -1289,9 +1296,9 @@ function App() {
   const [enemySortOrder, setEnemySortOrder] = useState<'recent' | 'name' | 'oldest'>('recent')
   const [enemyStatusFilter, setEnemyStatusFilter] = useState<'all' | 'configured' | 'unconfigured' | 'party' | 'critical'>('all')
   const [enemyViewMode, setEnemyViewMode] = useState<'grid' | 'list'>('grid')
-  const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null)
+  const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(initialHaxLocation.current.enemy || null)
   const enemyConditionModifiers = useEnemyConditionModifiers(selectedCampaignId, selectedEnemyId ?? '')
-  const [enemySheetView, setEnemySheetView] = useState(false)
+  const [enemySheetView, setEnemySheetView] = useState(initialHaxLocation.current.page === 'enemies' && initialHaxLocation.current.enemySheet)
   const [showEnemyForm, setShowEnemyForm] = useState(false)
   const [editingEnemyId, setEditingEnemyId] = useState<string | null>(null)
   const [enemySaving, setEnemySaving] = useState(false)
@@ -1457,7 +1464,7 @@ const resetCreatureFilters = () => {
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityTableMissing, setActivityTableMissing] = useState(false)
   const [showAllCampaignActivities, setShowAllCampaignActivities] = useState(false)
-  const [selectedSeasonId, setSelectedSeasonId] = useState('')
+  const [selectedSeasonId, setSelectedSeasonId] = useState(initialHaxLocation.current.season)
   const [masterShieldSeasonId, setMasterShieldSeasonId] = useState('')
   const [masterShieldSheets, setMasterShieldSheets] = useState<Record<string, Record<string, any>>>({})
   const [cyberneticsArchetypeSheets, setCyberneticsArchetypeSheets] = useState<Record<string, Record<string, any>>>({})
@@ -1617,7 +1624,7 @@ const resetCreatureFilters = () => {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
-  const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>(initialHaxLocation.current.section)
   const [notificationsOpen,setNotificationsOpen]=useState(false)
   const [notificationBusy,setNotificationBusy]=useState(false)
   const [unreadMessages,setUnreadMessages]=useState(0)
@@ -2011,13 +2018,11 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     sheetDraftRef.current = sheetDraft
   }, [sheetDraft])
 
-  const [activePage, setActivePage] = useState<
-  'overview' | 'player-table' | 'sheets' | 'campaigns' | 'customization' | 'shops' | 'master-shield' | 'master-chest' | 'missions' | 'investigation' | 'bestiary' | 'enemies' | 'profile' | 'conditions' | 'dice-tower'
->('overview')
-  const lastRpgPage = useRef<Exclude<typeof activePage,'profile'>>('overview')
-  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'>('feed')
+  const [activePage, setActivePage] = useState<HaxPage>(initialHaxLocation.current.page)
+  const lastRpgPage = useRef<Exclude<typeof activePage,'profile'|'minigames'>>('overview')
+  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'>(initialHaxLocation.current.tab)
   useEffect(() => {
-    if (activePage !== 'profile') lastRpgPage.current = activePage
+    if (activePage !== 'profile' && activePage !== 'minigames') lastRpgPage.current = activePage
   }, [activePage])
   useEffect(() => {
     if (activePage === 'profile' && profileSection === 'friends') setSocialOpened(true)
@@ -2126,7 +2131,72 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [sidebarMobileOpen])
-  const [sheetCharacterView, setSheetCharacterView] = useState(false)
+  const [sheetCharacterView, setSheetCharacterView] = useState(initialHaxLocation.current.page === 'sheets' && initialHaxLocation.current.sheet)
+
+
+  // V187 — Histórico real de navegação: voltar/avançar no navegador.
+  // Não interfere em ?invite=, ?ref=, OAuth, âncoras ou dados persistidos da campanha.
+  useEffect(() => {
+    const onPopState = () => {
+      const route = readHaxLocation(window.location.search)
+      haxHistoryRestoreRef.current = true
+      lastHaxLocationRef.current = route
+      setActivePage(route.page)
+      setProfileSection(route.section)
+      setSocialNavigationTab(route.tab)
+      setSelectedCampaignId(route.campaign)
+      setSelectedSeasonId(route.season)
+      if (route.page === 'sheets') {
+        if (route.character) setSelectedCharacterId(route.character)
+        setSheetCharacterView(route.sheet && Boolean(route.character))
+      } else setSheetCharacterView(false)
+      if (route.page === 'enemies') {
+        setSelectedEnemyId(route.enemy || null)
+        setEnemySheetView(route.enemySheet && Boolean(route.enemy))
+      } else setEnemySheetView(false)
+      setSidebarMobileOpen(false)
+      setHaxHistoryRevision(current => current + 1)
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
+    if (!session?.user.id || authLoading) return
+    const route: HaxLocation = {
+      page: activePage, section: profileSection, tab: socialNavigationTab,
+      campaign: selectedCampaignId, season: selectedSeasonId,
+      character: selectedCharacterId, sheet: sheetCharacterView,
+      enemy: selectedEnemyId || '', enemySheet: enemySheetView,
+    }
+    const url = haxLocationUrl(window.location.href, route)
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const previous = lastHaxLocationRef.current
+    const state = { ...(window.history.state && typeof window.history.state === 'object' ? window.history.state : {}), haxNavigation: true }
+
+    // Uma navegação popstate nunca pode criar outra entrada no histórico.
+    if (haxHistoryRestoreRef.current) {
+      haxHistoryRestoreRef.current = false
+      haxHistoryReadyRef.current = true
+      lastHaxLocationRef.current = route
+      return
+    }
+    if (url !== currentUrl) {
+      if (haxHistoryReadyRef.current && previous && haxShouldPush(previous, route)) {
+        window.history.pushState(state, '', url)
+      } else {
+        window.history.replaceState(state, '', url)
+      }
+    }
+    lastHaxLocationRef.current = route
+    haxHistoryReadyRef.current = true
+  }, [
+    session?.user.id, authLoading, haxHistoryRevision,
+    activePage, profileSection, socialNavigationTab,
+    selectedCampaignId, selectedSeasonId, selectedCharacterId,
+    sheetCharacterView, selectedEnemyId, enemySheetView,
+  ])
   // Navegação unificada; não altera regras, fichas nem permissões de acesso.
   const [quickOpen, setQuickOpen] = useState(false)
   const [quickMode, setQuickMode] = useState<'search' | 'notes'>('search')
@@ -7571,6 +7641,11 @@ async function sendItemToCharacter() {
     setSidebarMobileOpen(false)
     window.scrollTo({top:0,behavior:'instant'})
   }
+  const openMinigamesSpace = () => {
+    setActivePage('minigames')
+    setSidebarMobileOpen(false)
+    window.scrollTo({top:0,behavior:'instant'})
+  }
   const openRpgSpace = () => {
     setActivePage(lastRpgPage.current === 'overview' && !selectedCampaignId ? 'campaigns' : lastRpgPage.current)
     setSidebarMobileOpen(false)
@@ -10559,6 +10634,7 @@ counterAttackDT
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
     {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
     {id:'profile',label:'Social',symbol:'✦',description:'Feed, perfis, seguidores, amizades e mensagens'},
+    {id:'minigames',label:'Minigames',symbol:'◉',description:'Jogue Pong e dispute o ranking global'},
   ]
   const quickCommands: HaxQuickCommand[] = quickPages
     .filter(item => (!item.master || isMaster) && (!item.campaign || Boolean(selectedCampaignId)))
@@ -10667,9 +10743,9 @@ counterAttackDT
   if (!session) return <Auth />
 
   return (
-    <div data-hb-space={activePage === 'profile' ? 'social' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
+    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
-      {activePage !== 'profile' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
+      {activePage !== 'profile' && activePage !== 'minigames' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
@@ -10684,10 +10760,11 @@ counterAttackDT
 
         <div className="hb-v159-space-switch" role="group" aria-label="Escolher espaço do HäxBag">
           <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace}><span aria-hidden="true">✦</span> Social</button>
-          <button type="button" className={activePage !== 'profile' ? 'is-active' : ''} aria-pressed={activePage !== 'profile'} onClick={openRpgSpace}><span aria-hidden="true">⚔</span> RPG</button>
+          <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames'} onClick={openRpgSpace}><span aria-hidden="true">⚔</span> RPG</button>
+          <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={openMinigamesSpace}><span aria-hidden="true">◉</span> Minigames</button>
         </div>
 
-        {activePage !== 'profile' && <>
+        {activePage !== 'profile' && activePage !== 'minigames' && <>
         <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
           <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
           <span className="hb-sidebar-style-text">
@@ -10734,7 +10811,7 @@ counterAttackDT
             title="Buscar e navegar pelo HäxBag (Ctrl ou ⌘ + K)" aria-keyshortcuts="Control+K Meta+K">
             <span aria-hidden="true">⌕</span><span>Buscar no HäxBag</span><kbd>Ctrl K</kbd>
           </button>
-          {activePage !== 'profile' && <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
+          {activePage !== 'profile' && activePage !== 'minigames' && <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
             aria-label="Abrir notas privadas da sessão" title="Notas privadas da sessão">✎</button>}
         </div>
         <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal" onClick={event => { if ((event.target as HTMLElement).closest('button.nav-link')) setSidebarMobileOpen(false) }}>
@@ -10756,6 +10833,12 @@ counterAttackDT
               ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
+          </> : activePage === 'minigames' ? <>
+            <div className="hb-sidebar-nav-group hb-arcade-side-menu">
+              <span className="hb-sidebar-group-title">ARCADE</span>
+              <button type="button" className="nav-link active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">◉</span><span className="hb-sidebar-nav-name">Pong</span></button>
+              <button type="button" className="nav-link" onClick={() => document.getElementById('hb-pong-ranking-title')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">🏆</span><span className="hb-sidebar-nav-name">Ranking global</span></button>
+            </div>
           </> : <> 
           <div className="hb-sidebar-nav-group">
             <span className="hb-sidebar-group-title">EXPLORAR</span>
@@ -10831,7 +10914,7 @@ counterAttackDT
         </nav>
 
         <div className="sidebar-bottom hb-sidebar-footer">
-          {activePage !== 'profile' && <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
+          {activePage !== 'profile' && activePage !== 'minigames' && <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
             <summary className="hb-sidebar-invite-summary">
               <span className="hb-sidebar-invite-glyph" aria-hidden="true">✉</span>
               <span className="hb-sidebar-invite-summary-copy"><strong>Convites e equipe</strong><small>{isMaster && selectedCampaignId ? 'Reúna seus jogadores' : 'Sua próxima aventura'}</small></span>
@@ -10939,13 +11022,14 @@ counterAttackDT
           </button>
           <div className="hb-v159-top-space-switch" role="group" aria-label="Ambiente ativo">
             <button type="button" aria-pressed={activePage === 'profile'} className={activePage === 'profile' ? 'is-active' : ''} onClick={openSocialSpace}>✦ <span>Social</span></button>
-            <button type="button" aria-pressed={activePage !== 'profile'} className={activePage !== 'profile' ? 'is-active' : ''} onClick={openRpgSpace}>⚔ <span>RPG</span></button>
+            <button type="button" aria-pressed={activePage !== 'profile' && activePage !== 'minigames'} className={activePage !== 'profile' && activePage !== 'minigames' ? 'is-active' : ''} onClick={openRpgSpace}>⚔ <span>RPG</span></button>
+            <button type="button" aria-pressed={activePage === 'minigames'} className={activePage === 'minigames' ? 'is-active' : ''} onClick={openMinigamesSpace}>◉ <span>Minigames</span></button>
           </div>
           <div className="breadcrumb hb-topbar-trail">
             <span>HäxBag</span><span className="crumb-slash">/</span>
-            <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
+            <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Pong e ranking', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -10955,7 +11039,7 @@ counterAttackDT
               aria-label="Buscar páginas, personagens e campanhas (Ctrl K)" title="Busca global (Ctrl K)">
               <span aria-hidden="true">⌕</span><span>Busca global</span><kbd>Ctrl K</kbd>
             </button>
-            {activePage !== 'profile' && <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
+            {activePage !== 'profile' && activePage !== 'minigames' && <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
               <span aria-hidden="true">{activeVisualStyle.symbol}</span>
               <strong>{activeVisualStyle.label}</strong>
             </span>}
@@ -10987,6 +11071,7 @@ counterAttackDT
         </header>
 
         <div className={`page-content page-${activePage}`} id="inicio-conteudo" tabIndex={-1}>
+          {activePage === 'minigames' && <DeferredModule><MinigamesHub userId={session.user.id} /></DeferredModule>}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <DeferredModule><MasterChest
               key={selectedCampaignId}
@@ -13223,7 +13308,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
           <section className="welcome-row">
 
 
@@ -18782,12 +18867,20 @@ style={{cursor:'pointer'}}>
           </div>
         </main>
         <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
+          {activePage === 'minigames' ? <>
+            <button type="button" className="active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">◉</span><small>Pong</small></button>
+            <button type="button" onClick={() => document.getElementById('hb-pong-ranking-title')?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">🏆</span><small>Ranking</small></button>
+            <button type="button" onClick={openSocialSpace}><span aria-hidden="true">✦</span><small>Social</small></button>
+            <button type="button" onClick={openRpgSpace}><span aria-hidden="true">⚔</span><small>RPG</small></button>
+            <button type="button" aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" onClick={()=>setSidebarMobileOpen(true)}><span aria-hidden="true">☰</span><small>Menu</small></button>
+          </> : <>
           <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='overview'?'page':undefined} className={activePage==='overview'?'active':''} onClick={()=>setActivePage('overview')}><span aria-hidden="true">⌂</span><small>Início</small></button>
           <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='sheets'?'page':undefined} className={activePage==='sheets'?'active':''} onClick={()=>{setActivePage('sheets');setSheetCharacterView(false)}}><span aria-hidden="true">▧</span><small>Fichas</small></button>
           <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='missions'?'page':undefined} className={activePage==='missions'?'active':''} onClick={()=>setActivePage('missions')}><span aria-hidden="true">📜</span><small>Missões</small></button>
           {isMaster ? <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='master-shield'?'page':undefined} className={activePage==='master-shield'?'active':''} onClick={()=>setActivePage('master-shield')}><span aria-hidden="true">♜</span><small>Escudo</small></button>
             : <button type="button" disabled={!selectedCampaignId} aria-current={activePage==='dice-tower'?'page':undefined} className={activePage==='dice-tower'?'active':''} onClick={()=>setActivePage('dice-tower')}><span aria-hidden="true">🎲</span><small>Dados</small></button>}
           <button type="button" aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" onClick={()=>setSidebarMobileOpen(true)}><span aria-hidden="true">☰</span><small>Menu</small></button>
+          </>}
         </nav>
       </div>
     )

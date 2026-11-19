@@ -65,3 +65,12 @@
 @media(prefers-reduced-motion:reduce){
   .app-shell.hb-polish .hb-v159-space-switch button,.app-shell.hb-polish .hb-v159-top-space-switch button{transition:none!important}
 }
+
+
+/* V188 — Três ambientes: Social / RPG / Minigames. */
+.app-shell.hb-polish .hb-v159-space-switch{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.app-shell.hb-polish .hb-v159-space-switch button{font-size:11px;gap:5px;padding:8px 5px;white-space:nowrap}
+.app-shell.hb-polish .hb-v159-top-space-switch{gap:3px}
+.app-shell.hb-polish .hb-v159-top-space-switch button{min-width:64px;padding:7px 9px}
+@media(max-width:1050px){.app-shell.hb-polish .hb-v159-top-space-switch button{min-width:42px;padding:7px}}
+@media(max-width:570px){.app-shell.hb-polish .hb-v159-space-switch button{font-size:10px;padding:9px 3px;gap:3px}.app-shell.hb-polish .hb-v159-top-space-switch button{min-width:35px}}
