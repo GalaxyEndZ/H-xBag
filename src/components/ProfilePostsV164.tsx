@@ -3,9 +3,10 @@ import { supabase } from '../supabase'
 import './ProfileSocialV164.css'
 
 type ProfilePost = {post_id:string;author_id:string;display_name:string;username:string;content:string;visibility:'public'|'followers'|'friends';created_at:string;like_count:number;liked:boolean;image_paths:string[]}
-type Props = {authorId:string;active:boolean;isSelf?:boolean}
+type Props = {authorId:string;active:boolean;isSelf?:boolean;avatarUrl?:string}
 const BUCKET = 'hax-social-posts'
-export default function ProfilePostsV164({authorId,active,isSelf=false}:Props){
+export default function ProfilePostsV164({authorId,active,isSelf=false,avatarUrl}:Props){
+ const [postFilter,setPostFilter]=useState<'all'|'photos'>('all')
  const [posts,setPosts]=useState<ProfilePost[]>([])
  const [images,setImages]=useState<Record<string,string>>({})
  const [busy,setBusy]=useState(false)
@@ -72,11 +73,13 @@ export default function ProfilePostsV164({authorId,active,isSelf=false}:Props){
  }
  return <div className="hb-v164-posts">
   <div className="hb-v164-posts-intro"><div><span className="hb-public-overline">LINHA DO TEMPO</span><h3>Publicações</h3><p>Momentos, fotos e histórias compartilhados na comunidade.</p></div><button type="button" onClick={()=>setRefresh(n=>n+1)} disabled={loading}>↻ Atualizar</button></div>
+  <div className="hb-v165-feed-filter" role="group" aria-label="Filtrar publicações"><button type="button" className={postFilter==='all'?'is-active':''} aria-pressed={postFilter==='all'} onClick={()=>setPostFilter('all')}>▦ Todas</button><button type="button" className={postFilter==='photos'?'is-active':''} aria-pressed={postFilter==='photos'} onClick={()=>setPostFilter('photos')}>▧ Com fotos</button></div>
   {error&&<p role="alert" className="hb-v164-post-error">{error}</p>}
   {loading&&<p className="hb-public-muted" role="status">Carregando publicações…</p>}
   {!loading&&!posts.length&&!error&&<div className="hb-v164-post-empty"><span>✧</span><strong>Nenhuma publicação por aqui ainda.</strong><p>{isSelf?'Compartilhe sua primeira história pelo feed da comunidade.':'As publicações disponíveis desta pessoa aparecerão aqui.'}</p></div>}
-  {posts.map(post=>{const urls=(post.image_paths||[]).map(path=>images[path]).filter(Boolean);return <article className="hb-v164-post" key={post.post_id}>
-   <div className="hb-v164-post-meta"><div className="hb-v164-mini-avatar">{(post.display_name||'A').slice(0,1).toUpperCase()}</div><div><strong>{post.display_name}</strong><span>@{post.username} · {new Date(post.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div><small>{post.visibility==='public'?'🌐 Público':post.visibility==='friends'?'♧ Amigos':'◉ Seguidores'}</small></div>
+  {posts.length>0 && postFilter==='photos' && !posts.some(post=>(post.image_paths||[]).length>0)&&!loading&&<p className="hb-v164-post-empty">Nenhuma foto nas publicações carregadas. Experimente carregar mais publicações.</p>}
+  {posts.filter(post=>postFilter==='all'||(post.image_paths||[]).length>0).map(post=>{const urls=(post.image_paths||[]).map(path=>images[path]).filter(Boolean);return <article className="hb-v164-post" key={post.post_id}>
+   <div className="hb-v164-post-meta"><div className="hb-v164-mini-avatar">{avatarUrl ? <img src={avatarUrl} alt="" loading="lazy"/> : (post.display_name||'A').slice(0,1).toUpperCase()}</div><div><strong>{post.display_name}</strong><span>@{post.username} · {new Date(post.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div><small>{post.visibility==='public'?'🌐 Público':post.visibility==='friends'?'♧ Amigos':'◉ Seguidores'}</small></div>
    {post.content&&<p className="hb-v164-post-body">{post.content}</p>}
    {!!urls.length&&<div className={`hb-v164-photo-grid count-${urls.length}`}>{urls.map((url,i)=><button key={`${post.post_id}-${i}`} type="button" onClick={()=>setViewer({urls,index:i})} aria-label={`Ampliar foto ${i+1} de ${urls.length}`}><img src={url} loading="lazy" alt={`Foto ${i+1} da publicação de ${post.display_name}`}/></button>)}</div>}
    <div className="hb-v164-post-actions"><button type="button" disabled={busy} onClick={()=>void toggleLike(post)} aria-pressed={post.liked} className={post.liked?'liked':''}>{post.liked?'♥':'♡'} {Number(post.like_count)||0} curtida{Number(post.like_count)===1?'':'s'}</button><span>{post.image_paths?.length||0} foto{post.image_paths?.length===1?'':'s'}</span></div>

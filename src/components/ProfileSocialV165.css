@@ -1,0 +1,53 @@
+/* HäxBag V165 — perfil centrado nas pessoas, fotos e publicações */
+.hb-profile-v158 .hb-profile-identity-cover{min-height:clamp(215px,26vw,350px)}
+.hb-profile-v158 .hb-profile-cover-story{max-width:580px}
+.hb-profile-v158 .hb-profile-cover-title{font-size:clamp(27px,3.2vw,47px);letter-spacing:-.045em}
+.hb-profile-v158 .hb-profile-identity-main{position:relative;z-index:2}
+.hb-profile-v158 .hb-v129-navigation{margin-top:14px}
+.hb-profile-v158 .hb-v129-nav-heading{display:none}
+.hb-profile-v158 .hb-v129-tabs{gap:4px;overflow-x:auto;scrollbar-width:thin}
+.hb-profile-v158 .hb-v129-tabs button{white-space:nowrap}
+.hb-v165-profile-wall{max-width:1440px;margin:0 auto;width:100%}
+.hb-v165-timeline-layout{display:grid;grid-template-columns:minmax(0,1fr) 295px;gap:24px;align-items:start;padding:8px 0 28px}
+.hb-v165-timeline-main{min-width:0;display:grid;gap:16px}
+.hb-v165-timeline-main .hb-v164-posts{max-width:none;margin:0;width:100%}
+.hb-v165-timeline-main .hb-v164-posts-intro{padding:0 2px}
+.hb-v165-timeline-main .hb-v164-post{background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary,#d9bd8b) 4%,#171a1f),#13161a);border-radius:18px;box-shadow:0 8px 25px #0000001c}
+.hb-v165-compose{display:flex;align-items:center;gap:12px;padding:16px;border:1px solid #ffffff21;background:linear-gradient(130deg,#22252b,#171a1f);border-radius:20px}
+.hb-v165-compose-avatar{width:47px;height:47px;display:grid;place-items:center;flex-shrink:0;overflow:hidden;border-radius:50%;border:2px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 65%,transparent);font-weight:800;background:#27231b}
+.hb-v165-compose-avatar img,.hb-v164-mini-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.hb-v165-compose button{cursor:pointer;transition:background .15s,border-color .15s}
+.hb-v165-compose-prompt{flex:1;text-align:left;color:#eeeeeead;border:1px solid #ffffff18;background:#ffffff0b;border-radius:100px;min-width:0;padding:15px 18px}
+.hb-v165-compose-prompt:hover{border-color:var(--season-primary,#d9bd8b);background:#ffffff13}
+.hb-v165-compose-photo{display:flex;gap:7px;align-items:center;background:#ffffff0d;border:1px solid #ffffff1c;border-radius:100px;color:var(--season-primary,#d9bd8b);padding:13px 17px;font-weight:700}
+.hb-v165-compose-photo:hover{background:#ffffff1c}
+.hb-v165-timeline-aside{position:sticky;top:20px;display:grid;gap:14px}
+.hb-v165-aside-panel{display:grid;gap:10px;border:1px solid #ffffff1b;border-radius:18px;padding:20px;background:#ffffff07;min-width:0}
+.hb-v165-aside-panel>small{font-weight:800;letter-spacing:.1em;color:var(--season-primary,#d9bd8b);font-size:11px}
+.hb-v165-aside-panel h3{font-size:19px;margin:0;overflow-wrap:anywhere}
+.hb-v165-aside-panel p{margin:0;opacity:.78;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-size:13px}
+.hb-v165-aside-panel button{display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;border-top:1px solid #ffffff12;background:transparent;color:inherit;padding:11px 0 1px;text-align:left;font-weight:650;cursor:pointer}
+.hb-v165-aside-panel button:hover{color:var(--season-primary,#d9bd8b)}
+.hb-v165-feed-filter{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:-5px 0 1px}
+.hb-v165-feed-filter button{border:1px solid #ffffff24;background:#ffffff0b;border-radius:24px;color:inherit;padding:9px 16px;font-size:13px;font-weight:700}
+.hb-v165-feed-filter button.is-active{border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 63%,transparent);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 14%,#121518);color:var(--season-primary,#d9bd8b)}
+.hb-v165-rpg-details{border:1px solid #ffffff1c;background:#ffffff04;border-radius:19px;margin:18px 0 30px;overflow:hidden}
+.hb-v165-rpg-details>summary{cursor:pointer;display:flex;align-items:center;gap:14px;padding:19px 22px;list-style:none}
+.hb-v165-rpg-details>summary::-webkit-details-marker{display:none}
+.hb-v165-rpg-details>summary>span:first-child{font-size:15px;font-weight:750}
+.hb-v165-rpg-details>summary>small{font-size:12px;opacity:.65}
+.hb-v165-rpg-details>summary>span:last-child{margin-left:auto;color:var(--season-primary,#d9bd8b);transition:transform .2s}
+.hb-v165-rpg-details[open]>summary>span:last-child{transform:rotate(180deg)}
+.hb-v165-rpg-details[open]>summary{border-bottom:1px solid #ffffff18}
+.hb-v165-rpg-details>[id],.hb-v165-rpg-details>.hb-profile-action-strip,.hb-v165-rpg-details>.hb-profile-overview-grid,.hb-v165-rpg-details>.hb-v129-overview-feature,.hb-v165-rpg-details>section{margin-left:18px;margin-right:18px}
+.hb-public-dialog .hb-public-content .hb-public-tabs{top:0}
+.hb-public-content .hb-public-main{min-height:220px}
+.hb-public-content .hb-v164-posts{max-width:800px}
+.hb-public-identity-copy h2{overflow-wrap:anywhere}
+.hb-public-content .hb-v164-post{border-radius:20px}
+.hb-public-content .hb-public-cover{min-height:clamp(195px,24vw,305px)}
+.hb-v164-mini-avatar{overflow:hidden}
+@media(max-width:1050px){.hb-v165-timeline-layout{grid-template-columns:minmax(0,1fr) 235px;gap:15px}.hb-v165-aside-panel{padding:15px}}
+@media(max-width:800px){.hb-v165-timeline-layout{grid-template-columns:1fr}.hb-v165-timeline-aside{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}.hb-v165-timeline-aside .hb-v165-aside-panel:last-child{grid-column:1/-1}}
+@media(max-width:540px){.hb-v165-timeline-aside{grid-template-columns:1fr}.hb-v165-timeline-aside .hb-v165-aside-panel:last-child{grid-column:auto}.hb-v165-compose{padding:11px;gap:8px}.hb-v165-compose-avatar{width:40px;height:40px}.hb-v165-compose-prompt{padding:12px}.hb-v165-compose-photo{padding:12px}.hb-v165-compose-photo span{display:none}.hb-v165-rpg-details>summary{flex-wrap:wrap;gap:5px 12px}.hb-v165-rpg-details>summary>small{flex-basis:70%}.hb-v165-rpg-details>[id],.hb-v165-rpg-details>.hb-profile-action-strip,.hb-v165-rpg-details>.hb-profile-overview-grid,.hb-v165-rpg-details>.hb-v129-overview-feature,.hb-v165-rpg-details>section{margin-left:9px;margin-right:9px}}
+@media(prefers-reduced-motion:reduce){.hb-v165-compose button,.hb-v165-rpg-details>summary>span:last-child{transition:none}}

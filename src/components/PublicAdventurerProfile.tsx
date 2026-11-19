@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../supabase'
 import './PublicAdventurerProfile.css'
 import './PublicProfileV151.css'
+import './ProfileSocialV165.css'
 import ProfilePostsV164 from './ProfilePostsV164'
 
 export type AdventurerRef = {
@@ -66,7 +67,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
   const [actionBusy, setActionBusy] = useState(false)
   const [relationship, setRelationship] = useState<SocialRelationship>(noRelationship)
   const [selectedCampaign, setSelectedCampaign] = useState('')
-  const [tab, setTab] = useState<Tab>('presentation')
+  const [tab, setTab] = useState<Tab>('posts')
   const closeRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
@@ -78,7 +79,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
     setProfile(null)
     setError('')
     setNotice('')
-    setTab('presentation')
+    setTab('posts')
     setSelectedCampaign('')
     setRelationship(noRelationship)
     void (async () => {
@@ -195,7 +196,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
               {view.avatar_image ? <img src={view.avatar_image} alt={`Avatar de ${view.display_name}`} style={{ objectPosition: `center ${view.avatar_position ?? 50}%` }} /> : <span>{(view.display_name || person.display_name || 'A').slice(0,1).toUpperCase()}</span>}
             </div>
             <div className="hb-public-identity-copy">
-              <span className="hb-public-eyebrow">✦ CONHEÇA QUEM ESTÁ POR AQUI</span>
+              <span className="hb-public-eyebrow">PERFIL NA COMUNIDADE</span>
               <h2 id="hb-public-profile-name">{view.display_name || person.display_name}</h2>
               <span className="hb-public-handle">@{view.username || person.username || 'aventureiro'}</span>
               {view.status && allow('show_status') && <span className="hb-public-status"><i aria-hidden="true"/>{view.status}</span>}
@@ -205,7 +206,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
           <div className="hb-v164-profile-social-actions">
             {!isSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" className="hb-v164-follow-action" onClick={()=>void toggleFollow()} disabled={actionBusy}>{relationship.following?'✓ Seguindo':relationship.follows_me?'+ Seguir de volta':'+ Seguir'}</button>}
             {!isSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(person)}>✉ Enviar mensagem</button>}
-            <button type="button" onClick={()=>setTab('posts')}>▦ Ver publicações</button>
+            <button type="button" onClick={()=>setTab('posts')}>▦ Publicações e fotos</button>
           </div>
           <div className="hb-public-stats">
             {typeof view.character_count === 'number' && view.character_count >= 0 && allow('show_characters') && <div><span aria-hidden="true">⚔</span><strong>{view.character_count}</strong><small>Personagens</small></div>}
@@ -217,7 +218,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
             {tabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} className={tab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)}><span aria-hidden="true">{item.symbol}</span>{item.label}{item.count !== undefined && <small>{item.count}</small>}</button>)}
           </nav>
           <main className="hb-public-main">
-            <div hidden={tab!=='posts'}><ProfilePostsV164 authorId={person.id} active={tab==='posts'} isSelf={isSelf}/></div>
+            <div hidden={tab!=='posts'}><ProfilePostsV164 authorId={person.id} active={tab==='posts'} isSelf={isSelf} avatarUrl={view.avatar_image}/></div>
             {tab === 'presentation' && <div className="hb-public-overview">
               <section className="hb-public-panel hb-public-about"><span className="hb-public-overline">CONHEÇA ESTA PESSOA</span><h3>Sobre</h3>{view.bio && allow('show_bio') ? <p className="hb-public-biography">{view.bio}</p> : <p className="hb-public-muted">{!allow('show_bio') ? 'Esta apresentação é privada.' : 'O aventureiro ainda não escreveu sua apresentação.'}</p>}</section>
               <section className="hb-public-panel hb-public-glimpse"><span className="hb-public-overline">UNIVERSO RPG</span><h3>Personagens e conquistas</h3>

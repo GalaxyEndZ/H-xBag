@@ -1,4 +1,5 @@
 import './components/ProfileSocialV164.css'
+import './components/ProfileSocialV165.css'
 import {
   getRegisteredSystems,
   getSystemByName,
@@ -61,6 +62,7 @@ const InvestigationBoard = lazy(() => import('./components/InvestigationBoard'))
 const MasterCombatConsole = lazy(() => import('./components/MasterCombatConsole'))
 const FriendsPanel = memo(lazy(() => import('./components/FriendsPanel')))
 const ProfileLegacy = memo(lazy(() => import('./components/ProfileLegacy')))
+const ProfilePostsV164 = lazy(() => import('./components/ProfilePostsV164'))
 const PublicAdventurerProfile = lazy(() => import('./components/PublicAdventurerProfile'))
 /** Carrega módulos grandes quando a pessoa realmente visita a área correspondente. */
 function DeferredModule({ children }: { children: ReactNode }) {
@@ -10678,7 +10680,7 @@ counterAttackDT
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">
               <span className="hb-sidebar-group-title">MINHA IDENTIDADE</span>
               {([
-                ['overview','♙','Meu perfil'],['journey','⚔','Minha jornada'],
+                ['overview','◉','Minha página'],['journey','⚔','Minha jornada'],
                 ['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],
                 ['account','⌘','Conta e ajustes'],
               ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
@@ -12476,9 +12478,9 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <span className="hb-profile-identity-style">{activeVisualStyle.symbol} {activeVisualStyle.label}</span>
                   </div>
                   <div className="hb-profile-cover-story">
-                    <span className="hb-profile-cover-chapter"><span aria-hidden="true">✧</span> SUA IDENTIDADE <span className="hb-profile-cover-chapter-index">· ARQUIVO I</span></span>
-                    <p className="hb-profile-cover-title">Sua história.<br /><em>Seu espaço.</em></p>
-                    <p className="hb-profile-cover-subtitle">Um lugar para compartilhar momentos, conhecer pessoas e viver aventuras.</p>
+                    <span className="hb-profile-cover-chapter"><span aria-hidden="true">✧</span> SEU PERFIL <span className="hb-profile-cover-chapter-index">· COMUNIDADE</span></span>
+                    <p className="hb-profile-cover-title">Um perfil.<br /><em>Mil histórias.</em></p>
+                    <p className="hb-profile-cover-subtitle">Compartilhe fotos, converse e mostre ao mundo quem você é.</p>
                     <span className="hb-profile-cover-crest" aria-hidden="true">{profileCoverOptions.find(option => option.id === accountCover)?.symbol || '✦'}</span>
                   </div>
                   <div className="hb-profile-identity-cover-bottomline" aria-hidden="true"><span>✧</span><i /><span>✧</span></div>
@@ -12491,7 +12493,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <span className="hb-profile-identity-avatar-spark" aria-hidden="true">{activeVisualStyle.symbol}</span>
                   </div>
                   <div className="hb-profile-identity-copy">
-                    <span className="hb-profile-identity-kicker"><span aria-hidden="true">✦</span> SEU PERFIL NA COMUNIDADE</span>
+                    <span className="hb-profile-identity-kicker"><span aria-hidden="true">✦</span> SUA PÁGINA PESSOAL</span>
                     <h1 id="hb-profile-title">{displayName}</h1>
                     <span className="hb-profile-honorific"><span aria-hidden="true">❖</span> {accountTitleName}</span>
                     <div className="hb-profile-handle-row"><p className="hb-profile-username">{accountUsername ? `@${accountUsername}` : 'Escolha seu @usuário em Editar perfil'}</p>{accountUsername && <button type="button" className="hb-profile-copy-handle" title="Copiar nome de usuário" aria-label="Copiar nome de usuário" onClick={() => { void navigator.clipboard.writeText(`@${accountUsername}`).then(() => setNotice('Nome de usuário copiado!')).catch(() => setError('Não foi possível copiar o nome de usuário.')) }}>⧉ Copiar</button>}</div>
@@ -12542,8 +12544,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 }}>
                   {([
                     ['friends','✦','Comunidade'],
-                    ['overview','♙','Meu perfil'],
-                    ['journey','⚔','Personagens'],
+                    ['overview','◉','Minha página'],
+                    ['journey','⚔','Universo RPG'],
                     ['legacy','✧','Minha vitrine'],
                     ['studio','✎','Editar perfil'],
                     ['account','⌘','Configurações'],
@@ -12552,8 +12554,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               </div>
               <div className="hb-v129-section-caption">
                 <div><span>✦ HÄXBAG · {profileSection==='overview'?'VISÃO GERAL':profileSection==='journey'?'JORNADA':profileSection==='studio'?'ATELIÊ':profileSection==='legacy'?'IDENTIDADE E LEGADO':profileSection==='friends'?'COMUNIDADE':'CONTA'}</span>
-                  <h2>{({overview:'Sua página na comunidade',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua comunidade',account:'Informações da conta'} as const)[profileSection]}</h2>
-                  <p>{({overview:'Sua apresentação, suas conexões e tudo que você compartilha com a comunidade.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, carta e símbolos pessoais.',legacy:'Escolha a paleta exclusiva desta página e configure protagonistas, conquistas, crônicas e privacidade.',friends:'Publicações, seguidores, amigos e conversas em um só lugar.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
+                  <h2>{({overview:'Meu mural e minhas fotos',journey:'Personagens e campanhas',studio:'Seu ateliê pessoal',legacy:'A identidade que você compartilha',friends:'Sua comunidade',account:'Informações da conta'} as const)[profileSection]}</h2>
+                  <p>{({overview:'Sua linha do tempo e seus momentos, do seu jeito.',journey:'Explore os personagens que interpreta e os mundos de que participa.',studio:'Edite seu nome, sua apresentação, carta e símbolos pessoais.',legacy:'Escolha a paleta exclusiva desta página e configure protagonistas, conquistas, crônicas e privacidade.',friends:'Publicações, seguidores, amigos e conversas em um só lugar.',account:'Consulte seus dados pessoais e acesse suas campanhas e fichas.'} as const)[profileSection]}</p>
                 </div>
                 {profileSection!=='studio' && profileSection!=='friends' && <button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Personalizar</button>}
               </div>
@@ -12567,7 +12569,23 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 </div>
                 <button type="button" className="hb-v164-my-posts" onClick={()=>setPreviewMyPublicProfile(true)}>◈ Ver minha página como os outros veem ↗</button>
               </section>}
-              <div className="hb-v129-section" id="hb-v129-panel-overview" role="tabpanel" aria-labelledby="hb-v129-tab-overview" hidden={profileSection!=='overview'}>
+              <div className="hb-v129-section hb-v165-profile-wall" id="hb-v129-panel-overview" role="tabpanel" aria-labelledby="hb-v129-tab-overview" hidden={profileSection!=='overview'}>
+                {session && <div className="hb-v165-timeline-layout">
+                  <div className="hb-v165-timeline-main">
+                    <div className="hb-v165-compose" role="group" aria-label="Criar publicação">
+                      <span className="hb-v165-compose-avatar">{profilePhotoUrls.avatar ? <img src={profilePhotoUrls.avatar} alt=""/> : String(displayName).charAt(0).toUpperCase()}</span>
+                      <button type="button" className="hb-v165-compose-prompt" onClick={()=>openSocialTab('feed')}>No que você está pensando?</button>
+                      <button type="button" className="hb-v165-compose-photo" onClick={()=>openSocialTab('feed')}>▧ <span>Foto</span></button>
+                    </div>
+                    <DeferredModule><ProfilePostsV164 authorId={session.user.id} active={profileSection==='overview'} isSelf avatarUrl={profilePhotoUrls.avatar}/></DeferredModule>
+                  </div>
+                  <aside className="hb-v165-timeline-aside" aria-label="Sobre seu perfil">
+                    <div className="hb-v165-aside-panel"><small>✦ SOBRE MIM</small><h3>{displayName}</h3><p>{accountBio.trim()||'Escreva uma biografia e conte um pouco sobre você.'}</p><button type="button" onClick={()=>{switchProfileSection('studio');setProfileEditing(true)}}>✎ Editar biografia</button></div>
+                    <div className="hb-v165-aside-panel"><small>♧ CONEXÕES</small><button type="button" onClick={()=>openSocialTab('followers')}>Meus seguidores <span>↗</span></button><button type="button" onClick={()=>openSocialTab('following')}>Pessoas que sigo <span>↗</span></button><button type="button" onClick={()=>openSocialTab('messages')}>Mensagens <span>↗</span></button></div>
+                    <div className="hb-v165-aside-panel"><small>⚔ MEU UNIVERSO RPG</small><p>{accountAssignedCharacters.length} personagem(ns) · {campaigns.length} campanha(s)</p><button type="button" onClick={()=>switchProfileSection('journey')}>Ver minha jornada <span>↗</span></button></div>
+                  </aside>
+                </div>}
+              <details className="hb-v165-rpg-details"><summary><span>⚔ Minha jornada e conquistas</span><small>Personagens, marcos e identidade RPG</small><span aria-hidden="true">⌄</span></summary>
               <div id="hb-profile-journey" className="hb-profile-section-heading" aria-hidden="true">
                 <span className="hb-profile-section-emblem">✧</span>
                 <span>SEU UNIVERSO RPG</span>
@@ -12628,6 +12646,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                   <div><span aria-hidden="true">⚑</span><strong>{campaigns.length ? 'Mundos compartilhados' : 'Primeira campanha'}</strong><small>{campaigns.length ? `${campaigns.length} campanha(s) em andamento no perfil` : 'Seu próximo capítulo começa com uma campanha'}</small></div>
                 </div>
               </section>
+              </details>
               </div>
 
               <div className="hb-v129-section" id="hb-v129-panel-journey" role="tabpanel" aria-labelledby="hb-v129-tab-journey" hidden={profileSection!=='journey'}>
