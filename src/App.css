@@ -16632,3 +16632,22 @@ button:disabled { opacity: .58; }
 
 /* Posição de leitura da rolagem após ações, reações e ações complementares. */
 .combat-action-result { scroll-margin-block: 100px; }
+
+/* V175 — atalhos flutuantes sem sobreposição (desktop e celular). */
+.app-shell.hb-polish .hb-back-to-top {
+  left: 18px; right: auto; bottom: 20px;
+}
+.app-shell .hb-v172-floating-actions {
+  right: 18px; bottom: 78px; z-index: 1070;
+}
+.app-shell .hb-v172-floating-actions > button {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 42px; max-width: min(280px, calc(100vw - 30px));
+}
+@media (max-width:700px) {
+  .app-shell.hb-polish .hb-back-to-top {left: 10px; right: auto; bottom: 12px;}
+  .app-shell .hb-v172-floating-actions {right: 10px; bottom: 72px;}
+  .app-shell .hb-v172-floating-actions > button {
+    width: 44px; height: 44px; padding: 0; justify-content: center;
+  }
+}
