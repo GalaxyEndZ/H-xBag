@@ -66,9 +66,13 @@ export default function ProfilePostsV164({authorId,active,isSelf=false,avatarUrl
  async function toggleLike(post:ProfilePost){
   if(busy)return
   setBusy(true)
-  const {error:failure}=await supabase.rpc('hax_social_like_post',{p_post:post.post_id})
+  const {data:likedResult,error:failure}=await supabase.rpc('hax_social_like_post',{p_post:post.post_id})
   if(failure)setError(failure.message)
-  else setPosts(prev=>prev.map(item=>item.post_id===post.post_id?{...item,liked:!item.liked,like_count:Math.max(0,Number(item.like_count)+(item.liked?-1:1))}:item))
+  else setPosts(prev=>prev.map(item=>{
+    if(item.post_id!==post.post_id)return item
+    const nowLiked=typeof likedResult==='boolean'?likedResult:!item.liked
+    return {...item,liked:nowLiked,like_count:Math.max(0,Number(item.like_count)+(nowLiked===item.liked?0:nowLiked?1:-1))}
+  }))
   setBusy(false)
  }
  return <div className="hb-v164-posts">

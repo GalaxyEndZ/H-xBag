@@ -39,3 +39,12 @@
 .hb-friends-panel-v2 .hb-friends-empty{padding:17px 14px;border:1px dashed #8884;border-radius:12px;line-height:1.7;background:#0001}
 .hb-friends-panel-v2 .hb-friends-tabs button{transition:background .15s,border-color .15s}.hb-friends-panel-v2 .hb-friends-tabs button:hover{background:color-mix(in srgb,var(--season-primary,#c99770) 9%,transparent)}
 @media(max-width:600px){.hb-social-intro{padding:12px}.hb-friends-panel-v2 .hb-friends-stats>span{padding:12px}.hb-friends-panel-v2 .hb-friends-person button{flex-shrink:0}}
+
+/* V172: fotos e exclusão nas conversas privadas */
+.hb-v172-chat-image{display:block;max-width:min(100%,340px);max-height:360px;object-fit:contain;border-radius:12px;cursor:zoom-in;margin-bottom:6px}
+.hb-v172-chat-preview{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid #ffffff25;border-radius:12px;min-width:0}
+.hb-v172-chat-preview img{width:58px;height:58px;object-fit:cover;border-radius:8px}
+.hb-v172-chat-preview span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.hb-v172-chat-preview button,.hb-v172-delete-message,.hb-v172-photo-button{border:1px solid #ffffff25;border-radius:8px;padding:6px 9px;background:transparent;color:inherit;cursor:pointer;font-size:.78rem}
+.hb-v172-delete-message{opacity:.7;margin:5px 0}.hb-v172-delete-message:hover{opacity:1}
+.hb-social-chat-compose{flex-wrap:wrap}.hb-social-chat-compose textarea{flex:1;min-width:140px}

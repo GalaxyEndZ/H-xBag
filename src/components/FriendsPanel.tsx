@@ -38,7 +38,7 @@ type Conversation = {
   unread_count: number
   can_message: boolean
 }
-type ChatMessage = { message_id: string; sender_id: string; body: string; created_at: string; read_at: string|null }
+type ChatMessage = { message_id: string; sender_id: string; body: string; created_at: string; read_at: string|null; image_path?:string|null; deleted_at?:string|null }
 type Props = {
   campaignId: string | null
   campaignName: string
@@ -121,6 +121,10 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [selectedChat,setSelectedChat] = useState<Conversation|null>(null)
   const [chatMessages,setChatMessages] = useState<ChatMessage[]>([])
   const [messageDraft,setMessageDraft] = useState('')
+  const [messagePhoto,setMessagePhoto] = useState<{file:File;preview:string}|null>(null)
+  const [chatImageUrls,setChatImageUrls] = useState<Record<string,string>>({})
+  const chatFileInputRef=useRef<HTMLInputElement>(null)
+  const chatImageBucket='hax-social-chat'
   const [profile,setProfile] = useState<AdventurerRef|null>(null)
   const [busy,setBusy] = useState('')
   const [loading,setLoading] = useState(true)
@@ -219,9 +223,18 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   },[onSelectTab])
   const loadMessages=useCallback(async(partnerId:string)=>{
     const requestId = ++messagesRequestRef.current
-    const rows=await rpc<ChatMessage[]>('hax_social_chat_messages',{p_partner:partnerId,p_limit:80})
+    const rows=await rpc<ChatMessage[]>('hax_social_chat_messages_v172',{p_partner:partnerId,p_limit:80})
     if (requestId !== messagesRequestRef.current) return
-    setChatMessages([...(rows||[])].reverse())
+    const ordered=[...(rows||[])].reverse()
+    setChatMessages(ordered)
+    const images=ordered.filter(item=>item.image_path && !item.deleted_at)
+    if(images.length){
+      const urls=await Promise.all(images.map(async message=>{
+        const {data,error:failure}=await supabase.storage.from(chatImageBucket).createSignedUrl(String(message.image_path),3600)
+        return [message.message_id,failure?'':data?.signedUrl||''] as const
+      }))
+      if(requestId===messagesRequestRef.current)setChatImageUrls(previous=>({...previous,...Object.fromEntries(urls)}))
+    }
     // Sem mensagens novas, evita uma escrita desnecessária a cada atualização.
     if ((rows||[]).some(message=>message.sender_id!==userId && !message.read_at)) {
       await rpc('hax_social_mark_read',{p_partner:partnerId})
@@ -376,18 +389,49 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setBusy(post.post_id);setError('')
     try{
       await rpc('hax_social_delete_post',{p_post:post.post_id})
-      if(post.image_paths?.length)await supabase.storage.from(bucketName).remove(post.image_paths)
+      // A exclusão no banco é a fonte de verdade. Uma falha ao remover arquivos
+      // órfãos do Storage não deve restaurar visualmente a publicação excluída.
       setPosts(previous=>previous.filter(item=>item.post_id!==post.post_id))
       setNotice('Publicação excluída.')
+      if(post.image_paths?.length){
+        const {error:storageError}=await supabase.storage.from(bucketName).remove(post.image_paths)
+        if(storageError)console.warn('Não foi possível limpar todas as fotos da publicação excluída.',storageError)
+      }
+    }catch(failure){setError(failure instanceof Error?failure.message:String(failure))}
+    finally{setBusy('')}
+  }
+  function chooseChatPhoto(file:File|undefined){
+    if(!file)return
+    if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)){setError('Escolha uma foto JPG, PNG, WEBP ou GIF.');return}
+    if(file.size>8*1024*1024){setError('A foto pode ter até 8 MB.');return}
+    setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return {file,preview:URL.createObjectURL(file)}})
+    setError('')
+  }
+  async function deleteChatMessage(message:ChatMessage){
+    if(message.sender_id!==userId||!selectedChat||!window.confirm('Apagar esta mensagem para todos?'))return
+    setBusy('delete-message');setError('')
+    try{
+      await rpc('hax_social_delete_message',{p_message_id:message.message_id})
+      await loadMessages(selectedChat.partner_id)
+      await loadConversations()
     }catch(failure){setError(failure instanceof Error?failure.message:String(failure))}
     finally{setBusy('')}
   }
   async function sendMessage(event?:{preventDefault:()=>void}){
     event?.preventDefault()
-    if(!selectedChat||!messageDraft.trim()||busy)return
+    if(!selectedChat||(!messageDraft.trim()&&!messagePhoto)||busy)return
     setBusy('send-message');setError('')
     try{
-      await rpc('hax_social_send_message',{p_partner:selectedChat.partner_id,p_body:messageDraft.trim()})
+      const newId=await rpc<string>('hax_social_send_message',{p_partner:selectedChat.partner_id,p_body:messageDraft.trim()||'📷 Foto'})
+      if(messagePhoto){
+        const ext=messagePhoto.file.type==='image/png'?'png':messagePhoto.file.type==='image/gif'?'gif':messagePhoto.file.type==='image/webp'?'webp':'jpg'
+        const path=`${userId}/${newId}.${ext}`
+        const {error:uploadError}=await supabase.storage.from(chatImageBucket).upload(path,messagePhoto.file,{contentType:messagePhoto.file.type,upsert:false})
+        if(uploadError)throw new Error(`Foto não enviada: ${uploadError.message}. A mensagem de texto pode ter sido enviada.`)
+        await rpc('hax_social_attach_message_image',{p_message_id:newId,p_path:path})
+        URL.revokeObjectURL(messagePhoto.preview)
+        setMessagePhoto(null)
+      }
       setMessageDraft('')
       await loadMessages(selectedChat.partner_id)
       await loadConversations()
@@ -512,7 +556,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
 
     {tab==='feed'&&<div className="hb-social-feed-layout">
       <section className="hb-social-feed-main">
-        <form className={`hb-social-composer hb-v160-composer ${draggingPhotos?'hb-v162-dragging':''}`} onSubmit={e=>void publish(e)} onDragOver={e=>{if(e.dataTransfer.types.includes('Files')){e.preventDefault();setDraggingPhotos(true)}}} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setDraggingPhotos(false)}} onDrop={e=>{e.preventDefault();setDraggingPhotos(false);pickPhotos(Array.from(e.dataTransfer.files).filter(file=>file.type.startsWith('image/')))}}>
+        <form className={`hb-social-composer hb-v160-composer ${draggingPhotos?'hb-v162-dragging':''}`} onSubmit={e=>void publish(e)} onDragOver={e=>{if(e.dataTransfer.types.includes('Files')){e.preventDefault();setDraggingPhotos(true)}}} onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node))setDraggingPhotos(false)}} onDrop={e=>{e.preventDefault();setDraggingPhotos(false);const droppedFiles:File[]=Array.from(e.dataTransfer.files);pickPhotos(droppedFiles.filter((file:File)=>file.type.startsWith('image/')))}}>
           <div className="hb-v160-composer-author">{avatarFor(userId,profileIdentity?.name||'A')}<div><strong>{profileIdentity?.name||'Você'}</strong><small>Compartilhe seus momentos com a comunidade</small></div></div>
           <label htmlFor="hb-v160-post-draft" className="hb-v160-editor-label">O que está acontecendo na sua jornada?</label>
           <textarea id="hb-v160-post-draft" rows={3} maxLength={1200} placeholder="Conte uma conquista, compartilhe uma aventura ou convide alguém para conversar…" value={postText} onChange={e=>setPostText(e.target.value)}/>
@@ -543,7 +587,16 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       <label className="hb-v160-unread-toggle"><input type="checkbox" checked={unreadOnly} onChange={e=>setUnreadOnly(e.target.checked)}/> Somente não lidas {summary.unread>0?`(${summary.unread})`:''}</label>
       <div className="hb-v160-contact-list">{filteredConversations.map(person=><button type="button" key={person.partner_id} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}>{avatarFor(person.partner_id,nameOf(person))}<span><strong>{person.display_name}</strong><small>{person.last_message||'Comece uma conversa'}</small></span>{Number(person.unread_count)>0&&<em aria-label={`${person.unread_count} mensagens não lidas`}>{person.unread_count}</em>}</button>)}{!filteredConversations.length&&!!conversations.length&&<p className="hb-v160-no-conversations">Nenhuma conversa corresponde aos filtros.</p>}</div>{!conversations.length&&<div className="hb-social-empty"><strong>Sem conversas.</strong><p>Siga um aventureiro que também segue você para iniciar um chat.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}</div><div className="hb-social-chat-main">{selectedChat?<><header><div className="hb-v160-chat-header-identity"><button type="button" className="hb-v160-chat-back" aria-label="Voltar para conversas" onClick={()=>{messagesRequestRef.current+=1;setSelectedChat(null);setChatMessages([]);setMessageDraft('')}}>‹</button>{avatarFor(selectedChat.partner_id,nameOf(selectedChat))}<span><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'}</small></span></div><button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil ↗</button></header><div className="hb-social-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">{chatMessages.map((message,index)=><div className="hb-v160-message-row" key={message.message_id}>
           {(index===0 || dayOf(chatMessages[index-1].created_at)!==dayOf(message.created_at))&&<div className="hb-v160-chat-day" role="separator">{dayOf(message.created_at)}</div>}
-          <div className={`hb-v161-chat-message ${message.sender_id===userId?'own':''}`}>{avatarFor(message.sender_id,message.sender_id===userId?(profileIdentity?.name||'Você'):nameOf(selectedChat))}<div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`}><p>{message.body}</p><small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose"><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={!messageDraft.trim()||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Selecione uma conversa para começar. As mensagens privadas são acessíveis somente aos participantes.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}</div></section>}
+          <div className={`hb-v161-chat-message ${message.sender_id===userId?'own':''}`}>{avatarFor(message.sender_id,message.sender_id===userId?(profileIdentity?.name||'Você'):nameOf(selectedChat))}<div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`}>
+            {message.deleted_at?<p><em>Mensagem apagada</em></p>:<>
+              {message.image_path&&chatImageUrls[message.message_id]&&<a href={chatImageUrls[message.message_id]} target="_blank" rel="noopener noreferrer"><img className="hb-v172-chat-image" src={chatImageUrls[message.message_id]} alt="Foto enviada na conversa" loading="lazy" /></a>}
+              {message.body!=='📷 Foto'&&<p>{message.body}</p>}
+              {message.sender_id===userId&&<button className="hb-v172-delete-message" type="button" disabled={!!busy} onClick={()=>void deleteChatMessage(message)} title="Apagar mensagem para todos">Apagar</button>}
+            </>}
+            <small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose">
+            <input ref={chatFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={event=>{chooseChatPhoto(event.target.files?.[0]);event.target.value=''}} />
+            {messagePhoto&&<div className="hb-v172-chat-preview"><img src={messagePhoto.preview} alt="Prévia da foto"/><span>{messagePhoto.file.name}</span><button type="button" onClick={()=>{URL.revokeObjectURL(messagePhoto.preview);setMessagePhoto(null)}}>Remover</button></div>}
+            <button type="button" className="hb-v172-photo-button" title="Enviar foto" onClick={()=>chatFileInputRef.current?.click()} disabled={!!busy}>📷 Foto</button><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={(!messageDraft.trim()&&!messagePhoto)||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Selecione uma conversa para começar. As mensagens privadas são acessíveis somente aos participantes.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}</div></section>}
 
     {tab==='referral'&&<SocialReferralPanel active={active&&tab==='referral'}/>}
 

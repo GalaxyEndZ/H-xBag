@@ -1,3 +1,4 @@
+import FloatingChat from './components/FloatingChat'
 import './components/ProfileSocialV164.css'
 import './components/ProfileSocialV165.css'
 import {
@@ -124,9 +125,9 @@ const SKILL_GROUP_ALIAS: Record<string, string[]> = {
   'Linha de Frente': ['Linha de Frente'], Defensor: ['Defensores'], Defensores: ['Defensores'],
   Flanco: ['Flanco'], Especialista: ['Especialistas'], Especialistas: ['Especialistas'],
   Suporte: ['Suporte'], Gerais: ['Sociais', 'Conhecimentos Gerais', 'Naturais'],
-  // A vaga livre usa o mesmo conjunto de perícias gerais/de arquétipo do Intelecto.
-  'Qualquer Arquétipo': ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
-  'qualquer Arquétipo': ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  // Esta vaga é exclusiva das perícias de arquétipo (não inclui perícias gerais/extras).
+  'Qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
+  'qualquer Arquétipo': ['Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte'],
   'Suporte/Defensor': ['Suporte', 'Defensores'],
 }
 const KISATSUTAI_GROUP_NAMES = Object.keys(KISATSUTAI_SKILL_GROUPS)
@@ -432,7 +433,9 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   const distribution = (skills.distributionByPath?.[key] || {}) as Record<string, string>
   // Cada ponto de Intelecto dedicado a perícias gerais concede um passo de +5.
   // Pode iniciar uma perícia geral em +5 ou melhorar uma já treinada até +15.
-  const intellectGroups = resolveTrainingGroups('Qualquer Arquétipo')
+  // Intelecto continua abrangendo perícias gerais/extras e de arquétipo.
+  // Não depende das categorias da vaga «Qualquer Arquétipo».
+  const intellectGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte']
   const intellectOptions = intellectGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
   const intellectSelections: string[] = Array.isArray(skills.intellectExtraAllocations) ? skills.intellectExtraAllocations.slice(0, intellectExtraLevels) : []
   const baseTrainings: Record<string, TrainingLevel> = {}
@@ -859,7 +862,10 @@ const availableEmojis = [
 
 // Descanso: rolagem auditável e aplicação opcional na ficha por RPC existente.
 type RestRecovery = { pv: number; ps: number; pr: number; fullPV: boolean; fullPR: boolean; foodItemId: string | null; kitItemId: string | null; kitType: string; requestId: string }
-function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
+function RestActionsPanel({ onApply, canApply, maxPR, breathing, vigor, breathingGroup, inventoryItems }: {
+  breathing: number
+  vigor: number
+  breathingGroup: string
   inventoryItems: Item[]
   onApply: (recovery: RestRecovery) => Promise<void>
   canApply: boolean
@@ -877,7 +883,7 @@ function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
   const [recovery, setRecovery] = useState<RestRecovery | null>(null)
   const [applying, setApplying] = useState(false)
   const [applied, setApplied] = useState(false)
-  const allowedBonus = rest === 'precario' ? ['nenhum', 'respirar'] : rest === 'mediano' || rest === 'completo' ? ['nenhum','refeicao','meditacao','respirar'] : ['nenhum']
+  const allowedBonus = rest === 'mediano' || rest === 'completo' ? ['nenhum','refeicao','meditacao'] : ['nenhum']
   const hasCategory = (item: Item, category: string) => item.category === category || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes(category))
   const usable = (item: Item) => hasCategory(item, 'Consumíveis') && item.quantity > 0 && item.metadata?.scarcityExhausted !== true && Number(item.metadata?.scarcityCharge ?? 1) > 0
   const foods = inventoryItems.filter(item => usable(item) && hasCategory(item, 'Alimentos'))
@@ -908,26 +914,44 @@ function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
     if (rest === 'mediano') { pv = roll(bonus === 'refeicao' ? 4 : 2,6); ps = roll(bonus === 'meditacao' ? 2 : 1,6) }
     if (rest === 'completo') { pv = roll(bonus === 'refeicao' ? 8 : 4,6); ps = roll(bonus === 'meditacao' ? 4 : 2,6) }
     if (rest === 'intensivo') { ps = roll(6,6) }
-    if (bonus === 'respirar') pr = Math.ceil(Math.max(0,maxPR) * (rest === 'precario' ? .25 : .5))
+    // Recuperação de PR é automática em cada descanso; usa a MESMA DT e fórmula
+    // do teste de Respiração na ficha: melhor de (1 + Respiração)d20 + Vigor.
+    const breathingLog: string[] = []
+    if (rest === 'precario') pr = Math.floor(Math.max(0,maxPR) / 16)
+    if (rest === 'mediano' || rest === 'completo') {
+      const dtByGroup: Record<string,number> = {Raposa:20,Tigre:19,Dragão:18,Corvo:17}
+      const dt = dtByGroup[breathingGroup]
+      const numberOfTests = rest === 'completo' ? 2 : 1
+      for (let index=0; index<numberOfTests; index++) {
+        if (!dt) {breathingLog.push('Carpa: sem teste de Respiração'); continue}
+        const diceCount = Math.max(1, Math.floor(1 + breathing))
+        const dice = Array.from({length:diceCount},()=>roll(1,20))
+        const best = Math.max(...dice)
+        const total = best + vigor
+        const success = total >= dt
+        const gained = Math.floor(Math.max(0,maxPR) / (success ? 4 : 8))
+        pr += gained
+        breathingLog.push(`Teste ${index+1}: [${dice.join(', ')}] + ${vigor} = ${total} / DT ${dt} (${success?'sucesso':'falha'}, +${gained} PR)`)
+      }
+    }
     let extra = ''
     if (kit === 'bandagens') { const passed = Number(kitTest) >= 20; pv += roll(passed ? 4 : 2,8); extra = ` Medicina DT 20: ${passed ? 'sucesso (+4d8 PV)' : 'falha (+2d8 PV)'}.` }
     if (kit === 'incensos') { const passed = Number(kitTest) >= 20; ps += roll(passed ? 2 : 1,8); extra = ` Terapia DT 20: ${passed ? 'sucesso (+2d8 PS)' : 'falha (+1d8 PS)'}. Até 4 participantes.` }
     const next: RestRecovery = {pv,ps,pr,fullPV:rest === 'intensivo',fullPR:rest === 'intensivo',foodItemId:bonus === 'refeicao' ? foodItemId : null,kitItemId:kit !== 'nenhum' ? kitItemId : null,kitType:kit,requestId:crypto.randomUUID()}
     setRecovery(next)
-    setResult(rest === 'intensivo' ? `Após 3 dias: PV e PR totalmente restaurados; PS +${ps}.${extra}` : `Recuperação: PV +${pv}, PS +${ps}, PR +${pr}.${extra}`)
+    setResult(rest === 'intensivo' ? `Após 3 dias: PV e PR totalmente restaurados; PS +${ps}.${extra}` : `Recuperação: PV +${pv}, PS +${ps}, PR +${pr}.${extra}${breathingLog.length ? ' | '+breathingLog.join(' | ') : ''}`)
   }
   const restOptions = [
     {id:'nenhum',icon:'🌑',name:'Sem descanso',time:'Sem recuperação',desc:'Exausto e Vulnerável; 2 dias seguidos: inconsciente'},
-    {id:'precario',icon:'🌙',name:'Precário',time:'Até 2 horas',desc:'1d4 PV · 1d4 PS'},
-    {id:'mediano',icon:'🛏️',name:'Mediano',time:'Até 4 horas',desc:'2d6 PV · 1d6 PS'},
-    {id:'completo',icon:'✨',name:'Completo',time:'Até 8 horas',desc:'4d6 PV · 2d6 PS'},
+    {id:'precario',icon:'🌙',name:'Precário',time:'Até 2 horas',desc:'1d4 PV · 1d4 PS · 1/16 PR totais'},
+    {id:'mediano',icon:'🛏️',name:'Mediano',time:'Até 4 horas',desc:'2d6 PV · 1d6 PS · 1 teste de Respiração'},
+    {id:'completo',icon:'✨',name:'Completo',time:'Até 8 horas',desc:'4d6 PV · 2d6 PS · 2 testes de Respiração'},
     {id:'intensivo',icon:'💚',name:'Intensivo',time:'3 dias completos',desc:'PV e PR totais · 6d6 PS'},
   ]
   const bonusOptions = [
     {id:'nenhum',icon:'➖',name:'Nenhum',desc:'Sem bônus adicional'},
     {id:'refeicao',icon:'🍲',name:'Refeição',desc:'Dobra os dados de PV'},
     {id:'meditacao',icon:'🧘',name:'Meditação',desc:'Dobra os dados de PS'},
-    {id:'respirar',icon:'🌬️',name:'Respirar',desc:'Recupera 25% ou 50% dos PR'},
   ]
   const kitOptions = [
     {id:'nenhum',icon:'➖',name:'Nenhum',desc:'Sem tratamento adicional'},
@@ -947,7 +971,7 @@ function RestActionsPanel({ onApply, canApply, maxPR, inventoryItems }: {
   const bonusLabel = bonusOptions.find(option => option.id === bonus)
   const kitLabel = kitOptions.find(option => option.id === kit)
   const recoveryPreview = rest === 'nenhum' ? 'Exausto + Vulnerável' : rest === 'precario' ? '1d4 PV · 1d4 PS' : rest === 'mediano' ? `${bonus === 'refeicao' ? '4d6' : '2d6'} PV · ${bonus === 'meditacao' ? '2d6' : '1d6'} PS` : rest === 'completo' ? `${bonus === 'refeicao' ? '8d6' : '4d6'} PV · ${bonus === 'meditacao' ? '4d6' : '2d6'} PS` : 'PV + PR completos · 6d6 PS'
-  const prPreview = bonus === 'respirar' ? ` · +${rest === 'precario' ? '25%' : '50%'} PR` : ''
+  const prPreview = rest === 'precario' ? ' · 1/16 PR' : rest === 'mediano' ? ' · 1 teste PR' : rest === 'completo' ? ' · 2 testes PR' : ''
   return <section className="combat-skill-test" style={{marginTop:6,display:'grid',gap:8,width:'100%',maxWidth:'none',minWidth:0,boxSizing:'border-box'}}>
     <header style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
       <div style={{display:'grid',gap:3}}><strong style={{fontSize:'1.05rem'}}>🛏️ Descanso e Recuperação</strong><small>Escolha as opções, confira os recursos e role a recuperação.</small></div>
@@ -1594,6 +1618,22 @@ const resetCreatureFilters = () => {
   const [profileFeatureSaving, setProfileFeatureSaving] = useState(false)
   const [profileEditing, setProfileEditing] = useState(false)
   const [profileSection, setProfileSection] = useState<'overview'|'journey'|'studio'|'legacy'|'friends'|'account'>('overview')
+  const [notificationsOpen,setNotificationsOpen]=useState(false)
+  const [notificationBusy,setNotificationBusy]=useState(false)
+  const [unreadMessages,setUnreadMessages]=useState(0)
+  const [pendingCampaignInvites,setPendingCampaignInvites]=useState(0)
+  const refreshNotifications=async()=>{
+    setNotificationBusy(true)
+    try{
+      const [social,campaign]=await Promise.all([
+        supabase.rpc('hax_social_summary'),
+        supabase.rpc('hb_list_direct_invites'),
+      ])
+      if(!social.error)setUnreadMessages(Math.max(0,Number((social.data as {unread?:number}|null)?.unread||0)))
+      if(!campaign.error)setPendingCampaignInvites(Array.isArray(campaign.data)?campaign.data.length:0)
+    }catch{/* Acesso às notificações não impede a navegação. */}
+    finally{setNotificationBusy(false)}
+  }
   const [socialOpened, setSocialOpened] = useState(false)
   const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
   const [profileJourneyDisplay,setProfileJourneyDisplay] = useState<'cards'|'compact'>('cards')
@@ -1602,7 +1642,7 @@ const resetCreatureFilters = () => {
     setProfileSection(next)
     if (next === 'studio') setProfileEditing(true)
     window.requestAnimationFrame(() => {
-      document.getElementById('hb-v129-profile-navigation')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'})
+      document.getElementById(next === 'studio' ? 'hb-profile-editor-region' : 'hb-v129-profile-navigation')?.scrollIntoView({behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',block:'start'})
     })
   }
   // Os personagens do Perfil são consultados por conta, não pela campanha ativa.
@@ -5254,7 +5294,10 @@ async function deleteCampaign(campaign: Campaign) {
     event.preventDefault()
     if (!inviteCode.trim() || inviteLoading) return
     setInviteLoading(true); setError(''); setNotice('')
-    const { data, error: joinError } = await supabase.rpc('join_campaign_by_invite', { p_token: inviteCode.trim() })
+    // Aceita tanto token isolado quanto URL completa de convite.
+    let token=inviteCode.trim()
+    try{const link=new URL(token);token=link.searchParams.get('invite')||link.searchParams.get('token')||token}catch{/* token isolado */}
+    const { data, error: joinError } = await supabase.rpc('join_campaign_by_invite', { p_token: token })
     if (joinError || !data) {
       setError(`Não foi possível entrar na campanha: ${joinError?.message ?? 'convite inválido'}`)
       setInviteLoading(false)
@@ -8229,7 +8272,7 @@ useEffect(() => {
                     const extraActions = Math.max(0, applyConditionModifier(agility % 2, conditionModifiers, 'actions', 'extra'))
                     // Kits equipados concedem somente os bônus explícitos, sem alterar pontos salvos.
                     const equippedMainKitBonus = (key:'vigor'|'mental'|'combat'|'dexterity'|'resistance'|'ability') => {
-                      const names={vigor:'VIGOR',mental:'MENTAL',combat:'COMBATE',dexterity:'DESTREZA',resistance:'RESISTÊNCIA',ability:'HABILIDADE'}
+                      const names={vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
                       return forEnemy ? 0 : equippedKitSkillBonuses(renderInventoryItems,renderSubjectId ?? '',names[key]).reduce((sum,kit)=>sum+kit.bonus,0)
                     }
                     const dexterity = applyConditionModifier(Math.min(maxSkillLevel, num('skills.dexterity')), conditionModifiers, 'main_skill', 'dexterity') + equippedMainKitBonus('dexterity')
@@ -10199,6 +10242,9 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
                             canApply={Boolean(canEditSelectedSheet && selectedCharacterId && selectedSeasonId)}
                             maxPR={Number(derived[2][1])}
+                            breathing={breathing}
+                            vigor={vigor}
+                            breathingGroup={getSystemRank(rankIdForStatus).group}
                             inventoryItems={items.filter(item=>item.character_id===selectedCharacterId)}
                             onApply={async recovery => {
                               const parsed = JSON.parse(sheetDraft) as Record<string, any>
@@ -16871,10 +16917,23 @@ style={{cursor:'pointer'}}>
   </section>
 )}
 
+          <div className="hb-v172-floating-actions" aria-label="Acesso rápido às conversas e notificações">
+            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>🔔 <span>Notificações{unreadMessages+pendingCampaignInvites>0?` (${unreadMessages+pendingCampaignInvites})`:''}</span></button>
+            {notificationsOpen&&<section id="hb-v172-notification-panel" className="hb-v172-notification-panel" aria-label="Suas notificações">
+              <header><strong>Notificações</strong><button type="button" onClick={()=>setNotificationsOpen(false)} aria-label="Fechar notificações">✕</button></header>
+              {notificationBusy&&<small>Atualizando…</small>}
+              <button type="button" onClick={()=>{setNotificationsOpen(false);openSocialTab('messages')}}>✉ Mensagens não lidas <strong>{unreadMessages}</strong></button>
+              <button type="button" onClick={()=>{setNotificationsOpen(false);setActivePage('campaigns')}}>⚑ Convites de campanha <strong>{pendingCampaignInvites}</strong></button>
+              {!notificationBusy&&unreadMessages+pendingCampaignInvites===0&&<small>Nenhuma mensagem ou convite pendente.</small>}
+              <button type="button" onClick={()=>void refreshNotifications()} disabled={notificationBusy}>↻ Atualizar</button>
+            </section>}
+
+          </div>
+          <FloatingChat onOpenFullChat={()=>openSocialTab('messages')} />
           {activePage === 'campaigns' && <section className="inventory-section campaigns-page-panel hb-campaigns-page">
             <header className="hb-hero hb-campaigns-hero">
               <div><span className="hb-kicker">⚑ ADMINISTRAÇÃO</span><h2>Campanhas<span className="hb-title-dot">.</span></h2><p>Organize mundos, temporadas, participantes e o acesso aos personagens.</p><div className="hb-hero-tags"><span>{campaigns.length} {campaigns.length === 1 ? 'campanha' : 'campanhas'}</span><span>{seasons.length} temporadas na atual</span><span>{campaignMembers.length} membros</span></div></div>
-              <button type="button" className="primary-button" onClick={() => { setShowCampaignForm(true); setEditingCampaignId(null); setCampaignName(''); setCampaignDescription(''); setCampaignSystemChoice(''); setSystemName('') }}>＋ Criar campanha</button>
+              <button type="button" className="primary-button" onClick={() => { setShowCampaignForm(true); window.setTimeout(()=>document.getElementById('hb-new-campaign-form')?.scrollIntoView({behavior:'smooth',block:'start'}),50); setEditingCampaignId(null); setCampaignName(''); setCampaignDescription(''); setCampaignSystemChoice(''); setSystemName('') }}>＋ Criar campanha</button>
             </header>
             <CampaignDirectInvites />
             <div className="hb-campaign-chooser hb-panel"><div className="hb-panel-heading"><div><span className="hb-kicker">MUNDOS DISPONÍVEIS</span><h3>Suas campanhas</h3><p>Escolha a campanha que deseja administrar.</p></div><span className="hb-heading-icon">⚑</span></div>
@@ -16887,10 +16946,10 @@ style={{cursor:'pointer'}}>
               </button>)}</div> : <div className="hb-minimal-empty">Crie sua primeira campanha para começar.</div>}
             </div>
             {inviteCode && <form className="add-form" onSubmit={joinCampaignWithInvite}><h3>Entrar com convite</h3><p>Um convite foi detectado no link. Confirme o código para entrar na campanha.</p><label>Código do convite<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle}/></label><button className="primary-button" type="submit" disabled={inviteLoading}>{inviteLoading?'Entrando…':'Entrar na campanha'}</button></form>}
-            <form className="add-form hb-form hb-invite-form" onSubmit={joinCampaignWithInvite}><div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">ACESSAR NOVO MUNDO</span><h3>Tenho um convite</h3><p>Entre em outra campanha com um código de convite.</p></div></div><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole aqui o código recebido"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
+            <form className="add-form hb-form hb-invite-form" onSubmit={joinCampaignWithInvite}><div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">ACESSAR NOVO MUNDO</span><h3>Tenho um convite</h3><p>Entre em outra campanha com um código de convite.</p></div></div><label>Código ou token<input value={inviteCode} onChange={e=>setInviteCode(e.target.value)} required style={inputStyle} placeholder="Cole o código ou o link completo do convite"/></label><button className="secondary-button" type="submit" disabled={inviteLoading || !inviteCode.trim()}>Usar convite</button></form>
             {showCampaignForm && (
               <form
-                className="add-form hb-form hb-campaign-form"
+                id="hb-new-campaign-form" className="add-form hb-form hb-campaign-form"
                 onSubmit={editingCampaignId ? saveCampaignDetails : createCampaign}
               >
                 <div className="hb-form-heading"><span className="hb-heading-icon">⚑</span><div><span className="hb-kicker">CONFIGURAÇÕES DA CAMPANHA</span><h3>{editingCampaignId ? 'Editar campanha' : 'Criar campanha'}</h3><p>Defina o nome, o sistema e a descrição do cenário.</p></div></div>
@@ -16899,6 +16958,8 @@ style={{cursor:'pointer'}}>
                   Nome
                   <input
                     value={campaignName}
+                    maxLength={100}
+                    placeholder="Ex.: Ecos da Lua Partida"
                     onChange={e => setCampaignName(e.target.value)}
                     required
                     style={inputStyle}
@@ -16954,13 +17015,17 @@ style={{cursor:'pointer'}}>
 
                 <label>
                   Descrição
-                  <input
+                  <textarea
                     value={campaignDescription}
                     onChange={e => setCampaignDescription(e.target.value)}
+                    placeholder="Conte a proposta da aventura, o clima da campanha e o que os jogadores podem esperar."
+                    rows={4}
+                    maxLength={2000}
                     style={inputStyle}
                   />
                 </label>
 
+                <div className="hb-v172-campaign-preview"><small>PRÉVIA DA CAMPANHA</small><strong>{campaignName.trim() || 'Nome da sua campanha'}</strong><span>{systemName || 'Sistema não selecionado'}</span><p>{campaignDescription.trim() || 'A descrição da aventura será exibida aqui.'}</p></div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     className="primary-button"
@@ -16994,7 +17059,7 @@ style={{cursor:'pointer'}}>
 
 {selectedCampaign && isMaster && (
   <div className="add-form hb-form hb-admin-panel hb-invite-admin" style={{ marginTop: 20 }}>
-    <div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">CONVIDAR JOGADORES</span><h3>Convites de campanha</h3><p>Gere um convite seguro para reunir o grupo.</p></div></div>
+    <div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">CONVIDAR JOGADORES</span><h3>Convites de campanha</h3><p>Compartilhe um link exclusivo por mensagem ou WhatsApp. O convite também pode contribuir para a insígnia Embaixador quando uma nova conta confirmar o cadastro.</p></div></div>
 
     <p>
       Gere um link para convidar jogadores para{' '}
@@ -17007,7 +17072,7 @@ style={{cursor:'pointer'}}>
       onClick={() => void createCampaignInvite()}
       disabled={inviteLoading}
     >
-      {inviteLoading ? 'Gerando…' : 'Gerar convite'}
+      {inviteLoading ? 'Gerando…' : '🔗 Gerar link de convite'}
     </button>
 
     {campaignInviteLink && (
@@ -17031,6 +17096,8 @@ style={{cursor:'pointer'}}>
         >
           Copiar link
         </button>
+        <button type="button" className="secondary-button" onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent(`Venha participar da minha campanha ${selectedCampaign.name} no HäxBag! ${campaignInviteLink}`)}`,'_blank','noopener,noreferrer')}>Compartilhar no WhatsApp</button>
+        {typeof navigator.share === 'function' && <button type="button" className="secondary-button" onClick={()=>void navigator.share({title:`Convite: ${selectedCampaign.name}`,url:campaignInviteLink}).catch(()=>{})}>Compartilhar…</button>}
       </label>
     )}
   </div>
@@ -17085,7 +17152,7 @@ style={{cursor:'pointer'}}>
     <button
       type="button"
       className="secondary-button season-editor-toggle"
-      onClick={() => setShowSeasonEditor(value => !value)}
+      onClick={() => {setShowSeasonEditor(value => !value);if (!showSeasonEditor) window.setTimeout(()=>document.getElementById('hb-season-create-form')?.scrollIntoView({behavior:'smooth',block:'start'}),50)}}
     >
       {showSeasonEditor ? 'Fechar edição de temporadas' : 'Editar temporadas'}
     </button>
@@ -17094,7 +17161,7 @@ style={{cursor:'pointer'}}>
 
 {selectedCampaign && isMaster && showSeasonEditor && (
   <section className="add-form season-editor-panel hb-admin-panel hb-season-editor">
-    <form onSubmit={createSeason} className="hb-season-create-form">
+    <form onSubmit={createSeason} id="hb-season-create-form" className="hb-season-create-form">
       <div className="hb-form-heading"><span className="hb-heading-icon">◷</span><div><span className="hb-kicker">NOVA ETAPA</span><h3>Criar nova temporada</h3><p>Adicione um novo capítulo à história da campanha.</p></div></div>
 
       <label style={labelStyle}>
@@ -17103,6 +17170,7 @@ style={{cursor:'pointer'}}>
           value={newSeasonName}
           onChange={e => setNewSeasonName(e.target.value)}
           placeholder="Ex.: A Jornada Começa"
+          maxLength={100}
           required
           style={inputStyle}
         />
@@ -17110,14 +17178,17 @@ style={{cursor:'pointer'}}>
 
       <label style={labelStyle}>
         Descrição
-        <input
+        <textarea
           value={newSeasonDescription}
           onChange={e => setNewSeasonDescription(e.target.value)}
-          placeholder="Uma breve descrição da temporada"
+          placeholder="O que acontece neste capítulo? Resuma o arco narrativo sem revelar segredos aos jogadores."
+          rows={3}
+          maxLength={1500}
           style={inputStyle}
         />
       </label>
 
+      <div className="hb-v172-campaign-preview"><small>PRÓXIMO CAPÍTULO · TEMPORADA {Math.max(0,...seasons.map(season=>season.season_number))+1}</small><strong>{newSeasonName.trim()||'Nome da temporada'}</strong><p>{newSeasonDescription.trim()||'Descrição opcional da temporada.'}</p></div>
       <button className="primary-button" type="submit" disabled={creatingSeason || loading}>
         {creatingSeason ? "Criando temporada…" : "Criar temporada"}
       </button>

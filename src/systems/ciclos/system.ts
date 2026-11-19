@@ -14,4 +14,4 @@ export const CICLOS_SYSTEM: RPGSystem = {
       hasDefaultCurrency: true,
     },
   },
-}
+} 
