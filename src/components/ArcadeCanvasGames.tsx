@@ -329,107 +329,241 @@ export function FlappyGame({onFinish,paused=false}:ArcadeGameProps){
 }
 
 type EnemyKind = 'runner' | 'stalker' | 'brute'
-type Enemy = { x:number; y:number; speed:number; radius:number; hp:number; kind:EnemyKind }
-export function ArenaGame({onFinish, paused = false}: ArcadeGameProps) {
+type Enemy = { x: number; y: number; speed: number; radius: number; hp: number; kind: EnemyKind }
+type ArenaCamera = { x: number; y: number }
+
+// O mapa existe em coordenadas do mundo, sem paredes. Apenas a janela de 720×420
+// é desenhada. As células são determinísticas: voltar a uma região conserva o cenário.
+const ARENA_TILE = 80
+const arenaNoise = (x: number, y: number, seed = 0) => {
+  let n = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(seed, 1442695041)
+  n = Math.imul(n ^ (n >>> 13), 1274126177)
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967296
+}
+const screenX = (x: number, camera: ArenaCamera) => x - camera.x + BASE_W / 2
+const screenY = (y: number, camera: ArenaCamera) => y - camera.y + BASE_H / 2
+
+function drawArenaWorld(ctx: CanvasRenderingContext2D, camera: ArenaCamera) {
+  ctx.fillStyle = '#101c21'
+  ctx.fillRect(0, 0, BASE_W, BASE_H)
+  const left = camera.x - BASE_W / 2
+  const top = camera.y - BASE_H / 2
+  const colStart = Math.floor(left / ARENA_TILE) - 1
+  const colEnd = Math.ceil((left + BASE_W) / ARENA_TILE) + 1
+  const rowStart = Math.floor(top / ARENA_TILE) - 1
+  const rowEnd = Math.ceil((top + BASE_H) / ARENA_TILE) + 1
+  for (let row = rowStart; row <= rowEnd; row++) for (let col = colStart; col <= colEnd; col++) {
+    const x = col * ARENA_TILE - left, y = row * ARENA_TILE - top
+    const nature = arenaNoise(col, row)
+    // Caminhos de terra cruzam regiões distantes do mapa, orientando a exploração.
+    const path = ((col % 16) + 16) % 16 === 0 || ((row % 15) + 15) % 15 === 0
+    ctx.fillStyle = path ? '#28302d' : nature > .79 ? '#1b302b' : nature < .18 ? '#14252b' : '#172826'
+    ctx.fillRect(Math.floor(x), Math.floor(y), ARENA_TILE + 1, ARENA_TILE + 1)
+    ctx.strokeStyle = '#d3ddcb07'
+    ctx.lineWidth = 1
+    ctx.strokeRect(Math.floor(x) + .5, Math.floor(y) + .5, ARENA_TILE, ARENA_TILE)
+    const detail = arenaNoise(col, row, 7)
+    const dx = x + 13 + arenaNoise(col, row, 8) * 54
+    const dy = y + 13 + arenaNoise(col, row, 9) * 54
+    if (detail > .91) {
+      // Fragmentos de pedra e antigos círculos rúnicos são apenas cenário.
+      ctx.fillStyle = '#44514d'
+      ctx.beginPath(); ctx.ellipse(dx, dy, 11, 7, -.35, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = '#67766a'; ctx.beginPath(); ctx.arc(dx - 2, dy - 2, 3, 0, Math.PI * 2); ctx.fill()
+    } else if (detail > .52) {
+      ctx.strokeStyle = '#40674d'; ctx.lineWidth = 1.7
+      ctx.beginPath(); ctx.moveTo(dx - 5, dy + 5); ctx.lineTo(dx - 2, dy - 4)
+      ctx.moveTo(dx, dy + 5); ctx.lineTo(dx + 4, dy - 7)
+      ctx.moveTo(dx + 4, dy + 5); ctx.lineTo(dx + 8, dy - 2); ctx.stroke()
+    } else if (detail > .26) {
+      ctx.fillStyle = '#47604e'; ctx.beginPath(); ctx.arc(dx, dy, 2.1, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = '#67775e'; ctx.fillRect(dx + 9, dy - 9, 2, 2)
+    }
+    if (((col % 11) + 11) % 11 === 4 && ((row % 9) + 9) % 9 === 3) {
+      const cx = x + 40, cy = y + 40
+      ctx.strokeStyle = '#acac8160'; ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(cx, cy, 21, 0, Math.PI * 2); ctx.stroke()
+      ctx.beginPath(); ctx.moveTo(cx, cy - 15); ctx.lineTo(cx + 12, cy)
+      ctx.lineTo(cx, cy + 15); ctx.lineTo(cx - 12, cy); ctx.closePath(); ctx.stroke()
+      ctx.fillStyle = '#d2b87755'; ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill()
+    }
+  }
+}
+
+function drawArenaRadar(ctx: CanvasRenderingContext2D, x: number, y: number, enemies: Enemy[]) {
+  const rx = BASE_W - 118, ry = 12, size = 104
+  ctx.fillStyle = '#081116d9'; ctx.fillRect(rx, ry, size, size)
+  ctx.strokeStyle = '#9ab4a055'; ctx.lineWidth = 1; ctx.strokeRect(rx + .5, ry + .5, size - 1, size - 1)
+  ctx.strokeStyle = '#ffffff1b'
+  ctx.beginPath(); ctx.moveTo(rx + size / 2, ry + 9); ctx.lineTo(rx + size / 2, ry + size - 9)
+  ctx.moveTo(rx + 9, ry + size / 2); ctx.lineTo(rx + size - 9, ry + size / 2); ctx.stroke()
+  const radius = 800
+  for (const enemy of enemies) {
+    const dx = enemy.x - x, dy = enemy.y - y
+    if (Math.abs(dx) > radius || Math.abs(dy) > radius) continue
+    ctx.fillStyle = enemy.kind === 'brute' ? '#ce91d2' : '#e88d98'
+    ctx.fillRect(rx + size / 2 + dx / radius * 45 - 1.5, ry + size / 2 + dy / radius * 45 - 1.5, 3, 3)
+  }
+  ctx.fillStyle = '#91e5fb'; ctx.beginPath(); ctx.arc(rx + size / 2, ry + size / 2, 3.5, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#c6d8ca'; ctx.font = '10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('MAPA', rx + 7, ry + 12)
+}
+
+export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const keys = useRef(new Set<string>())
-  const pointer = useRef<{x:number;y:number}|null>(null)
+  const pointer = useRef<{ x: number; y: number } | null>(null)
   const firing = useRef(false)
-  const lastDirection = useRef({x:1,y:0})
-  const game = useRef({x:360,y:210,health:3,score:0,wave:1,spawn:.7,shoot:0,seconds:0,invulnerable:1.5,ended:false,enemies:[] as Enemy[],shots:[] as Shot[],hitFlash:0})
-  const [score,setScore] = useState(0), [health,setHealth] = useState(3), [wave,setWave] = useState(1)
-  const [shooting,setShooting] = useState(false)
-  useArcadeKeyboard(['arrowleft','arrowright','arrowup','arrowdown','w','a','s','d',' ','j'],(key,down)=>{
-    if(paused)return
-    if(down)keys.current.add(key);else keys.current.delete(key)
+  const lastDirection = useRef({ x: 1, y: 0 })
+  const camera = useRef<ArenaCamera>({ x: 0, y: 0 })
+  const game = useRef({ x: 0, y: 0, health: 3, score: 0, wave: 1, spawn: .7, shoot: 0, seconds: 0,
+    invulnerable: 1.5, ended: false, enemies: [] as Enemy[], shots: [] as Shot[], hitFlash: 0,
+    distance: 0, hudTimer: 0 })
+  const [score, setScore] = useState(0), [health, setHealth] = useState(3), [wave, setWave] = useState(1)
+  const [shooting, setShooting] = useState(false)
+  const [position, setPosition] = useState({ x: 0, y: 0, distance: 0 })
+  useArcadeKeyboard(['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd', ' ', 'j'], (key, down) => {
+    if (paused) return
+    if (down) keys.current.add(key); else keys.current.delete(key)
   })
-  useEffect(()=>{if(paused){keys.current.clear();firing.current=false;setShooting(false)}},[paused])
-  useEffect(()=>{
-    const clear=()=>{keys.current.clear();firing.current=false;setShooting(false)}
-    window.addEventListener('blur',clear)
-    return()=>window.removeEventListener('blur',clear)
-  },[])
-  useEffect(()=>{
-    const ctx=canvas.current?.getContext('2d');if(!ctx)return
-    let id=0,last=0
-    const tick=(now:number)=>{
-      const dt=last?Math.min(.035,(now-last)/1000):.016;last=now
-      const g=game.current,k=keys.current
-      if(g.ended)return
-      if(paused){id=requestAnimationFrame(tick);return}
-      const dx=Number(k.has('d')||k.has('arrowright'))-Number(k.has('a')||k.has('arrowleft'))
-      const dy=Number(k.has('s')||k.has('arrowdown'))-Number(k.has('w')||k.has('arrowup'))
-      const len=Math.hypot(dx,dy)||1
-      if(dx||dy)lastDirection.current={x:dx/len,y:dy/len}
-      g.x=clamp(g.x+dx/len*198*dt,15,705)
-      g.y=clamp(g.y+dy/len*198*dt,15,405)
-      g.seconds+=dt
-      const nextWave=1+Math.floor(g.seconds/13)
-      if(nextWave!==g.wave){g.wave=nextWave;setWave(nextWave)}
-      g.spawn-=dt;g.shoot-=dt;g.invulnerable-=dt;g.hitFlash-=dt
-      if(g.spawn<=0&&g.enemies.length<130){
-        const amount=g.wave>=7?3:g.wave>=4?2:1
-        for(let n=0;n<amount;n++){
-          const side=rand(4),kind:EnemyKind=(g.wave>=3 && rand(6)===0)?'brute':rand(4)===0?'runner':'stalker'
-          const radius=kind==='brute'?20:kind==='runner'?10:13
-          g.enemies.push({x:side===0?-radius:side===1?720+radius:rand(720),y:side===2?-radius:side===3?420+radius:rand(420),speed:(kind==='runner'?106:kind==='brute'?45:69)+g.wave*(kind==='brute'?5:11),radius,hp:kind==='brute'?3:1,kind})
+  useEffect(() => { if (paused) { keys.current.clear(); firing.current = false; setShooting(false) } }, [paused])
+  useEffect(() => {
+    const clear = () => { keys.current.clear(); firing.current = false; setShooting(false) }
+    window.addEventListener('blur', clear)
+    return () => window.removeEventListener('blur', clear)
+  }, [])
+  useEffect(() => {
+    const ctx = canvas.current?.getContext('2d'); if (!ctx) return
+    let id = 0, last = 0
+    const tick = (now: number) => {
+      const dt = last ? Math.min(.035, (now - last) / 1000) : .016; last = now
+      const g = game.current, k = keys.current, cam = camera.current
+      if (g.ended) return
+      if (paused) { id = requestAnimationFrame(tick); return }
+      const dx = Number(k.has('d') || k.has('arrowright')) - Number(k.has('a') || k.has('arrowleft'))
+      const dy = Number(k.has('s') || k.has('arrowdown')) - Number(k.has('w') || k.has('arrowup'))
+      const len = Math.hypot(dx, dy) || 1
+      if (dx || dy) lastDirection.current = { x: dx / len, y: dy / len }
+      const vxMove = dx / len * 198 * dt, vyMove = dy / len * 198 * dt
+      g.x += vxMove; g.y += vyMove; g.distance += Math.hypot(vxMove, vyMove)
+      // A câmera segue suavemente o personagem. Coordenadas do mundo não são limitadas.
+      const follow = 1 - Math.exp(-10 * dt)
+      cam.x += (g.x - cam.x) * follow; cam.y += (g.y - cam.y) * follow
+      g.hudTimer -= dt
+      if (g.hudTimer <= 0) {
+        setPosition({ x: Math.round(g.x / 10), y: Math.round(g.y / 10), distance: Math.floor(g.distance / 10) })
+        g.hudTimer = .4
+      }
+      g.seconds += dt
+      const nextWave = 1 + Math.floor(g.seconds / 13)
+      if (nextWave !== g.wave) { g.wave = nextWave; setWave(nextWave) }
+      g.spawn -= dt; g.shoot -= dt; g.invulnerable -= dt; g.hitFlash -= dt
+      if (g.spawn <= 0 && g.enemies.length < 130) {
+        const amount = g.wave >= 7 ? 3 : g.wave >= 4 ? 2 : 1
+        for (let n = 0; n < amount; n++) {
+          const angle = Math.random() * Math.PI * 2
+          const radius = 470 + rand(210)
+          const kind: EnemyKind = (g.wave >= 3 && rand(6) === 0) ? 'brute' : rand(4) === 0 ? 'runner' : 'stalker'
+          const enemyRadius = kind === 'brute' ? 20 : kind === 'runner' ? 10 : 13
+          g.enemies.push({ x: g.x + Math.cos(angle) * radius, y: g.y + Math.sin(angle) * radius,
+            speed: (kind === 'runner' ? 106 : kind === 'brute' ? 45 : 69) + g.wave * (kind === 'brute' ? 5 : 11),
+            radius: enemyRadius, hp: kind === 'brute' ? 3 : 1, kind })
         }
-        g.spawn=Math.max(.24,.92-g.wave*.085)
+        g.spawn = Math.max(.24, .92 - g.wave * .085)
       }
-      const nearest=g.enemies.reduce<Enemy|null>((best,e)=>!best||Math.hypot(e.x-g.x,e.y-g.y)<Math.hypot(best.x-g.x,best.y-g.y)?e:best,null)
-      const aim=pointer.current
-      const targetX=aim?aim.x-g.x:nearest?nearest.x-g.x:lastDirection.current.x
-      const targetY=aim?aim.y-g.y:nearest?nearest.y-g.y:lastDirection.current.y
-      const aimLen=Math.hypot(targetX,targetY)||1
-      const vx=targetX/aimLen,vy=targetY/aimLen
-      // Nada de disparos automáticos: somente botão pressionado, clique ou Espaço/J.
-      if((firing.current||k.has(' ')||k.has('j')) && g.shoot<=0){
-        g.shots.push({x:g.x+vx*18,y:g.y+vy*18,vx:vx*525,vy:vy*525,life:.95})
-        g.shoot=.235
+      const nearest = g.enemies.reduce<Enemy | null>((best, e) => !best || Math.hypot(e.x - g.x, e.y - g.y) < Math.hypot(best.x - g.x, best.y - g.y) ? e : best, null)
+      const aim = pointer.current
+      // O mouse mira na janela da câmera; o alvo é convertido para coordenadas do mundo.
+      const targetX = aim ? aim.x - BASE_W / 2 + cam.x - g.x : nearest ? nearest.x - g.x : lastDirection.current.x
+      const targetY = aim ? aim.y - BASE_H / 2 + cam.y - g.y : nearest ? nearest.y - g.y : lastDirection.current.y
+      const aimLen = Math.hypot(targetX, targetY) || 1
+      const aimX = targetX / aimLen, aimY = targetY / aimLen
+      // Mantém disparos totalmente manuais: clique, Espaço, J ou botão ATIRAR.
+      if ((firing.current || k.has(' ') || k.has('j')) && g.shoot <= 0) {
+        g.shots.push({ x: g.x + aimX * 18, y: g.y + aimY * 18, vx: aimX * 525, vy: aimY * 525, life: .95 })
+        g.shoot = .235
       }
-      for(const enemy of g.enemies){const ox=g.x-enemy.x,oy=g.y-enemy.y,l=Math.hypot(ox,oy)||1;enemy.x+=ox/l*enemy.speed*dt;enemy.y+=oy/l*enemy.speed*dt}
-      g.shots=g.shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;return s.life>0 && s.x>=-20 && s.x<=740 && s.y>=-20 && s.y<=440})
-      for(let i=g.enemies.length-1;i>=0;i--){
-        const e=g.enemies[i];if(!e)continue
-        const hit=g.shots.findIndex(s=>Math.hypot(s.x-e.x,s.y-e.y)<e.radius+5)
-        if(hit>=0){g.shots.splice(hit,1);e.hp--;g.hitFlash=.09;if(e.hp<=0){g.enemies.splice(i,1);g.score+=e.kind==='brute'?30:e.kind==='runner'?15:10;setScore(g.score);continue}}
-        if(g.invulnerable<=0 && Math.hypot(g.x-e.x,g.y-e.y)<e.radius+12){g.health--;setHealth(g.health);g.invulnerable=1.05;g.enemies.splice(i,1);g.hitFlash=.28}
+      for (const enemy of g.enemies) {
+        const ox = g.x - enemy.x, oy = g.y - enemy.y, length = Math.hypot(ox, oy) || 1
+        enemy.x += ox / length * enemy.speed * dt; enemy.y += oy / length * enemy.speed * dt
       }
-      frame(ctx)
+      // Apenas inimigos absurdamente distantes são descartados (quando se foge de uma horda).
+      g.enemies = g.enemies.filter(e => Math.hypot(e.x - g.x, e.y - g.y) < 1250)
+      g.shots = g.shots.filter(s => { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; return s.life > 0 })
+      for (let i = g.enemies.length - 1; i >= 0; i--) {
+        const enemy = g.enemies[i]; if (!enemy) continue
+        const hit = g.shots.findIndex(s => Math.hypot(s.x - enemy.x, s.y - enemy.y) < enemy.radius + 5)
+        if (hit >= 0) {
+          g.shots.splice(hit, 1); enemy.hp--; g.hitFlash = .09
+          if (enemy.hp <= 0) { g.enemies.splice(i, 1); g.score += enemy.kind === 'brute' ? 30 : enemy.kind === 'runner' ? 15 : 10; setScore(g.score); continue }
+        }
+        if (g.invulnerable <= 0 && Math.hypot(g.x - enemy.x, g.y - enemy.y) < enemy.radius + 12) {
+          g.health--; setHealth(g.health); g.invulnerable = 1.05; g.enemies.splice(i, 1); g.hitFlash = .28
+        }
+      }
+      drawArenaWorld(ctx, cam)
       ctx.save()
-      for(const e of g.enemies){
-        ctx.beginPath();ctx.arc(e.x,e.y,e.radius,0,Math.PI*2)
-        ctx.fillStyle=e.kind==='brute'?'#986491':e.kind==='runner'?'#f1ac7b':'#cf829b';ctx.fill()
-        ctx.strokeStyle=e.kind==='brute'?'#e7c4ec':'#fae5e8';ctx.lineWidth=1.5;ctx.stroke()
-        if(e.kind==='brute'){ctx.fillStyle='#e9d2ee';ctx.fillRect(e.x-12,e.y-e.radius-9,24*(e.hp/3),3)}
+      // Objetos do jogo são desenhados depois do chão usando a projeção mundo → tela.
+      for (const enemy of g.enemies) {
+        const x = screenX(enemy.x, cam), y = screenY(enemy.y, cam)
+        if (x < -32 || y < -32 || x > BASE_W + 32 || y > BASE_H + 32) continue
+        ctx.fillStyle = '#00000036'; ctx.beginPath(); ctx.ellipse(x, y + enemy.radius * .6, enemy.radius * .85, enemy.radius * .4, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(x, y, enemy.radius, 0, Math.PI * 2)
+        ctx.fillStyle = enemy.kind === 'brute' ? '#986491' : enemy.kind === 'runner' ? '#f1ac7b' : '#cf829b'; ctx.fill()
+        ctx.strokeStyle = enemy.kind === 'brute' ? '#e7c4ec' : '#fae5e8'; ctx.lineWidth = 1.5; ctx.stroke()
+        if (enemy.kind === 'brute') {
+          ctx.fillStyle = '#1a1d27'; ctx.fillRect(x - 12, y - enemy.radius - 9, 24, 3)
+          ctx.fillStyle = '#e9d2ee'; ctx.fillRect(x - 12, y - enemy.radius - 9, 24 * (enemy.hp / 3), 3)
+        }
       }
-      for(const s of g.shots){ctx.beginPath();ctx.arc(s.x,s.y,4,0,Math.PI*2);ctx.fillStyle='#f5d78d';ctx.shadowColor='#e9bf65';ctx.shadowBlur=9;ctx.fill()}
-      ctx.shadowBlur=0
-      ctx.globalAlpha=.35
-      ctx.beginPath();ctx.moveTo(g.x+vx*15,g.y+vy*15);ctx.lineTo(g.x+vx*42,g.y+vy*42);ctx.strokeStyle='#a3e7ff';ctx.lineWidth=2;ctx.stroke()
-      ctx.globalAlpha=1
-      if(g.invulnerable<=0||Math.floor(g.invulnerable*9)%2===0){
-        ctx.save();ctx.translate(g.x,g.y);ctx.rotate(Math.atan2(vy,vx));
-        ctx.beginPath();ctx.arc(0,0,13,0,Math.PI*2);ctx.fillStyle='#8de4ff';ctx.fill();ctx.strokeStyle='#e7fbff';ctx.lineWidth=2;ctx.stroke()
-        ctx.fillStyle='#153d53';ctx.fillRect(5,-4,17,8);ctx.restore()
+      for (const shot of g.shots) {
+        const x = screenX(shot.x, cam), y = screenY(shot.y, cam)
+        if (x < -10 || y < -10 || x > BASE_W + 10 || y > BASE_H + 10) continue
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2)
+        ctx.fillStyle = '#f5d78d'; ctx.shadowColor = '#e9bf65'; ctx.shadowBlur = 9; ctx.fill()
       }
-      if(pointer.current){ctx.strokeStyle='#f5d78d';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pointer.current.x,pointer.current.y,9,0,Math.PI*2);ctx.moveTo(pointer.current.x-15,pointer.current.y);ctx.lineTo(pointer.current.x-5,pointer.current.y);ctx.moveTo(pointer.current.x+5,pointer.current.y);ctx.lineTo(pointer.current.x+15,pointer.current.y);ctx.stroke()}
-      if(g.hitFlash>0){ctx.fillStyle=`rgba(238,104,130,${Math.min(.15,g.hitFlash*.45)})`;ctx.fillRect(0,0,720,420)}
+      ctx.shadowBlur = 0
+      const px = screenX(g.x, cam), py = screenY(g.y, cam)
+      ctx.globalAlpha = .55
+      ctx.beginPath(); ctx.moveTo(px + aimX * 16, py + aimY * 16); ctx.lineTo(px + aimX * 42, py + aimY * 42)
+      ctx.strokeStyle = '#a3e7ff'; ctx.lineWidth = 2; ctx.stroke()
+      ctx.globalAlpha = 1
+      if (g.invulnerable <= 0 || Math.floor(g.invulnerable * 9) % 2 === 0) {
+        ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(aimY, aimX))
+        ctx.fillStyle = '#050c1390'; ctx.beginPath(); ctx.ellipse(0, 8, 14, 7, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fillStyle = '#8de4ff'; ctx.fill()
+        ctx.strokeStyle = '#e7fbff'; ctx.lineWidth = 2; ctx.stroke()
+        ctx.fillStyle = '#153d53'; ctx.fillRect(5, -4, 17, 8); ctx.restore()
+      }
+      if (pointer.current) {
+        ctx.strokeStyle = '#f5d78d'; ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.arc(pointer.current.x, pointer.current.y, 9, 0, Math.PI * 2)
+        ctx.moveTo(pointer.current.x - 15, pointer.current.y); ctx.lineTo(pointer.current.x - 5, pointer.current.y)
+        ctx.moveTo(pointer.current.x + 5, pointer.current.y); ctx.lineTo(pointer.current.x + 15, pointer.current.y); ctx.stroke()
+      }
+      if (g.hitFlash > 0) { ctx.fillStyle = `rgba(238,104,130,${Math.min(.15, g.hitFlash * .45)})`; ctx.fillRect(0, 0, BASE_W, BASE_H) }
       ctx.restore()
-      if(g.health<=0){if(!g.ended){g.ended=true;onFinish(g.score)};return}
-      id=requestAnimationFrame(tick)
+      drawArenaRadar(ctx, g.x, g.y, g.enemies)
+      if (g.health <= 0) { if (!g.ended) { g.ended = true; onFinish(g.score) } return }
+      id = requestAnimationFrame(tick)
     }
-    id=requestAnimationFrame(tick)
-    return()=>cancelAnimationFrame(id)
-  },[onFinish,paused])
-  const control=(key:string,down:boolean)=>{if(paused)return;if(down)keys.current.add(key);else keys.current.delete(key)}
-  const aimAt=(e:ReactPointerEvent<HTMLCanvasElement>)=>{pointer.current=canvasPointer(e)}
-  const setFire=(down:boolean)=>{firing.current=down&&!paused;setShooting(firing.current)}
-  return <div className="hb-mini-inner hb-arena-v191">
-    <div className="hb-mini-hud"><strong>⚔️ {score} pontos</strong><span>{'♥'.repeat(health)}{'♡'.repeat(3-health)} · Onda {wave} · {wave>=4?'Horda intensa':'Prepare sua mira'}</span></div>
-    <div className="hb-arena-tip">🎯 <strong>Você controla os disparos.</strong> WASD/setas para mover · Mouse para mirar · Clique, Espaço ou J para atirar. No celular, segure <strong>ATIRAR</strong>.</div>
-    <canvas className="hb-mini-canvas hb-arena-canvas" ref={canvas} width={BASE_W} height={BASE_H} onPointerMove={e=>{if(!paused)aimAt(e)}} onPointerDown={e=>{if(paused)return;aimAt(e);setFire(true);e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={e=>{setFire(false);if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}} onPointerCancel={()=>setFire(false)} onPointerLeave={e=>{if(e.pointerType==='mouse')setFire(false)}} aria-label="Arena Infinita: WASD ou setas para mover; mire com mouse e clique, Espaço ou J para atirar" />
-    <div className="hb-mini-pad hb-mini-arena-pad">{[['←','arrowleft'],['↑','arrowup'],['↓','arrowdown'],['→','arrowright']].map(([label,key])=><button key={key} type="button" disabled={paused} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);control(key,true)}} onPointerUp={()=>control(key,false)} onPointerCancel={()=>control(key,false)} onPointerLeave={()=>control(key,false)}>{label}</button>)}<button type="button" className={`hb-mini-fire ${shooting?'is-firing':''}`} disabled={paused} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);setFire(true)}} onPointerUp={()=>setFire(false)} onPointerCancel={()=>setFire(false)} onPointerLeave={()=>setFire(false)}>⌖ ATIRAR</button></div>
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [onFinish, paused])
+  const control = (key: string, down: boolean) => { if (paused) return; if (down) keys.current.add(key); else keys.current.delete(key) }
+  const aimAt = (e: ReactPointerEvent<HTMLCanvasElement>) => { pointer.current = canvasPointer(e) }
+  const setFire = (down: boolean) => { firing.current = down && !paused; setShooting(firing.current) }
+  return <div className="hb-mini-inner hb-arena-v191 hb-arena-v193">
+    <div className="hb-mini-hud"><strong>⚔️ {score} pontos</strong><span>{'♥'.repeat(health)}{'♡'.repeat(3 - health)} · Onda {wave} · {wave >= 4 ? 'Horda intensa' : 'Prepare sua mira'}</span></div>
+    <div className="hb-arena-world-info"><span>♾️ <strong>Mundo sem bordas</strong></span><span>🧭 X {position.x} · Y {position.y}</span><span>👣 {position.distance} m percorridos</span></div>
+    <div className="hb-arena-tip">🗺️ <strong>Explore livremente:</strong> o cenário rola junto com você e novos inimigos surgem ao redor da câmera. Mova-se com WASD/setas; mire com o mouse e clique, Espaço ou J para atirar. No celular, use as setas e segure <strong>ATIRAR</strong>.</div>
+    <canvas className="hb-mini-canvas hb-arena-canvas" ref={canvas} width={BASE_W} height={BASE_H}
+      onPointerMove={e => { if (!paused) aimAt(e) }}
+      onPointerDown={e => { if (paused) return; aimAt(e); setFire(true); e.currentTarget.setPointerCapture(e.pointerId) }}
+      onPointerUp={e => { setFire(false); if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId) }}
+      onPointerCancel={() => setFire(false)}
+      onPointerLeave={e => { if (e.pointerType === 'mouse') { setFire(false); pointer.current = null } }}
+      aria-label="Arena Infinita: mundo explorável sem limites, câmera seguindo o jogador. WASD/setas para mover, mouse para mirar e clique, Espaço ou J para atirar" />
+    <div className="hb-mini-pad hb-mini-arena-pad">{[['←', 'arrowleft'], ['↑', 'arrowup'], ['↓', 'arrowdown'], ['→', 'arrowright']].map(([label, key]) => <button key={key} type="button" disabled={paused} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); control(key, true) }} onPointerUp={() => control(key, false)} onPointerCancel={() => control(key, false)} onPointerLeave={() => control(key, false)}>{label}</button>)}<button type="button" className={`hb-mini-fire ${shooting ? 'is-firing' : ''}`} disabled={paused} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); setFire(true) }} onPointerUp={() => setFire(false)} onPointerCancel={() => setFire(false)} onPointerLeave={() => setFire(false)}>⌖ ATIRAR</button></div>
     <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || game.current.ended} onClick={() => { if (game.current.ended) return; game.current.ended = true; onFinish(game.current.score) }}>✓ Encerrar e registrar {score} pontos</button>
   </div>
 }
