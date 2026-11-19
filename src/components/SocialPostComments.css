@@ -480,3 +480,71 @@
 .hb-v164-post:has(.hb-v185-comments) .hb-v164-post-actions>button.liked {
   color: #ef9eb2;
 }
+
+
+/* V186 — Espaçamento do avatar e cabeçalho dos comentários.
+   A regra genérica do feed (footer button) aplicava padding de 8px 12px
+   ao botão do nome e criava o recuo exagerado da imagem de referência. */
+.hb-v185-comments .hb-v184-comment {
+  gap: 8px;
+}
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  min-height: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-content {
+  padding: 10px 12px;
+}
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-meta {
+  gap: 6px;
+  align-items: center;
+  line-height: 1.3;
+}
+/* Maior especificidade que os botões genéricos da barra da publicação. */
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-meta button.hb-v183-comment-author {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.3;
+  text-align: left;
+}
+.hb-v185-comments .hb-v184-comment .hb-v181-comment-content p {
+  margin-top: 5px;
+  margin-bottom: 0;
+}
+.hb-v185-comments .hb-v184-comment .hb-v182-comment-actions {
+  padding-top: 4px;
+}
+.hb-v185-comments .hb-v184-is-reply .hb-v181-comment-avatar {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+@media (max-width: 620px) {
+  .hb-v185-comments .hb-v184-comment { gap: 7px; }
+  .hb-v185-comments .hb-v184-comment .hb-v181-comment-avatar {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+  .hb-v185-comments .hb-v184-comment .hb-v181-comment-content { padding: 9px 10px; }
+  .hb-v185-comments .hb-v184-is-reply .hb-v181-comment-avatar {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+}
