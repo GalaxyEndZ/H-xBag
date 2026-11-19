@@ -10634,7 +10634,7 @@ counterAttackDT
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
     {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
     {id:'profile',label:'Social',symbol:'✦',description:'Feed, perfis, seguidores, amizades e mensagens'},
-    {id:'minigames',label:'Minigames',symbol:'◉',description:'Jogue Pong e dispute o ranking global'},
+    {id:'minigames',label:'Minigames',symbol:'◉',description:'Nove jogos, rankings globais e três desafios diários'},
   ]
   const quickCommands: HaxQuickCommand[] = quickPages
     .filter(item => (!item.master || isMaster) && (!item.campaign || Boolean(selectedCampaignId)))
@@ -10836,8 +10836,9 @@ counterAttackDT
           </> : activePage === 'minigames' ? <>
             <div className="hb-sidebar-nav-group hb-arcade-side-menu">
               <span className="hb-sidebar-group-title">ARCADE</span>
-              <button type="button" className="nav-link active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">◉</span><span className="hb-sidebar-nav-name">Pong</span></button>
-              <button type="button" className="nav-link" onClick={() => document.getElementById('hb-pong-ranking-title')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">🏆</span><span className="hb-sidebar-nav-name">Ranking global</span></button>
+              <button type="button" className="nav-link active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">◉</span><span className="hb-sidebar-nav-name">Jogos</span></button>
+              <button type="button" className="nav-link" onClick={() => document.getElementById('hb-arcade-daily-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">🗓</span><span className="hb-sidebar-nav-name">Desafios diários</span></button>
+              <button type="button" className="nav-link" onClick={() => (document.getElementById('hb-arcade-ranking-title') || document.getElementById('hb-pong-ranking-title'))?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">🏆</span><span className="hb-sidebar-nav-name">Ranking global</span></button>
             </div>
           </> : <> 
           <div className="hb-sidebar-nav-group">
@@ -11029,7 +11030,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Pong e ranking', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Jogos e desafios', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -18868,8 +18869,8 @@ style={{cursor:'pointer'}}>
         </main>
         <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
           {activePage === 'minigames' ? <>
-            <button type="button" className="active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">◉</span><small>Pong</small></button>
-            <button type="button" onClick={() => document.getElementById('hb-pong-ranking-title')?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">🏆</span><small>Ranking</small></button>
+            <button type="button" className="active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">◉</span><small>Jogos</small></button>
+            <button type="button" onClick={() => (document.getElementById('hb-arcade-ranking-title') || document.getElementById('hb-pong-ranking-title'))?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">🏆</span><small>Ranking</small></button>
             <button type="button" onClick={openSocialSpace}><span aria-hidden="true">✦</span><small>Social</small></button>
             <button type="button" onClick={openRpgSpace}><span aria-hidden="true">⚔</span><small>RPG</small></button>
             <button type="button" aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" onClick={()=>setSidebarMobileOpen(true)}><span aria-hidden="true">☰</span><small>Menu</small></button>

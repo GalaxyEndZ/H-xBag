@@ -67,3 +67,60 @@
 .hb-arcade-empty{text-align:center;padding:20px}
 @media(max-width:1150px){.hb-arcade-grid{grid-template-columns:minmax(0,1fr)}.hb-arcade-ranking-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.hb-arcade{gap:13px}.hb-arcade-hero{padding:20px}.hb-arcade-hero-mark{display:none}.hb-arcade-chips{gap:5px}.hb-arcade-chips span{font-size:10px;padding:5px 7px}.hb-arcade-card-head{align-items:flex-start}.hb-arcade-card-head h2{font-size:22px}.hb-arcade-status{font-size:9px}.hb-arcade-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-arcade-how{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-arcade-ranking-list{grid-template-columns:1fr}.hb-pong-overlay-content{gap:5px}.hb-pong-overlay-symbol{font-size:26px}.hb-pong-overlay p{font-size:10px}.hb-pong-overlay button{padding:8px 12px;font-size:11px;margin:0}.hb-arcade-controls{font-size:10px}}
+
+/* V190 — biblioteca de nove jogos, desafios diários e arenas responsivas */
+.hb-arcade-v190{gap:18px}
+.hb-arcade-v190 .hb-arcade-daily,.hb-arcade-v190 .hb-arcade-library{display:grid;gap:15px;padding:clamp(16px,2.3vw,27px);border:1px solid var(--arcade-border);background:var(--arcade-surface);border-radius:21px;min-width:0}
+.hb-arcade-daily-top{display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.hb-arcade-daily-top h2{font-size:clamp(19px,2.5vw,26px);margin:5px 0;letter-spacing:-.035em}
+.hb-arcade-daily-top p,.hb-arcade-daily-top>small,.hb-arcade-daily-info{font-size:12px;color:var(--arcade-muted);line-height:1.6;margin:0}
+.hb-arcade-wallet{display:grid;min-width:175px;gap:2px;padding:12px 17px;border-radius:14px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 29%,var(--arcade-border));background:color-mix(in srgb,var(--season-primary,#d9bd8b) 9%,transparent)}
+.hb-arcade-wallet>span{font-size:9px;letter-spacing:.11em;font-weight:850;color:var(--arcade-muted)}
+.hb-arcade-wallet strong{font-size:29px;line-height:1.25;font-variant-numeric:tabular-nums}
+.hb-arcade-wallet small{font-size:10px;color:var(--arcade-muted)}
+.hb-arcade-progress{display:grid;gap:9px}
+.hb-arcade-progress>div:first-child{display:flex;flex-wrap:wrap;justify-content:space-between;gap:7px;align-items:center;font-size:12px}
+.hb-arcade-progress>div:first-child>span{color:var(--arcade-muted);font-size:11px}
+.hb-arcade-progress-track{height:7px;border-radius:99px;background:color-mix(in srgb,var(--season-text,#fff) 11%,transparent);overflow:hidden}
+.hb-arcade-progress-track span{display:block;height:100%;background:var(--season-primary,#d9bd8b);border-radius:inherit;transition:width .3s ease}
+.hb-arcade-daily-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hb-arcade-challenge{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;min-height:166px;padding:15px;cursor:pointer;text-align:left;color:inherit;border:1px solid var(--arcade-border);border-radius:15px;background:linear-gradient(145deg,color-mix(in srgb,var(--season-bg,#171820) 64%,transparent),transparent);font:inherit;transition:border-color .18s,transform .18s,background .18s}
+.hb-arcade-challenge:hover,.hb-arcade-challenge:focus-visible{border-color:var(--season-primary,#d9bd8b);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 7%,var(--arcade-surface));transform:translateY(-2px);outline:none}
+.hb-arcade-challenge.is-done{border-color:color-mix(in srgb,#8ad4b7 35%,var(--arcade-border))}
+.hb-arcade-challenge-number{font-size:9px;letter-spacing:.11em;font-weight:800;color:var(--arcade-muted)}
+.hb-arcade-challenge-icon{font-size:24px;line-height:1.4}
+.hb-arcade-challenge strong{font-size:13px;line-height:1.35}
+.hb-arcade-challenge-game{font-size:11px;color:var(--arcade-muted)}
+.hb-arcade-challenge-foot{font-size:10px;margin-top:auto;color:var(--season-primary,#d9bd8b);font-weight:850}
+.hb-arcade-challenge.is-done .hb-arcade-challenge-foot{color:#8ad4b7}
+.hb-arcade-games-grid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px}
+.hb-arcade-game-choice{display:flex;min-width:0;min-height:112px;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 5px;text-align:center;border:1px solid var(--arcade-border);border-radius:12px;background:color-mix(in srgb,var(--season-bg,#161b23) 57%,transparent);color:inherit;cursor:pointer;font:inherit;transition:background .2s,border-color .2s}
+.hb-arcade-game-choice>span{font-size:26px}.hb-arcade-game-choice strong{font-size:11px;line-height:1.2}.hb-arcade-game-choice small{font-size:9px;color:var(--arcade-muted);line-height:1.4}
+.hb-arcade-game-choice:hover,.hb-arcade-game-choice:focus-visible,.hb-arcade-game-choice.is-selected{border-color:var(--season-primary,#d9bd8b);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,var(--arcade-surface));outline:none}
+.hb-arcade-embedded-pong>.hb-arcade{max-width:none}.hb-arcade-embedded-pong .hb-arcade-hero{display:none}
+.hb-mini-stage{display:grid;gap:12px}.hb-mini-ready{min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:25px;text-align:center;border-radius:14px;border:1px solid var(--arcade-border);background:radial-gradient(circle at center,color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent),transparent 65%)}
+.hb-mini-ready>span{font-size:60px}.hb-mini-ready h3{font-size:clamp(20px,2.5vw,27px);margin:0}.hb-mini-ready p{font-size:13px;color:var(--arcade-muted);max-width:340px;line-height:1.65;margin:0}
+.hb-mini-ready button,.hb-mini-result button,.hb-mini-finish{padding:11px 19px;border:1px solid var(--season-primary,#d9bd8b);border-radius:11px;background:var(--season-primary,#d9bd8b);color:var(--season-on-primary,#1b1920);font-weight:800;cursor:pointer}
+.hb-mini-ready button:disabled,.hb-mini-finish:disabled{opacity:.55;cursor:not-allowed}
+.hb-mini-inner{display:grid;justify-items:center;gap:15px;min-width:0}.hb-mini-hud{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;width:100%;border:1px solid var(--arcade-border);border-radius:10px;padding:12px;font-size:12px}
+.hb-mini-hud strong{font-size:17px;color:var(--season-primary,#d9bd8b)}.hb-mini-hud span{font-size:11px;color:var(--arcade-muted)}
+.hb-mini-canvas{display:block;width:100%;max-width:720px;aspect-ratio:12/7;height:auto;border-radius:13px;border:1px solid #40506a;touch-action:none;background:#0b1420}
+.hb-mini-pad{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;touch-action:none}.hb-mini-pad button,.hb-mine-tools button{min-width:45px;min-height:39px;padding:9px 13px;border:1px solid var(--arcade-border);border-radius:9px;background:var(--season-surface-alt,#302c35);color:inherit;font-weight:850;cursor:pointer;touch-action:none;user-select:none}
+.hb-mini-pad button:hover,.hb-mine-tools button:hover,.hb-mine-tools button.is-active{border-color:var(--season-primary,#d9bd8b)}
+.hb-mini-result{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;border:1px solid var(--arcade-border);border-radius:12px;padding:14px}.hb-mini-result strong{font-size:13px}.hb-mini-result button{font-size:11px;padding:8px 12px}
+.hb-snake-board{display:grid;grid-template-columns:repeat(20,1fr);width:min(100%,440px);aspect-ratio:1;gap:2px;padding:8px;border:1px solid #40506a;border-radius:12px;background:#0c1420}
+.hb-snake-board>span{background:#1e2c34;border-radius:3px}.hb-snake-board>span.head{background:#d4c295}.hb-snake-board>span.body{background:#7eb7a9}.hb-snake-board>span.fruit{background:#ef8d9a}
+.hb-puzzle{max-width:100%;}.hb-2048-board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(100%,385px);aspect-ratio:1;border:1px solid var(--arcade-border);border-radius:15px;padding:10px;background:color-mix(in srgb,var(--season-bg,#111c27) 75%,transparent)}
+.hb-2048-tile{display:grid;place-items:center;min-width:0;min-height:0;border-radius:9px;background:color-mix(in srgb,var(--season-text,#fff) 8%,transparent);font-size:clamp(17px,3vw,27px);font-weight:900;color:var(--season-text,#fff)}
+.hb-2048-tile.has-value{background:color-mix(in srgb,var(--season-primary,#d9bd8b) 38%,var(--arcade-surface));color:var(--season-text,#fff)}
+.hb-2048-tile[data-value="1024"],.hb-2048-tile[data-value="2048"]{background:var(--season-primary,#d9bd8b);color:var(--season-on-primary,#17141c)}
+.hb-mine-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12px;color:var(--arcade-muted)}
+.hb-mine-board{display:grid;grid-template-columns:repeat(9,1fr);gap:3px;width:min(100%,410px);aspect-ratio:1;padding:7px;background:#0c1721;border:1px solid #425063;border-radius:11px}
+.hb-mine-board button{min-width:0;min-height:0;border:1px solid #26364b;background:#223346;color:#f3d7a4;font-size:clamp(11px,2.5vw,18px);font-weight:900;border-radius:4px;cursor:pointer;padding:0}
+.hb-mine-board button.opened{background:#101d2b;border-color:#1b2937}.hb-mine-board button.opened.mine{background:#673238}
+.hb-memory-board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:min(100%,405px);aspect-ratio:1;padding:10px;border:1px solid var(--arcade-border);border-radius:14px;background:#121c29}
+.hb-memory-board button{min-width:0;min-height:0;background:#263449;border:1px solid #4b5a74;color:#d2c0a1;border-radius:10px;cursor:pointer;font-size:clamp(20px,4vw,35px)}
+.hb-memory-board button.revealed{background:#3d3b52}.hb-memory-board button.matched{background:#1d4c46;border-color:#84bda6}
+@media(max-width:1250px){.hb-arcade-games-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:800px){.hb-arcade-games-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hb-arcade-daily-grid{grid-template-columns:1fr}.hb-arcade-challenge{min-height:0}.hb-arcade-wallet{flex:1}.hb-arcade-v190 .hb-arcade-library,.hb-arcade-v190 .hb-arcade-daily{padding:14px}}
+@media(max-width:490px){.hb-arcade-games-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-arcade-game-choice{min-height:95px}.hb-mini-hud{justify-content:center;text-align:center}.hb-2048-board,.hb-mine-board,.hb-memory-board{max-width:92vw}}
