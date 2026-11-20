@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { SurvivorExperience, SurvivorUpgradeChoice, experienceForNextLevel, arenaExperienceDrop, drawSurvivorUpgrades, type SurvivorUpgradeId, type SurvivorUpgrade } from './ArcadeSurvivorUpgrades'
+import { breakAsteroid, shotHitsAsteroid } from './ArcadeAsteroidFragmentation'
 
 export type ArcadeGameProps = { onFinish: (score: number) => void; paused?: boolean }
 const clamp = (v: number, low: number, high: number) => Math.max(low, Math.min(high, v))
@@ -288,6 +289,7 @@ export function BreakoutGame({ onFinish, paused = false }: ArcadeGameProps) {
 type Rock = {
   x: number; y: number; vx: number; vy: number; radius: number
   tier: 1 | 2 | 3; rotation: number; spin: number; edges: number[]
+  splitFlash: number; collisionGrace: number
 }
 type Shot = { x: number; y: number; vx: number; vy: number; life: number }
 type ArcadeSpark = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string }
@@ -310,6 +312,7 @@ function createAsteroid(x: number, y: number, tier: 1 | 2 | 3, vx: number, vy: n
     tier, radius: tier === 3 ? 35 : tier === 2 ? 23 : 13,
     rotation: Math.random() * Math.PI * 2,
     spin: (Math.random() - .5) * (tier === 3 ? 1 : 1.8),
+    splitFlash: 0, collisionGrace: 0,
     edges: Array.from({ length: tier === 3 ? 11 : tier === 2 ? 9 : 8 }, () => .73 + Math.random() * .34),
   }
 }
@@ -329,8 +332,9 @@ export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
     x: 360, y: 210, angle: -Math.PI / 2, vx: 0, vy: 0,
     score: 0, lives: 3, sector: 1, elapsed: 0, shake: 0,
     cooldown: 0, invulnerable: 1.6, spawn: .35, ended: false,
-    rocks: [] as Rock[], shots: [] as Shot[], sparks: [] as ArcadeSpark[],
+    rocks: [] as Rock[], shots: [] as Shot[], sparks: [] as ArcadeSpark[], splits: 0,
   })
+  const [splitCount, setSplitCount] = useState(0)
   const [score, setScore] = useState(0)
   const [lives, setLives] = useState(3)
   const [sector, setSector] = useState(1)
@@ -403,30 +407,36 @@ export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
         rock.x = wrapCoord(rock.x + rock.vx * dt, BASE_W)
         rock.y = wrapCoord(rock.y + rock.vy * dt, BASE_H)
         rock.rotation += rock.spin * dt
+        rock.splitFlash = Math.max(0, rock.splitFlash - dt)
+        rock.collisionGrace = Math.max(0, rock.collisionGrace - dt)
       }
       for (let i = g.rocks.length - 1; i >= 0; i--) {
         const rock = g.rocks[i]
         if (!rock) continue
-        const hit = g.shots.findIndex(s => wrapDistanceSq(s.x, s.y, rock.x, rock.y) < (rock.radius + 3) ** 2)
+        const hit = g.shots.findIndex(s => shotHitsAsteroid(s, rock, dt, BASE_W, BASE_H))
         if (hit >= 0) {
           g.shots.splice(hit, 1)
           g.rocks.splice(i, 1)
           g.score += 20; setScore(g.score)
           asteroidBurst(g, rock.x, rock.y, rock.tier === 3 ? 14 : 9, '#f0c894')
           g.shake = Math.min(6, g.shake + (rock.tier === 3 ? 2.8 : 1.6))
-          if (rock.tier > 1) {
-            const nextTier = (rock.tier - 1) as 1 | 2
-            const angle = Math.atan2(rock.vy, rock.vx)
-            for (const direction of [-1, 1]) {
-              const heading = angle + direction * .78
-              const fragmentSpeed = Math.hypot(rock.vx, rock.vy) * 1.12 + 26
-              g.rocks.push(createAsteroid(rock.x + Math.cos(heading) * 7, rock.y + Math.sin(heading) * 7,
-                nextTier, Math.cos(heading) * fragmentSpeed, Math.sin(heading) * fragmentSpeed))
+          const fragments = breakAsteroid(rock)
+          if (fragments.length) {
+            // Fragmentos nascem separados e com impulso oposto; a diferença
+            // entre os tamanhos fica imediatamente visível.
+            for (const piece of fragments) {
+              const child = createAsteroid(piece.x, piece.y, piece.tier, piece.vx, piece.vy)
+              child.splitFlash = 0.55
+              child.collisionGrace = 0.45
+              g.rocks.push(child)
+              asteroidBurst(g, child.x, child.y, 5, '#ffc67c')
             }
+            g.splits += 1
+            setSplitCount(g.splits)
           }
           continue
         }
-        if (g.invulnerable <= 0 && wrapDistanceSq(g.x, g.y, rock.x, rock.y) < (rock.radius + 11) ** 2) {
+        if (g.invulnerable <= 0 && rock.collisionGrace <= 0 && wrapDistanceSq(g.x, g.y, rock.x, rock.y) < (rock.radius + 11) ** 2) {
           g.lives--; setLives(g.lives)
           g.invulnerable = 2.35; g.shake = 8
           asteroidBurst(g, g.x, g.y, 22, '#8de4ff')
@@ -460,7 +470,13 @@ export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
         })
         ctx.closePath()
         ctx.fillStyle = rock.tier === 3 ? '#314254' : rock.tier === 2 ? '#3e4b59' : '#4b5260'
-        ctx.fill(); ctx.strokeStyle = '#c1d5e8'; ctx.lineWidth = 1.8; ctx.stroke()
+        ctx.fill()
+        const splitGlow = rock.splitFlash > 0 ? rock.splitFlash / .55 : 0
+        ctx.strokeStyle = splitGlow > 0 ? '#ffd8a4' : '#c1d5e8'
+        ctx.lineWidth = 1.8 + splitGlow * 2.4
+        if (splitGlow > 0) { ctx.shadowColor = '#ffc075'; ctx.shadowBlur = 14 * splitGlow }
+        ctx.stroke()
+        ctx.shadowBlur = 0
         ctx.strokeStyle = '#0d1b29a0'; ctx.lineWidth = 1.5
         ctx.beginPath(); ctx.moveTo(-rock.radius * .35, -rock.radius * .16); ctx.lineTo(rock.radius * .2, rock.radius * .11)
         ctx.lineTo(rock.radius * .09, rock.radius * .38); ctx.stroke()
@@ -514,7 +530,7 @@ export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
   return <div className="hb-mini-inner hb-asteroids-v204">
     <div className="hb-mini-hud"><strong>🚀 {score} pontos</strong><span>Setor {sector} · {'♥'.repeat(lives)}{'♡'.repeat(Math.max(0, 3 - lives))} · Sobreviva e destrua os asteroides</span></div>
     <canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} aria-label="Asteroids infinito: gire com A e D, acelere com W, freie com S, atire com Espaço" />
-    <div className="hb-mini-game-info"><span>✦ Asteroides grandes se dividem ao serem atingidos.</span><span>↗ Mais asteroides aparecem conforme a partida avança.</span></div>
+    <div className="hb-mini-game-info"><span>✦ Grandes → 2 médios → 4 pequenos. Acerte-os com os disparos.</span><span>↗ {splitCount} fragmentações nesta partida · Novos asteroides aparecem continuamente.</span></div>
     <div className="hb-mini-pad hb-asteroids-pad" aria-label="Controles de Asteroids">{[
       ['↶', 'arrowleft', 'Girar à esquerda'], ['↑', 'arrowup', 'Acelerar'],
       ['↷', 'arrowright', 'Girar à direita'], ['◈', ' ', 'Atirar'], ['▣', 'arrowdown', 'Frear'],
