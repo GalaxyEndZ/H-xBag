@@ -283,127 +283,438 @@ export function BreakoutGame({ onFinish, paused = false }: ArcadeGameProps) {
   </div>
 }
 
-type Rock = { x:number; y:number; vx:number; vy:number; radius:number }
-type Shot = { x:number; y:number; vx:number; vy:number; life:number; pierce?:number; damage?:number; hitIds?:number[]; critical?:boolean }
-
-/** Asteroids clássico: sem níveis, experiência ou cartas de upgrades. */
+// Asteroids V204 — arcade clássico, sem XP ou cartas de melhoria.
+// Fragmentação, controles precisos e dificuldade por setores sem encerrar a partida.
+type Rock = {
+  x: number; y: number; vx: number; vy: number; radius: number
+  tier: 1 | 2 | 3; rotation: number; spin: number; edges: number[]
+}
+type Shot = { x: number; y: number; vx: number; vy: number; life: number }
+type ArcadeSpark = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string }
+const ASTEROID_STARS = Array.from({ length: 96 }, (_, i) => ({
+  x: (i * 149 + 21) % BASE_W,
+  y: (i * 83 + 47) % BASE_H,
+  radius: i % 9 === 0 ? 1.7 : i % 3 === 0 ? 1.15 : .65,
+  layer: 1 + (i % 3),
+}))
+const wrapCoord = (value: number, limit: number) => ((value % limit) + limit) % limit
+const wrapDelta = (a: number, b: number, limit: number) => {
+  const d = Math.abs(a - b)
+  return Math.min(d, limit - d)
+}
+const wrapDistanceSq = (x1: number, y1: number, x2: number, y2: number) =>
+  wrapDelta(x1, x2, BASE_W) ** 2 + wrapDelta(y1, y2, BASE_H) ** 2
+function createAsteroid(x: number, y: number, tier: 1 | 2 | 3, vx: number, vy: number): Rock {
+  return {
+    x: wrapCoord(x, BASE_W), y: wrapCoord(y, BASE_H), vx, vy,
+    tier, radius: tier === 3 ? 35 : tier === 2 ? 23 : 13,
+    rotation: Math.random() * Math.PI * 2,
+    spin: (Math.random() - .5) * (tier === 3 ? 1 : 1.8),
+    edges: Array.from({ length: tier === 3 ? 11 : tier === 2 ? 9 : 8 }, () => .73 + Math.random() * .34),
+  }
+}
+function asteroidBurst(g: { sparks: ArcadeSpark[] }, x: number, y: number, count: number, color: string) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 38 + Math.random() * 130
+    const life = .22 + Math.random() * .36
+    g.sparks.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life, maxLife: life, color })
+  }
+  if (g.sparks.length > 150) g.sparks.splice(0, g.sparks.length - 150)
+}
 export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const keys = useRef(new Set<string>())
   const game = useRef({
-    x:360, y:210, angle:-Math.PI/2, vx:0, vy:0, score:0, lives:3,
-    cooldown:0, invulnerable:1.2, spawn:0, ended:false, rocks:[] as Rock[], shots:[] as Shot[],
+    x: 360, y: 210, angle: -Math.PI / 2, vx: 0, vy: 0,
+    score: 0, lives: 3, sector: 1, elapsed: 0, shake: 0,
+    cooldown: 0, invulnerable: 1.6, spawn: .35, ended: false,
+    rocks: [] as Rock[], shots: [] as Shot[], sparks: [] as ArcadeSpark[],
   })
   const [score, setScore] = useState(0)
   const [lives, setLives] = useState(3)
-  useArcadeKeyboard(['arrowleft','arrowright','arrowup','a','d','w',' '], (key, down) => {
+  const [sector, setSector] = useState(1)
+  useArcadeKeyboard(['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'a', 'd', 'w', 's', ' '], (key, down) => {
     if (paused) return
-    if (down) keys.current.add(key); else keys.current.delete(key)
+    if (down) keys.current.add(key)
+    else keys.current.delete(key)
   })
   useEffect(() => { if (paused) keys.current.clear() }, [paused])
-  useEffect(() => { const clear=()=>keys.current.clear(); window.addEventListener('blur', clear); return ()=>window.removeEventListener('blur', clear) }, [])
+  useEffect(() => {
+    const clear = () => keys.current.clear()
+    window.addEventListener('blur', clear)
+    return () => window.removeEventListener('blur', clear)
+  }, [])
   useEffect(() => {
     const element = canvas.current
     if (!element || paused) return
     const ctx = prepareArcadeCanvas(element)
     if (!ctx) return
-    let last=0, id=0
+    let last = 0, id = 0
     const tick = (now: number) => {
-      const dt = last ? Math.min(.035, (now-last)/1000) : .016; last=now
-      const g=game.current, k=keys.current
+      const dt = last ? Math.min(.034, (now - last) / 1000) : .016
+      last = now
+      const g = game.current, k = keys.current
       if (g.ended) return
-      if (k.has('arrowleft') || k.has('a')) g.angle-=3.6*dt
-      if (k.has('arrowright') || k.has('d')) g.angle+=3.6*dt
-      if (k.has('arrowup') || k.has('w')) { g.vx+=Math.cos(g.angle)*165*dt; g.vy+=Math.sin(g.angle)*165*dt }
-      g.vx*=.992; g.vy*=.992
-      const speed=Math.hypot(g.vx,g.vy)
-      if (speed>600) { g.vx*=600/speed; g.vy*=600/speed }
-      g.x=(g.x+g.vx*dt+BASE_W*3)%BASE_W
-      g.y=(g.y+g.vy*dt+BASE_H*3)%BASE_H
-      g.cooldown-=dt; g.invulnerable-=dt; g.spawn-=dt
-      if (g.spawn<=0 && g.rocks.length<105) {
-        const side=rand(4)
-        const x=side<2?rand(BASE_W):side===2?0:BASE_W
-        const y=side>=2?rand(BASE_H):side===0?0:BASE_H
-        g.rocks.push({x,y,vx:(Math.random()-.5)*95,vy:(Math.random()-.5)*95,radius:14+rand(17)})
-        g.spawn=Math.max(.32,1.05-g.score/2500)
+      g.elapsed += dt
+      const newSector = 1 + Math.floor(g.elapsed / 42) + Math.floor(g.score / 700)
+      if (newSector !== g.sector) { g.sector = newSector; setSector(newSector) }
+      const turning = Number(k.has('arrowright') || k.has('d')) - Number(k.has('arrowleft') || k.has('a'))
+      g.angle += turning * 3.8 * dt
+      const thrusting = k.has('arrowup') || k.has('w')
+      const braking = k.has('arrowdown') || k.has('s')
+      if (thrusting) { g.vx += Math.cos(g.angle) * 235 * dt; g.vy += Math.sin(g.angle) * 235 * dt }
+      const drag = Math.exp(-(braking ? 2.8 : .18) * dt)
+      g.vx *= drag; g.vy *= drag
+      const speed = Math.hypot(g.vx, g.vy)
+      if (speed > 350) { g.vx *= 350 / speed; g.vy *= 350 / speed }
+      g.x = wrapCoord(g.x + g.vx * dt, BASE_W)
+      g.y = wrapCoord(g.y + g.vy * dt, BASE_H)
+      g.cooldown -= dt; g.invulnerable -= dt; g.spawn -= dt
+      g.shake = Math.max(0, g.shake - dt * 16)
+      if (g.spawn <= 0 && g.rocks.length < Math.min(46, 13 + g.sector * 2)) {
+        // Rochas novas não aparecem coladas à nave, nem por trás da borda do mapa.
+        let px = 0, py = 0
+        for (let attempt = 0; attempt < 12; attempt++) {
+          const side = rand(4)
+          px = side < 2 ? rand(BASE_W) : side === 2 ? 0 : BASE_W - 1
+          py = side >= 2 ? rand(BASE_H) : side === 0 ? 0 : BASE_H - 1
+          if (wrapDistanceSq(g.x, g.y, px, py) > 175 * 175) break
+        }
+        const aim = Math.atan2(BASE_H / 2 - py, BASE_W / 2 - px) + (Math.random() - .5) * 1.7
+        const drift = 27 + Math.min(78, g.sector * 5) + Math.random() * 30
+        g.rocks.push(createAsteroid(px, py, Math.random() < .72 ? 3 : 2, Math.cos(aim) * drift, Math.sin(aim) * drift))
+        g.spawn = Math.max(.59, 2.1 - g.sector * .11)
       }
-      if (k.has(' ') && g.cooldown<=0) {
-        g.shots.push({x:g.x+Math.cos(g.angle)*18,y:g.y+Math.sin(g.angle)*18,
-          vx:g.vx+Math.cos(g.angle)*480,vy:g.vy+Math.sin(g.angle)*480,life:1.2})
-        g.cooldown=.17
+      if (k.has(' ') && g.cooldown <= 0 && g.shots.length < 45) {
+        const ux = Math.cos(g.angle), uy = Math.sin(g.angle)
+        g.shots.push({ x: wrapCoord(g.x + ux * 20, BASE_W), y: wrapCoord(g.y + uy * 20, BASE_H),
+          vx: g.vx + ux * 505, vy: g.vy + uy * 505, life: 1.12 })
+        g.cooldown = .17
+        asteroidBurst(g, g.x + ux * 17, g.y + uy * 17, 2, '#ffddb0')
       }
-      g.shots=g.shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;return s.life>0&&s.x>=0&&s.x<=BASE_W&&s.y>=0&&s.y<=BASE_H})
-      for(const rock of g.rocks){rock.x=(rock.x+rock.vx*dt+BASE_W)%BASE_W;rock.y=(rock.y+rock.vy*dt+BASE_H)%BASE_H}
-      for(let i=g.rocks.length-1;i>=0;i--){
-        const rock=g.rocks[i];if(!rock)continue
-        const hit=g.shots.findIndex(s=>(s.x-rock.x)**2+(s.y-rock.y)**2<(rock.radius+3)**2)
-        if(hit>=0){g.shots.splice(hit,1);g.rocks.splice(i,1);g.score+=20;setScore(g.score);continue}
-        if(g.invulnerable<=0&&(g.x-rock.x)**2+(g.y-rock.y)**2<(rock.radius+13)**2){
-          g.lives--;setLives(g.lives);g.invulnerable=2;g.x=360;g.y=210;g.vx=0;g.vy=0
+      g.shots = g.shots.filter(shot => {
+        shot.x = wrapCoord(shot.x + shot.vx * dt, BASE_W)
+        shot.y = wrapCoord(shot.y + shot.vy * dt, BASE_H)
+        shot.life -= dt
+        return shot.life > 0
+      })
+      for (const rock of g.rocks) {
+        rock.x = wrapCoord(rock.x + rock.vx * dt, BASE_W)
+        rock.y = wrapCoord(rock.y + rock.vy * dt, BASE_H)
+        rock.rotation += rock.spin * dt
+      }
+      for (let i = g.rocks.length - 1; i >= 0; i--) {
+        const rock = g.rocks[i]
+        if (!rock) continue
+        const hit = g.shots.findIndex(s => wrapDistanceSq(s.x, s.y, rock.x, rock.y) < (rock.radius + 3) ** 2)
+        if (hit >= 0) {
+          g.shots.splice(hit, 1)
+          g.rocks.splice(i, 1)
+          g.score += 20; setScore(g.score)
+          asteroidBurst(g, rock.x, rock.y, rock.tier === 3 ? 14 : 9, '#f0c894')
+          g.shake = Math.min(6, g.shake + (rock.tier === 3 ? 2.8 : 1.6))
+          if (rock.tier > 1) {
+            const nextTier = (rock.tier - 1) as 1 | 2
+            const angle = Math.atan2(rock.vy, rock.vx)
+            for (const direction of [-1, 1]) {
+              const heading = angle + direction * .78
+              const fragmentSpeed = Math.hypot(rock.vx, rock.vy) * 1.12 + 26
+              g.rocks.push(createAsteroid(rock.x + Math.cos(heading) * 7, rock.y + Math.sin(heading) * 7,
+                nextTier, Math.cos(heading) * fragmentSpeed, Math.sin(heading) * fragmentSpeed))
+            }
+          }
+          continue
+        }
+        if (g.invulnerable <= 0 && wrapDistanceSq(g.x, g.y, rock.x, rock.y) < (rock.radius + 11) ** 2) {
+          g.lives--; setLives(g.lives)
+          g.invulnerable = 2.35; g.shake = 8
+          asteroidBurst(g, g.x, g.y, 22, '#8de4ff')
+          g.x = BASE_W / 2; g.y = BASE_H / 2; g.vx = 0; g.vy = 0
+          if (g.lives <= 0) { g.ended = true; onFinish(g.score); return }
         }
       }
+      g.sparks = g.sparks.filter(s => {
+        s.x = wrapCoord(s.x + s.vx * dt, BASE_W)
+        s.y = wrapCoord(s.y + s.vy * dt, BASE_H)
+        s.vx *= Math.exp(-1.7 * dt); s.vy *= Math.exp(-1.7 * dt)
+        s.life -= dt
+        return s.life > 0
+      })
+      ctx.save()
+      if (g.shake > 0) ctx.translate((Math.random() - .5) * g.shake, (Math.random() - .5) * g.shake)
       frame(ctx)
-      ctx.strokeStyle='#b7c8dc';ctx.lineWidth=2
-      for(const rock of g.rocks){ctx.beginPath();ctx.arc(rock.x,rock.y,rock.radius,0,Math.PI*2);ctx.stroke()}
-      ctx.fillStyle='#f0c88f';for(const shot of g.shots){ctx.beginPath();ctx.arc(shot.x,shot.y,3,0,Math.PI*2);ctx.fill()}
-      if(g.invulnerable<=0||Math.floor(g.invulnerable*7)%2===0){
-        ctx.save();ctx.translate(g.x,g.y);ctx.rotate(g.angle+Math.PI/2);ctx.beginPath()
-        ctx.moveTo(0,-17);ctx.lineTo(12,14);ctx.lineTo(0,8);ctx.lineTo(-12,14);ctx.closePath()
-        ctx.strokeStyle='#8de4ff';ctx.lineWidth=3;ctx.stroke();ctx.restore()
+      ctx.fillStyle = '#08101b98'; ctx.fillRect(0, 0, BASE_W, BASE_H)
+      for (const star of ASTEROID_STARS) {
+        const y = wrapCoord(star.y + g.elapsed * star.layer * 1.7, BASE_H)
+        ctx.fillStyle = star.layer === 3 ? '#bceeffa4' : star.layer === 2 ? '#9bb0e47a' : '#dfe9f756'
+        ctx.beginPath(); ctx.arc(star.x, y, star.radius, 0, Math.PI * 2); ctx.fill()
       }
-      if(g.lives<=0){if(!g.ended){g.ended=true;onFinish(g.score)};return}
-      id=requestAnimationFrame(tick)
+      for (const rock of g.rocks) {
+        ctx.save(); ctx.translate(rock.x, rock.y); ctx.rotate(rock.rotation)
+        ctx.beginPath()
+        rock.edges.forEach((edge, j) => {
+          const angle = j / rock.edges.length * Math.PI * 2
+          const x = Math.cos(angle) * rock.radius * edge, y = Math.sin(angle) * rock.radius * edge
+          if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+        })
+        ctx.closePath()
+        ctx.fillStyle = rock.tier === 3 ? '#314254' : rock.tier === 2 ? '#3e4b59' : '#4b5260'
+        ctx.fill(); ctx.strokeStyle = '#c1d5e8'; ctx.lineWidth = 1.8; ctx.stroke()
+        ctx.strokeStyle = '#0d1b29a0'; ctx.lineWidth = 1.5
+        ctx.beginPath(); ctx.moveTo(-rock.radius * .35, -rock.radius * .16); ctx.lineTo(rock.radius * .2, rock.radius * .11)
+        ctx.lineTo(rock.radius * .09, rock.radius * .38); ctx.stroke()
+        ctx.restore()
+      }
+      for (const shot of g.shots) {
+        ctx.strokeStyle = '#ffd8a7'; ctx.lineWidth = 3; ctx.lineCap = 'round'
+        const angle = Math.atan2(shot.vy, shot.vx)
+        ctx.beginPath(); ctx.moveTo(shot.x, shot.y); ctx.lineTo(shot.x - Math.cos(angle) * 9, shot.y - Math.sin(angle) * 9); ctx.stroke()
+      }
+      for (const spark of g.sparks) {
+        ctx.globalAlpha = Math.max(0, spark.life / spark.maxLife)
+        ctx.fillStyle = spark.color; ctx.fillRect(spark.x - 1.5, spark.y - 1.5, 3, 3)
+      }
+      ctx.globalAlpha = 1
+      if (g.invulnerable <= 0 || Math.floor(g.invulnerable * 8) % 2 === 0) {
+        ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.angle + Math.PI / 2)
+        if (thrusting) {
+          ctx.fillStyle = '#ffb867'; ctx.beginPath(); ctx.moveTo(-7, 11); ctx.lineTo(0, 21 + Math.random() * 13)
+          ctx.lineTo(7, 11); ctx.fill()
+          ctx.fillStyle = '#a1edff'; ctx.beginPath(); ctx.moveTo(-3, 11); ctx.lineTo(0, 21 + Math.random() * 5); ctx.lineTo(3, 11); ctx.fill()
+        }
+        ctx.beginPath(); ctx.moveTo(0, -19); ctx.lineTo(13, 13); ctx.lineTo(0, 8); ctx.lineTo(-13, 13); ctx.closePath()
+        ctx.fillStyle = '#132b3f'; ctx.fill(); ctx.strokeStyle = '#93e8ff'; ctx.lineWidth = 2.7; ctx.stroke()
+        ctx.strokeStyle = '#ffffffa0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(0, 3); ctx.stroke()
+        ctx.restore()
+      }
+      ctx.fillStyle = '#d2e0ebad'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left'
+      ctx.fillText(`SETOR ${g.sector}`, 18, 26)
+      ctx.restore()
+      id = requestAnimationFrame(tick)
     }
-    const resize=()=>prepareArcadeCanvas(element)
-    window.addEventListener('resize',resize)
-    document.addEventListener('fullscreenchange',resize)
-    id=requestAnimationFrame(tick)
-    return ()=>{cancelAnimationFrame(id);window.removeEventListener('resize',resize);document.removeEventListener('fullscreenchange',resize)}
-  },[onFinish,paused])
-  const control=(key:string,down:boolean)=>{if(paused)return;if(down)keys.current.add(key);else keys.current.delete(key)}
-  const finish=()=>{if(game.current.ended||paused)return;game.current.ended=true;onFinish(game.current.score)}
-  return <div className="hb-mini-inner hb-asteroids-classic">
-    <div className="hb-mini-hud"><strong>🚀 {score} pontos</strong><span>{'♥'.repeat(lives)}{'♡'.repeat(Math.max(0,3-lives))} · Gire, acelere e atire com Espaço</span></div>
-    <canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} aria-label="Asteroids clássico: setas ou A D para girar, W acelerar e Espaço atirar" />
-    <div className="hb-mini-pad">{[['↶','arrowleft'],['↑','arrowup'],['↷','arrowright'],['◎',' ']].map(([label,key])=><button key={key} type="button" disabled={paused} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);control(key,true)}} onPointerUp={()=>control(key,false)} onPointerCancel={()=>control(key,false)} onPointerLeave={()=>control(key,false)}>{label}</button>)}</div>
-    <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused||game.current.ended} onClick={finish}>✓ Encerrar e registrar {score} pontos</button>
+    const resize = () => { prepareArcadeCanvas(element) }
+    window.addEventListener('resize', resize)
+    document.addEventListener('fullscreenchange', resize)
+    id = requestAnimationFrame(tick)
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener('resize', resize)
+      document.removeEventListener('fullscreenchange', resize)
+    }
+  }, [onFinish, paused])
+  const control = (key: string, down: boolean) => {
+    if (paused) return
+    if (down) keys.current.add(key); else keys.current.delete(key)
+  }
+  const finish = () => {
+    if (game.current.ended || paused) return
+    game.current.ended = true; onFinish(game.current.score)
+  }
+  return <div className="hb-mini-inner hb-asteroids-v204">
+    <div className="hb-mini-hud"><strong>🚀 {score} pontos</strong><span>Setor {sector} · {'♥'.repeat(lives)}{'♡'.repeat(Math.max(0, 3 - lives))} · Sobreviva e destrua os asteroides</span></div>
+    <canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} aria-label="Asteroids infinito: gire com A e D, acelere com W, freie com S, atire com Espaço" />
+    <div className="hb-mini-game-info"><span>✦ Asteroides grandes se dividem ao serem atingidos.</span><span>↗ Mais asteroides aparecem conforme a partida avança.</span></div>
+    <div className="hb-mini-pad hb-asteroids-pad" aria-label="Controles de Asteroids">{[
+      ['↶', 'arrowleft', 'Girar à esquerda'], ['↑', 'arrowup', 'Acelerar'],
+      ['↷', 'arrowright', 'Girar à direita'], ['◈', ' ', 'Atirar'], ['▣', 'arrowdown', 'Frear'],
+    ].map(([label, key, title]) => <button key={key} type="button" title={title} aria-label={title} disabled={paused}
+      onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); control(key, true) }}
+      onPointerUp={() => control(key, false)} onPointerCancel={() => control(key, false)}
+      onLostPointerCapture={() => control(key, false)}>{label}</button>)}</div>
+    <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || game.current.ended} onClick={finish}>✓ Encerrar e registrar {score} pontos</button>
   </div>
 }
 
-type Pipe = { x:number; gap:number; passed:boolean }
-
-export function FlappyGame({onFinish,paused=false}:ArcadeGameProps){
-  const canvas=useRef<HTMLCanvasElement>(null)
-  const flap=useRef(false)
-  const game=useRef({y:210,vy:0,pipes:[] as Pipe[],spawn:1.3,score:0,ended:false,first:true})
-  const [score,setScore]=useState(0)
-  useArcadeKeyboard([' ','arrowup','w'],(_key,down)=>{if(down&&!paused&&!flap.current)flap.current=true})
-  useEffect(()=>{
-    const ctx=canvas.current?.getContext('2d');if(!ctx || paused)return
-    let id=0,last=0
-    const tick=(now:number)=>{
-      const dt=last?Math.min(.033,(now-last)/1000):.016;last=now
-      const g=game.current
-      if(g.ended)return
-      if(paused){id=requestAnimationFrame(tick);return}
-      if(g.first){if(flap.current){g.first=false;g.vy=-255;flap.current=false}else{frame(ctx);ctx.fillStyle='#f0c88f';ctx.beginPath();ctx.arc(175,g.y,12,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e1ebf4';ctx.font='bold 21px sans-serif';ctx.textAlign='center';ctx.fillText('Toque ou aperte Espaço para começar',360,130);id=requestAnimationFrame(tick);return}}
-      if(flap.current){g.vy=-255;flap.current=false}
-      g.vy+=660*dt;g.y+=g.vy*dt;g.spawn-=dt
-      if(g.spawn<=0){g.pipes.push({x:740,gap:115+rand(190),passed:false});g.spawn=1.6}
-      for(const p of g.pipes){p.x-=(175+Math.min(120,g.score*3))*dt;if(!p.passed&&p.x+72<175){p.passed=true;g.score+=5;setScore(g.score)}}
-      g.pipes=g.pipes.filter(p=>p.x>-80)
-      const hit=g.y<12||g.y>BASE_H-12||g.pipes.some(p=>p.x<186&&p.x+70>163&&(g.y-12<p.gap-75||g.y+12>p.gap+75))
-      frame(ctx)
-      for(const p of g.pipes){ctx.fillStyle='#5baf90';ctx.fillRect(p.x,0,70,p.gap-75);ctx.fillRect(p.x,p.gap+75,70,420-p.gap-75);ctx.fillStyle='#7bd7b1';ctx.fillRect(p.x-5,p.gap-91,80,16);ctx.fillRect(p.x-5,p.gap+75,80,16)}
-      ctx.fillStyle='#f0c88f';ctx.beginPath();ctx.arc(175,g.y,12,0,Math.PI*2);ctx.fill();ctx.fillStyle='#17212c';ctx.fillRect(178,g.y-5,4,4)
-      if(hit){if(!g.ended){g.ended=true;onFinish(g.score)};return}
-      id=requestAnimationFrame(tick)
+// Voo Infinito V204 — voo fluido, obstáculos variados e fundo com profundidade.
+// Cada obstáculo continua valendo exatamente 5 pontos (desafios e ranking existentes).
+type Pipe = { x: number; gap: number; halfGap: number; width: number; passed: boolean; theme: number }
+type Feather = { x: number; y: number; vx: number; vy: number; life: number }
+export function FlappyGame({ onFinish, paused = false }: ArcadeGameProps) {
+  const canvas = useRef<HTMLCanvasElement>(null)
+  const flap = useRef(false)
+  const heldFlapKeys = useRef(new Set<string>())
+  const game = useRef({
+    y: 210, vy: 0, pipes: [] as Pipe[], feathers: [] as Feather[],
+    spawn: 1.5, score: 0, passed: 0, distance: 0, elapsed: 0,
+    lastGap: 205, flash: 0, ended: false, first: true,
+  })
+  const [score, setScore] = useState(0)
+  const [distance, setDistance] = useState(0)
+  const [passed, setPassed] = useState(0)
+  useArcadeKeyboard([' ', 'arrowup', 'w'], (key, down) => {
+    if (paused) return
+    if (down) {
+      if (!heldFlapKeys.current.has(key)) flap.current = true
+      heldFlapKeys.current.add(key)
+    } else heldFlapKeys.current.delete(key)
+  })
+  useEffect(() => { if (paused) { flap.current = false; heldFlapKeys.current.clear() } }, [paused])
+  useEffect(() => {
+    const clear = () => { heldFlapKeys.current.clear() }
+    window.addEventListener('blur', clear)
+    return () => window.removeEventListener('blur', clear)
+  }, [])
+  useEffect(() => {
+    const element = canvas.current
+    if (!element || paused) return
+    const ctx = prepareArcadeCanvas(element)
+    if (!ctx) return
+    let id = 0, last = 0, hudTimer = 0
+    const draw = (now: number) => {
+      const dt = last ? Math.min(.033, (now - last) / 1000) : .016
+      last = now
+      const g = game.current
+      if (g.ended) return
+      if (g.first) {
+        if (flap.current) { g.first = false; g.vy = -255; flap.current = false }
+        else g.y = 210 + Math.sin(now / 360) * 5
+      } else {
+        g.elapsed += dt
+        const speed = Math.min(305, 179 + g.passed * 2.3 + g.elapsed * .28)
+        g.distance += speed * dt
+        hudTimer += dt
+        if (hudTimer >= .33) { setDistance(Math.floor(g.distance / 10)); hudTimer = 0 }
+        if (flap.current) {
+          g.vy = -255; flap.current = false
+          for (let i = 0; i < 5; i++) g.feathers.push({ x: 166, y: g.y + 4, vx: -55 - Math.random() * 70,
+            vy: (Math.random() - .5) * 80, life: .45 })
+        }
+        g.vy = Math.min(395, g.vy + 675 * dt)
+        g.y += g.vy * dt
+        g.spawn -= dt
+        if (g.spawn <= 0) {
+          const halfGap = Math.max(69, 89 - Math.floor(g.passed / 5) * 2)
+          const nextGap = clamp(g.lastGap + (Math.random() - .5) * 138, 111, 286)
+          g.lastGap = nextGap
+          g.pipes.push({ x: BASE_W + 24, gap: nextGap, halfGap, width: 68 + rand(3) * 5,
+            passed: false, theme: rand(3) })
+          g.spawn = Math.max(1.23, 1.82 - g.passed * .009)
+        }
+        for (const pipe of g.pipes) {
+          pipe.x -= speed * dt
+          if (!pipe.passed && pipe.x + pipe.width < 175 - 12) {
+            pipe.passed = true; g.score += 5; g.passed++; g.flash = .8
+            setScore(g.score); setPassed(g.passed)
+          }
+        }
+        g.pipes = g.pipes.filter(pipe => pipe.x + pipe.width > -20)
+        g.feathers = g.feathers.filter(p => {
+          p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt
+          return p.life > 0
+        })
+        g.flash = Math.max(0, g.flash - dt)
+        // Círculo contra retângulo: evita mortes quando apenas a caixa invisível da asa encosta.
+        const hitsRect = (x: number, y: number, w: number, h: number) => {
+          const cx = clamp(175, x, x + w), cy = clamp(g.y, y, y + h)
+          return (cx - 175) ** 2 + (cy - g.y) ** 2 < 11 ** 2
+        }
+        const hit = g.y < 14 || g.y > BASE_H - 35 || g.pipes.some(pipe =>
+          hitsRect(pipe.x, 0, pipe.width, pipe.gap - pipe.halfGap) ||
+          hitsRect(pipe.x, pipe.gap + pipe.halfGap, pipe.width, BASE_H - pipe.gap - pipe.halfGap))
+        if (hit) { g.ended = true; onFinish(g.score); return }
+      }
+      // Céu e parallax — decorativo; a física continua sempre em 720×420.
+      const sky = ctx.createLinearGradient(0, 0, 0, BASE_H)
+      sky.addColorStop(0, '#11243d'); sky.addColorStop(.63, '#254660'); sky.addColorStop(1, '#3f5c67')
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, BASE_W, BASE_H)
+      const travel = g.distance
+      for (let i = 0; i < 19; i++) {
+        const x = wrapCoord(i * 131 + 35 - travel * .05, BASE_W + 80) - 40
+        const y = 35 + (i * 67) % 190
+        ctx.fillStyle = i % 5 === 0 ? '#cdeeff9c' : '#d5ecff59'
+        ctx.beginPath(); ctx.arc(x, y, i % 5 === 0 ? 1.7 : .95, 0, Math.PI * 2); ctx.fill()
+      }
+      for (let i = 0; i < 8; i++) {
+        const x = wrapCoord(i * 139 + 40 - travel * .14, BASE_W + 170) - 100
+        const y = 67 + (i * 59) % 120
+        ctx.fillStyle = '#a6c6d028'
+        ctx.beginPath(); ctx.ellipse(x, y, 52, 13, 0, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.ellipse(x + 20, y - 8, 30, 11, 0, 0, Math.PI * 2); ctx.fill()
+      }
+      ctx.fillStyle = '#1e3c4c'
+      for (let i = -1; i < 9; i++) {
+        const x = i * 113 - (travel * .26 % 113)
+        ctx.beginPath(); ctx.moveTo(x, BASE_H - 28); ctx.lineTo(x + 57, 246 + (i % 3) * 20)
+        ctx.lineTo(x + 116, BASE_H - 28); ctx.fill()
+      }
+      ctx.fillStyle = '#193642'; ctx.fillRect(0, BASE_H - 27, BASE_W, 27)
+      ctx.fillStyle = '#507b72'; ctx.fillRect(0, BASE_H - 27, BASE_W, 3)
+      for (let i = 0; i < 18; i++) {
+        const x = wrapCoord(i * 53 - travel * .65, BASE_W + 30) - 15
+        ctx.fillStyle = i % 3 === 0 ? '#84ad88' : '#43695a'
+        ctx.fillRect(x, BASE_H - 17 + i % 3 * 5, 16, 2)
+      }
+      for (const pipe of g.pipes) {
+        const top = pipe.gap - pipe.halfGap, bottom = pipe.gap + pipe.halfGap
+        ctx.fillStyle = pipe.theme === 0 ? '#3b937b' : pipe.theme === 1 ? '#457e95' : '#528d70'
+        ctx.fillRect(pipe.x, 0, pipe.width, top)
+        ctx.fillRect(pipe.x, bottom, pipe.width, BASE_H - bottom)
+        ctx.fillStyle = '#ffffff18'
+        ctx.fillRect(pipe.x + 8, 0, 6, top)
+        ctx.fillRect(pipe.x + 8, bottom, 6, BASE_H - bottom)
+        ctx.fillStyle = '#102f3d55'
+        ctx.fillRect(pipe.x + pipe.width - 10, 0, 7, top)
+        ctx.fillRect(pipe.x + pipe.width - 10, bottom, 7, BASE_H - bottom)
+        ctx.fillStyle = '#84d5ad'; ctx.fillRect(pipe.x - 5, top - 14, pipe.width + 10, 14)
+        ctx.fillRect(pipe.x - 5, bottom, pipe.width + 10, 14)
+        ctx.strokeStyle = '#b1f6d266'; ctx.lineWidth = 1
+        ctx.strokeRect(pipe.x - 5, top - 14, pipe.width + 10, 14)
+        ctx.strokeRect(pipe.x - 5, bottom, pipe.width + 10, 14)
+      }
+      for (const particle of g.feathers) {
+        ctx.globalAlpha = particle.life / .45; ctx.fillStyle = '#b7ebff'
+        ctx.beginPath(); ctx.arc(particle.x, particle.y, 2.4, 0, Math.PI * 2); ctx.fill()
+      }
+      ctx.globalAlpha = 1
+      ctx.save()
+      ctx.translate(175, g.y)
+      ctx.rotate(clamp(g.vy / 750, -.34, .6))
+      ctx.fillStyle = '#efc686'; ctx.strokeStyle = '#fdf0c6'; ctx.lineWidth = 1.5
+      ctx.beginPath(); ctx.ellipse(0, 0, 14, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+      ctx.fillStyle = '#d59a64'
+      ctx.beginPath(); ctx.ellipse(-6, 5 + Math.sin(now / 85) * 2.5, 8, 5, -.3, 0, Math.PI * 2); ctx.fill()
+      ctx.fillStyle = '#ffebac'
+      ctx.beginPath(); ctx.moveTo(10, -2); ctx.lineTo(22, 2); ctx.lineTo(9, 6); ctx.closePath(); ctx.fill()
+      ctx.fillStyle = '#11243d'; ctx.beginPath(); ctx.arc(5, -4, 2.3, 0, Math.PI * 2); ctx.fill()
+      ctx.restore()
+      if (g.flash > 0) {
+        ctx.globalAlpha = Math.min(1, g.flash * 1.8)
+        ctx.fillStyle = '#f7e2a8'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'
+        ctx.fillText('+5 · OBSTÁCULO SUPERADO', 350, 52)
+        ctx.globalAlpha = 1
+      }
+      if (g.first) {
+        ctx.fillStyle = '#081727bf'; ctx.fillRect(169, 92, 382, 72)
+        ctx.fillStyle = '#e9f5fb'; ctx.font = 'bold 21px sans-serif'; ctx.textAlign = 'center'
+        ctx.fillText('Pronto para voar?', 360, 119)
+        ctx.font = '13px sans-serif'; ctx.fillText('Espaço, ↑ ou toque para começar', 360, 144)
+      }
+      id = requestAnimationFrame(draw)
     }
-    id=requestAnimationFrame(tick);return()=>cancelAnimationFrame(id)
-  },[onFinish,paused])
-  const finish = () => { if (game.current.ended || paused) return; game.current.ended = true; onFinish(game.current.score) }
-  return <div className="hb-mini-inner"><div className="hb-mini-hud"><strong>🪽 {score} pontos</strong><span>Espaço / ↑ / toque para voar entre obstáculos</span></div><canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} onPointerDown={()=>{if(!paused)flap.current=true}} aria-label="Voo Infinito: toque ou pressione Espaço para voar"/><div className="hb-mini-pad"><button type="button" disabled={paused} onPointerDown={()=>{if(!paused)flap.current=true}}>↑ Voar</button></div><button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || game.current.ended} onClick={finish}>✓ Encerrar e registrar {score} pontos</button></div>
+    const resize = () => { prepareArcadeCanvas(element) }
+    window.addEventListener('resize', resize)
+    document.addEventListener('fullscreenchange', resize)
+    id = requestAnimationFrame(draw)
+    return () => {
+      cancelAnimationFrame(id)
+      window.removeEventListener('resize', resize)
+      document.removeEventListener('fullscreenchange', resize)
+    }
+  }, [onFinish, paused])
+  const requestFlap = () => { if (!paused && !game.current.ended) flap.current = true }
+  const finish = () => {
+    if (game.current.ended || paused) return
+    game.current.ended = true; onFinish(game.current.score)
+  }
+  return <div className="hb-mini-inner hb-flappy-v204">
+    <div className="hb-mini-hud"><strong>🪽 {score} pontos</strong><span>{passed} obstáculos · {distance} m percorridos · Espaço / ↑ / toque para voar</span></div>
+    <canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H}
+      onPointerDown={e => { e.preventDefault(); requestFlap() }} aria-label="Voo Infinito: toque ou pressione Espaço para voar" />
+    <div className="hb-mini-game-info"><span>✦ A abertura dos obstáculos muda progressivamente.</span><span>♾️ Cada obstáculo vale 5 pontos. Voe o máximo que conseguir!</span></div>
+    <div className="hb-mini-pad"><button type="button" disabled={paused} onClick={requestFlap}>↑ Bater asas</button></div>
+    <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || game.current.ended} onClick={finish}>✓ Encerrar e registrar {score} pontos</button>
+  </div>
 }
 
 type EnemyKind = 'runner' | 'stalker' | 'brute' | 'elite'

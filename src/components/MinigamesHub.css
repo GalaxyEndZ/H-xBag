@@ -292,3 +292,66 @@
   .hb-arcade-v190 .hb-mini-arena-pad .hb-mini-fire,
   .hb-arcade-v190 .hb-mini-arena-pad .hb-mini-dash {flex:1 1 130px;min-height:47px}
 }
+
+/* V204 — Asteroids e Voo Infinito: controles e informação de partida. */
+.hb-arcade-v190 .hb-asteroids-v204,
+.hb-arcade-v190 .hb-flappy-v204 { gap: 12px; }
+.hb-arcade-v190 .hb-asteroids-v204 .hb-mini-canvas,
+.hb-arcade-v190 .hb-flappy-v204 .hb-mini-canvas {
+  border: 1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 34%,#365063);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.23), inset 0 1px rgba(255,255,255,.05);
+  background: #101d2d;
+}
+.hb-arcade-v190 .hb-mini-game-info {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding: 9px 13px;
+  color: var(--arcade-muted,#b9bcc7);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  border: 1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 17%,var(--arcade-border,#ffffff20));
+  border-radius: 11px;
+  background: color-mix(in srgb,var(--season-primary,#d9bd8b) 5%,var(--arcade-surface,#20232b));
+}
+.hb-arcade-v190 .hb-asteroids-pad { gap: 7px; }
+.hb-arcade-v190 .hb-asteroids-pad button,
+.hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad button {
+  min-height: 46px;
+  min-width: 56px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.hb-arcade-v190 .hb-asteroids-pad button[aria-label="Atirar"] {
+  background: color-mix(in srgb,var(--season-primary,#d9bd8b) 19%,var(--arcade-surface,#171c26));
+  border-color: color-mix(in srgb,var(--season-primary,#d9bd8b) 53%,var(--arcade-border,#ffffff25));
+  min-width: 72px;
+}
+.hb-arcade-v190 .hb-asteroids-pad button:active,
+.hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad button:active {
+  transform: translateY(1px);
+  background: color-mix(in srgb,var(--season-primary,#d9bd8b) 28%,var(--arcade-surface,#171c26));
+}
+.hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad button { min-width: 174px; }
+@media (max-width: 650px) {
+  .hb-arcade-v190 .hb-mini-game-info { text-align: left; justify-content: flex-start; padding: 9px 11px; }
+  .hb-arcade-v190 .hb-mini-game-info span { width: 100%; }
+  .hb-arcade-v190 .hb-asteroids-pad { width: 100%; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); }
+  .hb-arcade-v190 .hb-asteroids-pad button { min-width: 0; padding: 10px 3px; }
+  .hb-arcade-v190 .hb-asteroids-pad button[aria-label="Atirar"] { min-width: 0; }
+  .hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad { width: 100%; }
+  .hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hb-arcade-v190 .hb-asteroids-pad button,
+  .hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad button { transition: none; }
+}
