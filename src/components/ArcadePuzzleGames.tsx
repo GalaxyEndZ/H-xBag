@@ -232,6 +232,8 @@ export function MemoryGame({ onFinish, paused = false }: ArcadeGameProps) {
   const freshCards = () => shuffle([...RUNES, ...RUNES].map((rune, id) => ({ id, rune, open: false, matched: false })))
   const [cards, setCards] = useState<MemoryCard[]>(freshCards)
   const [moves, setMoves] = useState(0), [matches, setMatches] = useState(0)
+  const [combo, setCombo] = useState(0), [bestCombo, setBestCombo] = useState(0)
+  const comboRef = useRef(0)
   const [score, setScore] = useState(0), [round, setRound] = useState(1)
   const [betweenRounds, setBetweenRounds] = useState(false)
   const [notice, setNotice] = useState('Encontre os pares para avançar à próxima rodada.')
@@ -264,7 +266,7 @@ export function MemoryGame({ onFinish, paused = false }: ArcadeGameProps) {
       const next = freshCards()
       cardsRef.current = next; setCards(next)
       selected.current = []; locked.current = false
-      movesRef.current = 0; setMoves(0); setMatches(0)
+      movesRef.current = 0; setMoves(0); setMatches(0); comboRef.current = 0; setCombo(0)
       setRound(current => current + 1)
       setBetweenRounds(false)
       setNotice('Nova rodada! Continue combinando runas para somar pontos.')
@@ -291,6 +293,8 @@ export function MemoryGame({ onFinish, paused = false }: ArcadeGameProps) {
       const nextMoves = movesRef.current + 1
       movesRef.current = nextMoves; setMoves(nextMoves)
       if (first.rune === second.rune) {
+        comboRef.current += 1; setCombo(comboRef.current)
+        setBestCombo(current => Math.max(current, comboRef.current))
         const completed = next.map(c => c.id === a || c.id === b ? { ...c, matched: true } : c)
         cardsRef.current = completed; setCards(completed); selected.current = []
         const count = completed.filter(c => c.matched).length / 2
@@ -304,16 +308,26 @@ export function MemoryGame({ onFinish, paused = false }: ArcadeGameProps) {
           setBetweenRounds(true)
         }
       } else {
+        comboRef.current = 0; setCombo(0)
         locked.current = true
         mismatch.current = { a, b, remaining: 720, started: Date.now() }
         timerRef.current = window.setTimeout(closeMismatch, 720)
       }
     }
   }
-  return <div className="hb-mini-inner hb-puzzle hb-mini-endless">
-    <div className="hb-mini-hud"><strong>🔮 {score.toLocaleString('pt-BR')} pontos</strong><span>Rodada {round} · {matches}/8 pares · {moves} movimentos · ⏱ {elapsed}s</span></div>
-    <p className="hb-mini-endless-hint" role="status">{notice}</p>
-    <div className="hb-memory-board" role="grid" aria-label={`Memória Arcana, rodada ${round}, 16 cartas`}>{cards.map(card => <button type="button" role="gridcell" disabled={paused || finished.current || betweenRounds || card.matched} key={card.id} className={`${card.open || card.matched ? 'revealed' : ''} ${card.matched ? 'matched' : ''}`} onClick={() => reveal(card.id)} aria-label={card.open || card.matched ? `Runa ${card.rune}` : 'Carta virada para baixo'}>{card.open || card.matched ? card.rune : '✧'}</button>)}</div>
+  const accuracy = moves > 0 ? Math.round(matches / moves * 100) : 100
+  return <div className="hb-mini-inner hb-puzzle hb-mini-endless hb-v208-memory">
+    <header className="hb-v208-memory-hud">
+      <div className="hb-v208-memory-main"><span className="hb-v208-memory-icon" aria-hidden="true">🔮</span><div><small>PONTUAÇÃO TOTAL</small><strong>{score.toLocaleString('pt-BR')} <em>pts</em></strong></div></div>
+      <div className="hb-v208-memory-stats"><div><small>RODADA</small><strong>{String(round).padStart(2,'0')}</strong></div><div><small>PARES</small><strong>{matches}/{RUNES.length}</strong></div><div><small>ACERTOS</small><strong>{accuracy}%</strong></div><div><small>SEQUÊNCIA</small><strong>{combo} ✦</strong></div></div>
+    </header>
+    <section className="hb-v208-memory-frame" aria-label="Tabuleiro rúnico">
+      <div className="hb-v208-memory-heading"><span><i aria-hidden="true"/> CÂMARA DAS RUNAS</span><small>⏱ {elapsed}s · {moves} tentativas</small></div>
+      <div className="hb-v208-memory-progress" aria-label={`${matches} de ${RUNES.length} pares encontrados`}><span style={{width:`${matches/RUNES.length*100}%`}} /></div>
+      <div className="hb-memory-board hb-v208-memory-board" role="grid" aria-label={`Memória Arcana, rodada ${round}, 16 cartas`}>{cards.map(card => <button type="button" role="gridcell" disabled={paused || finished.current || betweenRounds || card.matched} key={card.id} className={`hb-v208-memory-card ${card.open || card.matched ? 'revealed' : ''} ${card.matched ? 'matched' : ''}`} onClick={() => reveal(card.id)} aria-label={card.open || card.matched ? `Runa ${card.rune}` : 'Carta virada para baixo'}><span className="hb-v208-memory-card-inner"><span className="hb-v208-memory-card-back" aria-hidden="true">✧</span><span className="hb-v208-memory-card-front" aria-hidden="true">{card.rune}</span></span></button>)}</div>
+      <div className="hb-v208-memory-bottom"><span>✦ COMBINE DUAS RUNAS IGUAIS</span><span>MELHOR SEQUÊNCIA · {bestCombo}</span></div>
+    </section>
+    <p className="hb-v208-memory-notice" role="status">{notice}</p>
     <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || finished.current} onClick={finish}>✓ Encerrar e registrar {score.toLocaleString('pt-BR')} pontos</button>
   </div>
 }

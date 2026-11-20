@@ -4,8 +4,11 @@ import { ARCADE_GAMES, type ArcadeGameId } from './ArcadeChallengeCatalog'
 import PongGame from './PongGame'
 import { SnakeGame, BreakoutGame, AsteroidsGame, FlappyGame, ArenaGame } from './ArcadeCanvasGames'
 import { Game2048, MinesweeperGame, MemoryGame } from './ArcadePuzzleGames'
+import RuneFallGame from './RuneFallGame'
+import RuneFallGame from './RuneFallGame'
 import './MinigamesHub.css'
 import './ArcadeBoardVisualsV207.css'
+import './ArcadeMemoryV208.css'
 
 type DailyChallenge = { challenge_id: string; game_id: ArcadeGameId; title: string; target: number; difficulty: number; completed: boolean; completed_at: string | null; reward: number }
 type Wallet = { coins: number; earned_total: number; completed_today: number; reward_today: number; claimed_today: boolean }
@@ -18,10 +21,10 @@ const daysInBrasilia = (date: Date) => {
   const part = (type: string) => parts.find(item => item.type === type)?.value || ''
   return `${part('year')}-${part('month')}-${part('day')}`
 }
-const difficultyLabel = (difficulty: number) => difficulty <= 1 ? 'Fácil' : difficulty <= 3 ? 'Médio' : 'Difícil'
+const difficultyLabel = (difficulty: number) => difficulty <= 1 ? 'Fácil' : difficulty <= 3 ? 'Médio' : difficulty <= 5 ? 'Difícil' : difficulty <= 7 ? 'Raro' : difficulty <= 9 ? 'Lendário' : 'Pesadelo'
 const EMPTY_WALLET: Wallet = { coins: 0, earned_total: 0, completed_today: 0, reward_today: 0, claimed_today: false }
 
-/** Arcade com 9 jogos e desafios do dia vindos do catálogo do servidor. */
+/** Arcade com 10 jogos e desafios do dia vindos do catálogo do servidor. */
 export default function MinigamesHub({ userId }: { userId: string }) {
   const [selectedGame, setSelectedGame] = useState<ArcadeGameId>('pong')
   const [phase, setPhase] = useState<Phase>('ready')
@@ -53,7 +56,7 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       supabase.rpc('hax_arcade_wallet'),
     ])
     if (challenges.error || balance.error) {
-      setDailyError('Desafios indisponíveis. Execute HaxBag_Arcade_Jogos_Desafios_V190.sql no Supabase.')
+      setDailyError('Desafios indisponíveis. Confira as migrações do Arcade V190 e V208 no Supabase.')
       return
     }
     setDaily((challenges.data || []) as DailyChallenge[])
@@ -68,7 +71,7 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       supabase.rpc('hax_arcade_leaderboard', { p_game: gameId, p_limit: 25 }),
       supabase.rpc('hax_arcade_my_score', { p_game: gameId }),
     ])
-    if (leaders.error) { setRanking([]); setRankingError('Ranking indisponível. Instale o SQL V190.') }
+    if (leaders.error) { setRanking([]); setRankingError('Ranking indisponível. Confira as migrações do Arcade V190 e V208.') }
     else { setRanking((leaders.data || []) as Rank[]); setRankingError('') }
     setMyScore(!mine.error && mine.data && typeof mine.data === 'object' && !Array.isArray(mine.data) ? mine.data as MyScore : null)
     setRankingLoading(false)
@@ -154,7 +157,7 @@ export default function MinigamesHub({ userId }: { userId: string }) {
     const { data, error } = await supabase.rpc('hax_arcade_start', { p_game: requestedGame })
     if (version !== startVersion.current) return
     runId.current = !error && typeof data === 'string' ? data : null
-    if (error) setSaveStatus('Modo local: não foi possível iniciar a partida pontuada. Verifique a migração V190.')
+    if (error) setSaveStatus('Modo local: não foi possível iniciar a partida pontuada. Verifique as migrações V190 e V208.')
     setGameKey(k => k + 1)
     setPhase('playing')
   }
@@ -174,12 +177,14 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       case 'flappy': return <FlappyGame {...props} />
       case 'arena': return <ArenaGame {...props} />
       case 'memory': return <MemoryGame {...props} />
+      case 'rune_fall': return <RuneFallGame {...props} />
+      case 'rune_fall': return <RuneFallGame {...props} />
       default: return null
     }
   }
 
   return <section className="hb-arcade hb-arcade-v190" aria-labelledby="hb-arcade-heading">
-    <header className="hb-arcade-hero"><div><span className="hb-arcade-eyebrow">HÄXBAG / ARCADE</span><h1 id="hb-arcade-heading">Minigames<span>.</span></h1><p>Nove jogos de progressão contínua, rankings globais e três desafios diferentes a cada dia. Jogue e ganhe moedinhas ao completar o conjunto!</p><div className="hb-arcade-chips"><span>♾️ 9 jogos infinitos</span><span>🏆 Rankings globais</span><span>🗓 3 desafios por dia</span></div></div><div className="hb-arcade-hero-mark" aria-hidden="true"><span>◈</span><b>ARCADE</b></div></header>
+    <header className="hb-arcade-hero"><div><span className="hb-arcade-eyebrow">HÄXBAG / ARCADE</span><h1 id="hb-arcade-heading">Minigames<span>.</span></h1><p>Dez jogos de progressão contínua, rankings globais e três desafios diferentes a cada dia. Jogue e ganhe moedinhas ao completar o conjunto!</p><div className="hb-arcade-chips"><span>♾️ 10 jogos infinitos</span><span>🏆 Rankings globais</span><span>🗓 3 desafios por dia</span></div></div><div className="hb-arcade-hero-mark" aria-hidden="true"><span>◈</span><b>ARCADE</b></div></header>
 
     <section className="hb-arcade-daily" aria-labelledby="hb-arcade-daily-heading">
       <div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">MISSÕES DO DIA · HORÁRIO DE BRASÍLIA</span><h2 id="hb-arcade-daily-heading">Desafios diários</h2><p>O mesmo trio é sorteado para toda a comunidade. Novas metas à meia-noite.</p></div><div className="hb-arcade-wallet"><span>🪙 SALDO DO ARCADE</span><strong>{nf(wallet.coins || 0)}</strong><small>{wallet.claimed_today ? 'Recompensa de hoje recebida ✓' : `Conjunto completo: +${reward} moedas`}</small></div></div>
@@ -187,9 +192,9 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       {dailyError && <p className="hb-arcade-error" role="alert">{dailyError}</p>}
       <div className="hb-arcade-daily-grid">{daily.map((challenge, i) => {
         const info = ARCADE_GAMES.find(item => item.id === challenge.game_id)
-        return <button type="button" key={challenge.challenge_id} className={`hb-arcade-challenge ${challenge.completed ? 'is-done':''}`} onClick={() => selectGame(challenge.game_id, true)}><span className="hb-arcade-challenge-number">{String(i + 1).padStart(2,'0')} · {difficultyLabel(challenge.difficulty)}</span><span className="hb-arcade-challenge-icon" aria-hidden="true">{info?.icon || '◈'}</span><strong>{challenge.title}</strong><span className="hb-arcade-challenge-game">{info?.title}</span><span className="hb-arcade-challenge-foot">{challenge.completed ? '✓ Concluído' : `→ Jogar ${info?.title || challenge.game_id}`}</span></button>
+        return <button type="button" key={challenge.challenge_id} className={`hb-arcade-challenge ${challenge.completed ? 'is-done':''} ${challenge.difficulty >= 11 ? 'is-nightmare' : challenge.difficulty >= 9 ? 'is-legendary' : challenge.difficulty >= 7 ? 'is-rare' : ''}`} onClick={() => selectGame(challenge.game_id, true)}><span className="hb-arcade-challenge-number">{String(i + 1).padStart(2,'0')} · {difficultyLabel(challenge.difficulty)}</span><span className="hb-arcade-challenge-icon" aria-hidden="true">{info?.icon || '◈'}</span><strong>{challenge.title}</strong><span className="hb-arcade-challenge-game">{info?.title}</span><span className="hb-arcade-challenge-foot">{challenge.completed ? '✓ Concluído' : `→ Jogar ${info?.title || challenge.game_id}`}</span></button>
       })}</div>
-      <p className="hb-arcade-daily-info">O catálogo tem 27 desafios predefinidos, com níveis fácil, médio e difícil. O sorteio seleciona 3 desafios de jogos diferentes. Prêmio único de 1 a 10 moedas, dependendo da dificuldade do conjunto.</p>
+      <p className="hb-arcade-daily-info">O catálogo tem 60 missões predefinidas, com seis dificuldades: Fácil, Médio, Difícil, Raro, Lendário e Pesadelo. São apenas 3 missões diárias de jogos diferentes. Prêmio único de 1 a 20 moedas, somente ao completar as três.</p>
     </section>
 
     <section className="hb-arcade-library" aria-label="Biblioteca de minigames"><div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">SUA COLEÇÃO DE JOGOS</span><h2>Escolha um minigame</h2></div><small>Selecione um jogo para abrir a arena e o ranking.</small></div><div className="hb-arcade-games-grid">{ARCADE_GAMES.map(item => <button type="button" key={item.id} className={`hb-arcade-game-choice ${selectedGame===item.id?'is-selected':''}`} onClick={()=>selectGame(item.id, true)} aria-pressed={selectedGame===item.id}><span aria-hidden="true">{item.icon}</span><strong>{item.title}</strong><small>{item.description}</small></button>)}</div></section>

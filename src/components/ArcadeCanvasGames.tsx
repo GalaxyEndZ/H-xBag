@@ -62,6 +62,9 @@ function canvasPointer(e: ReactPointerEvent<HTMLCanvasElement>, w = BASE_W, h = 
 // Snake: grades e colisões independentes do ritmo de renderização.
 type Point = { x: number; y: number }
 const SNAKE_SIZE = 20
+/** A velocidade muda EXCLUSIVAMENTE após completar um nível inteiro (cinco frutas). */
+export const SNAKE_FRUITS_PER_LEVEL = 5
+export const snakeTickForLevel = (level: number) => Math.max(72, 142 - Math.max(0, level - 1) * 8)
 function spawnFood(snake: Point[]): Point {
   const occupied = new Set(snake.map(part => part.y * SNAKE_SIZE + part.x))
   const free: number[] = []
@@ -79,6 +82,10 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
   const ended = useRef(false)
   const [score, setScore] = useState(0)
   const [round, setRound] = useState(1)
+  const levelRef = useRef(1)
+  const fruitsRef = useRef(0)
+  const [level, setLevel] = useState(1)
+  const [fruits, setFruits] = useState(0)
   const [snake, setSnake] = useState<Point[]>(snakeRef.current)
   const [food, setFood] = useState(foodRef.current)
   // O corpo era percorrido até 400 vezes por render. A busca por posição agora é O(1).
@@ -112,6 +119,13 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
         setSnake(snakeRef.current)
         if (eating) {
           scoreRef.current += 10; setScore(scoreRef.current)
+          fruitsRef.current += 1
+          if (fruitsRef.current === SNAKE_FRUITS_PER_LEVEL) {
+            fruitsRef.current = 0
+            levelRef.current += 1
+            setLevel(levelRef.current)
+          }
+          setFruits(fruitsRef.current)
           if (snakeRef.current.length === SNAKE_SIZE * SNAKE_SIZE) {
             // Tabuleiro perfeito: não encerra a partida; recomeça a arena mantendo os pontos.
             snakeRef.current = [{ x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }]
@@ -122,7 +136,7 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
           foodRef.current = spawnFood(snakeRef.current); setFood(foodRef.current)
         }
       }
-      timer = window.setTimeout(tick, Math.max(68, 142 - Math.floor(scoreRef.current / 50) * 8))
+      timer = window.setTimeout(tick, snakeTickForLevel(levelRef.current))
     }
     timer = window.setTimeout(tick, 142)
     return () => window.clearTimeout(timer)
@@ -138,16 +152,17 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
   const finish = () => { if (ended.current || paused) return; ended.current = true; onFinish(scoreRef.current) }
   const head = snake[0], neck = snake[1]
   const facing = !neck ? 'right' : head.x > neck.x ? 'right' : head.x < neck.x ? 'left' : head.y > neck.y ? 'down' : 'up'
-  const speed = Math.floor(score / 50) + 1
+  const speed = level
   return <div className="hb-mini-inner hb-v207-game hb-v207-snake">
     <header className="hb-v207-scorebar" aria-label="Placar da cobrinha">
       <div className="hb-v207-score-primary"><span className="hb-v207-score-icon" aria-hidden="true">🐍</span><div><small>PONTUAÇÃO</small><strong>{score.toLocaleString('pt-BR')}<em>pts</em></strong></div></div>
-      <div className="hb-v207-score-stats"><div><small>RODADA</small><strong>{String(round).padStart(2, '0')}</strong></div><div><small>TAMANHO</small><strong>{snake.length}</strong></div><div><small>VELOCIDADE</small><strong>{speed}×</strong></div></div>
+      <div className="hb-v207-score-stats"><div><small>NÍVEL</small><strong>{String(level).padStart(2, '0')}</strong></div><div><small>TAMANHO</small><strong>{snake.length}</strong></div><div><small>VELOCIDADE</small><strong>{speed}×</strong></div></div>
     </header>
     <div className="hb-v207-board-frame hb-v207-snake-frame">
-      <div className="hb-v207-board-heading"><span><i aria-hidden="true"/> JARDIM DA SERPENTE</span><small>COMA AS FRUTAS · NÃO TOQUE NAS BORDAS</small></div>
+      <div className="hb-v207-board-heading"><span><i aria-hidden="true"/> JARDIM DA SERPENTE</span><small>TABULEIRO {round} · NÃO TOQUE NAS BORDAS</small></div>
+      <div className="hb-v208-snake-progress" aria-label={`Nível ${level}: ${fruits} de ${SNAKE_FRUITS_PER_LEVEL} frutas para avançar`}><span>NÍVEL {level} · {fruits}/{SNAKE_FRUITS_PER_LEVEL} FRUTAS</span><div role="progressbar" aria-valuemin={0} aria-valuemax={SNAKE_FRUITS_PER_LEVEL} aria-valuenow={fruits}><i style={{width:`${fruits/SNAKE_FRUITS_PER_LEVEL*100}%`}} /></div><small>Velocidade fixa até concluir o nível</small></div>
       <div className="hb-snake-board" role="img" aria-label={`Cobrinha com ${snake.length} segmentos, ${score} pontos, fruta na coluna ${food.x + 1} e linha ${food.y + 1}`} onPointerDown={e=>{swipeStart.current={x:e.clientX,y:e.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = Math.floor(i / 20); const body = snakeCells.get(i) ?? -1; return <span key={i} className={`hb-v207-snake-cell ${body === 0 ? 'head' : body > 0 ? 'body' : ''} ${food.x === x && food.y === y ? 'fruit' : ''}`} data-facing={body === 0 ? facing : undefined} style={body > 0 ? { opacity: Math.max(.66, 1 - body / Math.max(8, snake.length) * .28) } : undefined}/> })}</div>
-      <div className="hb-v207-board-foot"><span>✦ CRESÇA A CADA FRUTA</span><span>10 PONTOS / FRUTA</span></div>
+      <div className="hb-v207-board-foot"><span>✦ 5 FRUTAS = PRÓXIMO NÍVEL</span><span>10 PONTOS / FRUTA</span></div>
     </div>
     <div className="hb-v207-controls"><p>Movimente com <kbd>WASD</kbd>, <kbd>← ↑ ↓ →</kbd> ou deslize no tabuleiro</p><div className="hb-mini-pad hb-v207-direction-pad" role="group" aria-label="Controles da cobrinha"><button data-dir="up" type="button" aria-label="Subir" disabled={paused} onClick={() => turn(0, -1)}>↑</button><button data-dir="left" type="button" aria-label="Esquerda" disabled={paused} onClick={() => turn(-1, 0)}>←</button><button data-dir="down" type="button" aria-label="Descer" disabled={paused} onClick={() => turn(0, 1)}>↓</button><button data-dir="right" type="button" aria-label="Direita" disabled={paused} onClick={() => turn(1, 0)}>→</button></div></div>
     <button type="button" className="hb-mini-finish hb-mini-end-run hb-v207-end-button" disabled={paused || ended.current} onClick={finish}>✓ Encerrar e registrar {score.toLocaleString('pt-BR')} pontos</button>

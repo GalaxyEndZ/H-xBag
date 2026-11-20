@@ -10628,7 +10628,7 @@ counterAttackDT
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
     {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
     {id:'profile',label:'Social',symbol:'✦',description:'Feed, perfis, seguidores, amizades e mensagens'},
-    {id:'minigames',label:'Minigames',symbol:'◉',description:'Nove jogos, rankings globais e três desafios diários'},
+    {id:'minigames',label:'Minigames',symbol:'◉',description:'Dez jogos, rankings globais e três desafios diários'},
   ]
   const quickCommands: HaxQuickCommand[] = quickPages
     .filter(item => (!item.master || isMaster) && (!item.campaign || Boolean(selectedCampaignId)))

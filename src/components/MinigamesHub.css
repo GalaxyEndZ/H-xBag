@@ -93,7 +93,7 @@
 .hb-arcade-challenge-game{font-size:11px;color:var(--arcade-muted)}
 .hb-arcade-challenge-foot{font-size:10px;margin-top:auto;color:var(--season-primary,#d9bd8b);font-weight:850}
 .hb-arcade-challenge.is-done .hb-arcade-challenge-foot{color:#8ad4b7}
-.hb-arcade-games-grid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px}
+.hb-arcade-games-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .hb-arcade-game-choice{display:flex;min-width:0;min-height:112px;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 5px;text-align:center;border:1px solid var(--arcade-border);border-radius:12px;background:color-mix(in srgb,var(--season-bg,#161b23) 57%,transparent);color:inherit;cursor:pointer;font:inherit;transition:background .2s,border-color .2s}
 .hb-arcade-game-choice>span{font-size:26px}.hb-arcade-game-choice strong{font-size:11px;line-height:1.2}.hb-arcade-game-choice small{font-size:9px;color:var(--arcade-muted);line-height:1.4}
 .hb-arcade-game-choice:hover,.hb-arcade-game-choice:focus-visible,.hb-arcade-game-choice.is-selected{border-color:var(--season-primary,#d9bd8b);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,var(--arcade-surface));outline:none}
@@ -355,3 +355,11 @@
   .hb-arcade-v190 .hb-asteroids-pad button,
   .hb-arcade-v190 .hb-flappy-v204 .hb-mini-pad button { transition: none; }
 }
+
+/* V208 — missões Raro / Lendário / Pesadelo dentro dos três desafios diários. */
+.hb-arcade .hb-arcade-challenge.is-rare{border-color:color-mix(in srgb,#84bde7 48%,var(--arcade-border))}
+.hb-arcade .hb-arcade-challenge.is-rare .hb-arcade-challenge-number{color:#92d4ff}
+.hb-arcade .hb-arcade-challenge.is-legendary{border-color:color-mix(in srgb,#efca75 58%,var(--arcade-border));background:linear-gradient(145deg,#cba0450c,transparent)}
+.hb-arcade .hb-arcade-challenge.is-legendary .hb-arcade-challenge-number{color:#f0c973}
+.hb-arcade .hb-arcade-challenge.is-nightmare{border-color:color-mix(in srgb,#d08cf4 63%,var(--arcade-border));background:linear-gradient(145deg,#af58ed19,transparent)}
+.hb-arcade .hb-arcade-challenge.is-nightmare .hb-arcade-challenge-number{color:#d8adff}
