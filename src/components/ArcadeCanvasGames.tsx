@@ -733,6 +733,8 @@ export function FlappyGame({ onFinish, paused = false }: ArcadeGameProps) {
   </div>
 }
 
+// Os tiros da Arena têm atributos próprios de combate; os do Asteroids continuam simples.
+type ArenaShot = Shot & { damage: number; pierce: number; hitIds: number[]; critical: boolean }
 type EnemyKind = 'runner' | 'stalker' | 'brute' | 'elite'
 type Enemy = { id: number; x: number; y: number; speed: number; radius: number; hp: number; maxHp: number; kind: EnemyKind; flash?: number }
 type ArenaDrop = { x: number; y: number; kind: 'xp' | 'heart'; value: number; age: number }
@@ -845,7 +847,7 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
   const lastDirection = useRef({ x: 1, y: 0 })
   const camera = useRef<ArenaCamera>({ x: 0, y: 0 })
   const game = useRef({ x: 0, y: 0, health: 3, maxHealth: 3, score: 0, wave: 1, spawn: .7, shoot: 0, seconds: 0,
-    invulnerable: 1.5, ended: false, enemies: [] as Enemy[], shots: [] as Shot[], hitFlash: 0,
+    invulnerable: 1.5, ended: false, enemies: [] as Enemy[], shots: [] as ArenaShot[], hitFlash: 0,
     distance: 0, hudTimer: 0, nextEnemyId: 1, kills: 0, eliteSpawnedWave: 0,
     drops: [] as ArenaDrop[], sparks: [] as ArenaSpark[],
     dashCooldown: 0, dashMaxCooldown: 5.5, dashFlash: 0, dashFromX: 0, dashFromY: 0,
@@ -1004,16 +1006,16 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
       for (let i = g.enemies.length - 1; i >= 0; i--) {
         const enemy = g.enemies[i]; if (!enemy) continue
         const hit = g.shots.findIndex(s => {
-          if (s.hitIds?.includes(enemy.id)) return false
+          if (s.hitIds.includes(enemy.id)) return false
           const dx = s.x-enemy.x, dy = s.y-enemy.y, radius = enemy.radius+5
           return dx*dx+dy*dy < radius*radius
         })
         if (hit >= 0) {
           const shot = g.shots[hit]
-          shot.hitIds?.push(enemy.id)
-          if ((shot.pierce || 0) > 0) shot.pierce = (shot.pierce || 0) - 1
+          shot.hitIds.push(enemy.id)
+          if (shot.pierce > 0) shot.pierce -= 1
           else g.shots.splice(hit,1)
-          enemy.hp -= shot.damage || 1
+          enemy.hp -= shot.damage
           enemy.flash = .13
           if (enemy.hp <= 0) {
             g.enemies.splice(i,1)
