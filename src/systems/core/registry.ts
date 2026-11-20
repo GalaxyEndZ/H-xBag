@@ -2,10 +2,12 @@ import type { RPGSystem } from './types'
 import { KISATSUTAI_SYSTEM } from '../kisatsutai/system'
 import { CICLOS_SYSTEM } from '../ciclos/system'
 import { CYBERFLOWER_SYSTEM } from '../cyberflower/system'
+import { GENERIC_SYSTEM } from '../generico/system'
 
 
 // Sistemas de RPG registrados no HäxBag.
 const systems: RPGSystem[] = [
+  GENERIC_SYSTEM,
   KISATSUTAI_SYSTEM,
   CICLOS_SYSTEM,
   CYBERFLOWER_SYSTEM,
@@ -42,4 +44,18 @@ export function isSystem(
   systemId: string
 ): boolean {
   return getSystemByName(systemName)?.id === systemId
+}
+
+/**
+ * Resolve um sistema conhecido ou o conjunto neutro de regras genéricas.
+ * Mantém `getSystemByName` estrito para identificar sistemas personalizados
+ * sem alterar o nome escolhido pelo mestre.
+ */
+export function getEffectiveSystemByName(systemName?: string | null): RPGSystem {
+  return getSystemByName(systemName) ?? GENERIC_SYSTEM
+}
+
+/** Detecta sistemas sem regras próprias (Genérico ou nome personalizado). */
+export function isGenericSystem(systemName?: string | null): boolean {
+  return getEffectiveSystemByName(systemName).id === GENERIC_SYSTEM.id
 }

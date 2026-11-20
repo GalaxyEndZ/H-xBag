@@ -107,6 +107,8 @@ export interface RPGSystem {
 
   // Dados específicos do sistema.
   data?: {
+    /** Identidade do recurso usado pelas fichas, sem alterar o campo `status.pr`. */
+    resource?: { name: string; abbreviation: string; pointsLabel: string }
     archetypes?: readonly string[]
 
     ranks?: readonly {

@@ -5,7 +5,11 @@ import './components/ProfileSocialV165.css'
 import {
   getRegisteredSystems,
   getSystemByName,
+  getEffectiveSystemByName,
+  isGenericSystem,
 } from './systems/core/registry'
+import GenericProgressionEditor from './components/GenericProgressionEditor'
+import GenericSystemInfo from './components/GenericSystemInfo'
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Session } from '@supabase/supabase-js'
@@ -1069,29 +1073,16 @@ function App() {
   const selectedCampaign = campaigns.find(
     (campaign) => campaign.id === selectedCampaignId,
   )
-  const activeSystem = getSystemByName(selectedCampaign?.system_name)
+  const activeSystem = getEffectiveSystemByName(selectedCampaign?.system_name)
   const isKisatsutaiSystem = activeSystem?.id === 'kisatsutai'
 
   const isCyberFlowerSystem =
   activeSystem?.data?.features?.hasCyberneticsInventory === true
 
-  const resourceAbbreviation = isKisatsutaiSystem
-    ? 'PR'
-    : isCyberFlowerSystem
-      ? 'PE'
-      : 'PM'
-
-  const resourceName = isKisatsutaiSystem
-    ? 'Respiração'
-    : isCyberFlowerSystem
-      ? 'Eletrização'
-      : 'Mana'
-
-  const resourcePointsLabel = isKisatsutaiSystem
-    ? 'Pontos de Respiração (PR)'
-    : isCyberFlowerSystem
-      ? 'Pontos de Eletrização (PE)'
-      : 'Pontos de Mana (PM)'
+  // O sistema define como o recurso é apresentado, preservando `status.pr` no JSON.
+  const resourceAbbreviation = activeSystem.data?.resource?.abbreviation ?? 'PM'
+  const resourceName = activeSystem.data?.resource?.name ?? 'Mana'
+  const resourcePointsLabel = activeSystem.data?.resource?.pointsLabel ?? 'Pontos de Mana (PM)'
 
   // Inimigos de Kisatsutai usam Pontos de Sangue, sem conflitar com PS (Sanidade).
   const enemyResourceAbbreviation = isKisatsutaiSystem ? 'SG' : resourceAbbreviation
@@ -9459,6 +9450,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                               style={inputStyle}
                             >
                               <option value="">Selecione um sistema</option>
+                              {!!system && !getSystemByName(system) && <option value={system}>{system} (personalizado)</option>}
                               {getRegisteredSystems().map(registeredSystem => (
                                 <option
                                   key={registeredSystem.id}
@@ -9470,6 +9462,7 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                               <option value="Personalizado">Personalizado</option>
                             </select>
                           </label>
+                          {!forEnemy && isGenericSystem(system) && <GenericSystemInfo isCustom={!!system && !getSystemByName(system)} />}
                           {usesFamilyTiers && <>
                               <label style={{...labelStyle,display:'block',marginTop:12}}>
                                 Tier da família
@@ -9566,11 +9559,12 @@ const allocationPool = (source: typeof allocationSources[number]) => {
     Marcar promoções registradas como conferidas
   </button>
 </div>
-                          </> : <>
-                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}>Progressão genérica: configure o modelo usado por esta campanha sem impor níveis numéricos.</p>
-                            {(['model','currentStage','experience','nextRequirement'] as const).map(key=><label key={key} style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>{({model:'Modelo (nível, XP, tier, patente...)',currentStage:'Nível / estágio atual',experience:'Experiência / XP atual',nextRequirement:'Requisito para avançar'} as Record<string,string>)[key]}<input type={key==='experience'?'number':'text'} value={String(read(`progression.${key}`,''))} onChange={e=>write(`progression.${key}`,key==='experience'?Number(e.target.value):e.target.value)} style={inputStyle}/></label>)}
-                            <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Bônus de status da progressão</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.statusBonuses.pv','Bônus de PV')}{field('progression.statusBonuses.ps','Bônus de PS')}{field('progression.statusBonuses.pr',`Bônus de ${sheetResourceAbbreviation}`)}</div></div><label style={{...labelStyle,display:'flex',flexDirection:'column',gap:6}}>Regras de progressão<textarea rows={3} value={String(read('progression.rules',''))} onChange={e=>write('progression.rules',e.target.value)} style={inputStyle}/></label>
-                          </>}
+                          </> : <GenericProgressionEditor
+                            read={read}
+                            write={write}
+                            renderField={field}
+                            resource={sheetResourceAbbreviation}
+                          />}
 
                           {(allocationSources.some(source => allocationPool(source) > 0) || renderCanEdit) && <>
                             <div className="sheet-distribution-panel sheet-attribute-distribution" style={{marginTop:22,padding:18,border:'1px solid var(--season-line-soft, color-mix(in srgb, var(--season-primary, #b49aff) 24%, transparent))',borderRadius:18,background:'linear-gradient(150deg,var(--season-surface-alt, var(--season-surface-alt, #211c31)),var(--season-surface, var(--season-bg, #100e19)))',boxShadow:'0 14px 34px rgba(0,0,0,.18)'}}>
@@ -17069,14 +17063,13 @@ style={{cursor:'pointer'}}>
                     style={inputStyle}
                   >
                     <option value="">Selecione um sistema</option>
-
-                    {getRegisteredSystems().map(system => (
-                      <option key={system.id} value={system.id}>
-                        {system.name}
-                      </option>
-                    ))}
-
-                    <option value="other">Outro sistema</option>
+                    <optgroup label="Sistema flexível">
+                      {getRegisteredSystems().filter(system => system.id === 'generico').map(system => <option key={system.id} value={system.id}>{system.name}</option>)}
+                    </optgroup>
+                    <optgroup label="Sistemas próprios">
+                      {getRegisteredSystems().filter(system => system.id !== 'generico').map(system => <option key={system.id} value={system.id}>{system.name}</option>)}
+                    </optgroup>
+                    <option value="other">Outro sistema (personalizado)</option>
                   </select>
                 </label>
 
@@ -17092,6 +17085,8 @@ style={{cursor:'pointer'}}>
                     />
                   </label>
                 )}
+
+                {(campaignSystemChoice === 'generico' || campaignSystemChoice === 'other') && <GenericSystemInfo isCustom={campaignSystemChoice === 'other'} />}
 
                 <label>
                   Descrição

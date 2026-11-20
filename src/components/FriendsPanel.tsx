@@ -9,6 +9,7 @@ import './SocialV162.css'
 import './SocialV163.css'
 import './SocialV180.css'
 import './SocialV189.css'
+import './SocialChatV201.css'
 import SocialReferralPanel from './SocialReferralPanel'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 
@@ -102,6 +103,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [peopleOrder,setPeopleOrder] = useState<'az'|'za'>('az')
   const [chatSearch,setChatSearch] = useState('')
   const [messageSearch,setMessageSearch] = useState('')
+  const [showMessageSearch,setShowMessageSearch] = useState(false)
   const [copiedMessageId,setCopiedMessageId] = useState<string|null>(null)
   const [unreadOnly,setUnreadOnly] = useState(false)
   const [posts,setPosts] = useState<Post[]>([])
@@ -150,6 +152,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const feedRequestRef = useRef(0)
   const messagesRequestRef = useRef(0)
   const chatScrollRef = useRef<HTMLDivElement>(null)
+  const chatSearchInputRef = useRef<HTMLInputElement>(null)
   const chatLastIdRef = useRef('')
   const likeInFlightRef = useRef(new Set<string>())
   const focusComposer = () => {
@@ -260,6 +263,10 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     },300)
     return()=>{canceled=true;window.clearTimeout(timer)}
   },[search,rpc,active,tab])
+  useEffect(() => {
+    if (showMessageSearch) chatSearchInputRef.current?.focus()
+  }, [showMessageSearch])
+
   const openChat=useCallback((person:Conversation)=>{
     // Evita mostrar uma resposta tardia ou o rascunho de outra conversa.
     messagesRequestRef.current+=1
@@ -268,6 +275,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     setChatMessages([])
     setMessageDraft('')
     setMessageSearch('')
+    setShowMessageSearch(false)
     setCopiedMessageId(null)
     setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return null})
     setTab('messages')
@@ -586,7 +594,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     </article>
   }
 
-  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-v189 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
+  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-v189 hb-social-v201 hb-social-page-${tab}`} aria-label="Comunidade do HäxBag">
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
         <div className="hb-v158-mini-profile">
@@ -667,25 +675,93 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     {tab==='discover'&&<section className="hb-social-list-pane"><div className="hb-social-pane-top"><div><span className="hb-social-overline">NOVAS CONEXÕES</span><h3>Descobrir aventureiros</h3><p>Busque por nome ou @usuário. Não são exibidas pessoas com quem você tenha bloqueio.</p></div></div><label className="hb-social-search-label hb-v160-discover-search"><span>Pesquisar jogadores</span><span className="hb-v160-search-input"><span aria-hidden="true">⌕</span><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Nome ou @usuário — ao menos 2 caracteres" autoComplete="off" /></span></label>
       <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
 
-    {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat ${selectedChat?'has-active-chat':''}`}><div className="hb-social-chat-sidebar"><div className="hb-social-pane-top"><div><span className="hb-social-overline">CONVERSAS PRIVADAS</span><h3>Conversas</h3><p>Somente amigos mútuos podem enviar novas mensagens.</p></div></div>
-      <label className="hb-v160-chat-search"><span>Encontrar contato</span><input type="search" value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Nome ou mensagem…" /></label>
-      <label className="hb-v160-unread-toggle"><input type="checkbox" checked={unreadOnly} onChange={e=>setUnreadOnly(e.target.checked)}/> Somente não lidas {summary.unread>0?`(${summary.unread})`:''}</label>
-      <div className="hb-v160-contact-list">{filteredConversations.map(person=><button type="button" key={person.partner_id} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}>{avatarFor(person.partner_id,nameOf(person))}<span><strong>{person.display_name}</strong><small>{person.last_message||'Comece uma conversa'}</small></span>{Number(person.unread_count)>0&&<em aria-label={`${person.unread_count} mensagens não lidas`}>{person.unread_count}</em>}</button>)}{!filteredConversations.length&&!!conversations.length&&<p className="hb-v160-no-conversations">Nenhuma conversa corresponde aos filtros.</p>}</div>{!conversations.length&&<div className="hb-social-empty"><strong>Sem conversas.</strong><p>Siga um aventureiro que também segue você para iniciar um chat.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}</div><div className="hb-social-chat-main">{selectedChat?<><header><div className="hb-v160-chat-header-identity"><button type="button" className="hb-v160-chat-back" aria-label="Voltar para conversas" onClick={()=>{messagesRequestRef.current+=1;setSelectedChat(null);setChatMessages([]);setMessageDraft('');setMessageSearch('');setCopiedMessageId(null);setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return null})}}>‹</button>{avatarFor(selectedChat.partner_id,nameOf(selectedChat))}<span><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'}</small></span></div><button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil ↗</button></header>
-      <div className="hb-v189-message-search"><label htmlFor="hb-v189-search-messages"><span aria-hidden="true">⌕</span> Buscar nesta conversa</label><div><input id="hb-v189-search-messages" type="search" value={messageSearch} onChange={event=>setMessageSearch(event.target.value)} placeholder="Pesquisar nas últimas mensagens carregadas" />{messageSearch&&<button type="button" onClick={()=>setMessageSearch('')}>Limpar</button>}</div>{messageSearch&&<small>{visibleChatMessages.length} de {chatMessages.length} mensagens carregadas</small>}</div>
-      <div className="hb-social-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">{visibleChatMessages.map((message,index)=><div className="hb-v160-message-row" key={message.message_id}>
-          {(index===0 || dayOf(visibleChatMessages[index-1].created_at)!==dayOf(message.created_at))&&<div className="hb-v160-chat-day" role="separator">{dayOf(message.created_at)}</div>}
-          <div className={`hb-v161-chat-message ${message.sender_id===userId?'own':''}`}>{avatarFor(message.sender_id,message.sender_id===userId?(profileIdentity?.name||'Você'):nameOf(selectedChat))}<div className={`hb-social-bubble ${message.sender_id===userId?'own':''}`}>
-            {message.deleted_at?<p><em>Mensagem apagada</em></p>:<>
-              {message.image_path&&chatImageUrls[message.message_id]&&<a href={chatImageUrls[message.message_id]} target="_blank" rel="noopener noreferrer"><img className="hb-v172-chat-image" src={chatImageUrls[message.message_id]} alt="Foto enviada na conversa" loading="lazy" /></a>}
-              {message.body!=='📷 Foto'&&<p>{message.body}</p>}
-              {message.body!=='📷 Foto'&&Boolean(message.body.trim())&&<button className="hb-v189-copy-message" type="button" onClick={()=>void copyChatMessage(message)} aria-label="Copiar texto desta mensagem">{copiedMessageId===message.message_id?'✓ Copiado':'⧉ Copiar'}</button>}
-              {message.sender_id===userId&&<button className="hb-v172-delete-message" type="button" disabled={!!busy} onClick={()=>void deleteChatMessage(message)} title="Apagar mensagem para todos">Apagar</button>}
-            </>}
-            <small>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{message.sender_id===userId && message.read_at?' · Lida':''}</small></div></div></div>)}{!chatMessages.length&&<div className="hb-social-empty"><strong>A conversa começa aqui.</strong><p>Envie uma mensagem particular para este aventureiro.</p></div>}
-          {messageSearch.trim()&&chatMessages.length>0&&!visibleChatMessages.length&&<div className="hb-social-empty hb-v189-message-empty"><strong>Nenhuma mensagem encontrada.</strong><p>A busca considera as últimas {chatMessages.length} mensagens carregadas desta conversa.</p><button type="button" onClick={()=>setMessageSearch('')}>Mostrar todas</button></div>}</div>{selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose">
+    {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat hb-v201-chat ${selectedChat?'has-active-chat':''}`} aria-label="Mensagens privadas">
+      <aside className="hb-social-chat-sidebar" aria-label="Seus contatos">
+        <div className="hb-v201-chat-side-heading">
+          <div>
+            <span className="hb-social-overline">SUA CAIXA DE ENTRADA</span>
+            <h3>Mensagens <span className="hb-v201-chat-contact-count">{conversations.length}</span></h3>
+            <p>Converse com amigos que seguem você de volta.</p>
+          </div>
+        </div>
+        <label className="hb-v160-chat-search hb-v201-chat-contact-search">
+          <span>Buscar conversas</span>
+          <div className="hb-v201-chat-search-field"><span aria-hidden="true">⌕</span><input type="search" value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Nome, @usuário ou mensagem" autoComplete="off" /></div>
+        </label>
+        <label className="hb-v160-unread-toggle hb-v201-chat-unread-toggle">
+          <input type="checkbox" checked={unreadOnly} onChange={e=>setUnreadOnly(e.target.checked)}/>
+          <span>Somente não lidas</span>{summary.unread>0&&<strong>{summary.unread}</strong>}
+        </label>
+        <div className="hb-v160-contact-list hb-v201-chat-contact-list">
+          {filteredConversations.map(person=><button type="button" key={person.partner_id} aria-current={selectedChat?.partner_id===person.partner_id?'true':undefined} className={`hb-social-chat-contact ${selectedChat?.partner_id===person.partner_id?'selected':''}`} onClick={()=>openChat(person)}>
+            {avatarFor(person.partner_id,nameOf(person))}
+            <span className="hb-v201-contact-info"><span className="hb-v201-contact-title"><strong>{person.display_name}</strong>{person.last_at&&<time dateTime={person.last_at} title={new Date(person.last_at).toLocaleString('pt-BR')}>{new Date(person.last_at).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</time>}</span><small>{person.last_message||'Comece uma conversa'}</small></span>
+            {Number(person.unread_count)>0&&<em aria-label={`${person.unread_count} mensagens não lidas`}>{person.unread_count}</em>}
+          </button>)}
+          {!filteredConversations.length&&!!conversations.length&&<div className="hb-v201-contact-empty"><span aria-hidden="true">⌕</span><strong>Nenhuma conversa encontrada</strong><p>Experimente alterar a busca ou o filtro de não lidas.</p>{(chatSearch||unreadOnly)&&<button type="button" onClick={()=>{setChatSearch('');setUnreadOnly(false)}}>Limpar filtros</button>}</div>}
+          {!conversations.length&&<div className="hb-v201-contact-empty"><span aria-hidden="true">✉</span><strong>Suas conversas aparecerão aqui</strong><p>Siga alguém que também segue você para conversar em particular.</p><button type="button" onClick={()=>setTab('friends')}>Ver amigos</button></div>}
+        </div>
+      </aside>
+      <div className="hb-social-chat-main">
+        {selectedChat?<>
+          <header className="hb-v201-chat-header">
+            <div className="hb-v160-chat-header-identity">
+              <button type="button" className="hb-v160-chat-back" aria-label="Voltar para conversas" onClick={()=>{messagesRequestRef.current+=1;setSelectedChat(null);setChatMessages([]);setMessageDraft('');setMessageSearch('');setShowMessageSearch(false);setCopiedMessageId(null);setMessagePhoto(previous=>{if(previous)URL.revokeObjectURL(previous.preview);return null})}}>‹</button>
+              {avatarFor(selectedChat.partner_id,nameOf(selectedChat))}
+              <span><strong>{selectedChat.display_name}</strong><small>@{selectedChat.username||'aventureiro'} <span className="hb-v201-chat-private-label">· Conversa privada</span></small></span>
+            </div>
+            <div className="hb-v201-chat-header-actions">
+              <button type="button" className={showMessageSearch?'is-active':''} aria-expanded={showMessageSearch} aria-controls="hb-v201-chat-search" onClick={()=>{if(showMessageSearch)setMessageSearch('');setShowMessageSearch(value=>!value)}}><span aria-hidden="true">⌕</span> <span>Buscar</span></button>
+              <button type="button" onClick={()=>setProfile({id:selectedChat.partner_id,display_name:selectedChat.display_name,username:selectedChat.username})}>Ver perfil <span aria-hidden="true">↗</span></button>
+            </div>
+          </header>
+          {showMessageSearch&&<div id="hb-v201-chat-search" className="hb-v189-message-search hb-v201-message-search">
+            <label htmlFor="hb-v201-search-messages">Buscar nas últimas mensagens carregadas</label>
+            <div><input ref={chatSearchInputRef} id="hb-v201-search-messages" type="search" value={messageSearch} onChange={event=>setMessageSearch(event.target.value)} placeholder="Digite uma palavra ou trecho da conversa…" />{messageSearch&&<button type="button" onClick={()=>setMessageSearch('')}>Limpar</button>}</div>
+            {messageSearch&&<small>{visibleChatMessages.length} {visibleChatMessages.length===1?'resultado encontrado':'resultados encontrados'} em {chatMessages.length} mensagens carregadas.</small>}
+          </div>}
+          <div className="hb-social-chat-messages hb-v201-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">
+            {visibleChatMessages.map((message,index)=>{
+              const previous=visibleChatMessages[index-1]
+              const sameDay=previous&&dayOf(previous.created_at)===dayOf(message.created_at)
+              const grouped=Boolean(previous&&sameDay&&previous.sender_id===message.sender_id&&new Date(message.created_at).getTime()-new Date(previous.created_at).getTime()<5*60*1000)
+              const own=message.sender_id===userId
+              return <div className={`hb-v160-message-row hb-v201-message-row ${grouped?'is-grouped':''}`} key={message.message_id}>
+                {!sameDay&&<div className="hb-v160-chat-day" role="separator"><span>{dayOf(message.created_at)}</span></div>}
+                <div className={`hb-v161-chat-message ${own?'own':''}`}>
+                  {grouped?<span className="hb-v201-chat-avatar-spacer" aria-hidden="true"/>:avatarFor(message.sender_id,own?(profileIdentity?.name||'Você'):nameOf(selectedChat))}
+                  <div className={`hb-social-bubble ${own?'own':''} ${message.image_path?'has-photo':''} ${message.deleted_at?'is-deleted':''}`}>
+                    {message.deleted_at?<p className="hb-v201-deleted-text"><em>Mensagem apagada</em></p>:<>
+                      {message.image_path&&(chatImageUrls[message.message_id]?<a className="hb-v201-chat-image-link" href={chatImageUrls[message.message_id]} target="_blank" rel="noopener noreferrer" title="Abrir foto em tamanho maior"><img className="hb-v172-chat-image" src={chatImageUrls[message.message_id]} alt={`Foto enviada por ${own?'você':selectedChat.display_name}`} loading="lazy" /></a>:<span className="hb-v201-image-loading">Carregando imagem…</span>)}
+                      {message.body!=='📷 Foto'&&<p>{message.body}</p>}
+                    </>}
+                    <div className="hb-v201-message-footer">
+                      {!message.deleted_at&&<div className="hb-v201-message-tools">
+                        {message.body!=='📷 Foto'&&Boolean(message.body.trim())&&<button className="hb-v189-copy-message" type="button" onClick={()=>void copyChatMessage(message)} aria-label="Copiar texto desta mensagem">{copiedMessageId===message.message_id?'✓ Copiado':'⧉ Copiar'}</button>}
+                        {own&&<button className="hb-v172-delete-message" type="button" disabled={!!busy} onClick={()=>void deleteChatMessage(message)} title="Apagar mensagem para todos">Apagar</button>}
+                      </div>}
+                      <time dateTime={message.created_at} title={new Date(message.created_at).toLocaleString('pt-BR')}>{new Date(message.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}{own&&message.read_at?' · Lida':''}</time>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            })}
+            {!chatMessages.length&&<div className="hb-social-empty hb-v201-chat-empty"><span aria-hidden="true">✉</span><strong>Uma conversa começa com uma mensagem.</strong><p>Envie uma mensagem ou uma imagem para {selectedChat.display_name}.</p></div>}
+            {messageSearch.trim()&&chatMessages.length>0&&!visibleChatMessages.length&&<div className="hb-social-empty hb-v189-message-empty hb-v201-chat-empty"><strong>Nenhuma mensagem encontrada.</strong><p>A busca considera as últimas {chatMessages.length} mensagens carregadas desta conversa.</p><button type="button" onClick={()=>setMessageSearch('')}>Mostrar todas</button></div>}
+          </div>
+          {selectedChat.can_message?<form onSubmit={e=>void sendMessage(e)} className="hb-social-chat-compose hb-v201-chat-compose" aria-label="Escrever mensagem privada">
             <input ref={chatFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={event=>{chooseChatPhoto(event.target.files?.[0]);event.target.value=''}} />
-            {messagePhoto&&<div className="hb-v172-chat-preview"><img src={messagePhoto.preview} alt="Prévia da foto"/><span>{messagePhoto.file.name}</span><button type="button" onClick={()=>{URL.revokeObjectURL(messagePhoto.preview);setMessagePhoto(null)}}>Remover</button></div>}
-            <button type="button" className="hb-v172-photo-button" title="Enviar foto" onClick={()=>chatFileInputRef.current?.click()} disabled={!!busy}>📷 Foto</button><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva sua mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/><button type="submit" disabled={(!messageDraft.trim()&&!messagePhoto)||!!busy}>Enviar ↗</button></form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}</>:<div className="hb-social-chat-welcome"><span>✉</span><strong>Suas conversas, em particular.</strong><p>Selecione uma conversa para começar. As mensagens privadas são acessíveis somente aos participantes.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}</div></section>}
+            {messagePhoto&&<div className="hb-v172-chat-preview"><img src={messagePhoto.preview} alt="Prévia da foto"/><span>{messagePhoto.file.name}</span><button type="button" onClick={()=>{URL.revokeObjectURL(messagePhoto.preview);setMessagePhoto(null)}}>Remover imagem</button></div>}
+            <div className="hb-v201-chat-composer-row">
+              <button type="button" className="hb-v172-photo-button" title="Anexar uma foto" aria-label="Anexar uma foto" onClick={()=>chatFileInputRef.current?.click()} disabled={!!busy}><span aria-hidden="true">▧</span> <span>Foto</span></button>
+              <label className="hb-v201-chat-textbox"><span className="hb-v201-sr-only">Sua mensagem</span><textarea rows={2} maxLength={2500} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} placeholder="Escreva uma mensagem…" onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void sendMessage()}}}/></label>
+              <button type="submit" className="hb-v201-chat-send" disabled={(!messageDraft.trim()&&!messagePhoto)||!!busy}>{busy==='send-message'?'Enviando…':<>Enviar <span aria-hidden="true">↗</span></>}</button>
+            </div>
+            <div className="hb-v201-chat-compose-hint"><span>Enter para enviar · Shift + Enter para nova linha</span><span>{messageDraft.length}/2500</span></div>
+          </form>:<div className="hb-social-chat-disabled">Para enviar novas mensagens, vocês precisam se seguir mutuamente.</div>}
+        </>:<div className="hb-social-chat-welcome hb-v201-chat-welcome"><span aria-hidden="true">✉</span><strong>Suas conversas, em particular.</strong><p>Escolha uma conversa à esquerda para trocar mensagens e fotos com seus amigos.</p><button type="button" onClick={()=>setTab('friends')}>Ver meus amigos</button></div>}
+      </div>
+    </section>}
 
     {tab==='referral'&&<SocialReferralPanel active={active&&tab==='referral'}/>}
 

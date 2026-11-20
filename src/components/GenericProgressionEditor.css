@@ -1,0 +1,18 @@
+/* HäxBag V200 — edição de sistemas genéricos sem impor regras específicas. */
+.hb-generic-progression{display:grid;gap:14px;min-width:0;margin:15px 0;color:var(--season-text,#f9f5f5)}
+.hb-generic-progression-head{display:grid;gap:5px;padding:17px 18px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:15px;background:linear-gradient(130deg,color-mix(in srgb,var(--season-primary,#d9bd8b) 11%,var(--season-surface,#211d23)),var(--season-surface-alt,#28242c))}
+.hb-generic-kicker{font-size:10px;font-weight:850;letter-spacing:.13em;color:var(--season-primary,#d9bd8b)}
+.hb-generic-progression-head h4{margin:0;font-size:17px}
+.hb-generic-progression-head p,.hb-generic-note{margin:0;color:var(--season-muted,#b9b4c2);font-size:12px;line-height:1.55}
+.hb-generic-progression-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.hb-generic-progression-card{min-width:0;display:grid;align-content:start;gap:11px;padding:16px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:15px;background:var(--season-surface-alt,#241f28)}
+.hb-generic-step{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.hb-generic-step>span{display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:9px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 28%,transparent);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 11%,transparent);color:var(--season-primary,#d9bd8b);font-size:11px;font-weight:850}
+.hb-generic-step strong{font-size:13px;font-weight:800}
+.hb-generic-field{display:grid;gap:6px;min-width:0;font-size:12px;font-weight:700}
+.hb-generic-field input,.hb-generic-field textarea{display:block;width:100%;min-width:0;box-sizing:border-box;resize:vertical;padding:10px 12px;border-radius:10px;border:1px solid var(--season-line,rgba(255,255,255,.2));background:var(--season-surface,#1e1b24);color:var(--season-text,#fff);font:inherit;font-weight:500}
+.hb-generic-field input:focus-visible,.hb-generic-field textarea:focus-visible{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:2px}
+.hb-generic-bonuses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hb-generic-bonuses>*{min-width:0}
+@media(max-width:840px){.hb-generic-progression-grid{grid-template-columns:1fr}.hb-generic-bonuses{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}}
+@media(max-width:480px){.hb-generic-progression-card,.hb-generic-progression-head{padding:13px}}

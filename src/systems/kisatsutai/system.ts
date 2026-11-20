@@ -30,6 +30,7 @@ export const KISATSUTAI_SYSTEM: RPGSystem = {
   },
 
   data: {
+    resource: { name: 'Respiração', abbreviation: 'PR', pointsLabel: 'Pontos de Respiração (PR)' },
     archetypes: KISATSUTAI_ARCHETYPES,
     ranks: KISATSUTAI_RANKS,
 

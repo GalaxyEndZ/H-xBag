@@ -6,6 +6,7 @@ export const CICLOS_SYSTEM: RPGSystem = {
   matches: systemName =>
     String(systemName ?? '').trim().toLowerCase() === 'ciclos',
   data: {
+    resource: { name: 'Mana', abbreviation: 'PM', pointsLabel: 'Pontos de Mana (PM)' },
     features: {
       usesLevels: true,
       usesRanks: false,

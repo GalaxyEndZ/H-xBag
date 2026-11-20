@@ -107,7 +107,62 @@
 .hb-mini-canvas{display:block;width:100%;max-width:720px;aspect-ratio:12/7;height:auto;border-radius:13px;border:1px solid #40506a;touch-action:none;background:#0b1420}
 .hb-mini-pad{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;touch-action:none}.hb-mini-pad button,.hb-mine-tools button{min-width:45px;min-height:39px;padding:9px 13px;border:1px solid var(--arcade-border);border-radius:9px;background:var(--season-surface-alt,#302c35);color:inherit;font-weight:850;cursor:pointer;touch-action:none;user-select:none}
 .hb-mini-pad button:hover,.hb-mine-tools button:hover,.hb-mine-tools button.is-active{border-color:var(--season-primary,#d9bd8b)}
-.hb-mini-result{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;border:1px solid var(--arcade-border);border-radius:12px;padding:14px}.hb-mini-result strong{font-size:13px}.hb-mini-result button{font-size:11px;padding:8px 12px}
+/* Placar final: título e pontuação em linhas separadas, sem textos colados. */
+.hb-mini-result {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  column-gap:20px;
+  row-gap:14px;
+  min-width:0;
+  padding:16px 18px;
+  border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 27%,var(--arcade-border));
+  border-radius:14px;
+  background:linear-gradient(125deg,color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,var(--arcade-surface)),var(--arcade-surface));
+}
+.hb-mini-result-score {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:7px;
+  min-width:0;
+}
+.hb-mini-result .hb-mini-result-label {
+  display:block;
+  color:var(--arcade-muted);
+  font-size:10px;
+  font-weight:800;
+  line-height:1.35;
+  letter-spacing:.11em;
+}
+.hb-mini-result .hb-mini-result-points {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:7px;
+  color:var(--season-primary,#d9bd8b);
+  font-size:clamp(20px,2.5vw,28px);
+  font-weight:900;
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+}
+.hb-mini-result .hb-mini-result-points span {
+  color:var(--season-text,#faf9f7);
+  font-size:12px;
+  font-weight:700;
+}
+.hb-mini-result button {
+  min-height:41px;
+  padding:9px 14px;
+  font-size:11px;
+  white-space:nowrap;
+}
+.hb-mini-result button:disabled {opacity:.55;cursor:wait}
+@media(max-width:650px){
+  .hb-mini-result{grid-template-columns:minmax(0,1fr);padding:14px;gap:14px}
+  .hb-mini-result button{width:100%;white-space:normal}
+}
+
 .hb-snake-board{display:grid;grid-template-columns:repeat(20,1fr);width:min(100%,440px);aspect-ratio:1;gap:2px;padding:8px;border:1px solid #40506a;border-radius:12px;background:#0c1420}
 .hb-snake-board>span{background:#1e2c34;border-radius:3px}.hb-snake-board>span.head{background:#d4c295}.hb-snake-board>span.body{background:#7eb7a9}.hb-snake-board>span.fruit{background:#ef8d9a}
 .hb-puzzle{max-width:100%;}.hb-2048-board{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(100%,385px);aspect-ratio:1;border:1px solid var(--arcade-border);border-radius:15px;padding:10px;background:color-mix(in srgb,var(--season-bg,#111c27) 75%,transparent)}
@@ -181,3 +236,34 @@
 .hb-arena-v193 .hb-arena-canvas{border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 36%,var(--arcade-border));background:#101c21;touch-action:none;cursor:crosshair;box-shadow:0 12px 35px #0005}
 .hb-arena-v193 .hb-arena-tip{margin:0;line-height:1.65}
 @media(max-width:600px){.hb-arena-world-info{gap:6px 12px;padding:9px 10px;font-size:10px}.hb-arena-v193 .hb-arena-tip{padding:9px 11px}}
+
+
+/* V202 — tela ampla, preservando as proporções de todos os jogos. */
+.hb-arcade.hb-arcade-v190{max-width:1760px;width:100%}
+.hb-arcade-v190 .hb-arcade-grid{grid-template-columns:minmax(0,1fr);gap:20px}
+.hb-arcade-v190 .hb-arcade-main{width:100%;min-width:0}
+.hb-arcade-v190 .hb-arcade-game-card{width:100%;padding:clamp(13px,1.7vw,28px)}
+.hb-arcade-v190 .hb-mini-inner{width:100%;min-width:0;justify-items:center}
+.hb-arcade-v190 .hb-mini-canvas{max-width:1180px;width:100%;height:auto;aspect-ratio:12/7;image-rendering:auto}
+.hb-arcade-v190 .hb-arcade-ranking{width:100%}
+.hb-arcade-v190 .hb-arcade-ranking-list{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hb-arcade-v190 .hb-mini-ready{min-height:clamp(330px,42vw,540px)}
+.hb-arcade-v190 .hb-snake-board{width:min(100%,min(65dvh,650px));max-width:650px}
+.hb-arcade-v190 .hb-2048-board{width:min(100%,min(65dvh,600px));max-width:600px}
+.hb-arcade-v190 .hb-mine-board,.hb-arcade-v190 .hb-memory-board{width:min(100%,min(65dvh,610px));max-width:610px}
+.hb-arcade-v190 .hb-puzzle{width:100%}
+.hb-arcade-v190 .hb-arcade-embedded-pong>.hb-arcade{max-width:1760px}
+.hb-mini-screen-toggle{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--arcade-border);border-radius:10px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,var(--arcade-surface));color:var(--season-text,#fff);font:inherit;font-weight:750;font-size:11px;min-height:35px;padding:8px 13px;cursor:pointer}
+.hb-mini-screen-toggle:hover,.hb-mini-screen-toggle:focus-visible{border-color:var(--season-primary,#d9bd8b);outline:none}
+.hb-arcade-v190 .hb-mini-stage:fullscreen{display:grid;align-content:start;gap:12px;padding:clamp(10px,2vw,25px);overflow:auto;background:var(--season-bg,#111820);min-height:100dvh}
+.hb-arcade-v190 .hb-mini-stage:fullscreen .hb-mini-inner{max-width:1480px;justify-self:center}
+.hb-arcade-v190 .hb-mini-stage:fullscreen .hb-mini-canvas{max-width:min(100%,calc((100dvh - 215px)*12/7));max-height:none}
+.hb-arcade-v190 .hb-mini-stage:fullscreen .hb-snake-board,
+.hb-arcade-v190 .hb-mini-stage:fullscreen .hb-2048-board,
+.hb-arcade-v190 .hb-mini-stage:fullscreen .hb-mine-board,
+.hb-arcade-v190 .hb-mini-stage:fullscreen .hb-memory-board{width:min(100%,65dvh)}
+@media(max-width:950px){.hb-arcade-v190 .hb-arcade-ranking-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:610px){.hb-arcade-v190 .hb-arcade-ranking-list{grid-template-columns:1fr}.hb-arcade-v190 .hb-mini-ready{min-height:300px}.hb-mini-screen-toggle{min-height:38px}}
+
+.hb-mini-session-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+@media(max-width:520px){.hb-mini-session-actions{width:100%;justify-content:space-between}.hb-mini-session-actions>button{flex:1;min-width:0}}

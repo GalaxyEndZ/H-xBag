@@ -39,6 +39,8 @@ export default function MinigamesHub({ userId }: { userId: string }) {
   const runId = useRef<string | null>(null)
   const startVersion = useRef(0)
   const arenaRef = useRef<HTMLElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const selectedGameRef = useRef<ArcadeGameId>(selectedGame)
   selectedGameRef.current = selectedGame
   const saving = useRef(false)
@@ -71,12 +73,26 @@ export default function MinigamesHub({ userId }: { userId: string }) {
     setRankingLoading(false)
   }, [])
 
+  useEffect(() => {
+    const sync = () => setIsFullscreen(document.fullscreenElement === stageRef.current)
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement === stageRef.current) await document.exitFullscreen()
+      else await stageRef.current?.requestFullscreen()
+    } catch { setSaveStatus('Não foi possível ampliar a tela neste navegador.') }
+  }
+
   useEffect(() => { void refreshChallenges() }, [refreshChallenges])
   useEffect(() => { void refreshRanking(selectedGame) }, [refreshRanking, selectedGame])
   useEffect(() => {
     const onHidden = () => { if (document.hidden) setPhase(current => current === 'playing' ? 'paused' : current) }
     const onKeys = (event: KeyboardEvent) => {
       if (selectedGameRef.current === 'pong' || event.repeat || !(event.key.toLowerCase() === 'p' || event.key === 'Escape')) return
+      if (document.querySelector('.hb-survivor-level-up')) return
+      if (event.key === 'Escape' && document.fullscreenElement) return
       if (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable]')) return
       event.preventDefault()
       setPhase(current => current === 'playing' ? 'paused' : current === 'paused' ? 'playing' : current)
@@ -180,11 +196,11 @@ export default function MinigamesHub({ userId }: { userId: string }) {
     {showPong ? <div ref={arenaRef as React.RefObject<HTMLDivElement>} className="hb-arcade-embedded-pong"><PongGame userId={userId} onArcadeUpdated={refreshChallenges} /></div> : <div className="hb-arcade-grid">
       <section ref={arenaRef} className="hb-arcade-main"><div className="hb-arcade-game-card">
         <div className="hb-arcade-card-head"><div><span className="hb-arcade-eyebrow">{game.icon} MINIGAME</span><h2>{game.title} <span>✦</span></h2><p>{game.description}</p></div><span className="hb-arcade-status">{phase==='playing'?'● JOGANDO':phase==='paused'?'Ⅱ PAUSADO':phase==='starting'?'◌ PREPARANDO':phase==='over'?'◆ FIM DE JOGO':'○ PRONTO'}</span></div>
-        {phase==='playing' || phase==='paused' || phase==='over' ? <div key={`${selectedGame}-${gameKey}`} className="hb-mini-stage">
-          <div className="hb-mini-session-bar"><span>✦ Partida {phase==='over' ? 'concluída' : 'em andamento'}</span>{(phase==='playing' || phase==='paused') && <button type="button" onClick={() => setPhase(current => current === 'playing' ? 'paused' : 'playing')}>{phase==='paused' ? '▶ Continuar' : 'Ⅱ Pausar'} <small>P / Esc</small></button>}</div>
+        {phase==='playing' || phase==='paused' || phase==='over' ? <div key={`${selectedGame}-${gameKey}`} ref={stageRef} className="hb-mini-stage">
+          <div className="hb-mini-session-bar"><span>✦ Partida {phase==='over' ? 'concluída' : 'em andamento'}</span><div className="hb-mini-session-actions"><button type="button" className="hb-mini-screen-toggle" onClick={()=>void toggleFullscreen()}>{isFullscreen ? '↙ Sair da tela cheia' : '⛶ Ampliar tela'}</button>{(phase==='playing' || phase==='paused') && <button type="button" onClick={() => setPhase(current => current === 'playing' ? 'paused' : 'playing')}>{phase==='paused' ? '▶ Continuar' : 'Ⅱ Pausar'} <small>P / Esc</small></button>}</div></div>
           {gameComponent()}
           {phase==='paused' && <div className="hb-mini-pause-overlay" role="status"><div><span aria-hidden="true">Ⅱ</span><h3>Partida pausada</h3><p>Seu progresso está preservado. Pressione P, Esc ou o botão abaixo para continuar.</p><button type="button" onClick={() => setPhase('playing')}>▶ Retomar partida</button></div></div>}
-          {phase==='over' && <div className="hb-mini-result"><div><small>RESULTADO DA PARTIDA</small><strong>{nf(result || 0)} pontos</strong></div><button type="button" disabled={savingResult} onClick={replay}>{savingResult ? 'Salvando…' : '↻ Jogar novamente'}</button></div>}
+          {phase==='over' && <div className="hb-mini-result" role="status" aria-live="polite"><div className="hb-mini-result-score"><span className="hb-mini-result-label">RESULTADO DA PARTIDA</span><strong className="hb-mini-result-points">{nf(result || 0)} <span>pontos</span></strong></div><button type="button" disabled={savingResult} onClick={replay}>{savingResult ? 'Salvando…' : '↻ Jogar novamente'}</button></div>}
         </div> : <div className="hb-mini-ready"><span aria-hidden="true">{game.icon}</span><h3>Pronto para jogar {game.title}?</h3><p>{game.description}. Continue até perder ou decida encerrar e salvar sua pontuação no ranking global.</p><button type="button" disabled={phase==='starting'} onClick={()=>void startGame()}>{phase==='starting'?'Preparando…':'▶ Iniciar partida'}</button></div>}
         {saveStatus && <p role="status" className="hb-arcade-save">{saveStatus}</p>}
       </div></section>

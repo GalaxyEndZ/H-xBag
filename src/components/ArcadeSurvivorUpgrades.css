@@ -1,0 +1,23 @@
+/* HäxBag V202 — progressão original de níveis para Arena e Asteroids. */
+.hb-survivor-xp{width:100%;display:grid;gap:7px;padding:10px 13px;border:1px solid var(--arcade-border,#ffffff22);border-radius:12px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 6%,var(--arcade-surface,#161a1e))}
+.hb-survivor-xp-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px}
+.hb-survivor-xp-heading strong{color:var(--season-primary,#d9bd8b)}
+.hb-survivor-xp-heading span{color:var(--arcade-muted,#adb3ba);font-variant-numeric:tabular-nums}
+.hb-survivor-xp-track{height:7px;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--season-text,#fff) 10%,transparent)}
+.hb-survivor-xp-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--season-secondary,#97b59b),var(--season-primary,#d9bd8b));transition:width .18s ease}
+.hb-mini-inner.hb-survivor-game{position:relative}
+.hb-survivor-level-up{position:absolute;z-index:22;inset:0;display:flex;align-items:center;justify-content:center;padding:clamp(9px,2vw,24px);background:rgba(4,8,13,.82);backdrop-filter:blur(8px);border-radius:17px;overflow:auto}
+.hb-survivor-level-box{width:min(100%,860px);display:grid;gap:12px;padding:clamp(15px,2.5vw,27px);border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 43%,transparent);border-radius:19px;background:linear-gradient(150deg,var(--season-surface-alt,#29252e),var(--season-bg,#15171b));box-shadow:0 24px 70px #0009;text-align:center}
+.hb-survivor-level-kicker{font-size:10px;font-weight:850;letter-spacing:.17em;color:var(--season-primary,#d9bd8b)}
+.hb-survivor-level-box h3{font-size:clamp(22px,3vw,32px);line-height:1.15;letter-spacing:-.04em;margin:0;color:var(--season-text,#fff)}
+.hb-survivor-level-box p,.hb-survivor-level-box>small{font-size:12px;line-height:1.55;color:var(--arcade-muted,#aeb2b9);margin:0}
+.hb-survivor-upgrade-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.hb-survivor-upgrade-card{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0;min-height:190px;padding:16px 12px;text-align:center;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 24%,var(--arcade-border,#ffffff22));border-radius:14px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 7%,var(--season-surface,#202027));color:var(--season-text,#fff);font:inherit;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease}
+.hb-survivor-upgrade-card:hover,.hb-survivor-upgrade-card:focus-visible{transform:translateY(-3px);border-color:var(--season-primary,#d9bd8b);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 15%,var(--season-surface,#202027));outline:none}
+.hb-survivor-upgrade-icon{display:grid;place-items:center;width:51px;height:51px;border-radius:14px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 14%,transparent);font-size:25px}
+.hb-survivor-upgrade-title{font-size:14px;font-weight:850;line-height:1.2}
+.hb-survivor-upgrade-desc{font-size:11px;line-height:1.5;color:var(--arcade-muted,#b1b7c0);flex:1}
+.hb-survivor-upgrade-foot{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:10px;border-top:1px solid var(--arcade-border,#ffffff25);font-size:10px;color:var(--season-primary,#d9bd8b)}
+.hb-survivor-upgrade-foot b{display:grid;place-items:center;min-width:23px;height:23px;border-radius:6px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 18%,transparent);font-size:11px}
+@media(max-width:640px){.hb-survivor-level-up{position:fixed;inset:0;z-index:220;align-items:center;justify-content:center;padding:14px;background:rgba(4,8,13,.94);overflow:auto}.hb-survivor-level-box{padding:15px}.hb-survivor-upgrade-cards{grid-template-columns:1fr;gap:8px}.hb-survivor-upgrade-card{min-height:auto;display:grid;grid-template-columns:42px 1fr;gap:4px 10px;text-align:left;align-items:start;padding:10px}.hb-survivor-upgrade-icon{grid-row:1/4;width:42px;height:42px;font-size:21px}.hb-survivor-upgrade-desc{font-size:10px}.hb-survivor-upgrade-foot{grid-column:2;padding-top:5px;margin-top:4px}.hb-survivor-level-box>small{display:none}}
+@media(prefers-reduced-motion:reduce){.hb-survivor-upgrade-card{transition:none}.hb-survivor-xp-track>span{transition:none}}
