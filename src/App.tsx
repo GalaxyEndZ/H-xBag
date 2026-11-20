@@ -1047,6 +1047,7 @@ function RestActionsPanel({ onApply, canApply, maxPR, breathing, vigor, breathin
 
 function App() {
   const initialHaxLocation = useRef(readHaxLocation(typeof window !== 'undefined' ? window.location.search : ''))
+  const topbarRef = useRef<HTMLElement>(null)
   const haxHistoryReadyRef = useRef(false)
   const haxHistoryRestoreRef = useRef(false)
   const lastHaxLocationRef = useRef<HaxLocation | null>(null)
@@ -1054,6 +1055,27 @@ function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
+
+  // V215: a navegação fixa das fichas respeita a altura REAL do cabeçalho.
+  // ResizeObserver acompanha zoom, fontes e mudanças responsivas sem valores fixos.
+  useEffect(() => {
+    if (authLoading || !session) return
+    const header = topbarRef.current
+    const main = header?.parentElement
+    if (!header || !main) return
+    const syncHeight = () => {
+      main.style.setProperty('--hb-sticky-topbar-height', `${Math.ceil(header.getBoundingClientRect().height)}px`)
+    }
+    syncHeight()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncHeight)
+    observer?.observe(header)
+    window.addEventListener('resize', syncHeight)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', syncHeight)
+      main.style.removeProperty('--hb-sticky-topbar-height')
+    }
+  }, [authLoading, session?.user.id])
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [selectedCampaignId, setSelectedCampaignId] = useState(initialHaxLocation.current.campaign)
@@ -10977,17 +10999,12 @@ counterAttackDT
         </div>
       )}
       <main className={`main-content ${activePage === 'player-table' ? 'hb-vtt-app-main' : ''}`} id="inicio">
-        <header className="topbar">
+        <header className="topbar" ref={topbarRef}>
           <button type="button" className="hb-sidebar-mobile-toggle" onClick={() => setSidebarMobileOpen(open => !open)}
             aria-label={sidebarMobileOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'}
             aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" title="Menu do HäxBag">
             <span aria-hidden="true">☰</span><span>Menu</span>
           </button>
-          <div className="hb-v159-top-space-switch" role="group" aria-label="Ambiente ativo">
-            <button type="button" aria-pressed={activePage === 'profile'} className={activePage === 'profile' ? 'is-active' : ''} onClick={openSocialSpace}>✦ <span>Social</span></button>
-            <button type="button" aria-pressed={activePage !== 'profile' && activePage !== 'minigames'} className={activePage !== 'profile' && activePage !== 'minigames' ? 'is-active' : ''} onClick={openRpgSpace}>⚔ <span>RPG</span></button>
-            <button type="button" aria-pressed={activePage === 'minigames'} className={activePage === 'minigames' ? 'is-active' : ''} onClick={openMinigamesSpace}>◉ <span>Minigames</span></button>
-          </div>
           <div className="breadcrumb hb-topbar-trail">
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : selectedCampaign?.name ?? 'Suas campanhas'}</span>

@@ -16742,3 +16742,56 @@ button:disabled { opacity: .58; }
   }
 }
 
+/* ========================================================================
+   HÄXBAG V215 · Barras de navegação sem sobreposição
+   A barra global permanece no topo; as navegações contextuais ficam abaixo.
+   --hb-sticky-topbar-height é atualizado pelo ResizeObserver em App.tsx.
+   ======================================================================== */
+.app-shell.hb-polish > .main-content > .topbar {
+  z-index: 40;
+}
+
+/* Fichas de personagens e inimigos: nunca cobrir Social / RPG / Minigames. */
+.app-shell.hb-polish .sheet-quick-nav.hb-sheet-nav-v3 {
+  top: calc(var(--hb-sticky-topbar-height, 76px) + 10px) !important;
+  z-index: 3;
+}
+
+/* A mesma hierarquia para os menus fixos dos perfis. */
+.app-shell.hb-polish .hb-profile-page-v16 .hb-profile-quick-nav,
+.app-shell.hb-polish .hb-public-content .hb-public-tabs {
+  top: calc(var(--hb-sticky-topbar-height, 76px) + 10px) !important;
+  z-index: 3;
+}
+
+/* Rolagem por âncoras: a seção precisa aparecer abaixo das duas barras. */
+.app-shell.hb-polish :is(.page-content.page-sheets, .page-content.page-enemies) :is(
+  .sheet-section-heading,
+  .sheet-summary-card,
+  .sheet-actions-premium,
+  .combat-reactions-section,
+  .sheet-armor-standalone,
+  .sheet-inventory-section,
+  .hb-sheet-conditions-section,
+  .hb-trained-skills,
+  #ficha-edicao,
+  #inimigo-edicao
+) {
+  scroll-margin-top: calc(var(--hb-sticky-topbar-height, 76px) + 85px) !important;
+}
+
+@media (max-width: 850px) {
+  .app-shell.hb-polish .sheet-quick-nav.hb-sheet-nav-v3,
+  .app-shell.hb-polish .hb-profile-page-v16 .hb-profile-quick-nav,
+  .app-shell.hb-polish .hb-public-content .hb-public-tabs {
+    top: calc(var(--hb-sticky-topbar-height, 76px) + 7px) !important;
+  }
+  .app-shell.hb-polish .sheet-quick-nav.hb-sheet-nav-v3 {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .app-shell.hb-polish .hb-sheet-nav-v3 .hb-sheet-nav-items {
+    min-width: 0;
+    overflow-x: auto;
+  }
+}
