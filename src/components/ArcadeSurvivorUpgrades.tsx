@@ -1,12 +1,11 @@
 import { useEffect } from 'react'
 import './ArcadeSurvivorUpgrades.css'
 
-export type SurvivorGame = 'asteroids' | 'arena'
+export type SurvivorGame = 'arena'
 export type SurvivorUpgradeId =
-  | 'astro_cadence' | 'astro_volley' | 'astro_thruster' | 'astro_hull'
-  | 'astro_velocity' | 'astro_piercing' | 'astro_shield' | 'astro_training'
   | 'arena_cadence' | 'arena_volley' | 'arena_power' | 'arena_piercing'
   | 'arena_sprint' | 'arena_vigor' | 'arena_range' | 'arena_recovery'
+  | 'arena_magnet' | 'arena_dash' | 'arena_critical'
 
 export type SurvivorUpgrade = {
   id: SurvivorUpgradeId
@@ -18,14 +17,6 @@ export type SurvivorUpgrade = {
 }
 
 export const SURVIVOR_UPGRADES: SurvivorUpgrade[] = [
-  { id:'astro_cadence', game:'asteroids', symbol:'⚡', title:'Gatilho veloz', description:'Dispare com menos intervalo entre os tiros.', maxLevel: 7 },
-  { id:'astro_volley', game:'asteroids', symbol:'✧', title:'Salva estelar', description:'Atire um projétil extra em cada disparo.', maxLevel: 4 },
-  { id:'astro_thruster', game:'asteroids', symbol:'🚀', title:'Propulsor iônico', description:'Acelere a nave mais rapidamente.', maxLevel: Infinity },
-  { id:'astro_hull', game:'asteroids', symbol:'♥', title:'Casco reforçado', description:'Aumente a vida máxima e recupere um coração.', maxLevel: Infinity },
-  { id:'astro_velocity', game:'asteroids', symbol:'➤', title:'Projéteis de plasma', description:'Tiros mais rápidos e de maior alcance.', maxLevel: 7 },
-  { id:'astro_piercing', game:'asteroids', symbol:'✹', title:'Laser perfurante', description:'Cada projétil atravessa mais um asteroide.', maxLevel: 5 },
-  { id:'astro_shield', game:'asteroids', symbol:'◈', title:'Escudo temporal', description:'Receba mais tempo de proteção após sofrer dano.', maxLevel: 5 },
-  { id:'astro_training', game:'asteroids', symbol:'✦', title:'Computador tático', description:'Receba mais experiência por asteroide destruído.', maxLevel: Infinity },
   { id:'arena_cadence', game:'arena', symbol:'⚡', title:'Disparo relâmpago', description:'Diminua o intervalo entre seus ataques manuais.', maxLevel: 7 },
   { id:'arena_volley', game:'arena', symbol:'✧', title:'Rajada múltipla', description:'Dispare um projétil adicional a cada ataque.', maxLevel: 4 },
   { id:'arena_power', game:'arena', symbol:'✹', title:'Munição rúnica', description:'Cada projétil causa mais dano aos inimigos.', maxLevel: Infinity },
@@ -34,11 +25,24 @@ export const SURVIVOR_UPGRADES: SurvivorUpgrade[] = [
   { id:'arena_vigor', game:'arena', symbol:'♥', title:'Vigor ancestral', description:'Ganhe mais um coração máximo e recupere vida.', maxLevel: Infinity },
   { id:'arena_range', game:'arena', symbol:'⌖', title:'Alcance ampliado', description:'Projéteis viajam mais rápido e duram mais.', maxLevel: 7 },
   { id:'arena_recovery', game:'arena', symbol:'✚', title:'Regeneração', description:'Recupere um coração periodicamente.', maxLevel: 5 },
+  { id:'arena_magnet', game:'arena', symbol:'◉', title:'Ímã de essência', description:'Atrai os cristais de experiência de mais longe.', maxLevel: 6 },
+  { id:'arena_dash', game:'arena', symbol:'➟', title:'Esquiva arcana', description:'Reduz o tempo de recarga da esquiva rápida.', maxLevel: 5 },
+  { id:'arena_critical', game:'arena', symbol:'✦', title:'Golpe certeiro', description:'Aumenta a chance dos seus tiros causarem dano dobrado.', maxLevel: 5 },
 ]
 
-/** O número necessário aumenta gradualmente, sem impor limite de nível à partida. */
+/**
+ * Curva da Arena: começo acessível e upgrades progressivamente mais espaçados.
+ * O custo é da próxima evolução (não a XP total acumulada) e segue aumentando,
+ * sem teto de nível para partidas longas. Não se aplica ao Asteroids.
+ */
 export function experienceForNextLevel(level: number): number {
-  return Math.floor(4 + level * 2.5)
+  const reached = Math.max(0, Math.floor(Number.isFinite(level) ? level : 1) - 1)
+  return Math.floor(20 + reached * 7 + 3 * Math.pow(reached, 1.45))
+}
+
+/** Recompensa por inimigo vencido: elites rendem mais XP, mas sem pular níveis. */
+export function arenaExperienceDrop(kind: 'stalker' | 'runner' | 'brute' | 'elite'): number {
+  return kind === 'elite' ? 8 : kind === 'brute' ? 2 : 1
 }
 
 /** Escolhe até 3 cartas diferentes, respeitando os níveis máximos. */
@@ -51,7 +55,7 @@ export function drawSurvivorUpgrades(game: SurvivorGame, owned: Partial<Record<S
   return available.slice(0, 3)
 }
 
-export function SurvivorUpgradeChoice({ game, level, choices, ranks, onChoose }: {
+export function SurvivorUpgradeChoice({ level, choices, ranks, onChoose }: {
   game: SurvivorGame
   level: number
   choices: SurvivorUpgrade[]
@@ -72,7 +76,7 @@ export function SurvivorUpgradeChoice({ game, level, choices, ranks, onChoose }:
   }, [choices, onChoose])
   return <div className="hb-survivor-level-up" role="dialog" aria-modal="true" aria-label={`Escolher upgrade do nível ${level}`}>
     <div className="hb-survivor-level-box">
-      <span className="hb-survivor-level-kicker">✦ {game === 'arena' ? 'ARENA INFINITA' : 'ASTEROIDS'} · EVOLUÇÃO</span>
+      <span className="hb-survivor-level-kicker">✦ ARENA INFINITA · EVOLUÇÃO</span>
       <h3>Nível {level} alcançado!</h3>
       <p>A partida está pausada. Escolha uma melhoria para continuar sua jornada.</p>
       <div className="hb-survivor-upgrade-cards">

@@ -1,4 +1,4 @@
-/* HäxBag V202 — progressão original de níveis para Arena e Asteroids. */
+/* HäxBag V202 — progressão exclusiva da Arena Infinita. */
 .hb-survivor-xp{width:100%;display:grid;gap:7px;padding:10px 13px;border:1px solid var(--arcade-border,#ffffff22);border-radius:12px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 6%,var(--arcade-surface,#161a1e))}
 .hb-survivor-xp-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;font-size:11px}
 .hb-survivor-xp-heading strong{color:var(--season-primary,#d9bd8b)}

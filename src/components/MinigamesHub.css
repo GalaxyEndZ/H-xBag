@@ -267,3 +267,28 @@
 
 .hb-mini-session-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 @media(max-width:520px){.hb-mini-session-actions{width:100%;justify-content:space-between}.hb-mini-session-actions>button{flex:1;min-width:0}}
+
+/* V203 — combate tático da Arena, com habilidade de esquiva acessível no toque. */
+.hb-arcade-v190 .hb-mini-arena-pad .hb-mini-dash {
+  min-width:136px;
+  border-color:color-mix(in srgb,#8dd6ef 50%,var(--arcade-border,#ffffff25));
+  background:color-mix(in srgb,#8dd6ef 12%,var(--arcade-surface,#181b22));
+  color:var(--season-text,#fff);
+  font-size:11px;
+  letter-spacing:.04em;
+  font-variant-numeric:tabular-nums;
+}
+.hb-arcade-v190 .hb-mini-arena-pad .hb-mini-dash:not(:disabled):hover,
+.hb-arcade-v190 .hb-mini-arena-pad .hb-mini-dash:not(:disabled):focus-visible {
+  background:color-mix(in srgb,#8dd6ef 23%,var(--arcade-surface,#181b22));
+  border-color:#a1eaff;
+}
+.hb-arcade-v190 .hb-mini-arena-pad .hb-mini-dash:disabled {
+  color:var(--arcade-muted,#c1c8d1);
+  opacity:.6;
+}
+@media(max-width:650px) {
+  .hb-arcade-v190 .hb-mini-arena-pad {gap:7px}
+  .hb-arcade-v190 .hb-mini-arena-pad .hb-mini-fire,
+  .hb-arcade-v190 .hb-mini-arena-pad .hb-mini-dash {flex:1 1 130px;min-height:47px}
+}

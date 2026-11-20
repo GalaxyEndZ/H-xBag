@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { SurvivorExperience, SurvivorUpgradeChoice, experienceForNextLevel, drawSurvivorUpgrades, type SurvivorUpgradeId, type SurvivorUpgrade } from './ArcadeSurvivorUpgrades'
+import { SurvivorExperience, SurvivorUpgradeChoice, experienceForNextLevel, arenaExperienceDrop, drawSurvivorUpgrades, type SurvivorUpgradeId, type SurvivorUpgrade } from './ArcadeSurvivorUpgrades'
 
 export type ArcadeGameProps = { onFinish: (score: number) => void; paused?: boolean }
 const clamp = (v: number, low: number, high: number) => Math.max(low, Math.min(high, v))
@@ -284,146 +284,95 @@ export function BreakoutGame({ onFinish, paused = false }: ArcadeGameProps) {
 }
 
 type Rock = { x:number; y:number; vx:number; vy:number; radius:number }
-type Shot = { x:number; y:number; vx:number; vy:number; life:number; pierce?:number; damage?:number; hitIds?:number[] }
+type Shot = { x:number; y:number; vx:number; vy:number; life:number; pierce?:number; damage?:number; hitIds?:number[]; critical?:boolean }
 
-/** Asteroids com progressão por experiência e escolhas de melhorias durante a partida. */
+/** Asteroids clássico: sem níveis, experiência ou cartas de upgrades. */
 export function AsteroidsGame({ onFinish, paused = false }: ArcadeGameProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const keys = useRef(new Set<string>())
-  const upgrading = useRef(false)
-  const levelsOwned = useRef<Partial<Record<SurvivorUpgradeId, number>>>({})
   const game = useRef({
-    x:360, y:210, angle:-Math.PI/2, vx:0, vy:0, score:0, lives:3, maxLives:3,
+    x:360, y:210, angle:-Math.PI/2, vx:0, vy:0, score:0, lives:3,
     cooldown:0, invulnerable:1.2, spawn:0, ended:false, rocks:[] as Rock[], shots:[] as Shot[],
-    level:1, xp:0, xpBonus:1,
-    shotCooldown:.17, volley:1, thrust:165, shotSpeed:480, shotLife:1.2, pierce:0, shieldTime:2,
   })
   const [score, setScore] = useState(0)
   const [lives, setLives] = useState(3)
-  const [maxLives, setMaxLives] = useState(3)
-  const [level, setLevel] = useState(1)
-  const [xp, setXp] = useState(0)
-  const [upgradeOffer, setUpgradeOffer] = useState<SurvivorUpgrade[] | null>(null)
-  const [upgradeRanks, setUpgradeRanks] = useState<Partial<Record<SurvivorUpgradeId, number>>>({})
-
   useArcadeKeyboard(['arrowleft','arrowright','arrowup','a','d','w',' '], (key, down) => {
-    if (paused || upgrading.current) return
+    if (paused) return
     if (down) keys.current.add(key); else keys.current.delete(key)
   })
-  useEffect(() => { if (paused || upgradeOffer) keys.current.clear() }, [paused, upgradeOffer])
-  useEffect(() => { const clear = () => keys.current.clear(); window.addEventListener('blur', clear); return () => window.removeEventListener('blur', clear) }, [])
-
-  const chooseUpgrade = (id: SurvivorUpgradeId) => {
-    const g = game.current
-    if (g.ended || !upgrading.current || !upgradeOffer?.some(item => item.id === id)) return
-    const rank = (levelsOwned.current[id] || 0) + 1
-    levelsOwned.current = { ...levelsOwned.current, [id]: rank }
-    setUpgradeRanks(levelsOwned.current)
-    switch (id) {
-      case 'astro_cadence': g.shotCooldown = Math.max(.055, g.shotCooldown * .86); break
-      case 'astro_volley': g.volley = Math.min(5, g.volley + 1); break
-      case 'astro_thruster': g.thrust *= 1.14; break
-      case 'astro_hull': g.maxLives++; g.lives = Math.min(g.maxLives, g.lives + 1); setLives(g.lives); setMaxLives(g.maxLives); break
-      case 'astro_velocity': g.shotSpeed *= 1.12; g.shotLife += .12; break
-      case 'astro_piercing': g.pierce = Math.min(5, g.pierce + 1); break
-      case 'astro_shield': g.shieldTime += .35; break
-      case 'astro_training': g.xpBonus += .23; break
-    }
-    upgrading.current = false
-    setUpgradeOffer(null)
-  }
-
+  useEffect(() => { if (paused) keys.current.clear() }, [paused])
+  useEffect(() => { const clear=()=>keys.current.clear(); window.addEventListener('blur', clear); return ()=>window.removeEventListener('blur', clear) }, [])
   useEffect(() => {
     const element = canvas.current
-    if (!element || paused || upgradeOffer) return
+    if (!element || paused) return
     const ctx = prepareArcadeCanvas(element)
     if (!ctx) return
-    let last = 0, id = 0
+    let last=0, id=0
     const tick = (now: number) => {
-      const dt = last ? Math.min(.035, (now-last)/1000) : .016; last = now
-      const g = game.current, k = keys.current
-      if (g.ended || upgrading.current) return
-      if (k.has('arrowleft') || k.has('a')) g.angle -= 3.6*dt
-      if (k.has('arrowright') || k.has('d')) g.angle += 3.6*dt
-      if (k.has('arrowup') || k.has('w')) { g.vx += Math.cos(g.angle)*g.thrust*dt; g.vy += Math.sin(g.angle)*g.thrust*dt }
-      g.vx *= .992; g.vy *= .992
-      const velocity = Math.hypot(g.vx, g.vy)
-      if (velocity > 600) { g.vx *= 600/velocity; g.vy *= 600/velocity }
-      g.x = (g.x + g.vx*dt + BASE_W*3)%BASE_W; g.y = (g.y + g.vy*dt + BASE_H*3)%BASE_H
-      g.cooldown -= dt; g.invulnerable -= dt; g.spawn -= dt
-      if (g.spawn <= 0 && g.rocks.length < 105) {
-        const side = rand(4), x = side < 2 ? rand(BASE_W) : side === 2 ? 0 : BASE_W, y = side >= 2 ? rand(BASE_H) : side === 0 ? 0 : BASE_H
-        g.rocks.push({ x,y,vx:(Math.random()-.5)*95,vy:(Math.random()-.5)*95,radius:14+rand(17) })
-        g.spawn = Math.max(.32, 1.05-g.score/2500)
+      const dt = last ? Math.min(.035, (now-last)/1000) : .016; last=now
+      const g=game.current, k=keys.current
+      if (g.ended) return
+      if (k.has('arrowleft') || k.has('a')) g.angle-=3.6*dt
+      if (k.has('arrowright') || k.has('d')) g.angle+=3.6*dt
+      if (k.has('arrowup') || k.has('w')) { g.vx+=Math.cos(g.angle)*165*dt; g.vy+=Math.sin(g.angle)*165*dt }
+      g.vx*=.992; g.vy*=.992
+      const speed=Math.hypot(g.vx,g.vy)
+      if (speed>600) { g.vx*=600/speed; g.vy*=600/speed }
+      g.x=(g.x+g.vx*dt+BASE_W*3)%BASE_W
+      g.y=(g.y+g.vy*dt+BASE_H*3)%BASE_H
+      g.cooldown-=dt; g.invulnerable-=dt; g.spawn-=dt
+      if (g.spawn<=0 && g.rocks.length<105) {
+        const side=rand(4)
+        const x=side<2?rand(BASE_W):side===2?0:BASE_W
+        const y=side>=2?rand(BASE_H):side===0?0:BASE_H
+        g.rocks.push({x,y,vx:(Math.random()-.5)*95,vy:(Math.random()-.5)*95,radius:14+rand(17)})
+        g.spawn=Math.max(.32,1.05-g.score/2500)
       }
-      if (k.has(' ') && g.cooldown <= 0) {
-        for (let i = 0; i < g.volley; i++) {
-          const a = g.angle + (i-(g.volley-1)/2)*.14
-          g.shots.push({ x:g.x+Math.cos(a)*18, y:g.y+Math.sin(a)*18,
-            vx:g.vx+Math.cos(a)*g.shotSpeed, vy:g.vy+Math.sin(a)*g.shotSpeed, life:g.shotLife, pierce:g.pierce })
-        }
-        g.cooldown = g.shotCooldown
+      if (k.has(' ') && g.cooldown<=0) {
+        g.shots.push({x:g.x+Math.cos(g.angle)*18,y:g.y+Math.sin(g.angle)*18,
+          vx:g.vx+Math.cos(g.angle)*480,vy:g.vy+Math.sin(g.angle)*480,life:1.2})
+        g.cooldown=.17
       }
-      g.shots = g.shots.filter(s => { s.x+=s.vx*dt; s.y+=s.vy*dt; s.life-=dt; return s.life>0&&s.x>=0&&s.x<=BASE_W&&s.y>=0&&s.y<=BASE_H })
-      for (const rock of g.rocks) { rock.x=(rock.x+rock.vx*dt+BASE_W)%BASE_W; rock.y=(rock.y+rock.vy*dt+BASE_H)%BASE_H }
-      let kills = 0
-      for (let i=g.rocks.length-1; i>=0; i--) {
-        const rock = g.rocks[i]; if (!rock) continue
-        const shotIndex = g.shots.findIndex(s => (s.x-rock.x)**2+(s.y-rock.y)**2 < (rock.radius+3)**2)
-        if (shotIndex >= 0) {
-          const shot = g.shots[shotIndex]
-          if ((shot.pierce || 0) > 0) shot.pierce = (shot.pierce || 0) - 1
-          else g.shots.splice(shotIndex,1)
-          g.rocks.splice(i,1)
-          g.score += 20; kills += rock.radius > 23 ? 2 : 1
-          setScore(g.score)
-          continue
+      g.shots=g.shots.filter(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;return s.life>0&&s.x>=0&&s.x<=BASE_W&&s.y>=0&&s.y<=BASE_H})
+      for(const rock of g.rocks){rock.x=(rock.x+rock.vx*dt+BASE_W)%BASE_W;rock.y=(rock.y+rock.vy*dt+BASE_H)%BASE_H}
+      for(let i=g.rocks.length-1;i>=0;i--){
+        const rock=g.rocks[i];if(!rock)continue
+        const hit=g.shots.findIndex(s=>(s.x-rock.x)**2+(s.y-rock.y)**2<(rock.radius+3)**2)
+        if(hit>=0){g.shots.splice(hit,1);g.rocks.splice(i,1);g.score+=20;setScore(g.score);continue}
+        if(g.invulnerable<=0&&(g.x-rock.x)**2+(g.y-rock.y)**2<(rock.radius+13)**2){
+          g.lives--;setLives(g.lives);g.invulnerable=2;g.x=360;g.y=210;g.vx=0;g.vy=0
         }
-        if (g.invulnerable<=0 && (g.x-rock.x)**2+(g.y-rock.y)**2<(rock.radius+13)**2) {
-          g.lives--; setLives(g.lives); g.invulnerable=g.shieldTime
-          g.x=360;g.y=210;g.vx=0;g.vy=0
-        }
-      }
-      if (kills) {
-        g.xp += Math.max(1,Math.round(kills*g.xpBonus))
-        const need = experienceForNextLevel(g.level)
-        if (g.xp >= need && g.lives > 0) {
-          const choices = drawSurvivorUpgrades('asteroids', levelsOwned.current)
-          if (choices.length) {
-            g.xp -= need; g.level++
-            setLevel(g.level); upgrading.current = true; setUpgradeOffer(choices)
-          }
-        }
-        setXp(g.xp)
       }
       frame(ctx)
       ctx.strokeStyle='#b7c8dc';ctx.lineWidth=2
-      for (const rock of g.rocks) {ctx.beginPath();ctx.arc(rock.x,rock.y,rock.radius,0,Math.PI*2);ctx.stroke()}
-      ctx.fillStyle='#f0c88f';for (const shot of g.shots) {ctx.beginPath();ctx.arc(shot.x,shot.y,3,0,Math.PI*2);ctx.fill()}
-      if(g.invulnerable<=0||Math.floor(g.invulnerable*7)%2===0){ctx.save();ctx.translate(g.x,g.y);ctx.rotate(g.angle+Math.PI/2);ctx.beginPath();ctx.moveTo(0,-17);ctx.lineTo(12,14);ctx.lineTo(0,8);ctx.lineTo(-12,14);ctx.closePath();ctx.strokeStyle='#8de4ff';ctx.lineWidth=3;ctx.stroke();ctx.restore()}
+      for(const rock of g.rocks){ctx.beginPath();ctx.arc(rock.x,rock.y,rock.radius,0,Math.PI*2);ctx.stroke()}
+      ctx.fillStyle='#f0c88f';for(const shot of g.shots){ctx.beginPath();ctx.arc(shot.x,shot.y,3,0,Math.PI*2);ctx.fill()}
+      if(g.invulnerable<=0||Math.floor(g.invulnerable*7)%2===0){
+        ctx.save();ctx.translate(g.x,g.y);ctx.rotate(g.angle+Math.PI/2);ctx.beginPath()
+        ctx.moveTo(0,-17);ctx.lineTo(12,14);ctx.lineTo(0,8);ctx.lineTo(-12,14);ctx.closePath()
+        ctx.strokeStyle='#8de4ff';ctx.lineWidth=3;ctx.stroke();ctx.restore()
+      }
       if(g.lives<=0){if(!g.ended){g.ended=true;onFinish(g.score)};return}
-      if (!upgrading.current) id=requestAnimationFrame(tick)
+      id=requestAnimationFrame(tick)
     }
-    const onResize = () => prepareArcadeCanvas(element)
-    window.addEventListener('resize', onResize)
-    document.addEventListener('fullscreenchange', onResize)
+    const resize=()=>prepareArcadeCanvas(element)
+    window.addEventListener('resize',resize)
+    document.addEventListener('fullscreenchange',resize)
     id=requestAnimationFrame(tick)
-    return () => { cancelAnimationFrame(id); window.removeEventListener('resize', onResize); document.removeEventListener('fullscreenchange', onResize) }
-  }, [onFinish,paused,upgradeOffer])
-
-  const control = (key: string, down: boolean) => { if (paused || upgrading.current) return; if (down) keys.current.add(key); else keys.current.delete(key) }
-  const finish = () => { if (game.current.ended || paused || upgrading.current) return; game.current.ended=true; onFinish(game.current.score) }
-  return <div className="hb-mini-inner hb-survivor-game hb-asteroids-v202">
-    <div className="hb-mini-hud"><strong>🚀 {score} pontos</strong><span>{'♥'.repeat(lives)}{'♡'.repeat(Math.max(0,maxLives-lives))} · Gire, acelere e atire com Espaço</span></div>
-    <SurvivorExperience level={level} xp={xp} next={experienceForNextLevel(level)} count={Object.values(upgradeRanks).reduce((sum,n)=>sum+(n||0),0)} />
-    <canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} aria-label="Asteroids: setas ou A D para girar, W acelerar e Espaço atirar" />
-    <div className="hb-mini-pad">{[['↶','arrowleft'],['↑','arrowup'],['↷','arrowright'],['◎',' ']].map(([label,key])=><button key={key} type="button" disabled={paused||!!upgradeOffer} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);control(key,true)}} onPointerUp={()=>control(key,false)} onPointerCancel={()=>control(key,false)} onPointerLeave={()=>control(key,false)}>{label}</button>)}</div>
-    <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused||game.current.ended||!!upgradeOffer} onClick={finish}>✓ Encerrar e registrar {score} pontos</button>
-    {upgradeOffer && <SurvivorUpgradeChoice game="asteroids" level={level} choices={upgradeOffer} ranks={upgradeRanks} onChoose={chooseUpgrade} />}
+    return ()=>{cancelAnimationFrame(id);window.removeEventListener('resize',resize);document.removeEventListener('fullscreenchange',resize)}
+  },[onFinish,paused])
+  const control=(key:string,down:boolean)=>{if(paused)return;if(down)keys.current.add(key);else keys.current.delete(key)}
+  const finish=()=>{if(game.current.ended||paused)return;game.current.ended=true;onFinish(game.current.score)}
+  return <div className="hb-mini-inner hb-asteroids-classic">
+    <div className="hb-mini-hud"><strong>🚀 {score} pontos</strong><span>{'♥'.repeat(lives)}{'♡'.repeat(Math.max(0,3-lives))} · Gire, acelere e atire com Espaço</span></div>
+    <canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} aria-label="Asteroids clássico: setas ou A D para girar, W acelerar e Espaço atirar" />
+    <div className="hb-mini-pad">{[['↶','arrowleft'],['↑','arrowup'],['↷','arrowright'],['◎',' ']].map(([label,key])=><button key={key} type="button" disabled={paused} onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);control(key,true)}} onPointerUp={()=>control(key,false)} onPointerCancel={()=>control(key,false)} onPointerLeave={()=>control(key,false)}>{label}</button>)}</div>
+    <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused||game.current.ended} onClick={finish}>✓ Encerrar e registrar {score} pontos</button>
   </div>
 }
 
-type Pipe={x:number;gap:number;passed:boolean}
+type Pipe = { x:number; gap:number; passed:boolean }
+
 export function FlappyGame({onFinish,paused=false}:ArcadeGameProps){
   const canvas=useRef<HTMLCanvasElement>(null)
   const flap=useRef(false)
@@ -457,8 +406,10 @@ export function FlappyGame({onFinish,paused=false}:ArcadeGameProps){
   return <div className="hb-mini-inner"><div className="hb-mini-hud"><strong>🪽 {score} pontos</strong><span>Espaço / ↑ / toque para voar entre obstáculos</span></div><canvas className="hb-mini-canvas" ref={canvas} width={BASE_W} height={BASE_H} onPointerDown={()=>{if(!paused)flap.current=true}} aria-label="Voo Infinito: toque ou pressione Espaço para voar"/><div className="hb-mini-pad"><button type="button" disabled={paused} onPointerDown={()=>{if(!paused)flap.current=true}}>↑ Voar</button></div><button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || game.current.ended} onClick={finish}>✓ Encerrar e registrar {score} pontos</button></div>
 }
 
-type EnemyKind = 'runner' | 'stalker' | 'brute'
-type Enemy = { id: number; x: number; y: number; speed: number; radius: number; hp: number; maxHp: number; kind: EnemyKind }
+type EnemyKind = 'runner' | 'stalker' | 'brute' | 'elite'
+type Enemy = { id: number; x: number; y: number; speed: number; radius: number; hp: number; maxHp: number; kind: EnemyKind; flash?: number }
+type ArenaDrop = { x: number; y: number; kind: 'xp' | 'heart'; value: number; age: number }
+type ArenaSpark = { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string }
 type ArenaCamera = { x: number; y: number }
 
 // O mapa existe em coordenadas do mundo, sem paredes. Apenas a janela de 720×420
@@ -549,7 +500,7 @@ function drawArenaRadar(ctx: CanvasRenderingContext2D, x: number, y: number, ene
   for (const enemy of enemies) {
     const dx = enemy.x - x, dy = enemy.y - y
     if (Math.abs(dx) > radius || Math.abs(dy) > radius) continue
-    ctx.fillStyle = enemy.kind === 'brute' ? '#ce91d2' : '#e88d98'
+    ctx.fillStyle = enemy.kind === 'elite' ? '#f8cf74' : enemy.kind === 'brute' ? '#ce91d2' : '#e88d98'
     ctx.fillRect(rx + size / 2 + dx / radius * 45 - 1.5, ry + size / 2 + dy / radius * 45 - 1.5, 3, 3)
   }
   ctx.fillStyle = '#91e5fb'; ctx.beginPath(); ctx.arc(rx + size / 2, ry + size / 2, 3.5, 0, Math.PI * 2); ctx.fill()
@@ -560,6 +511,7 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const keys = useRef(new Set<string>())
   const upgrading = useRef(false)
+  const dashRequest = useRef(false)
   const levelsOwned = useRef<Partial<Record<SurvivorUpgradeId, number>>>({})
   const pointer = useRef<{ x: number; y: number } | null>(null)
   const firing = useRef(false)
@@ -567,24 +519,30 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
   const camera = useRef<ArenaCamera>({ x: 0, y: 0 })
   const game = useRef({ x: 0, y: 0, health: 3, maxHealth: 3, score: 0, wave: 1, spawn: .7, shoot: 0, seconds: 0,
     invulnerable: 1.5, ended: false, enemies: [] as Enemy[], shots: [] as Shot[], hitFlash: 0,
-    distance: 0, hudTimer: 0, nextEnemyId: 1,
+    distance: 0, hudTimer: 0, nextEnemyId: 1, kills: 0, eliteSpawnedWave: 0,
+    drops: [] as ArenaDrop[], sparks: [] as ArenaSpark[],
+    dashCooldown: 0, dashMaxCooldown: 5.5, dashFlash: 0, dashFromX: 0, dashFromY: 0,
     level: 1, xp: 0, shootDelay: .235, volley: 1, damage: 1, pierce: 0, moveSpeed: 198,
-    bulletSpeed: 525, bulletLife: .95, regenInterval: Infinity, regenTimer: Infinity })
+    bulletSpeed: 525, bulletLife: .95, regenInterval: Infinity, regenTimer: Infinity,
+    pickupRadius: 25, criticalChance: 0 })
   const [score, setScore] = useState(0), [health, setHealth] = useState(3), [wave, setWave] = useState(1)
   const [shooting, setShooting] = useState(false)
+  const [dashDisplay, setDashDisplay] = useState(0)
+  const [defeated, setDefeated] = useState(0)
   const [maxHealth, setMaxHealth] = useState(3)
   const [level, setLevel] = useState(1)
   const [xp, setXp] = useState(0)
   const [upgradeOffer, setUpgradeOffer] = useState<SurvivorUpgrade[] | null>(null)
   const [upgradeRanks, setUpgradeRanks] = useState<Partial<Record<SurvivorUpgradeId, number>>>({})
   const [position, setPosition] = useState({ x: 0, y: 0, distance: 0 })
-  useArcadeKeyboard(['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd', ' ', 'j'], (key, down) => {
+  useArcadeKeyboard(['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd', ' ', 'j', 'shift'], (key, down) => {
     if (paused || upgrading.current) return
+    if (key === 'shift' && down && !keys.current.has('shift')) dashRequest.current = true
     if (down) keys.current.add(key); else keys.current.delete(key)
   })
-  useEffect(() => { if (paused || upgradeOffer) { keys.current.clear(); firing.current = false; setShooting(false) } }, [paused, upgradeOffer])
+  useEffect(() => { if (paused || upgradeOffer) { keys.current.clear(); firing.current = false; dashRequest.current = false; setShooting(false) } }, [paused, upgradeOffer])
   useEffect(() => {
-    const clear = () => { keys.current.clear(); firing.current = false; setShooting(false) }
+    const clear = () => { keys.current.clear(); firing.current = false; dashRequest.current = false; setShooting(false) }
     window.addEventListener('blur', clear)
     return () => window.removeEventListener('blur', clear)
   }, [])
@@ -603,6 +561,9 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
       case 'arena_vigor': g.maxHealth++; g.health = Math.min(g.maxHealth,g.health+1); setHealth(g.health); setMaxHealth(g.maxHealth); break
       case 'arena_range': g.bulletSpeed *= 1.1; g.bulletLife += .13; break
       case 'arena_recovery': g.regenInterval = Math.max(14,32-rank*4); g.regenTimer = g.regenInterval; break
+      case 'arena_magnet': g.pickupRadius += 25; break
+      case 'arena_dash': g.dashMaxCooldown = Math.max(1.8, g.dashMaxCooldown - .65); g.dashCooldown = Math.min(g.dashCooldown,g.dashMaxCooldown); break
+      case 'arena_critical': g.criticalChance = Math.min(.5, g.criticalChance + .1); break
     }
     upgrading.current = false
     setUpgradeOffer(null)
@@ -623,17 +584,40 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
       if (dx || dy) lastDirection.current = { x: dx / len, y: dy / len }
       const vxMove = dx / len * g.moveSpeed * dt, vyMove = dy / len * g.moveSpeed * dt
       g.x += vxMove; g.y += vyMove; g.distance += Math.hypot(vxMove, vyMove)
+      g.dashCooldown = Math.max(0, g.dashCooldown - dt)
+      g.dashFlash = Math.max(0, g.dashFlash - dt)
+      if (dashRequest.current) {
+        dashRequest.current = false
+        if (g.dashCooldown <= 0) {
+          const dashDirection = dx || dy ? { x: dx / len, y: dy / len } : lastDirection.current
+          g.dashFromX = g.x; g.dashFromY = g.y
+          g.x += dashDirection.x * 135; g.y += dashDirection.y * 135; g.distance += 135
+          g.dashFlash = .34; g.dashCooldown = g.dashMaxCooldown
+          g.invulnerable = Math.max(g.invulnerable, .36)
+        }
+      }
       // A câmera segue suavemente o personagem. Coordenadas do mundo não são limitadas.
       const follow = 1 - Math.exp(-10 * dt)
       cam.x += (g.x - cam.x) * follow; cam.y += (g.y - cam.y) * follow
       g.hudTimer -= dt
       if (g.hudTimer <= 0) {
         setPosition({ x: Math.round(g.x / 10), y: Math.round(g.y / 10), distance: Math.floor(g.distance / 10) })
-        g.hudTimer = .4
+        setDashDisplay(Math.ceil(g.dashCooldown * 10) / 10)
+        g.hudTimer = .2
       }
       g.seconds += dt
       const nextWave = 1 + Math.floor(g.seconds / 13)
-      if (nextWave !== g.wave) { g.wave = nextWave; setWave(nextWave) }
+      if (nextWave !== g.wave) {
+        g.wave = nextWave; setWave(nextWave)
+        // Um inimigo de elite aparece a cada cinco ondas, fora da câmera.
+        if (nextWave % 5 === 0 && g.eliteSpawnedWave !== nextWave && g.enemies.length < 130) {
+          g.eliteSpawnedWave = nextWave
+          const angle = Math.random() * Math.PI * 2
+          const eliteHp = 6 + Math.ceil(nextWave * 1.15)
+          g.enemies.push({ id:g.nextEnemyId++, x:g.x + Math.cos(angle)*520, y:g.y + Math.sin(angle)*520,
+            speed:Math.min(165,48+nextWave*3),radius:30,hp:eliteHp,maxHp:eliteHp,kind:'elite' })
+        }
+      }
       g.spawn -= dt; g.shoot -= dt; g.invulnerable -= dt; g.hitFlash -= dt
       if (Number.isFinite(g.regenInterval)) {
         g.regenTimer -= dt
@@ -650,7 +634,7 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
           const kind: EnemyKind = (g.wave >= 3 && rand(6) === 0) ? 'brute' : rand(4) === 0 ? 'runner' : 'stalker'
           const enemyRadius = kind === 'brute' ? 20 : kind === 'runner' ? 10 : 13
           g.enemies.push({ id: g.nextEnemyId++, x: g.x + Math.cos(angle) * radius, y: g.y + Math.sin(angle) * radius,
-            speed: (kind === 'runner' ? 106 : kind === 'brute' ? 45 : 69) + g.wave * (kind === 'brute' ? 5 : 11),
+            speed: Math.min(255,(kind === 'runner' ? 106 : kind === 'brute' ? 45 : 69) + g.wave * (kind === 'brute' ? 5 : 11)),
             radius: enemyRadius, hp: kind === 'brute' ? 3 : 1, maxHp: kind === 'brute' ? 3 : 1, kind })
         }
         g.spawn = Math.max(.24, .92 - g.wave * .085)
@@ -676,19 +660,20 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
         for (let i = 0; i < g.volley; i++) {
           const direction = angle + (i-(g.volley-1)/2)*.15
           const vx = Math.cos(direction), vy = Math.sin(direction)
+          const critical = Math.random() < g.criticalChance
           g.shots.push({ x:g.x+vx*18,y:g.y+vy*18,vx:vx*g.bulletSpeed,vy:vy*g.bulletSpeed,
-            life:g.bulletLife,damage:g.damage,pierce:g.pierce,hitIds:[] })
+            life:g.bulletLife,damage:g.damage*(critical?2:1),pierce:g.pierce,hitIds:[],critical })
         }
         g.shoot = g.shootDelay
       }
       for (const enemy of g.enemies) {
         const ox = g.x - enemy.x, oy = g.y - enemy.y, length = Math.hypot(ox, oy) || 1
         enemy.x += ox / length * enemy.speed * dt; enemy.y += oy / length * enemy.speed * dt
+        enemy.flash = Math.max(0,(enemy.flash || 0)-dt)
       }
       // Apenas inimigos absurdamente distantes são descartados (quando se foge de uma horda).
       g.enemies = g.enemies.filter(e => { const dx = e.x - g.x, dy = e.y - g.y; return dx * dx + dy * dy < 1250 * 1250 })
       g.shots = g.shots.filter(s => { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; return s.life > 0 })
-      let killsXp = 0
       for (let i = g.enemies.length - 1; i >= 0; i--) {
         const enemy = g.enemies[i]; if (!enemy) continue
         const hit = g.shots.findIndex(s => {
@@ -702,12 +687,26 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
           if ((shot.pierce || 0) > 0) shot.pierce = (shot.pierce || 0) - 1
           else g.shots.splice(hit,1)
           enemy.hp -= shot.damage || 1
-          g.hitFlash = .09
+          enemy.flash = .13
           if (enemy.hp <= 0) {
             g.enemies.splice(i,1)
-            g.score += enemy.kind === 'brute' ? 30 : enemy.kind === 'runner' ? 15 : 10
-            killsXp += enemy.kind === 'brute' ? 3 : enemy.kind === 'runner' ? 2 : 1
+            g.score += enemy.kind === 'elite' ? 60 : enemy.kind === 'brute' ? 30 : enemy.kind === 'runner' ? 15 : 10
+            g.kills++
             setScore(g.score)
+            setDefeated(g.kills)
+            const xpValue = arenaExperienceDrop(enemy.kind)
+            g.drops.push({ x:enemy.x,y:enemy.y,kind:'xp',value:xpValue,age:0 })
+            if (enemy.kind === 'elite' || Math.random() < .025) {
+              g.drops.push({ x:enemy.x + 11,y:enemy.y - 8,kind:'heart',value:1,age:0 })
+            }
+            if (g.drops.length > 220) g.drops.splice(0,g.drops.length - 220)
+            const color = enemy.kind === 'elite' ? '#f8d27a' : '#f0a5bb'
+            const sparks = enemy.kind === 'elite' ? 16 : 7
+            for (let s=0;s<sparks;s++) {
+              const a=Math.random()*Math.PI*2, v=45+Math.random()*120
+              g.sparks.push({x:enemy.x,y:enemy.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.45+Math.random()*.3,maxLife:.8,color})
+            }
+            if (g.sparks.length > 110) g.sparks.splice(0,g.sparks.length-110)
             continue
           }
         }
@@ -715,18 +714,37 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
           g.health--; setHealth(g.health); g.invulnerable=1.05; g.enemies.splice(i,1); g.hitFlash=.28
         }
       }
-      if (killsXp) {
-        g.xp += killsXp
-        const needed = experienceForNextLevel(g.level)
-        if (g.xp >= needed && g.health > 0) {
-          const choices = drawSurvivorUpgrades('arena', levelsOwned.current)
-          if (choices.length) {
-            g.xp -= needed; g.level++
-            setLevel(g.level); upgrading.current=true; setUpgradeOffer(choices)
-          }
+      // Cristais ficam no chão até o jogador recolher, como em um survivor.
+      // O upgrade Ímã de essência aumenta a distância de atração.
+      let collectedXp = 0
+      for (let i=g.drops.length-1;i>=0;i--) {
+        const drop=g.drops[i]
+        drop.age += dt
+        let offsetX=g.x-drop.x, offsetY=g.y-drop.y
+        const distance=Math.hypot(offsetX,offsetY)
+        if (drop.age > 80 || distance > 1500) { g.drops.splice(i,1); continue }
+        if (distance > 0 && distance < g.pickupRadius*3) {
+          const speed = (145 + g.pickupRadius*2) * dt
+          const ratio = Math.min(1,speed/distance)
+          drop.x += offsetX*ratio; drop.y += offsetY*ratio
+          offsetX=g.x-drop.x; offsetY=g.y-drop.y
         }
-        setXp(g.xp)
+        if (offsetX*offsetX + offsetY*offsetY < g.pickupRadius*g.pickupRadius) {
+          if (drop.kind === 'xp') collectedXp += drop.value
+          else if (g.health < g.maxHealth) { g.health++; setHealth(g.health) }
+          g.drops.splice(i,1)
+        }
       }
+      if (collectedXp) { g.xp += collectedXp; setXp(g.xp) }
+      const needed = experienceForNextLevel(g.level)
+      if (g.xp >= needed && g.health > 0 && !upgrading.current) {
+        const choices=drawSurvivorUpgrades('arena',levelsOwned.current)
+        if (choices.length) {
+          g.xp -= needed; g.level++
+          setXp(g.xp); setLevel(g.level); upgrading.current=true; setUpgradeOffer(choices)
+        }
+      }
+      g.sparks = g.sparks.filter(s => { s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;return s.life>0 })
       drawArenaWorld(ctx, cam)
       ctx.save()
       // Objetos do jogo são desenhados depois do chão usando a projeção mundo → tela.
@@ -735,21 +753,51 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
         if (x < -32 || y < -32 || x > BASE_W + 32 || y > BASE_H + 32) continue
         ctx.fillStyle = '#00000036'; ctx.beginPath(); ctx.ellipse(x, y + enemy.radius * .6, enemy.radius * .85, enemy.radius * .4, 0, 0, Math.PI * 2); ctx.fill()
         ctx.beginPath(); ctx.arc(x, y, enemy.radius, 0, Math.PI * 2)
-        ctx.fillStyle = enemy.kind === 'brute' ? '#986491' : enemy.kind === 'runner' ? '#f1ac7b' : '#cf829b'; ctx.fill()
-        ctx.strokeStyle = enemy.kind === 'brute' ? '#e7c4ec' : '#fae5e8'; ctx.lineWidth = 1.5; ctx.stroke()
-        if (enemy.kind === 'brute') {
-          ctx.fillStyle = '#1a1d27'; ctx.fillRect(x - 12, y - enemy.radius - 9, 24, 3)
-          ctx.fillStyle = '#e9d2ee'; ctx.fillRect(x - 12, y - enemy.radius - 9, 24 * (enemy.hp / enemy.maxHp), 3)
+        ctx.fillStyle = enemy.flash && enemy.flash>0 ? '#fff6db' : enemy.kind === 'elite' ? '#a87c43' : enemy.kind === 'brute' ? '#986491' : enemy.kind === 'runner' ? '#f1ac7b' : '#cf829b'; ctx.fill()
+        ctx.strokeStyle = enemy.kind === 'elite' ? '#ffe39d' : enemy.kind === 'brute' ? '#e7c4ec' : '#fae5e8'; ctx.lineWidth = enemy.kind === 'elite' ? 3 : 1.5; ctx.stroke()
+        if (enemy.kind === 'elite') {
+          ctx.strokeStyle='#f8d58999';ctx.lineWidth=1.5
+          ctx.beginPath();ctx.arc(x,y,enemy.radius+7+Math.sin(g.seconds*4)*3,0,Math.PI*2);ctx.stroke()
+        }
+        if (enemy.kind === 'brute' || enemy.kind === 'elite') {
+          const width=enemy.kind === 'elite'?56:24
+          ctx.fillStyle = '#1a1d27'; ctx.fillRect(x-width/2, y-enemy.radius-11, width, 4)
+          ctx.fillStyle = enemy.kind === 'elite'?'#eec677':'#e9d2ee'
+          ctx.fillRect(x-width/2, y-enemy.radius-11, width * (enemy.hp / enemy.maxHp), 4)
         }
       }
+      for (const drop of g.drops) {
+        const x=screenX(drop.x,cam),y=screenY(drop.y,cam)
+        if (x<-16 || x>BASE_W+16 || y<-16 || y>BASE_H+16) continue
+        const pulsate=1+Math.sin(g.seconds*6+drop.x)*.13
+        ctx.save();ctx.translate(x,y);ctx.scale(pulsate,pulsate)
+        ctx.shadowColor=drop.kind==='xp'?'#72dcba':'#f28a91';ctx.shadowBlur=10
+        ctx.fillStyle=drop.kind==='xp'?'#83f0c1':'#f99c9f'
+        if (drop.kind==='xp') { ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(5,0);ctx.lineTo(0,6);ctx.lineTo(-5,0);ctx.closePath();ctx.fill() }
+        else {ctx.font='15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('♥',0,0)}
+        ctx.restore()
+      }
+      for (const spark of g.sparks) {
+        const x=screenX(spark.x,cam),y=screenY(spark.y,cam)
+        if (x<-10||y<-10||x>BASE_W+10||y>BASE_H+10) continue
+        ctx.globalAlpha=Math.min(1,spark.life/spark.maxLife)
+        ctx.fillStyle=spark.color;ctx.fillRect(x-2,y-2,4,4)
+      }
+      ctx.globalAlpha=1
       for (const shot of g.shots) {
         const x = screenX(shot.x, cam), y = screenY(shot.y, cam)
         if (x < -10 || y < -10 || x > BASE_W + 10 || y > BASE_H + 10) continue
         ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2)
-        ctx.fillStyle = '#f5d78d'; ctx.shadowColor = '#e9bf65'; ctx.shadowBlur = 9; ctx.fill()
+        ctx.fillStyle = shot.critical?'#a1faff':'#f5d78d'; ctx.shadowColor = shot.critical?'#5fd9ff':'#e9bf65'; ctx.shadowBlur = shot.critical?15:9; ctx.fill()
       }
       ctx.shadowBlur = 0
       const px = screenX(g.x, cam), py = screenY(g.y, cam)
+      if (g.dashFlash > 0) {
+        ctx.save();ctx.globalAlpha=Math.min(.55,g.dashFlash*1.6)
+        ctx.strokeStyle='#91efff';ctx.lineWidth=8;ctx.lineCap='round'
+        ctx.beginPath();ctx.moveTo(screenX(g.dashFromX,cam),screenY(g.dashFromY,cam));ctx.lineTo(px,py);ctx.stroke()
+        ctx.restore()
+      }
       ctx.globalAlpha = .55
       ctx.beginPath(); ctx.moveTo(px + aimX * 16, py + aimY * 16); ctx.lineTo(px + aimX * 42, py + aimY * 42)
       ctx.strokeStyle = '#a3e7ff'; ctx.lineWidth = 2; ctx.stroke()
@@ -783,10 +831,10 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
   const aimAt = (e: ReactPointerEvent<HTMLCanvasElement>) => { pointer.current = canvasPointer(e) }
   const setFire = (down: boolean) => { firing.current = down && !paused && !upgrading.current; setShooting(firing.current) }
   return <div className="hb-mini-inner hb-arena-v191 hb-arena-v193 hb-survivor-game">
-    <div className="hb-mini-hud"><strong>⚔️ {score} pontos</strong><span>{'♥'.repeat(health)}{'♡'.repeat(Math.max(0,maxHealth-health))} · Onda {wave} · {wave >= 4 ? 'Horda intensa' : 'Prepare sua mira'}</span></div>
+    <div className="hb-mini-hud"><strong>⚔️ {score} pontos</strong><span>{'♥'.repeat(health)}{'♡'.repeat(Math.max(0,maxHealth-health))} · Onda {wave} · ☠ {defeated} derrotados</span></div>
     <SurvivorExperience level={level} xp={xp} next={experienceForNextLevel(level)} count={Object.values(upgradeRanks).reduce((sum,n)=>sum+(n||0),0)} />
     <div className="hb-arena-world-info"><span>♾️ <strong>Mundo sem bordas</strong></span><span>🧭 X {position.x} · Y {position.y}</span><span>👣 {position.distance} m percorridos</span></div>
-    <div className="hb-arena-tip">🗺️ <strong>Explore livremente:</strong> o cenário rola junto com você e novos inimigos surgem ao redor da câmera. Mova-se com WASD/setas; mire com o mouse e clique, Espaço ou J para atirar. No celular, use as setas e segure <strong>ATIRAR</strong>.</div>
+    <div className="hb-arena-tip">💎 Recolha cristais verdes para ganhar XP. Cada novo nível exige mais experiência; elites rendem cristais melhores. Encontre corações para recuperar vida e enfrente elites a cada 5 ondas. Mova-se com WASD/setas, mire com o mouse, atire com clique/Espaço/J e use <strong>Shift para esquivar</strong>. No celular, use ATIRAR e ESQUIVA.</div>
     <canvas className="hb-mini-canvas hb-arena-canvas" ref={canvas} width={BASE_W} height={BASE_H}
       onPointerMove={e => { if (!paused && !upgrading.current) aimAt(e) }}
       onPointerDown={e => { if (paused || upgrading.current) return; aimAt(e); setFire(true); e.currentTarget.setPointerCapture(e.pointerId) }}
@@ -794,7 +842,7 @@ export function ArenaGame({ onFinish, paused = false }: ArcadeGameProps) {
       onPointerCancel={() => setFire(false)}
       onPointerLeave={e => { if (e.pointerType === 'mouse') { setFire(false); pointer.current = null } }}
       aria-label="Arena Infinita: mundo explorável sem limites, câmera seguindo o jogador. WASD/setas para mover, mouse para mirar e clique, Espaço ou J para atirar" />
-    <div className="hb-mini-pad hb-mini-arena-pad">{[['←', 'arrowleft'], ['↑', 'arrowup'], ['↓', 'arrowdown'], ['→', 'arrowright']].map(([label, key]) => <button key={key} type="button" disabled={paused || !!upgradeOffer} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); control(key, true) }} onPointerUp={() => control(key, false)} onPointerCancel={() => control(key, false)} onPointerLeave={() => control(key, false)}>{label}</button>)}<button type="button" className={`hb-mini-fire ${shooting ? 'is-firing' : ''}`} disabled={paused || !!upgradeOffer} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); setFire(true) }} onPointerUp={() => setFire(false)} onPointerCancel={() => setFire(false)} onPointerLeave={() => setFire(false)}>⌖ ATIRAR</button></div>
+    <div className="hb-mini-pad hb-mini-arena-pad">{[['←', 'arrowleft'], ['↑', 'arrowup'], ['↓', 'arrowdown'], ['→', 'arrowright']].map(([label, key]) => <button key={key} type="button" disabled={paused || !!upgradeOffer} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); control(key, true) }} onPointerUp={() => control(key, false)} onPointerCancel={() => control(key, false)} onPointerLeave={() => control(key, false)}>{label}</button>)}<button type="button" className={`hb-mini-fire ${shooting ? 'is-firing' : ''}`} disabled={paused || !!upgradeOffer} onPointerDown={e => { e.currentTarget.setPointerCapture(e.pointerId); setFire(true) }} onPointerUp={() => setFire(false)} onPointerCancel={() => setFire(false)} onPointerLeave={() => setFire(false)}>⌖ ATIRAR</button><button type="button" className="hb-mini-dash" disabled={paused || !!upgradeOffer || dashDisplay>0} onPointerDown={() => { if (!paused && !upgrading.current) dashRequest.current=true }}>➟ {dashDisplay>0?`ESQUIVA ${dashDisplay.toFixed(1)}s`:'ESQUIVA'}</button></div>
     <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || game.current.ended || !!upgradeOffer} onClick={() => { if (game.current.ended) return; game.current.ended = true; onFinish(game.current.score) }}>✓ Encerrar e registrar {score} pontos</button>
     {upgradeOffer && <SurvivorUpgradeChoice game="arena" level={level} choices={upgradeOffer} ranks={upgradeRanks} onChoose={chooseUpgrade} />}
   </div>
