@@ -93,7 +93,20 @@ export function Game2048({ onFinish, paused = false }: ArcadeGameProps) {
     if(Math.max(Math.abs(dx),Math.abs(dy))<25)return
     play(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'))
   }
-  return <div className="hb-mini-inner hb-puzzle"><div className="hb-mini-hud"><strong>🔢 {score.toLocaleString('pt-BR')} pontos</strong><span>{moves} movimentos · Maior peça: {Math.max(...board)} · Sem limite de peças · Deslize ou use as setas</span></div><div className="hb-2048-board" role="grid" aria-label="Tabuleiro 2048" onPointerDown={event=>{swipeStart.current={x:event.clientX,y:event.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{board.map((tile, index) => <div role="gridcell" key={index} className={`hb-2048-tile ${tile ? 'has-value' : ''}`} data-value={Math.min(tile, 2048)}>{tile || ''}</div>)}</div><div className="hb-mini-pad"><button type="button" disabled={paused||finished} onClick={()=>play('left')}>←</button><button type="button" disabled={paused||finished} onClick={()=>play('up')}>↑</button><button type="button" disabled={paused||finished} onClick={()=>play('down')}>↓</button><button type="button" disabled={paused||finished} onClick={()=>play('right')}>→</button></div><button type="button" className="hb-mini-finish" disabled={paused||finished} onClick={finish}>✓ Encerrar e registrar {score} pontos</button></div>
+  const largestTile = Math.max(...board)
+  return <div className="hb-mini-inner hb-puzzle hb-v207-game hb-v207-2048">
+    <header className="hb-v207-scorebar" aria-label="Placar do 2048">
+      <div className="hb-v207-score-primary"><span className="hb-v207-score-icon" aria-hidden="true">✦</span><div><small>PONTUAÇÃO</small><strong>{score.toLocaleString('pt-BR')}<em>pts</em></strong></div></div>
+      <div className="hb-v207-score-stats"><div><small>MAIOR PEÇA</small><strong>{largestTile.toLocaleString('pt-BR')}</strong></div><div><small>MOVIMENTOS</small><strong>{moves.toLocaleString('pt-BR')}</strong></div></div>
+    </header>
+    <div className="hb-v207-board-frame hb-v207-2048-frame">
+      <div className="hb-v207-board-heading"><span><i aria-hidden="true"/> FUSÃO NUMÉRICA</span><small>COMBINE AS PEÇAS · VÁ ALÉM DE 2048</small></div>
+      <div className="hb-2048-board" role="grid" aria-label="Tabuleiro 2048, quatro por quatro" onPointerDown={event=>{swipeStart.current={x:event.clientX,y:event.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{board.map((tile, index) => <div role="gridcell" key={`${index}-${tile}`} className={`hb-2048-tile ${tile ? 'has-value' : ''}`} data-value={Math.min(tile, 2048)} data-high-tile={tile > 2048 ? 'true' : undefined} aria-label={tile ? `Peça ${tile}` : 'Espaço vazio'}>{tile ? tile.toLocaleString('pt-BR') : ''}</div>)}</div>
+      <div className="hb-v207-board-foot"><span>✦ UNA NÚMEROS IGUAIS</span><span>SEM LIMITE DE VALOR</span></div>
+    </div>
+    <div className="hb-v207-controls"><p>Use as <kbd>setas</kbd>, <kbd>WASD</kbd> ou deslize para combinar peças</p><div className="hb-mini-pad hb-v207-direction-pad" role="group" aria-label="Controles do 2048"><button data-dir="up" type="button" aria-label="Cima" disabled={paused||finished} onClick={()=>play('up')}>↑</button><button data-dir="left" type="button" aria-label="Esquerda" disabled={paused||finished} onClick={()=>play('left')}>←</button><button data-dir="down" type="button" aria-label="Baixo" disabled={paused||finished} onClick={()=>play('down')}>↓</button><button data-dir="right" type="button" aria-label="Direita" disabled={paused||finished} onClick={()=>play('right')}>→</button></div></div>
+    <button type="button" className="hb-mini-finish hb-mini-end-run hb-v207-end-button" disabled={paused||finished} onClick={finish}>✓ Encerrar e registrar {score.toLocaleString('pt-BR')} pontos</button>
+  </div>
 }
 
 const MINE_SIZE = 9, MINE_TOTAL = 10
@@ -190,12 +203,25 @@ export function MinesweeperGame({ onFinish, paused = false }: ArcadeGameProps) {
     gridRef.current = next; setCells(next)
   }
   const flags = cells.filter(c => c.flagged).length
-  return <div className="hb-mini-inner hb-puzzle hb-mini-endless">
-    <div className="hb-mini-hud"><strong>💣 {score.toLocaleString('pt-BR')} pontos</strong><span>Rodada {round} · {mineCount - flags} minas restantes · ⏱ {elapsed}s</span></div>
-    <div className="hb-mine-tools"><button type="button" disabled={paused || ended || betweenRounds} className={flagsMode ? 'is-active' : ''} aria-pressed={flagsMode} onClick={() => setFlagsMode(f => !f)}>🚩 {flagsMode ? 'Modo bandeira ativo' : 'Ativar bandeira'}</button><span role="status">{message}</span></div>
-    <div className="hb-mine-board" role="grid" aria-label={`Campo Minado, rodada ${round}, tabuleiro 9 por 9`}>{cells.map((cell, i) => <button type="button" role="gridcell" disabled={paused || ended || betweenRounds} key={i} className={`${cell.opened ? 'opened' : ''} ${cell.mine ? 'mine' : ''}`} data-adjacent={cell.adjacent} onClick={() => play(i, flagsMode)} onContextMenu={(event: ReactMouseEvent) => { event.preventDefault(); play(i, true) }} aria-label={`Casa ${i + 1}: ${cell.opened ? cell.mine ? 'mina' : cell.adjacent + ' minas próximas' : cell.flagged ? 'bandeira' : 'fechada'}`}>{cell.opened ? cell.mine ? '💥' : cell.adjacent || '' : cell.flagged ? '🚩' : ''}</button>)}</div>
+  const safeOpened = cells.filter(c => c.opened && !c.mine).length
+  const safeTotal = MINE_SIZE * MINE_SIZE - mineCount
+  return <div className="hb-mini-inner hb-puzzle hb-mini-endless hb-v207-game hb-v207-mines">
+    <header className="hb-v207-scorebar" aria-label="Placar do Campo Minado">
+      <div className="hb-v207-score-primary"><span className="hb-v207-score-icon" aria-hidden="true">⚑</span><div><small>PONTUAÇÃO TOTAL</small><strong>{score.toLocaleString('pt-BR')}<em>pts</em></strong></div></div>
+      <div className="hb-v207-score-stats"><div><small>RODADA</small><strong>{String(round).padStart(2, '0')}</strong></div><div><small>MINAS</small><strong>{mineCount - flags}</strong></div><div><small>TEMPO</small><strong>{elapsed}s</strong></div></div>
+    </header>
+    <div className="hb-v207-mines-panel">
+      <div className="hb-v207-mines-status"><span>CASAS SEGURAS <b>{safeOpened}/{safeTotal}</b></span><div className="hb-v207-mines-progress" role="progressbar" aria-label="Casas seguras abertas" aria-valuenow={safeOpened} aria-valuemin={0} aria-valuemax={safeTotal}><span style={{ width: `${safeOpened / safeTotal * 100}%` }}/></div></div>
+      <div className="hb-v207-mine-modes" role="group" aria-label="Ferramenta de marcação"><button type="button" className={!flagsMode ? 'is-active' : ''} aria-pressed={!flagsMode} disabled={paused || ended || betweenRounds} onClick={() => setFlagsMode(false)}>⌖ <span>Revelar</span></button><button type="button" className={flagsMode ? 'is-active' : ''} aria-pressed={flagsMode} disabled={paused || ended || betweenRounds} onClick={() => setFlagsMode(true)}>🚩 <span>Bandeira</span></button></div>
+    </div>
+    <div className="hb-v207-board-frame hb-v207-mines-frame">
+      <div className="hb-v207-board-heading"><span><i aria-hidden="true"/> CAMPO DE EXPLORAÇÃO</span><small>9 × 9 · PRIMEIRO CLIQUE SEGURO</small></div>
+      <div className="hb-mine-board" role="grid" aria-label={`Campo Minado, rodada ${round}, tabuleiro 9 por 9`}>{cells.map((cell, i) => <button type="button" role="gridcell" disabled={paused || ended || betweenRounds} key={i} className={`${cell.opened ? 'opened' : ''} ${cell.opened && cell.mine ? 'mine' : ''} ${cell.flagged ? 'flagged' : ''}`} data-adjacent={cell.adjacent} onClick={() => play(i, flagsMode)} onContextMenu={(event: ReactMouseEvent) => { event.preventDefault(); play(i, true) }} aria-label={`Casa ${i + 1}: ${cell.opened ? cell.mine ? 'mina' : cell.adjacent + ' minas próximas' : cell.flagged ? 'bandeira' : 'fechada'}`}>{cell.opened ? cell.mine ? '💥' : cell.adjacent || '' : cell.flagged ? '🚩' : ''}</button>)}</div>
+      <div className="hb-v207-board-foot"><span>⌖ CLIQUE PARA REVELAR</span><span>🚩 CLIQUE DIREITO PARA MARCAR</span></div>
+    </div>
+    <p className="hb-v207-mine-message" role="status">{message}</p>
     {betweenRounds && <p className="hb-mini-next-notice" role="status">✦ Campo concluído! Sua pontuação continua na próxima rodada.</p>}
-    <button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || ended} onClick={finish}>✓ Encerrar e registrar {score.toLocaleString('pt-BR')} pontos</button>
+    <button type="button" className="hb-mini-finish hb-mini-end-run hb-v207-end-button" disabled={paused || ended} onClick={finish}>✓ Encerrar e registrar {score.toLocaleString('pt-BR')} pontos</button>
   </div>
 }
 

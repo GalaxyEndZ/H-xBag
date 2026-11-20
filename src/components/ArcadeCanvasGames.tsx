@@ -136,7 +136,22 @@ export function SnakeGame({ onFinish, paused = false }: ArcadeGameProps) {
     else turn(0, Math.sign(dy))
   }
   const finish = () => { if (ended.current || paused) return; ended.current = true; onFinish(scoreRef.current) }
-  return <div className="hb-mini-inner"><div className="hb-mini-hud"><strong>🍎 {score} pontos</strong><span>Rodada {round} · {snake.length} segmentos · Velocidade {Math.floor(score/50)+1} · Setas, WASD ou deslize</span></div><div className="hb-snake-board" role="img" aria-label={`Jogo Snake, ${score} pontos`} onPointerDown={e=>{swipeStart.current={x:e.clientX,y:e.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = Math.floor(i / 20); const body = snakeCells.get(i) ?? -1; return <span key={i} className={`${body === 0 ? 'head' : body > 0 ? 'body' : ''} ${food.x === x && food.y === y ? 'fruit' : ''}`} /> })}</div><div className="hb-mini-pad" aria-label="Direção da serpente"><button type="button" disabled={paused} onClick={() => turn(-1, 0)}>←</button><button type="button" disabled={paused} onClick={() => turn(0, -1)}>↑</button><button type="button" disabled={paused} onClick={() => turn(0, 1)}>↓</button><button type="button" disabled={paused} onClick={() => turn(1, 0)}>→</button></div><button type="button" className="hb-mini-finish hb-mini-end-run" disabled={paused || ended.current} onClick={finish}>✓ Encerrar e registrar {score} pontos</button></div>
+  const head = snake[0], neck = snake[1]
+  const facing = !neck ? 'right' : head.x > neck.x ? 'right' : head.x < neck.x ? 'left' : head.y > neck.y ? 'down' : 'up'
+  const speed = Math.floor(score / 50) + 1
+  return <div className="hb-mini-inner hb-v207-game hb-v207-snake">
+    <header className="hb-v207-scorebar" aria-label="Placar da cobrinha">
+      <div className="hb-v207-score-primary"><span className="hb-v207-score-icon" aria-hidden="true">🐍</span><div><small>PONTUAÇÃO</small><strong>{score.toLocaleString('pt-BR')}<em>pts</em></strong></div></div>
+      <div className="hb-v207-score-stats"><div><small>RODADA</small><strong>{String(round).padStart(2, '0')}</strong></div><div><small>TAMANHO</small><strong>{snake.length}</strong></div><div><small>VELOCIDADE</small><strong>{speed}×</strong></div></div>
+    </header>
+    <div className="hb-v207-board-frame hb-v207-snake-frame">
+      <div className="hb-v207-board-heading"><span><i aria-hidden="true"/> JARDIM DA SERPENTE</span><small>COMA AS FRUTAS · NÃO TOQUE NAS BORDAS</small></div>
+      <div className="hb-snake-board" role="img" aria-label={`Cobrinha com ${snake.length} segmentos, ${score} pontos, fruta na coluna ${food.x + 1} e linha ${food.y + 1}`} onPointerDown={e=>{swipeStart.current={x:e.clientX,y:e.clientY}}} onPointerUp={endSwipe} onPointerCancel={()=>{swipeStart.current=null}}>{Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = Math.floor(i / 20); const body = snakeCells.get(i) ?? -1; return <span key={i} className={`hb-v207-snake-cell ${body === 0 ? 'head' : body > 0 ? 'body' : ''} ${food.x === x && food.y === y ? 'fruit' : ''}`} data-facing={body === 0 ? facing : undefined} style={body > 0 ? { opacity: Math.max(.66, 1 - body / Math.max(8, snake.length) * .28) } : undefined}/> })}</div>
+      <div className="hb-v207-board-foot"><span>✦ CRESÇA A CADA FRUTA</span><span>10 PONTOS / FRUTA</span></div>
+    </div>
+    <div className="hb-v207-controls"><p>Movimente com <kbd>WASD</kbd>, <kbd>← ↑ ↓ →</kbd> ou deslize no tabuleiro</p><div className="hb-mini-pad hb-v207-direction-pad" role="group" aria-label="Controles da cobrinha"><button data-dir="up" type="button" aria-label="Subir" disabled={paused} onClick={() => turn(0, -1)}>↑</button><button data-dir="left" type="button" aria-label="Esquerda" disabled={paused} onClick={() => turn(-1, 0)}>←</button><button data-dir="down" type="button" aria-label="Descer" disabled={paused} onClick={() => turn(0, 1)}>↓</button><button data-dir="right" type="button" aria-label="Direita" disabled={paused} onClick={() => turn(1, 0)}>→</button></div></div>
+    <button type="button" className="hb-mini-finish hb-mini-end-run hb-v207-end-button" disabled={paused || ended.current} onClick={finish}>✓ Encerrar e registrar {score.toLocaleString('pt-BR')} pontos</button>
+  </div>
 }
 
 type Brick = { x: number; y: number; hp: number; maxHp: number; row: number }

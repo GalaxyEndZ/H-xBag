@@ -5,6 +5,7 @@ import PongGame from './PongGame'
 import { SnakeGame, BreakoutGame, AsteroidsGame, FlappyGame, ArenaGame } from './ArcadeCanvasGames'
 import { Game2048, MinesweeperGame, MemoryGame } from './ArcadePuzzleGames'
 import './MinigamesHub.css'
+import './ArcadeBoardVisualsV207.css'
 
 type DailyChallenge = { challenge_id: string; game_id: ArcadeGameId; title: string; target: number; difficulty: number; completed: boolean; completed_at: string | null; reward: number }
 type Wallet = { coins: number; earned_total: number; completed_today: number; reward_today: number; claimed_today: boolean }
