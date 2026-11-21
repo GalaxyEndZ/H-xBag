@@ -74,6 +74,11 @@
   z-index:1;
   pointer-events:none;
 }
+/* V228 — remover a linha ornamental que parece uma barra quebrada
+   na capa personalizada. Capas temáticas mantêm o detalhe decorativo. */
+.hb-public-content .hb-public-cover.has-personal-cover::before {
+  content:none;
+}
 .hb-public-content .hb-public-cover-top {
   font-size:.65rem;
   letter-spacing:.17em;
@@ -113,6 +118,11 @@
 .hb-public-content .hb-public-identity-copy {
   gap:7px;
   padding-top:12px;
+}
+/* V228 — o avatar deve sobrepor a capa de verdade.
+   Centralizar o item com margem negativa anulava quase todo o deslocamento. */
+.hb-public-content .hb-public-avatar {
+  align-self:flex-start;
 }
 .hb-public-content .hb-public-eyebrow {font-size:.64rem;letter-spacing:.14em}
 .hb-public-content .hb-public-identity-copy h2 {
