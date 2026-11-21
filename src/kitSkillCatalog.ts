@@ -1,5 +1,5 @@
 import { KISATSUTAI_SKILL_GROUPS } from './systems/kisatsutai/extendedData'
-import { KIT_MAIN_SKILLS, kitSlots, type KitType, type KitBenefitMode } from './kitRules'
+import { KIT_MAIN_SKILLS, itemKitSkillBonuses, kitSlots, type KitType, type KitBenefitMode } from './kitRules'
 
 /** Mesma fonte de perícias utilizada pelas fichas do Kisatsutai e pelas Condições. */
 const EXTRA_GROUPS = new Set(['Sociais','Conhecimentos Gerais','Naturais'])
@@ -24,9 +24,8 @@ export function validateKitSkillSelection(type:KitType, mode:KitBenefitMode, ski
   if(chosen.some(({slot,value})=>!KIT_SKILL_CATALOG[slot.group].some(group=>group.options.some(option=>option.value===value))))
     return 'Selecione perícias existentes do catálogo para todos os espaços do kit.'
   if(new Set(chosen.map(({value})=>value)).size!==chosen.length)return 'Escolha perícias diferentes para o mesmo kit.'
-  const numeric=typeof bonus==='number'?bonus:Number(bonus)
-  if(String(bonus).trim()==='' || !Number.isSafeInteger(numeric) || numeric<1)
-    return 'Informe um bônus numérico inteiro positivo para as perícias do kit.'
+  // O bônus de cada espaço é fixado pela regra do kit; o valor legado não é editado aqui.
+  void bonus
   return null
 }
 
@@ -36,10 +35,9 @@ export function equippedKitSkillBonuses(items:readonly {name:string;character_id
   return items.flatMap(item=>{
     const meta=item.metadata||{}
     if(item.character_id!==characterId || meta.equipped!==true || !['equip_simple','equip_standard','equip_rare'].includes(String(meta.kitType)))return []
-    const value=Number(meta.kitSkillBonus)
-    if(!Number.isSafeInteger(value) || value<1)return []
-    // Não aplica a kits antigos sem bônus numérico configurado.
     const keys=Array.isArray(meta.kitSkills)?meta.kitSkills:[]
-    return keys.includes(skillKey)?[{name:item.name,bonus:value}]:[]
+    const values=itemKitSkillBonuses(meta)
+    return keys.flatMap((key:string,index:number)=>key===skillKey && (values[index]??0)>0
+      ? [{name:item.name,bonus:values[index]}] : [])
   })
 }

@@ -12,6 +12,7 @@ export type SheetCombatEquipment = {
   kitType?: string
   kitSkills?: string[]
   kitSkillBonus?: number
+  kitSkillBonuses?: number[]
 }
 export type SheetDamageType = 'cortante_perfurante' | 'especial_bruto'
 

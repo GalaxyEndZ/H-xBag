@@ -3,7 +3,7 @@ import { supabase } from '../supabase'
 import './MasterChest.css'
 import KitEditor from './KitEditor'
 import { validateKitSkillSelection } from '../kitSkillCatalog'
-import { KIT_DEFINITIONS, SCARCITY_CHARGES, isKitType, kitAvailableScarcityLevels, kitDefinition, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from '../kitRules'
+import { KIT_DEFINITIONS, SCARCITY_CHARGES, isKitType, kitAvailableScarcityLevels, kitDefinition, kitFixedSkillBonuses, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from '../kitRules'
 
 type CharacterOption = { id: string; campaign_id: string; name: string; emoji?: string | null }
 type CurrencyOption = { id: string; name: string; symbol: string }
@@ -717,7 +717,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
       scarcityMinLevel: String(meta.scarcityMinLevel ?? '1'),
       scarcityMaxLevel: String(meta.scarcityMaxLevel ?? '4'),
       kitType: isKitType(meta.kitType) ? meta.kitType : null,
-      kitBenefitMode: maybeValue(meta.kitBenefitMode, ['skills','protection','three_archetype','main_and_archetype'], 'skills'),
+      kitBenefitMode: maybeValue(meta.kitBenefitMode, ['skills','protection','three_archetype','general_and_archetype','main_and_archetype'], 'skills'),
       kitSkills: Array.isArray(meta.kitSkills) ? meta.kitSkills.filter((entry):entry is string => typeof entry === 'string') : [],
       kitSkillBonus: Number.isInteger(Number(meta.kitSkillBonus)) && Number(meta.kitSkillBonus)>0 ? String(meta.kitSkillBonus) : '',
       kitUniqueEffect: typeof meta.kitUniqueEffect === 'string' ? meta.kitUniqueEffect : '',
@@ -808,7 +808,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
     if (activeChestKit && chestKitDef?.family === 'equippable') {
       const invalid=validateKitSkillSelection(activeChestKit,draft.kitBenefitMode,draft.kitSkills,draft.kitSkillBonus)
       if(invalid){setError(invalid);return}
-      if (activeChestKit === 'equip_rare' && !draft.kitUniqueEffect.trim()) {setError('Descreva a funcionalidade única do kit raro.');return}
+
     }
     if (!draft.name.trim()) { setError('Informe o nome do drop.'); return }
     if (draft.notifyOnDelivery && !draft.deliveryMessage.trim()) { setError('Escreva a mensagem que o jogador receberá ou desative a opção.'); return }
@@ -853,7 +853,9 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
         kitFamily: chestKitDef?.family ?? null,
         kitBenefitMode: chestKitDef?.family === 'equippable' ? draft.kitBenefitMode : null,
         kitSkills: chestKitDef?.family === 'equippable' ? draft.kitSkills.slice(0,kitSlots(activeChestKit!,draft.kitBenefitMode).length).map(entry=>entry.trim()) : null,
-        kitSkillBonus: chestKitDef?.family === 'equippable' && kitSlots(activeChestKit!,draft.kitBenefitMode).length ? Number(draft.kitSkillBonus) : null,
+        kitSkillBonus: null,
+        kitSkillBonuses: chestKitDef?.family === 'equippable' ? kitFixedSkillBonuses(activeChestKit, draft.kitBenefitMode) : null,
+        kitRestType: chestKitDef?.restType ?? null,
         kitUniqueEffect: activeChestKit === 'equip_rare' ? draft.kitUniqueEffect.trim() : null,
         kitEffect: chestKitDef?.family === 'consumable' && activeChestKit !== 'prolonged' ? draft.kitEffect : null,
         kitEffectNotes: chestKitDef?.family === 'consumable' ? draft.kitEffectNotes.trim() : null,
@@ -1538,7 +1540,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
                 const definition = value ? KIT_DEFINITIONS[value] : null
                 const level = value ? normalizeKitLevel(value, Number(current.scarcityLevel)) : null
                 const cats = definition ? ['Kits', definition.family === 'consumable' ? 'Consumíveis' : 'Equipamento', ...current.categories.filter(category => !['Kits','Consumíveis','Equipamento'].includes(category))] : current.categories
-                return {...current, kitType:value, kitBenefitMode:value==='equip_rare'?'three_archetype':'skills',kitSkills:[],kitSkillBonus:'',equipmentType:'none',categories:cats,category: definition ? 'Kits':current.category,scarcityMode:'fixed',scarcityLevel:level ? String(level) as ItemDraft['scarcityLevel'] : current.scarcityLevel,scarcityExhausted:false}
+                return {...current, name: !current.name.trim() && definition?.exampleItem ? definition.exampleItem : current.name, kitType:value, kitBenefitMode:value==='equip_rare'?'three_archetype':'skills',kitSkills:[],kitSkillBonus:'',equipmentType:'none',categories:cats,category: definition ? 'Kits':current.category,scarcityMode:'fixed',scarcityLevel:level ? String(level) as ItemDraft['scarcityLevel'] : current.scarcityLevel,scarcityExhausted:false}
               })
               setEditorDirty(true)
             }}

@@ -26,3 +26,16 @@
 .hb-kit-editor .hb-kit-skill-grid select{max-width:100%;min-width:0;width:100%}
 .hb-kit-editor .hb-kit-skill-bonus{grid-column:1/-1;min-width:0}
 .hb-kit-editor .hb-kit-skill-bonus small{font-weight:400;opacity:.8;line-height:1.4}
+
+/* V219 — bônus individuais fixos e legíveis em qualquer tela. */
+.hb-kit-editor .hb-kit-fixed-bonus {
+  display:inline-flex;align-items:center;justify-content:center;justify-self:start;
+  border:1px solid color-mix(in srgb,var(--season-primary,#d5b989) 45%,transparent);
+  border-radius:999px;padding:3px 9px;font-size:12px;font-weight:800;
+  color:var(--season-primary,#d5b989);
+  background:color-mix(in srgb,var(--season-primary,#d5b989) 11%,transparent)
+}
+.hb-kit-editor .hb-kit-skill-bonus {margin:0;padding:9px 12px;border-radius:9px;
+  border:1px solid var(--season-line,#41464d);
+  color:var(--season-text,#f0f2f5);font-size:12px;line-height:1.6}
+.hb-kit-editor .hb-kit-skill-bonus small {display:block;color:var(--season-muted,#a5adb4)}

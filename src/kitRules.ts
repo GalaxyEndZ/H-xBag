@@ -1,7 +1,7 @@
 /**
  * Kit definitions supplied for the HäxBag inventory system (V83).
- * The count of affected skills is defined. The NUMERICAL bonus per skill is
- * deliberately unspecified by the rules; no default +1/+2 is invented.
+ * V219: bônus oficiais de cada espaço dos kits equipáveis.
+ * Formatos antigos, com bônus único, continuam legíveis sem migração de dados.
  * Existing scarcity mechanics are reused rather than replacing them.
  */
 export const KIT_TYPE_KEYS = [
@@ -10,7 +10,7 @@ export const KIT_TYPE_KEYS = [
 ] as const
 export type KitType = typeof KIT_TYPE_KEYS[number]
 export type KitFamily = 'equippable' | 'consumable'
-export type KitBenefitMode = 'skills' | 'protection' | 'three_archetype' | 'main_and_archetype'
+export type KitBenefitMode = 'skills' | 'protection' | 'three_archetype' | 'general_and_archetype' | 'main_and_archetype'
 export type KitEffect = 'damage' | 'resistance' | 'combat_point'
 export type ScarcityLevel = 1 | 2 | 3 | 4
 export type KitDefinition = {
@@ -18,6 +18,8 @@ export type KitDefinition = {
   name: string
   family: KitFamily
   fixedWeight?: number
+  exampleItem?: string
+  restType?: 'precario' | 'mediano' | 'completo'
   weights?: Partial<Record<ScarcityLevel, number>>
   description: string
 }
@@ -25,15 +27,18 @@ export type KitDefinition = {
 export const KIT_DEFINITIONS: Record<KitType, KitDefinition> = {
   equip_simple: {
     type: 'equip_simple', name: 'Equipável simples', family: 'equippable', fixedWeight: 1,
-    description: 'Afeta duas perícias extras. O valor do aumento é definido pelo mestre.',
+    exampleItem: 'Saco de dormir', restType: 'precario',
+    description: 'Saco de dormir (descanso precário). Aumenta duas perícias gerais/extras em +10 e +10.',
   },
   equip_standard: {
     type: 'equip_standard', name: 'Equipável padrão', family: 'equippable', fixedWeight: 2,
-    description: 'Afeta duas perícias de arquétipo OU concede proteção moderada.',
+    exampleItem: 'Futon', restType: 'mediano',
+    description: 'Futon (descanso mediano). Aumenta duas perícias de arquétipo em +15 e +10.',
   },
   equip_rare: {
     type: 'equip_rare', name: 'Equipável raro', family: 'equippable', fixedWeight: 4.5,
-    description: 'Afeta três perícias de arquétipo OU uma principal e duas de arquétipo. Possui funcionalidade única.',
+    exampleItem: 'Barraca de acampamento', restType: 'completo',
+    description: 'Barraca de acampamento (descanso completo). Aumenta três perícias de arquétipo OU duas de arquétipo e uma geral em +15, +15 e +10.',
   },
   immediate: {
     type: 'immediate', name: 'Consumível de uso imediato', family: 'consumable',
@@ -79,6 +84,24 @@ export function normalizeKitLevel(type: KitType, level: number): ScarcityLevel |
   if (!available.length) return null
   return available.includes(level as ScarcityLevel) ? level as ScarcityLevel : available[0]
 }
+/** Ordem dos bônus corresponde à ordem dos campos apresentados no editor. */
+export function kitFixedSkillBonuses(type: KitType | null | undefined, mode: KitBenefitMode): number[] {
+  if (type === 'equip_simple') return [10, 10]
+  if (type === 'equip_standard') return mode === 'protection' ? [] : [15, 10]
+  if (type === 'equip_rare') return [15, 15, 10]
+  return []
+}
+
+/** Mantém compatibilidade com equipamentos anteriores, que salvavam só kitSkillBonus. */
+export function itemKitSkillBonuses(metadata: {kitSkills?: unknown; kitSkillBonuses?: unknown; kitSkillBonus?: unknown}): number[] {
+  const skills = Array.isArray(metadata.kitSkills) ? metadata.kitSkills : []
+  const values = metadata.kitSkillBonuses
+  if (Array.isArray(values) && values.length === skills.length &&
+      values.every(value => Number.isSafeInteger(value) && value > 0)) return values as number[]
+  const legacy = Number(metadata.kitSkillBonus)
+  return skills.map(() => Number.isSafeInteger(legacy) && legacy > 0 ? legacy : 0)
+}
+
 export function kitSlots(type: KitType, benefitMode: KitBenefitMode): {group: 'extra' | 'archetype' | 'main'; label: string}[] {
   if (type === 'equip_simple') return [
     {group: 'extra', label: 'Perícia extra 1'}, {group: 'extra', label: 'Perícia extra 2'},
@@ -86,14 +109,17 @@ export function kitSlots(type: KitType, benefitMode: KitBenefitMode): {group: 'e
   if (type === 'equip_standard' && benefitMode !== 'protection') return [
     {group: 'archetype', label: 'Perícia de arquétipo 1'}, {group: 'archetype', label: 'Perícia de arquétipo 2'},
   ]
-  if (type === 'equip_rare') return benefitMode === 'main_and_archetype' ? [
+  if (type === 'equip_rare' && benefitMode === 'main_and_archetype') return [
     {group: 'main', label: 'Perícia principal'},
     {group: 'archetype', label: 'Perícia de arquétipo 1'},
     {group: 'archetype', label: 'Perícia de arquétipo 2'},
-  ] : [
+  ]
+  if (type === 'equip_rare') return [
     {group: 'archetype', label: 'Perícia de arquétipo 1'},
     {group: 'archetype', label: 'Perícia de arquétipo 2'},
-    {group: 'archetype', label: 'Perícia de arquétipo 3'},
+    benefitMode === 'general_and_archetype'
+      ? {group: 'extra', label: 'Perícia geral'}
+      : {group: 'archetype', label: 'Perícia de arquétipo 3'},
   ]
   return []
 }

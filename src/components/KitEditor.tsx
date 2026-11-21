@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import {
   KIT_DEFINITIONS, SCARCITY_DICE,
-  kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitSlots, kitWeight,
+  kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, kitSlots, kitWeight,
   type KitBenefitMode, type KitEffect, type KitType,
 } from '../kitRules'
 import { KIT_SKILL_CATALOG } from '../kitSkillCatalog'
@@ -34,8 +34,10 @@ export default function KitEditor({
   effectNotes, onEffectNotesChange, scarcityLevel, onScarcityLevelChange,
   exhausted, onExhaustedChange,
 }: KitEditorProps) {
+  void onSkillBonusChange // A propriedade permanece na interface durante a transição do bônus antigo.
   const definition = kitDefinition(type)
   const slots = type ? kitSlots(type, benefitMode) : []
+  const fixedBonuses = kitFixedSkillBonuses(type, benefitMode)
   const levels = kitAvailableScarcityLevels(type)
   const weight = kitWeight(type, Number(scarcityLevel), exhausted)
   return <section className="hb-kit-editor" aria-label="Tipos de kits">
@@ -58,23 +60,25 @@ export default function KitEditor({
     </label>
     {definition && <>
       <div className="hb-kit-summary"><strong>{definition.name}</strong><p>{definition.description}</p>
+        {definition.exampleItem && <span>🛏️ Exemplo: <b>{definition.exampleItem}</b> · Descanso {definition.restType === 'precario' ? 'precário' : definition.restType === 'mediano' ? 'mediano' : 'completo'}</span>}
         <span>Peso: <b>{weight === null ? 'Selecione um nível válido' : `${weight.toLocaleString('pt-BR', {maximumFractionDigits:2})} kg`}</b></span>
       </div>
       {definition.family === 'equippable' && <>
         {type === 'equip_standard' && <label>Benefício do kit padrão
           <select value={benefitMode === 'protection' ? 'protection' : 'skills'} onChange={event => onBenefitModeChange(event.target.value as KitBenefitMode)}>
             <option value="skills">Duas perícias de arquétipo</option>
-            <option value="protection">Proteção moderada</option>
+            {benefitMode === 'protection' && <option value="protection">Proteção moderada (kit antigo)</option>}
           </select>
         </label>}
         {type === 'equip_rare' && <label>Benefício do kit raro
-          <select value={benefitMode === 'main_and_archetype' ? 'main_and_archetype' : 'three_archetype'} onChange={event => onBenefitModeChange(event.target.value as KitBenefitMode)}>
+          <select value={benefitMode === 'main_and_archetype' || benefitMode === 'general_and_archetype' ? benefitMode : 'three_archetype'} onChange={event => onBenefitModeChange(event.target.value as KitBenefitMode)}>
             <option value="three_archetype">Três perícias de arquétipo</option>
-            <option value="main_and_archetype">Uma perícia principal + duas de arquétipo</option>
+            <option value="general_and_archetype">Duas de arquétipo + uma geral</option>
+            {benefitMode === 'main_and_archetype' && <option value="main_and_archetype">Uma principal + duas de arquétipo (kit antigo)</option>}
           </select>
         </label>}
         {slots.length > 0 && <div className="hb-kit-skill-grid">
-          {slots.map((slot, index) => <label key={`${type}-${benefitMode}-${index}`}>{slot.label}
+          {slots.map((slot, index) => <label key={`${type}-${benefitMode}-${index}`}>{slot.label} <strong className="hb-kit-fixed-bonus">+{fixedBonuses[index]}</strong>
             <select value={skills[index] || ''} onChange={event => setSkills(current => { const next = [...current]; next[index] = event.target.value; return next })}>
               <option value="">Selecione uma perícia cadastrada...</option>
               {KIT_SKILL_CATALOG[slot.group].map(group => <optgroup key={group.group} label={group.group}>
@@ -83,17 +87,15 @@ export default function KitEditor({
               </optgroup>)}
             </select>
           </label>)}
-          <label className="hb-kit-skill-bonus">Bônus numérico em cada perícia (+)
-            <input type="number" inputMode="numeric" min={1} step={1} required
-              value={skillBonus} onChange={event=>onSkillBonusChange(event.target.value)} placeholder="Ex.: 5" />
-            <small>Escolha um número inteiro positivo. O mesmo bônus será aplicado a cada perícia selecionada enquanto o kit estiver equipado.</small>
-          </label>
+          <p className="hb-kit-skill-bonus">Bônus oficiais: {fixedBonuses.map(value=>`+${value}`).join(' · ')}. Aplicados apenas enquanto o kit estiver equipado.
+            {skillBonus.trim() && <small> Este item possuía bônus antigo de +{skillBonus}; ao salvar a edição, passa a seguir a regra atual.</small>}
+          </p>
         </div>}
         {benefitMode === 'protection' && type === 'equip_standard' && <p className="hb-kit-editor-note">O kit concede proteção moderada. A forma de aplicar segue o sistema de proteção já existente.</p>}
-        {type === 'equip_rare' && <label>Funcionalidade única
+        {type === 'equip_rare' && <label>Funcionalidade adicional (opcional)
           <textarea value={uniqueEffect} onChange={event => onUniqueEffectChange(event.target.value)} maxLength={1000} rows={3} placeholder="Descreva a função exclusiva deste kit..."/>
         </label>}
-        <p className="hb-kit-editor-note">As perícias vêm do catálogo do RPG. O mestre escolhe o bônus numérico de cada kit ao criá-lo ou editá-lo.</p>
+        <p className="hb-kit-editor-note">As perícias vêm do catálogo do RPG. Os bônus agora são fixos por posição, conforme o tipo de kit.</p>
       </>}
       {definition.family === 'consumable' && <>
         <div className="hb-kit-scarcity-row">

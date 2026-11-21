@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
+import { itemKitSkillBonuses } from '../kitRules'
 import { calculateSheetDefenses, type SheetCombatEquipment, type SheetDamageType } from '../combatDefenses'
 import { applyConditionModifier, calculateConditionModifiers, type ConditionModifiers } from '../conditionEngine'
 import { calculateQuickDamage, type QuickReaction, type QuickResource, previewResource } from '../combatQuickActions'
@@ -61,13 +62,14 @@ const getEquipment = (p: Participant, byCharacter: Record<string, SheetCombatEqu
     protectionTier: String(item.protectionTier ?? ''), protectionMode: String(item.protectionMode ?? 'resistencia'),
     kitType: String(item.kitType ?? ''), kitSkills: Array.isArray(item.kitSkills) ? item.kitSkills as string[] : [],
     kitSkillBonus: Number(item.kitSkillBonus ?? 0),
+    kitSkillBonuses: Array.isArray(item.kitSkillBonuses) ? item.kitSkillBonuses as number[] : undefined,
   }))
 }
 const getDefenses = (p: Participant, equipment: SheetCombatEquipment[], modifiers: ConditionModifiers = {}) => {
-  const kitBonus = (skill: string) => p.kind !== 'character' ? 0 : equipment.filter(item =>
-    ['equip_simple', 'equip_standard', 'equip_rare'].includes(String(item.kitType)) &&
-    (item.kitSkills ?? []).includes(skill) && Number.isSafeInteger(item.kitSkillBonus) && (item.kitSkillBonus ?? 0) > 0,
-  ).reduce((sum, item) => sum + (item.kitSkillBonus ?? 0), 0)
+  const kitBonus = (skill: string) => p.kind !== 'character' ? 0 : equipment
+    .filter(item => ['equip_simple', 'equip_standard', 'equip_rare'].includes(String(item.kitType)))
+    .reduce((sum, item) => sum + (item.kitSkills ?? []).reduce((total, key, index) =>
+      total + (key === skill ? (itemKitSkillBonuses(item)[index] ?? 0) : 0), 0), 0)
   const base = calculateSheetDefenses(equipment, { ...p.defenseStats,
     resistance: p.defenseStats.resistance + kitBonus('RESISTÊNCIA'),
     mental: p.defenseStats.mental + kitBonus('MENTAL') })
@@ -236,7 +238,8 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
           armorClass: String(metadata.armorClass ?? ''), armorCoverage: String(metadata.armorCoverage ?? ''),
           protectionTier: String(metadata.protectionTier ?? ''), protectionMode: String(metadata.protectionMode ?? 'resistencia'),
           kitType: String(metadata.kitType ?? ''), kitSkills: Array.isArray(metadata.kitSkills) ? metadata.kitSkills as string[] : [],
-          kitSkillBonus: Number(metadata.kitSkillBonus ?? 0) })
+          kitSkillBonus: Number(metadata.kitSkillBonus ?? 0),
+          kitSkillBonuses: Array.isArray(metadata.kitSkillBonuses) ? metadata.kitSkillBonuses as number[] : undefined })
       }
         setEquipmentByCharacter(equipped)
         setEquipmentStatus('ready')
