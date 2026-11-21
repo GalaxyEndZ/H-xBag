@@ -54,8 +54,8 @@ export const KISATSUTAI_SKILL_GROUPS = {
       "description": "Mede a capacidade de arremessar objetos ou armas em um determinado alvo."
     },
     {
-      "name": "Saltar",
-      "description": "Mede a capacidade e a distância ao saltar."
+      "name": "Tática",
+      "description": "Mede a visão de campo de batalha (tanto de inimigos quanto de aliados)."
     },
     {
       "name": "Técnica",

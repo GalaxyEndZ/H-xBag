@@ -301,6 +301,12 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
   })
   const levels: (TrainingLevel | 'condicao')[] = ['completo', 'avancado', 'medio', 'leve', 'condicao']
   const generalGroups = new Set(['Sociais', 'Conhecimentos Gerais', 'Naturais'])
+  const activeSkillKeys = new Set(Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) =>
+    entries.map(skill => `${group}:${skill.name}`)))
+  // Retém o treinamento antigo na ficha, mas ele não é mais uma perícia ativa do catálogo.
+  const retiredTrainings = Object.keys(trainings).filter(skillKey =>
+    skillKey.includes(':') && !activeSkillKeys.has(skillKey) &&
+    Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, trainings[skillKey]))
   const sections = [
     { id: 'arquetipo', icon: '✦', title: 'Perícias de Arquétipo', subtitle: 'Treinamentos vinculados aos arquétipos', accepts: (group: string) => !generalGroups.has(group) },
     { id: 'extras', icon: '✧', title: 'Perícias Gerais', subtitle: 'Sociais, conhecimentos gerais e naturais', accepts: (group: string) => generalGroups.has(group) },
@@ -330,6 +336,10 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
         </div>
         <span className="hb-trained-skills-total">{allSkills.length} {allSkills.length === 1 ? 'perícia' : 'perícias'}</span>
       </div>
+      {retiredTrainings.length > 0 && <p className="kisatsutai-editor-note" role="status">
+        Perícia{retiredTrainings.length > 1 ? 's' : ''} de versões anteriores preservada{retiredTrainings.length > 1 ? 's' : ''} na ficha: {retiredTrainings.map(key => key.split(':').at(-1)).join(', ')}.
+        Não {retiredTrainings.length > 1 ? 'constam' : 'consta'} mais do catálogo atual; escolha uma substituta na distribuição de perícias, sem transferência automática de pontos.
+      </p>}
       <div className="hb-sheet-skill-tools">
         <label className="hb-sheet-skill-search">
           <span aria-hidden="true">⌕</span>
@@ -444,6 +454,11 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   const intellectGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte']
   const intellectOptions = intellectGroups.flatMap(group => (KISATSUTAI_SKILL_GROUPS[group as keyof typeof KISATSUTAI_SKILL_GROUPS] || []).map(skill => ({ key: `${group}:${skill.name}`, name: skill.name, group })))
   const intellectSelections: string[] = Array.isArray(skills.intellectExtraAllocations) ? skills.intellectExtraAllocations.slice(0, intellectExtraLevels) : []
+  const activeSkillKeys = new Set(intellectOptions.map(option => option.key))
+  const retiredDistribution = Object.values(distribution).filter(value => value && !activeSkillKeys.has(value))
+  const retiredIntellect = intellectSelections.filter(value => value && !activeSkillKeys.has(value))
+  const retiredSkills = Array.from(new Set([...retiredDistribution, ...retiredIntellect]))
+  const isCurrentSelection = (value?: string) => Boolean(value && activeSkillKeys.has(value))
   const baseTrainings: Record<string, TrainingLevel> = {}
   requirements.forEach(item => { if (distribution[item.id]) baseTrainings[distribution[item.id]] = item.level })
   const trainingSteps = (key: string, selections: string[] = intellectSelections) => {
@@ -467,7 +482,7 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
     onChange({ ...skills, intellectExtraAllocations: next, extraTrainings: buildTrainings(next) })
   }
   const validSlots = new Set(requirements.map(req => req.id))
-  const assigned = new Set(requirements.map(req => distribution[req.id]).filter(Boolean))
+  const assigned = new Set(requirements.map(req => distribution[req.id]).filter(isCurrentSelection))
   const change = (id: string, value: string) => {
     if (disabled || !validSlots.has(id)) return
     const req = requirements.find(item => item.id === id)
@@ -494,15 +509,19 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   ]
   return <div className="kisatsutai-distribution sheet-distribution-panel">
     <div className="kisatsutai-distribution-title"><span className="kisatsutai-distribution-symbol">✦</span><div><small>DESENVOLVIMENTO · {fullPath.toUpperCase()}</small><strong>Distribuição de perícias gerais e de arquétipo</strong><p>Os dois tipos de pontos são independentes e definidos pela trilha {fullPath}.</p></div></div>
+    {retiredSkills.length > 0 && <p className="kisatsutai-editor-note" role="status">
+      Há {retiredSkills.length === 1 ? 'uma perícia antiga' : 'perícias antigas'} na distribuição: {retiredSkills.map(value => value.split(':').at(-1)).join(', ')}.
+      {` ${retiredSkills.length === 1 ? 'Ela foi retirada' : 'Elas foram retiradas'} do catálogo. Selecione outra perícia na vaga correspondente ou no Desenvolvimento por Intelecto; os dados anteriores permanecem salvos até essa escolha.`}
+    </p>}
     {sections.map(section => {
-      const used = section.slots.filter(req => !!distribution[req.id]).length
+      const used = section.slots.filter(req => isCurrentSelection(distribution[req.id])).length
       const levels = (['avancado', 'medio', 'leve', 'completo'] as const).filter(level => section.slots.some(req => req.level === level))
       return <section className="kisatsutai-distribution-section" key={section.id}>
         <div className="kisatsutai-distribution-section-heading"><div><h3>{section.title}</h3><p>{section.description}</p></div><strong>{used} / {section.slots.length}</strong></div>
         <div className="kisatsutai-distribution-overall"><strong>{used} pontos distribuídos</strong><span>{section.slots.length - used} restantes</span></div>
         <div className="kisatsutai-distribution-progress"><span style={{width: `${section.slots.length ? used / section.slots.length * 100 : 0}%`}} /></div>
         <div className="kisatsutai-distribution-summary">
-          {levels.map(level => { const slots = section.slots.filter(req => req.level === level); const count = slots.filter(req => !!distribution[req.id]).length; return <div className="kisatsutai-distribution-stat" key={level}><span>{TRAINING_LABELS[level]} <em>+{KISATSUTAI_TRAINING[level]}</em></span><strong>{count} <small>/ {slots.length}</small></strong><div className="kisatsutai-distribution-progress"><span style={{width: `${slots.length ? count / slots.length * 100 : 0}%`}} /></div><small>{slots.length - count} vagas livres</small></div> })}
+          {levels.map(level => { const slots = section.slots.filter(req => req.level === level); const count = slots.filter(req => isCurrentSelection(distribution[req.id])).length; return <div className="kisatsutai-distribution-stat" key={level}><span>{TRAINING_LABELS[level]} <em>+{KISATSUTAI_TRAINING[level]}</em></span><strong>{count} <small>/ {slots.length}</small></strong><div className="kisatsutai-distribution-progress"><span style={{width: `${slots.length ? count / slots.length * 100 : 0}%`}} /></div><small>{slots.length - count} vagas livres</small></div> })}
         </div>
         {levels.map(level => <div className="kisatsutai-distribution-tier" key={level}><h4>{TRAINING_LABELS[level]} <span>+{KISATSUTAI_TRAINING[level]}</span></h4><div className="kisatsutai-distribution-rows">{section.slots.filter(req => req.level === level).map(req => {
           // Uma perícia aparece apenas uma vez e não volta a ser oferecida após distribuída.
@@ -518,7 +537,9 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
             })
           })
           const options = Array.from(uniqueOptions.values())
-          return <label key={req.id} className="kisatsutai-distribution-row"><span><strong>{req.category === 'qualquer Arquétipo' ? 'Qualquer Arquétipo' : req.category}</strong><small>{distribution[req.id] ? 'Distribuída' : 'Disponível'}</small></span><select disabled={disabled} value={distribution[req.id] || ''} onChange={e => change(req.id, e.target.value)}><option value="">Selecionar perícia...</option>{options.map(option => <option key={option.key} value={option.key}>{option.name} · {option.group}</option>)}</select></label>
+          const previousSkill = distribution[req.id]
+          const hasRetiredSkill = Boolean(previousSkill && !options.some(option => option.key === previousSkill))
+          return <label key={req.id} className="kisatsutai-distribution-row"><span><strong>{req.category === 'qualquer Arquétipo' ? 'Qualquer Arquétipo' : req.category}</strong><small>{hasRetiredSkill ? 'Revisar perícia antiga' : previousSkill ? 'Distribuída' : 'Disponível'}</small></span><select disabled={disabled} value={previousSkill || ''} onChange={e => change(req.id, e.target.value)}><option value="">Selecionar perícia...</option>{hasRetiredSkill && <option value={previousSkill}>{previousSkill.split(':').at(-1)} · fora do catálogo (substitua)</option>}{options.map(option => <option key={option.key} value={option.key}>{option.name} · {option.group}</option>)}</select></label>
         })}</div></div>)}
         {section.slots.length > 0 && used === section.slots.length && <p className="kisatsutai-distribution-complete">Distribuição de {section.id === 'extras' ? 'perícias gerais' : 'perícias de arquétipo'} concluída!</p>}
       </section>
@@ -528,7 +549,7 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
       <div className="kisatsutai-distribution-rows">
         {Array.from({ length: intellectExtraLevels }, (_, index) => {
           const selected = intellectSelections[index] || ''
-          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected ? `Treinamento total: +${trainingSteps(selected)}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia...</option>{intellectOptions.filter(option => option.key === selected || trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) < 15).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(15, trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) + 5)})</option>)}</select></label>
+          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected && !activeSkillKeys.has(selected) ? 'Revisar perícia antiga' : selected ? `Treinamento total: +${trainingSteps(selected)}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia...</option>{selected && !activeSkillKeys.has(selected) && <option value={selected}>{selected.split(':').at(-1)} · fora do catálogo (substitua)</option>}{intellectOptions.filter(option => option.key === selected || trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) < 15).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(15, trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) + 5)})</option>)}</select></label>
         })}
       </div>
     </section>
