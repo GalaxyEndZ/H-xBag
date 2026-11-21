@@ -21,7 +21,7 @@ export function validateKitSkillSelection(type:KitType, mode:KitBenefitMode, ski
   const slots=kitSlots(type,mode)
   if(!slots.length)return null // Proteção moderada não usa bônus de perícias.
   const chosen=slots.map((slot,i)=>({slot,value:(skills[i]||'').trim()}))
-  if(chosen.some(({slot,value})=>!KIT_SKILL_CATALOG[slot.group].some(group=>group.options.some(option=>option.value===value))))
+  if(chosen.some(({slot,value})=>!(KIT_SKILL_CATALOG[slot?.group] ?? []).some(group=>group.options.some(option=>option.value===value))))
     return 'Selecione perícias existentes do catálogo para todos os espaços do kit.'
   if(new Set(chosen.map(({value})=>value)).size!==chosen.length)return 'Escolha perícias diferentes para o mesmo kit.'
   // O bônus de cada espaço é fixado pela regra do kit; o valor legado não é editado aqui.

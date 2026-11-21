@@ -81,7 +81,7 @@ export default function KitEditor({
           {slots.map((slot, index) => <label key={`${type}-${benefitMode}-${index}`}>{slot.label} <strong className="hb-kit-fixed-bonus">+{fixedBonuses[index]}</strong>
             <select value={skills[index] || ''} onChange={event => setSkills(current => { const next = [...current]; next[index] = event.target.value; return next })}>
               <option value="">Selecione uma perícia cadastrada...</option>
-              {KIT_SKILL_CATALOG[slot.group].map(group => <optgroup key={group.group} label={group.group}>
+              {(KIT_SKILL_CATALOG[slot?.group] ?? []).map(group => <optgroup key={group.group} label={group.group}>
                 {group.options.map(option => <option key={option.value} value={option.value}
                   disabled={skills.some((value,slotIndex)=>slotIndex!==index && value===option.value)}>{option.label}</option>)}
               </optgroup>)}

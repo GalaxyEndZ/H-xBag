@@ -60,6 +60,7 @@ import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } fr
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
 import { useCharacterConditionModifiers, useEnemyConditionModifiers, useCharacterConditionRules, conditionModifier, applyConditionModifier, conditionSkillComponents, effectiveConditionSkill, isConditionGrantedSkill } from './conditionEngine'
+import { MAX_KISATSUTAI_SKILL_BONUS, capKisatsutaiSkillBonus, storedKisatsutaiSkillBonus, buildKisatsutaiTrainingData } from './kisatsutaiSkillLimit'
 
 const HaxTable = lazy(() => import('./components/HaxTable'))
 const DiceTower = lazy(() => import('./components/DiceTower'))
@@ -288,7 +289,7 @@ function SheetSectionNav({ sections, label }: { sections: Array<[string, string,
 }
 
 /** Exibição de treinamentos sem alterar os dados persistidos da ficha. */
-function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitItems = [], modifiers = {}, pending = null }: { trainings: Record<string, string>; forEnemy: boolean; kitNames?: string[]; equippedKitItems?: {name:string;character_id:string;metadata?:Record<string,any>|null}[]; modifiers?: Record<string, number>; pending?: Record<string,number>|null }) {
+function TrainedSkillsSummary({ trainings, trainingBonuses = {}, forEnemy, kitNames = [], equippedKitItems = [], modifiers = {}, pending = null }: { trainings: Record<string, string>; trainingBonuses?: Record<string, number>; forEnemy: boolean; kitNames?: string[]; equippedKitItems?: {name:string;character_id:string;metadata?:Record<string,any>|null}[]; modifiers?: Record<string, number>; pending?: Record<string,number>|null }) {
   const [skillSearch, setSkillSearch] = useState('')
   const normalizeSkillQuery = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim()
   const searchTerm = normalizeSkillQuery(skillSearch)
@@ -332,7 +333,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
         <div>
           <span className="hb-trained-skills-eyebrow">DESENVOLVIMENTO DO PERSONAGEM</span>
           <h3 id={forEnemy ? 'enemy-trained-skills-title' : 'trained-skills-title'}>Perícias treinadas e concedidas</h3>
-          <p>Treinamentos permanentes e perícias temporariamente concedidas por condições ativas.</p>
+          <p>Treinamentos permanentes e perícias temporárias. Bônus efetivo máximo: +{MAX_KISATSUTAI_SKILL_BONUS} por perícia, incluindo kits e condições.</p>
         </div>
         <span className="hb-trained-skills-total">{allSkills.length} {allSkills.length === 1 ? 'perícia' : 'perícias'}</span>
       </div>
@@ -376,7 +377,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
                           {entries.map(skill => (
                             <li key={skill.key} className="hb-trained-skills-item">
                               {(() => {
-                                const base = level === 'condicao' ? 0 : KISATSUTAI_TRAINING[level]
+                                const base = level === 'condicao' ? 0 : storedKisatsutaiSkillBonus(skill.key, level, trainingBonuses)
                                 const target = section.id === 'arquetipo' ? 'archetype_skill' : 'extra_skill'
                                 const conditioned = effectiveConditionSkill(base, modifiers, target, skill.key, skill.name)
                                 const pendingBonus = pending?.[skill.key] ?? 0
@@ -385,7 +386,8 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
                                 const conditionDelta = conditioned - base
                                 const conditionParts = conditionSkillComponents(modifiers, target, skill.key, skill.name)
                                 const hasConditions = conditionParts.flat !== 0 || conditionParts.percent !== 0 || conditionParts.hasGrant
-                                const total = conditioned + pendingBonus + kitBonus
+                                const rawTotal = conditioned + pendingBonus + kitBonus
+                                const total = capKisatsutaiSkillBonus(rawTotal)
                                 const hasDetail = hasConditions || pendingBonus !== 0 || kitEntries.length > 0
                                 const conditionBreakdown = [
                                   conditionParts.percent ? `${conditionParts.percent > 0 ? '+' : ''}${conditionParts.percent}%` : '',
@@ -407,6 +409,7 @@ function TrainedSkillsSummary({ trainings, forEnemy, kitNames = [], equippedKitI
                                       {hasConditions && conditionBreakdown && <span className="hb-trained-skills-chip is-base" title="Parcelas acumuladas das condições, antes da compensação">{conditionBreakdown}</span>}
                                       {pendingBonus !== 0 && <span className="hb-trained-skills-chip is-prep" title="Bônus de ações complexas">Preparo {pendingBonus > 0 ? '+' : ''}{pendingBonus}</span>}
                                       {kitEntries.map(kit => <span key={kit.name} className="hb-trained-skills-chip is-kit" title={kit.name}>Kit {kit.bonus > 0 ? '+' : ''}{kit.bonus}</span>)}
+                                      {rawTotal > MAX_KISATSUTAI_SKILL_BONUS && <span className="hb-trained-skills-chip is-neutral" title={`Bônus bruto +${rawTotal}; limite efetivo +${MAX_KISATSUTAI_SKILL_BONUS}`}>Teto +{MAX_KISATSUTAI_SKILL_BONUS}</span>}
                                       {!hasDetail && <span className="hb-trained-skills-chip is-neutral">Sem modificadores</span>}
                                     </span>
                                   </span>
@@ -447,8 +450,8 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
   // Mantém a chave de persistência anterior para preservar distribuições existentes.
   const key = `${pathName}:${fullPath.slice(0, -(pathName.length + 1))}`
   const distribution = (skills.distributionByPath?.[key] || {}) as Record<string, string>
-  // Cada ponto de Intelecto dedicado a perícias gerais concede um passo de +5.
-  // Pode iniciar uma perícia geral em +5 ou melhorar uma já treinada até +15.
+  // Cada ponto de Intelecto concede um passo de +5, até +25 por perícia.
+  // Aceita tanto perícias gerais/extras quanto de arquétipo.
   // Intelecto continua abrangendo perícias gerais/extras e de arquétipo.
   // Não depende das categorias da vaga «Qualquer Arquétipo».
   const intellectGroups = ['Sociais', 'Conhecimentos Gerais', 'Naturais', 'Defensores', 'Linha de Frente', 'Flanco', 'Especialistas', 'Suporte']
@@ -465,21 +468,13 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
     const base = baseTrainings[key] ? KISATSUTAI_TRAINING[baseTrainings[key]] : 0
     return base + selections.filter(selected => selected === key).length * 5
   }
-  const buildTrainings = (allocations: string[]) => {
-    const result: Record<string, TrainingLevel> = { ...baseTrainings }
-    for (const selected of new Set(allocations.filter(Boolean))) {
-      const points = trainingSteps(selected, allocations)
-      result[selected] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
-    }
-    return result
-  }
   const updateIntellect = (index: number, value: string) => {
     if (disabled) return
     const next = [...intellectSelections]
     next[index] = value
-    // Um ponto pode iniciar ou melhorar uma perícia extra OU de arquétipo, até +15.
-    if (value && trainingSteps(value, next) > 15) return
-    onChange({ ...skills, intellectExtraAllocations: next, extraTrainings: buildTrainings(next) })
+    // Um ponto pode iniciar ou melhorar uma perícia geral OU de arquétipo, até +25.
+    if (value && trainingSteps(value, next) > MAX_KISATSUTAI_SKILL_BONUS) return
+    onChange({ ...skills, intellectExtraAllocations: next, ...buildKisatsutaiTrainingData(baseTrainings, next) })
   }
   const validSlots = new Set(requirements.map(req => req.id))
   const assigned = new Set(requirements.map(req => distribution[req.id]).filter(isCurrentSelection))
@@ -494,12 +489,9 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
     all[key] = next
     const base: Record<string, TrainingLevel> = {}
     requirements.forEach(item => { if (next[item.id]) base[next[item.id]] = item.level })
-    const updated: Record<string, TrainingLevel> = { ...base }
-    for (const selected of new Set(intellectSelections.filter(Boolean))) {
-      const points = (base[selected] ? KISATSUTAI_TRAINING[base[selected]] : 0) + intellectSelections.filter(s => s === selected).length * 5
-      updated[selected] = points >= 15 ? 'avancado' : points >= 10 ? 'medio' : 'leve'
-    }
-    onChange({ ...skills, distributionByPath: all, extraTrainings: updated })
+    // Uma mudança de trilha não pode empurrar um treinamento com Intelecto acima de +25.
+    if (Object.keys(base).some(skillKey => (KISATSUTAI_TRAINING[base[skillKey]] + intellectSelections.filter(s => s === skillKey).length * 5) > MAX_KISATSUTAI_SKILL_BONUS)) return
+    onChange({ ...skills, distributionByPath: all, ...buildKisatsutaiTrainingData(base, intellectSelections) })
   }
   if (!fullPath || !path) return <div className="kisatsutai-distribution"><strong>Distribuição de perícias gerais e de arquétipo</strong><p className="kisatsutai-editor-note">Defina os arquétipos primário e secundário na Identidade para calcular automaticamente a trilha e as vagas de treinamento.</p></div>
   if (!benefitEntry) return <p className="kisatsutai-editor-note">A trilha {fullPath} não possui benefícios de treinamento cadastrados.</p>
@@ -536,7 +528,8 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
             }
             })
           })
-          const options = Array.from(uniqueOptions.values())
+          const options = Array.from(uniqueOptions.values()).filter(option =>
+            option.key === distribution[req.id] || KISATSUTAI_TRAINING[req.level] + intellectSelections.filter(s => s === option.key).length * 5 <= MAX_KISATSUTAI_SKILL_BONUS)
           const previousSkill = distribution[req.id]
           const hasRetiredSkill = Boolean(previousSkill && !options.some(option => option.key === previousSkill))
           return <label key={req.id} className="kisatsutai-distribution-row"><span><strong>{req.category === 'qualquer Arquétipo' ? 'Qualquer Arquétipo' : req.category}</strong><small>{hasRetiredSkill ? 'Revisar perícia antiga' : previousSkill ? 'Distribuída' : 'Disponível'}</small></span><select disabled={disabled} value={previousSkill || ''} onChange={e => change(req.id, e.target.value)}><option value="">Selecionar perícia...</option>{hasRetiredSkill && <option value={previousSkill}>{previousSkill.split(':').at(-1)} · fora do catálogo (substitua)</option>}{options.map(option => <option key={option.key} value={option.key}>{option.name} · {option.group}</option>)}</select></label>
@@ -545,11 +538,11 @@ function KisatsutaiSkillDistribution({ fullPath, skills, onChange, intellectExtr
       </section>
     })}
     <section className="kisatsutai-distribution-section">
-      <div className="kisatsutai-distribution-section-heading"><div><h3>Desenvolvimento por Intelecto</h3><p>Os pontos de Intelecto são independentes das vagas da trilha. Cada ponto concede +5 a uma perícia extra ou de arquétipo, até +15.</p></div><strong>{intellectSelections.filter(Boolean).length} / {intellectExtraLevels}</strong></div>
+      <div className="kisatsutai-distribution-section-heading"><div><h3>Desenvolvimento por Intelecto</h3><p>Os pontos de Intelecto são independentes das vagas da trilha. Cada ponto concede +5 a uma perícia geral ou de arquétipo, até +{MAX_KISATSUTAI_SKILL_BONUS}.</p></div><strong>{intellectSelections.filter(Boolean).length} / {intellectExtraLevels}</strong></div>
       <div className="kisatsutai-distribution-rows">
         {Array.from({ length: intellectExtraLevels }, (_, index) => {
           const selected = intellectSelections[index] || ''
-          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected && !activeSkillKeys.has(selected) ? 'Revisar perícia antiga' : selected ? `Treinamento total: +${trainingSteps(selected)}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia...</option>{selected && !activeSkillKeys.has(selected) && <option value={selected}>{selected.split(':').at(-1)} · fora do catálogo (substitua)</option>}{intellectOptions.filter(option => option.key === selected || trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) < 15).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(15, trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) + 5)})</option>)}</select></label>
+          return <label className="kisatsutai-distribution-row" key={index}><span><strong>Ponto extra {index + 1}</strong><small>{selected && !activeSkillKeys.has(selected) ? 'Revisar perícia antiga' : selected ? `Treinamento total: +${Math.min(MAX_KISATSUTAI_SKILL_BONUS, trainingSteps(selected))}` : 'Disponível'}</small></span><select disabled={disabled} value={selected} onChange={event => updateIntellect(index, event.target.value)}><option value="">Selecionar perícia...</option>{selected && !activeSkillKeys.has(selected) && <option value={selected}>{selected.split(':').at(-1)} · fora do catálogo (substitua)</option>}{intellectOptions.filter(option => option.key === selected || trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) < MAX_KISATSUTAI_SKILL_BONUS).map(option => <option key={option.key} value={option.key}>{option.name} · {option.group} (+{Math.min(MAX_KISATSUTAI_SKILL_BONUS, trainingSteps(option.key, intellectSelections.filter((_, slot) => slot !== index)) + 5)})</option>)}</select></label>
         })}
       </div>
     </section>
@@ -8875,7 +8868,7 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                       return (
                         <>
                         <div className="hb-sheet-conditions-section" id={forEnemy ? 'inimigo-condicoes' : 'ficha-condicoes'}>
-                          {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} skillTrainings={(read('skills.extraTrainings', {})||{}) as Record<string,string>} mainSkillBases={Object.fromEntries(['vigor','mental','combat','dexterity','resistance','ability'].map(key=>[key,Number(read(`skills.${key}`,0))||0]))} />}
+                          {!forEnemy && selectedCampaignId && selectedCharacterId && <CharacterConditions campaignId={selectedCampaignId} characterId={selectedCharacterId} skillTrainings={(read('skills.extraTrainings', {})||{}) as Record<string,string>} skillTrainingBonuses={(read('skills.extraTrainingBonuses', {})||{}) as Record<string,number>} mainSkillBases={Object.fromEntries(['vigor','mental','combat','dexterity','resistance','ability'].map(key=>[key,Number(read(`skills.${key}`,0))||0]))} />}
                           {forEnemy && selectedCampaignId && selectedEnemyId && <EnemyConditions campaignId={selectedCampaignId} enemyId={selectedEnemyId} />}
                         </div>
                         <section
@@ -9233,6 +9226,7 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                         {isKisatsutaiSystem && (
                           <TrainedSkillsSummary
                             trainings={(read('skills.extraTrainings', {}) || {}) as Record<string, string>}
+                            trainingBonuses={(read('skills.extraTrainingBonuses', {}) || {}) as Record<string, number>}
                             forEnemy={forEnemy}
                             kitNames={forEnemy ? [] : items.filter(item => item.character_id === selectedCharacterId).map(item => item.name)}
                             equippedKitItems={forEnemy ? [] : items.filter(item => item.character_id === selectedCharacterId)}
@@ -9559,10 +9553,10 @@ const allocationPool = (source: typeof allocationSources[number]) => {
                           {usesRanks ? <>
                             <label style={{...labelStyle,display:'block',marginTop:12}}>Classe / hierarquia do caçador<select value={rankId} onChange={e=>changeRank(e.target.value)} style={inputStyle}>{systemRanks.map(entry=><option key={entry.id} value={entry.id}>{entry.group} · {entry.name}</option>)}</select></label>
                             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10,marginTop:12}}>
-                              <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>FOCO EXIGIDO</small><div style={{fontSize:22,fontWeight:800}}>{rank.focus}</div></div>
-                              <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank.group}</div></div>
+                              <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>FOCO EXIGIDO</small><div style={{fontSize:22,fontWeight:800}}>{rank?.focus ?? '—'}</div></div>
+                              <div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><small>GRUPO</small><div style={{fontSize:22,fontWeight:800}}>{rank?.group ?? '—'}</div></div>
                             </div>
-                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank.benefits}</p>
+                            <p style={{color:'var(--season-muted, #b9b4c2)',fontSize:13}}><strong>Referência de benefícios da classe:</strong> {rank?.benefits || 'Graduação não disponível para esta ficha.'}</p>
                             <div style={{marginTop:12,padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10}}><strong>Status concedidos pela classe</strong><p style={{fontSize:12,color:'var(--season-muted, #b9b4c2)'}}>A classe selecionada adiciona automaticamente os bônus documentados. Para classes sem valores definidos no material, o bônus automático fica em zero até confirmação do mestre.</p><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:8,marginBottom:10}}>{(['pv','ps','pr'] as const).map(key=><div key={key} style={{padding:10,borderRadius:8,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>{key === 'pr' ? sheetResourceAbbreviation : key.toUpperCase()} da classe</small><div style={{fontSize:22,fontWeight:800}}>+{rankStatus[key]}</div></div>)}</div><strong style={{fontSize:12}}>Bônus adicionais personalizados</strong><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10,marginTop:8}}>{field('progression.classStatus.pv','PV adicional')}{field('progression.classStatus.ps','PS adicional')}{field('progression.classStatus.pr',`${sheetResourceAbbreviation} adicional`)}</div></div>
 
                             <div style={{marginTop:14}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong>Histórico de promoções</strong><button
@@ -10099,7 +10093,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             {key === 'ps' && <details className="status-card-damage-control sanity"><summary><span aria-hidden="true">✧</span>Aplicar dano de sanidade<span aria-hidden="true" className="hb-disclosure-chevron">⌄</span></summary><div className="hb-status-damage-body"><label>Dano recebido<input type="number" min="0" value={sanityDamageAmount} onChange={event=>setSanityDamageAmount(event.target.value)} placeholder="Quantidade" /></label><small>Proteção de sanidade equipada: {sanityProtection}</small><button type="button" disabled={!renderCanEdit || sanityDamageAmount.trim()==='' || Number(sanityDamageAmount)<0} onClick={()=>{const incoming=Math.max(0,Number(sanityDamageAmount)||0);const reduced=Math.max(0,incoming-sanityProtection);const currentPS=Number(read('status.current.ps',derived[1][1]));const nextPS=Math.max(0,currentPS-reduced);const next={...data,status:{...(data.status||{}),current:{...((data.status as any)?.current||{}),pv:Number(read('status.current.pv',derived[0][1])),ps:nextPS,pr:Number(read('status.current.pr',derived[2][1]))}}};updateRenderDraft(JSON.stringify(next,null,2));void persistRenderConditions(next);setNotice(`Dano de sanidade: ${incoming}. Redução: ${incoming-reduced}. PS perdidos: ${reduced}.`);setSanityDamageAmount('')}}>Aplicar aos PS</button></div></details>}
                             {key === 'pr' && usesFamilyTiers && (() => {
                               const rank = getSystemRank(rankIdForStatus)
-                              const group = rank.group
+                              const group = rank?.group ?? ''
                               const dtByGroup: Record<string, number> = { Raposa: 20, Tigre: 19, Dragão: 18, Corvo: 17 }
                               const dt = dtByGroup[group]
                               const runBreathingTest = () => {
@@ -10226,13 +10220,14 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           </div>
                           {isKisatsutaiSystem && (() => {
                             const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
+                            const trainingBonuses = (read('skills.extraTrainingBonuses', {}) || {}) as Record<string, number>
                             const available = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, groupSkills]) =>
                               groupSkills.flatMap(skill => {
                                 const key = `${group}:${skill.name}`
                                 const level = trainings[key] as TrainingLevel | undefined
                                 const target = ['Sociais','Conhecimentos Gerais','Naturais'].includes(group) ? 'extra_skill' : 'archetype_skill'
                                 const trained = Boolean(level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level))
-                                return trained ? [{ key, name: skill.name, group, bonus: KISATSUTAI_TRAINING[level as TrainingLevel], temporary: false }]
+                                return trained ? [{ key, name: skill.name, group, bonus: storedKisatsutaiSkillBonus(key, level, trainingBonuses), temporary: false }]
                                   : (!forEnemy && isConditionGrantedSkill(conditionModifiers, target, key, skill.name))
                                     ? [{ key, name: skill.name, group, bonus: 0, temporary: true }] : []
                               })
@@ -10268,32 +10263,34 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   const conditionDiceBonus = conditionModifier(conditionRules.dice, 'status', testAttribute.key) + (selected && skillGroup ? conditionModifier(conditionRules.dice, skillGroup, selected.key) : 0)
                                   const roll = rollAttributeDice(testDiceCount + conditionDiceBonus, testAttribute.key === 'agility')
                                   const attributeConditionBonus = applyConditionModifier(testAttribute.value, conditionModifiers, 'status', testAttribute.key) - testAttribute.value
-                                  const skillConditionBonus = selected && skillGroup ? effectiveConditionSkill(selected.bonus, conditionModifiers, skillGroup, selected.key, selected.name) - selected.bonus : 0
-                                  const conditionTotal = attributeConditionBonus + skillConditionBonus
+                                  const conditionedSkill = selected && skillGroup ? effectiveConditionSkill(selected.bonus, conditionModifiers, skillGroup, selected.key, selected.name) : 0
+                                  const skillConditionBonus = conditionedSkill - (selected?.bonus ?? 0)
                                   const equippedBonus = selected ? equippedKitSkillBonuses(items, selectedCharacterId, selected.key).reduce((sum,kit)=>sum+kit.bonus,0) : 0
-                                  const total = roll.result + (selected?.bonus ?? 0) + conditionTotal + equippedBonus
+                                  const effectiveSkillBonus = selected ? capKisatsutaiSkillBonus(conditionedSkill + equippedBonus) : 0
+                                  const total = roll.result + attributeConditionBonus + effectiveSkillBonus
                                   const diceDescription = roll.hasDisadvantage
                                     ? `${roll.rolls.length}D20 [${roll.rolls.join(', ')}] (desvantagem: ${roll.result})`
                                     : `${roll.effectiveDiceCount}D20 [${roll.rolls.join(', ')}] (maior: ${roll.result})`
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(selected
-                                    ? `Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Treinamento (+${selected.bonus})${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}${equippedBonus ? ` + Kits (+${equippedBonus})` : ''} = ${total}.`
-                                    : `Teste sem perícia — ${testAttribute.label} (${testAttribute.value}): ${diceDescription}${conditionTotal ? ` + Condições do atributo (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''} = ${total}.`)
+                                    ? `Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Perícia (${effectiveSkillBonus >= 0 ? '+' : ''}${effectiveSkillBonus}; treinamento +${selected.bonus}, condições ${skillConditionBonus >= 0 ? '+' : ''}${skillConditionBonus}, kits ${equippedBonus >= 0 ? '+' : ''}${equippedBonus}${conditionedSkill + equippedBonus > MAX_KISATSUTAI_SKILL_BONUS ? ', teto +25 aplicado' : ''})${attributeConditionBonus ? ` + Condições do atributo (${attributeConditionBonus > 0 ? '+' : ''}${attributeConditionBonus})` : ''} = ${total}.`
+                                    : `Teste sem perícia — ${testAttribute.label} (${testAttribute.value}): ${diceDescription}${attributeConditionBonus ? ` + Condições do atributo (${attributeConditionBonus > 0 ? '+' : ''}${attributeConditionBonus})` : ''} = ${total}.`)
                                   if (!forEnemy && complexPreparations.some(preparation=>!preparation.consumed)) setComplexPreparations(previous=>advanceComplexAction(previous))
                                 }}>🎲 Rolar teste</button>
                               </div>
-                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Perícia: {selected ? `+${effectiveConditionSkill(selected.bonus, conditionModifiers, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key, selected.name) + equippedKitSkillBonuses(items,selectedCharacterId,selected.key).reduce((sum,kit)=>sum+kit.bonus,0)}` : withoutSkill ? 'nenhuma (somente atributo)' : 'selecione uma perícia'}</small>
+                              <small className="combat-skill-test-dice">{testAttribute.label}: {testDiceLabel} · Perícia: {selected ? `${(() => { const value = capKisatsutaiSkillBonus(effectiveConditionSkill(selected.bonus, conditionModifiers, ['Sociais','Conhecimentos Gerais','Naturais'].includes(selected.group) ? 'extra_skill' : 'archetype_skill', selected.key, selected.name) + equippedKitSkillBonuses(items,selectedCharacterId,selected.key).reduce((sum,kit)=>sum+kit.bonus,0)); return `${value >= 0 ? '+' : ''}${value}` })()}` : withoutSkill ? 'nenhuma (somente atributo)' : 'selecione uma perícia'}</small>
                               {available.length === 0 && <small className="combat-skill-test-empty">Nenhuma perícia treinada. Você ainda pode selecionar "Sem perícia" e rolar usando só o atributo.</small>}
                             </div>
                           })()}
                           {isKisatsutaiSystem && complexActionsOpen && (() => {
                             const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
+                            const trainingBonuses = (read('skills.extraTrainingBonuses', {}) || {}) as Record<string, number>
                             const skills = Object.entries(KISATSUTAI_SKILL_GROUPS).flatMap(([group, entries]) => entries.flatMap(skill => {
                               const key = `${group}:${skill.name}`
                               const level = trainings[key] as TrainingLevel | undefined
                               const target = ['Sociais','Conhecimentos Gerais','Naturais'].includes(group) ? 'extra_skill' : 'archetype_skill'
                               const trained = Boolean(level && Object.prototype.hasOwnProperty.call(KISATSUTAI_TRAINING, level))
-                              return trained ? [{key, label: `${skill.name} · ${group}`, name: skill.name, bonus: KISATSUTAI_TRAINING[level as TrainingLevel]}]
+                              return trained ? [{key, label: `${skill.name} · ${group}`, name: skill.name, bonus: storedKisatsutaiSkillBonus(key, level, trainingBonuses)}]
                                 : (!forEnemy && isConditionGrantedSkill(conditionModifiers, target, key, skill.name))
                                   ? [{key, label: `${skill.name} · ${group} (condição)`, name: skill.name, bonus: 0}] : []
                             }))
@@ -10359,7 +10356,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <label><span>2 · 📚 Perícia de arquétipo utilizada</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia de arquétipo...</option>{extraSkills.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key)}>{skill.label} (+{skill.bonus}){complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key) ? ' · Já usada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={targetSkill?.key || ''} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione uma das seis perícias...</option>{COMPLEX_MAIN_SKILLS.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.targetSkillKey === skill.key)}>{skill.label}{complexPreparations.some(preparation => preparation.targetSkillKey === skill.key) ? ' · Já beneficiada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
-                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name);const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
+                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=capKisatsutaiSkillBonus(effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name));const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
                               </div>
                               <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {targetSkill?.label || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
@@ -10393,7 +10390,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             maxPR={Number(derived[2][1])}
                             breathing={breathing}
                             vigor={vigor}
-                            breathingGroup={getSystemRank(rankIdForStatus).group}
+                            breathingGroup={getSystemRank(rankIdForStatus)?.group ?? ''}
                             inventoryItems={items.filter(item=>item.character_id===selectedCharacterId)}
                             onApply={async recovery => {
                               const parsed = JSON.parse(sheetDraft) as Record<string, any>

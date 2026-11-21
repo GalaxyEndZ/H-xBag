@@ -1,0 +1,73 @@
+/* V220 — gravidade para condições ruins; potência / intensidade para boas e neutras.
+   O nível persistido continua normal / grave / critica para compatibilidade. */
+
+/* Os cartões das condições benéficas destacam sua potência sem o vermelho de "crítica". */
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-active .hb-conditions-entry.polarity-boa.severity-normal,
+.hb-conditions-panel.hb-conditions-v144 .hb-condition-library>.hb-condition-library-item.polarity-boa.severity-normal {
+  border-top-color: #76cda4;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-active .hb-conditions-entry.polarity-boa.severity-grave,
+.hb-conditions-panel.hb-conditions-v144 .hb-condition-library>.hb-condition-library-item.polarity-boa.severity-grave {
+  border-top-color: #41c994;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-active .hb-conditions-entry.polarity-boa.severity-critica,
+.hb-conditions-panel.hb-conditions-v144 .hb-condition-library>.hb-condition-library-item.polarity-boa.severity-critica {
+  border-top-color: #a0e8b7;
+}
+
+/* Neutras têm uma escala própria de intensidade em tons azulados. */
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-active .hb-conditions-entry.polarity-neutra.severity-normal,
+.hb-conditions-panel.hb-conditions-v144 .hb-condition-library>.hb-condition-library-item.polarity-neutra.severity-normal {
+  border-top-color: #8baacc;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-active .hb-conditions-entry.polarity-neutra.severity-grave,
+.hb-conditions-panel.hb-conditions-v144 .hb-condition-library>.hb-condition-library-item.polarity-neutra.severity-grave {
+  border-top-color: #7eabdf;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-active .hb-conditions-entry.polarity-neutra.severity-critica,
+.hb-conditions-panel.hb-conditions-v144 .hb-condition-library>.hb-condition-library-item.polarity-neutra.severity-critica {
+  border-top-color: #a79beb;
+}
+
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-severity.polarity-boa {
+  background: rgba(63,187,127,.13);
+  color: #a3edc8;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-severity.polarity-boa.severity-critica {
+  background: rgba(86,214,136,.19);
+  color: #b9f7c6;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-severity.polarity-neutra {
+  background: rgba(115,161,224,.13);
+  color: #b5d3ff;
+}
+.hb-conditions-panel.hb-conditions-v144 .hb-conditions-severity.polarity-neutra.severity-critica {
+  background: rgba(153,137,232,.19);
+  color: #d5c7ff;
+}
+
+/* A ficha também usa a natureza para pintar o indicador de nível. */
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-good .hb-condition-chip-severity.severity-normal,
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-good .hb-condition-chip-severity.severity-grave,
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-good .hb-condition-chip-severity.severity-critica {
+  border-color: rgba(92,216,156,.44);
+  background: rgba(92,216,156,.13);
+  color: #a4efd0;
+  box-shadow: none;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-good .hb-condition-chip-severity.severity-critica {
+  background: rgba(95,227,147,.20);
+  color: #c4ffd9;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-neutral .hb-condition-chip-severity.severity-normal,
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-neutral .hb-condition-chip-severity.severity-grave,
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-neutral .hb-condition-chip-severity.severity-critica {
+  border-color: rgba(130,165,235,.42);
+  background: rgba(130,165,235,.12);
+  color: #c4d9ff;
+  box-shadow: none;
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-neutral .hb-condition-chip-severity.severity-critica {
+  background: rgba(157,140,235,.17);
+  color: #e0d5ff;
+}
