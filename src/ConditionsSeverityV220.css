@@ -71,3 +71,18 @@
   background: rgba(157,140,235,.17);
   color: #e0d5ff;
 }
+
+/* V223: sem classificação disponível não é sinônimo de condição prejudicial. */
+.app-shell .hb-sheet-conditions-section .hb-condition-chip.polarity-unknown {
+  border-color:var(--season-line,rgba(160,170,180,.3));
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-polarity-label.polarity-unknown {
+  color:var(--season-muted,#aeb8c2);
+}
+.app-shell .hb-sheet-conditions-section .hb-condition-rule-card.polarity-unknown {
+  border-left-color:var(--season-line,rgba(160,170,180,.3));
+}
+.hb-condition-polarity.unknown { color:var(--season-muted,#aeb8c2); }
+.hb-condition-library-item.polarity-unset, .hb-conditions-entry.polarity-unset {
+  border-left-color:var(--season-line,rgba(160,170,180,.35));
+}
