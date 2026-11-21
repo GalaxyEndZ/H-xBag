@@ -56,8 +56,10 @@
     linear-gradient(125deg,#10161b,#262c30 65%,#121820);
 }
 .hb-public-content .hb-public-cover.has-personal-cover {
-  /* O background-image vem do componente: foto + degradê de contraste. */
+  /* A foto com degradê já faz a transição para a área de identidade.
+     Não desenhar a borda avermelhada que aparecia sob o banner. */
   background-color:#111820;
+  border-bottom:0;
 }
 .hb-public-content .hb-public-cover::after {
   height: 116px;
