@@ -2,6 +2,85 @@
 .hb-v164-own-social{margin:16px 0 24px;padding:24px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 24%,transparent);border-radius:22px;background:linear-gradient(135deg,color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,#14171c),#111319);box-shadow:0 18px 50px #0002}
 .hb-v164-own-social-header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}.hb-v164-own-social-header span{letter-spacing:.14em;font-size:11px;font-weight:700;color:var(--season-primary,#d9bd8b)}.hb-v164-own-social-header h3{font-size:clamp(20px,2.5vw,27px);margin:8px 0}.hb-v164-own-social-header p{opacity:.7;margin:0}.hb-v164-own-social button,.hb-v164-profile-social-actions button,.hb-v164-posts button{cursor:pointer}.hb-v164-own-social-header>button,.hb-v164-follow-action{background:var(--season-primary,#d9bd8b)!important;color:#171511!important;border:0;border-radius:12px;padding:12px 17px;font-weight:750}
 .hb-v164-own-social-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}.hb-v164-own-social-links button{display:flex;flex-direction:column;text-align:left;gap:6px;border:1px solid #ffffff1b;border-radius:16px;padding:17px;background:#ffffff08;color:inherit;transition:transform .15s,border-color .15s}.hb-v164-own-social-links button:hover{transform:translateY(-2px);border-color:var(--season-primary,#d9bd8b)}.hb-v164-own-social-links button>span{font-size:24px;color:var(--season-primary,#d9bd8b)}.hb-v164-own-social-links button strong{font-size:15px}.hb-v164-own-social-links button small{opacity:.65}.hb-v164-my-posts{margin-top:15px;padding:10px 0;background:none;border:0;color:var(--season-primary,#d9bd8b);font-weight:650}
-.hb-v164-profile-social-actions{display:flex;flex-wrap:wrap;gap:10px;padding:0 24px 20px}.hb-v164-profile-social-actions button{border-radius:11px;padding:10px 16px;border:1px solid #ffffff29;background:#ffffff0b;color:inherit;font-weight:650}.hb-public-content .hb-public-tabs{position:sticky;top:0;z-index:5;backdrop-filter:blur(16px);background:#14171ce6}.hb-public-identity-copy h2{letter-spacing:-.025em}.hb-public-cover{min-height:175px}
+/* V222: respiro consistente nas ações do perfil público. */
+.hb-public-content .hb-v164-profile-social-actions{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  column-gap:16px;
+  row-gap:12px;
+  padding:16px clamp(18px,3vw,32px) 24px;
+}
+.hb-public-content .hb-v164-profile-social-actions>button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  flex:0 1 auto;
+  min-width:0;
+  min-height:44px;
+  margin:0;
+  padding:11px 18px;
+  border:1px solid #ffffff29;
+  border-radius:12px;
+  background:#ffffff0b;
+  color:inherit;
+  font:inherit;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.35;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .18s,background-color .18s,transform .18s;
+}
+.hb-public-content .hb-v164-profile-social-actions>button:hover:not(:disabled){
+  border-color:color-mix(in srgb,var(--hb-public-accent,#d9bd8b) 55%,#ffffff29);
+  background:#ffffff14;
+  transform:translateY(-1px);
+}
+.hb-public-content .hb-v164-profile-social-actions>button:focus-visible{
+  outline:2px solid var(--hb-public-accent,#d9bd8b);
+  outline-offset:3px;
+}
+.hb-public-content .hb-v164-profile-social-actions>button.hb-v164-follow-action{
+  border-color:transparent;
+  background:var(--season-primary,#d9bd8b)!important;
+  color:#171511!important;
+  font-weight:750;
+}
+.hb-public-content .hb-v164-profile-social-actions>button.hb-v164-follow-action:hover:not(:disabled){
+  filter:brightness(1.07);
+}
+@media(max-width:620px){
+  .hb-public-content .hb-v164-profile-social-actions{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    padding:16px 18px 24px;
+  }
+  .hb-public-content .hb-v164-profile-social-actions>button{
+    width:100%;
+    white-space:normal;
+    padding:12px 10px;
+  }
+  .hb-public-content .hb-v164-profile-social-actions>button:last-child:nth-child(3),
+  .hb-public-content .hb-v164-profile-social-actions>button:only-child{
+    grid-column:1/-1;
+  }
+}
+@media(max-width:380px){
+  .hb-public-content .hb-v164-profile-social-actions{
+    grid-template-columns:1fr;
+    gap:10px;
+    padding-inline:14px;
+  }
+  .hb-public-content .hb-v164-profile-social-actions>button{
+    grid-column:1/-1;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .hb-public-content .hb-v164-profile-social-actions>button{transition:none}
+  .hb-public-content .hb-v164-profile-social-actions>button:hover:not(:disabled){transform:none}
+}.hb-public-content .hb-public-tabs{position:sticky;top:0;z-index:5;backdrop-filter:blur(16px);background:#14171ce6}.hb-public-identity-copy h2{letter-spacing:-.025em}.hb-public-cover{min-height:175px}
 .hb-v164-posts{display:grid;gap:15px;max-width:860px;margin:0 auto;padding-bottom:25px}.hb-v164-posts-intro{display:flex;justify-content:space-between;align-items:center;gap:15px}.hb-v164-posts-intro h3{margin:4px 0 3px;font-size:24px}.hb-v164-posts-intro p{margin:0;opacity:.65}.hb-v164-posts-intro button,.hb-v164-load-more{background:#ffffff0d;border:1px solid #ffffff25;color:inherit;border-radius:12px;padding:10px 14px}.hb-v164-post{border:1px solid #ffffff20;border-radius:18px;background:linear-gradient(155deg,#ffffff0a,#ffffff04);padding:18px;overflow:hidden}.hb-v164-post-meta{display:flex;align-items:center;gap:12px}.hb-v164-post-meta>div:nth-child(2){display:flex;flex-direction:column;gap:3px;min-width:0}.hb-v164-post-meta strong{font-size:14px}.hb-v164-post-meta span,.hb-v164-post-meta small{font-size:12px;opacity:.6}.hb-v164-post-meta>small{margin-left:auto;white-space:nowrap}.hb-v164-mini-avatar{display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:color-mix(in srgb,var(--hb-public-accent,#d9bd8b) 27%,#181818);border:1px solid var(--hb-public-accent,#d9bd8b);font-weight:800}.hb-v164-post-body{font-size:14px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;margin:16px 0}.hb-v164-photo-grid{display:grid;gap:4px;grid-template-columns:repeat(2,minmax(0,1fr));border-radius:12px;overflow:hidden;margin-top:12px}.hb-v164-photo-grid.count-1{grid-template-columns:1fr}.hb-v164-photo-grid button{height:190px;min-width:0;border:0;padding:0;background:#111}.hb-v164-photo-grid.count-1 button{height:min(55vw,390px)}.hb-v164-photo-grid img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}.hb-v164-photo-grid button:hover img{transform:scale(1.025)}.hb-v164-post-actions{display:flex;justify-content:space-between;margin-top:13px;align-items:center;color:#ffffffa3;font-size:12px}.hb-v164-post-actions button{border:0;background:transparent;color:inherit;padding:8px 4px;font-weight:650}.hb-v164-post-actions button.liked{color:#f48aa1}.hb-v164-post-empty{text-align:center;padding:45px 20px;border:1px dashed #ffffff33;border-radius:17px}.hb-v164-post-empty span{font-size:28px;display:block;margin-bottom:10px}.hb-v164-post-empty strong{display:block}.hb-v164-post-empty p{opacity:.7}.hb-v164-post-error{padding:12px;border:1px solid #d76b6b7a;border-radius:10px}.hb-v164-lightbox{position:fixed;inset:0;z-index:100000;background:#08090df2;display:flex;align-items:center;justify-content:center;gap:12px;padding:30px 16px}.hb-v164-lightbox img{max-height:87vh;max-width:min(85vw,1100px);object-fit:contain}.hb-v164-lightbox button{border:1px solid #ffffff44;border-radius:12px;background:#ffffff15;color:white;font-size:30px;padding:8px 15px}.hb-v164-lightbox .hb-v164-close{position:absolute;top:16px;right:18px;font-size:19px}.hb-v164-lightbox>span{position:absolute;bottom:14px;color:#fff}
-@media(max-width:720px){.hb-v164-own-social{padding:16px}.hb-v164-own-social-links{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-v164-own-social-links button{padding:13px}.hb-v164-profile-social-actions{padding:0 14px 16px}.hb-v164-post-meta>small{display:none}.hb-v164-photo-grid button{height:135px}.hb-v164-photo-grid.count-1 button{height:280px}.hb-v164-lightbox img{max-width:72vw}.hb-v164-lightbox button{padding:5px 9px}}
+@media(max-width:720px){.hb-v164-own-social{padding:16px}.hb-v164-own-social-links{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-v164-own-social-links button{padding:13px}/* A responsividade dos botões fica no bloco V222, acima. */.hb-v164-post-meta>small{display:none}.hb-v164-photo-grid button{height:135px}.hb-v164-photo-grid.count-1 button{height:280px}.hb-v164-lightbox img{max-width:72vw}.hb-v164-lightbox button{padding:5px 9px}}
