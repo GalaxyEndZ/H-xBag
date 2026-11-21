@@ -728,6 +728,15 @@ type Item = {
   sale_blocked: boolean
 }
 
+/** Kits oficiais equipáveis e kits legados cadastrados só na categoria Kits. */
+function isEquippableInventoryKit(item: Item): boolean {
+  const type = item.metadata?.kitType
+  if (isKitType(type)) return KIT_DEFINITIONS[type].family === 'equippable'
+  const categories = Array.isArray(item.metadata?.categories) ? item.metadata.categories : []
+  return (item.category === 'Kits' || categories.includes('Kits')) &&
+    item.category !== 'Consumíveis' && !categories.includes('Consumíveis')
+}
+
 type CampaignCreature = {
   id: string
   campaign_id: string
@@ -2500,11 +2509,38 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const inventoryReorderBusy = useRef(false)
   const [updatingQuantityItemId, setUpdatingQuantityItemId] = useState<string | null>(null)
   const [usingScarcityItemId, setUsingScarcityItemId] = useState<string | null>(null)
+  const [updatingKitEquipId, setUpdatingKitEquipId] = useState<string | null>(null)
 
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+
+  // A ficha e os cartões usam a mesma alteração persistida no inventário.
+  async function toggleInventoryKitEquipped(item: Item) {
+    if (!isEquippableInventoryKit(item) || Number(item.quantity) < 1 || updatingKitEquipId) return
+    const equipped = item.metadata?.equipped !== true
+    setUpdatingKitEquipId(item.id)
+    try {
+      const { data, error: updateError } = await supabase.from('inventory_items')
+        .update({ metadata: { ...(item.metadata || {}), equipped } })
+        .eq('id', item.id)
+        .eq('character_id', item.character_id)
+        .select('id,character_id,name,description,category,quantity,weight,metadata,unit_price,currency_id,sale_blocked')
+        .maybeSingle()
+      if (updateError || !data) {
+        setError(`Não foi possível ${equipped ? 'equipar' : 'desequipar'} o kit: ${updateError?.message || 'sem retorno'}`)
+        return
+      }
+      const updated = data as Item
+      setItems(current => current.map(entry => entry.id === updated.id ? updated : entry))
+      setSelectedItemDetails(current => current?.id === updated.id ? updated : current)
+      setError('')
+      setNotice(equipped ? `${item.name} equipado.` : `${item.name} desequipado.`)
+    } finally {
+      setUpdatingKitEquipId(null)
+    }
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -15463,6 +15499,7 @@ style={{cursor:'pointer'}}>
                 {item.metadata?.equipmentType === 'armor' && <button type="button" className={`item-menu equipment-card-icon armor-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar armadura' : 'Equipar armadura'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; if(nextEquipped){ const others=items.filter(entry=>entry.character_id===item.character_id && entry.id!==item.id && entry.metadata?.equipmentType==='armor' && entry.metadata?.equipped===true); for(const other of others) await supabase.from('inventory_items').update({metadata:{...(other.metadata||{}),equipped:false}}).eq('id',other.id) } const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a armadura: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.character_id===item.character_id&&entry.metadata?.equipmentType==='armor'&&entry.id!==item.id?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'🛡'}</button>}
                 {item.metadata?.equipmentType === 'protection' && <button type="button" className={`item-menu equipment-card-icon protection-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar proteção' : 'Equipar proteção'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped=item.metadata?.equipped!==true; const {data,error}=await supabase.from('inventory_items').update({metadata:{...(item.metadata||{}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if(error||!data){setError(`Não foi possível alterar a proteção: ${error?.message||'sem retorno'}`);return} setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped===true?'✓':'✧'}</button>}
                 {Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas') && <button type="button" className={`item-menu equipment-card-icon weapon-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar arma' : 'Equipar arma'} aria-label={item.metadata?.equipped === true ? `Desequipar ${item.name}` : `Equipar ${item.name}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => { event.stopPropagation(); const nextEquipped = item.metadata?.equipped !== true; if (nextEquipped) { const otherEquipped = items.filter(entry => entry.character_id === item.character_id && entry.id !== item.id && entry.metadata?.equipped === true && Array.isArray(entry.metadata?.categories) && entry.metadata.categories.includes('Armas')); for (const other of otherEquipped) { await supabase.from('inventory_items').update({metadata:{...(other.metadata || {}),equipped:false}}).eq('id',other.id) } } const {data,error: equipError}=await supabase.from('inventory_items').update({metadata:{...(item.metadata || {}),equipped:nextEquipped}}).eq('id',item.id).select('id, character_id, name, description, category, quantity, weight, metadata, unit_price, currency_id').maybeSingle(); if (equipError || !data) { setError(`Não foi possível alterar a arma equipada: ${equipError?.message || 'sem retorno'}`); return } setItems(current=>current.map(entry=>entry.id===item.id?data as Item:entry.id!==item.id&&entry.character_id===item.character_id&&entry.metadata?.equipped===true&&Array.isArray(entry.metadata?.categories)&&entry.metadata.categories.includes('Armas')?{...entry,metadata:{...(entry.metadata||{}),equipped:false}}:entry)); setNotice(nextEquipped?`${item.name} equipada.`:`${item.name} desequipada.`) }}>{item.metadata?.equipped === true ? '✓' : '⚔'}</button>}
+                {isEquippableInventoryKit(item) && <button type="button" className={`item-menu equipment-card-icon kit-card-icon ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} title={item.metadata?.equipped === true ? 'Desequipar kit' : 'Equipar kit'} aria-label={`${item.metadata?.equipped === true ? 'Desequipar' : 'Equipar'} ${item.name}`} aria-pressed={item.metadata?.equipped === true} disabled={updatingKitEquipId !== null || Number(item.quantity) < 1} onClick={event => { event.stopPropagation(); void toggleInventoryKitEquipped(item) }}>{item.metadata?.equipped === true ? '✓' : '🧰'}</button>}
                 <button type="button" className="item-menu" title="Editar item" aria-label={`Editar ${item.name}`} disabled={loading} onClick={event => {
   event.stopPropagation()
   startEditingItem(item)
@@ -15474,10 +15511,11 @@ style={{cursor:'pointer'}}>
             <div className="item-category">{item.category}</div>
             <h3>{item.name}</h3>
             <p className="item-description">{item.description || 'Sem descrição.'}</p>
-            {(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
-              <span className="inventory-equipment-label">EQUIPAMENTO</span>
-              <button type="button" className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} aria-pressed={item.metadata?.equipped === true} onClick={async event => {
+            {(isEquippableInventoryKit(item) || item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
+              <span className="inventory-equipment-label">{isEquippableInventoryKit(item) ? 'KIT EQUIPÁVEL' : 'EQUIPAMENTO'}</span>
+              <button type="button" className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`} aria-pressed={item.metadata?.equipped === true} disabled={isEquippableInventoryKit(item) && (updatingKitEquipId !== null || Number(item.quantity) < 1)} aria-label={`${item.metadata?.equipped === true ? 'Desequipar' : 'Equipar'} ${isEquippableInventoryKit(item) ? 'kit' : 'equipamento'} ${item.name}`} onClick={async event => {
                 event.stopPropagation();
+                if (isEquippableInventoryKit(item)) { await toggleInventoryKitEquipped(item); return; }
                 const isWeapon = Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas');
                 const type = isWeapon ? 'weapon' : item.metadata?.equipmentType;
                 const nextEquipped = item.metadata?.equipped !== true;
@@ -15491,8 +15529,8 @@ style={{cursor:'pointer'}}>
                 setItems(current => current.map(entry => entry.id === item.id ? data as Item : others.some(other => other.id === entry.id) ? { ...entry, metadata: { ...(entry.metadata || {}), equipped: false } } : entry));
                 setNotice(nextEquipped ? `${item.name} equipado(a).` : `${item.name} desequipado(a).`);
               }}>
-                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
-                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
+                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : isEquippableInventoryKit(item) ? '🧰' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
+                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : isEquippableInventoryKit(item) ? 'Equipar kit' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
               </button>
             </div>}
             <div className="item-footer">
@@ -18471,15 +18509,18 @@ style={{cursor:'pointer'}}>
                           {item.description || 'Sem descrição.'}
                         </p>
 
-  {(item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && (
+  {(isEquippableInventoryKit(item) || item.metadata?.equipmentType === 'armor' || item.metadata?.equipmentType === 'protection' || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))) && (
                             <div className="inventory-equipment-controls" aria-label={`Equipamento de ${item.name}`}>
-                              <span className="inventory-equipment-label">EQUIPAMENTO</span>
+                              <span className="inventory-equipment-label">{isEquippableInventoryKit(item) ? 'KIT EQUIPÁVEL' : 'EQUIPAMENTO'}</span>
                               <button
                                 type="button"
                                 className={`inventory-equip-button ${item.metadata?.equipped === true ? 'is-equipped' : ''}`}
                                 aria-pressed={item.metadata?.equipped === true}
+                                aria-label={`${item.metadata?.equipped === true ? 'Desequipar' : 'Equipar'} ${isEquippableInventoryKit(item) ? 'kit' : 'equipamento'} ${item.name}`}
+                                disabled={isEquippableInventoryKit(item) && (updatingKitEquipId !== null || Number(item.quantity) < 1)}
                                 onClick={async (event) => {
                                   event.stopPropagation();
+                                  if (isEquippableInventoryKit(item)) { await toggleInventoryKitEquipped(item); return; }
                                   const isWeapon = Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas');
                                   const type = isWeapon ? 'weapon' : item.metadata?.equipmentType;
                                   const nextEquipped = item.metadata?.equipped !== true;
@@ -18496,8 +18537,8 @@ style={{cursor:'pointer'}}>
                                   setNotice(nextEquipped ? `${item.name} equipado(a).` : `${item.name} desequipado(a).`);
                                 }}
                               >
-                                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
-                                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
+                                <span className="inventory-equip-symbol">{item.metadata?.equipped === true ? '✓' : isEquippableInventoryKit(item) ? '🧰' : item.metadata?.equipmentType === 'armor' ? '🛡' : item.metadata?.equipmentType === 'protection' ? '✧' : '⚔'}</span>
+                                {item.metadata?.equipped === true ? 'Equipado · Desequipar' : isEquippableInventoryKit(item) ? 'Equipar kit' : item.metadata?.equipmentType === 'armor' ? 'Equipar armadura' : item.metadata?.equipmentType === 'protection' ? 'Equipar proteção' : 'Equipar arma'}
                               </button>
                             </div>
                           )}
@@ -18720,13 +18761,7 @@ style={{cursor:'pointer'}}>
               {type === 'equip_standard' && mode === 'protection' ? <p>Benefício: proteção moderada.</p> : <ul>{skills.map((skill,i) => <li key={`${i}-${skill}`}>{formatKitSkill(skill)}{kitBonuses[i]>0 ? ` +${kitBonuses[i]}` : ' · bônus ainda não configurado'}</li>)}</ul>}
               {type === 'equip_rare' && description && <p>Funcionalidade única: {description}</p>}
               <p>{skills.length ? `Bônus por perícia: ${kitBonuses.map(value => value > 0 ? `+${value}` : 'não configurado').join(' · ')}. Válidos somente com o kit equipado.` : 'Benefício: proteção moderada (kit antigo).'}</p>
-              <button type="button" className="secondary-button" onClick={async () => {
-                const equipped = selectedItemDetails.metadata?.equipped !== true
-                const {data,error} = await supabase.from('inventory_items').update({metadata:{...(selectedItemDetails.metadata||{}),equipped}}).eq('id',selectedItemDetails.id).eq('character_id',selectedItemDetails.character_id).select('id,character_id,name,description,category,quantity,weight,metadata,unit_price,currency_id').maybeSingle()
-                if(error || !data){setError('Não foi possível alterar o kit equipado.');return}
-                setItems(current => current.map(item=>item.id===data.id?data as Item:item))
-                setSelectedItemDetails(data as Item)
-              }}>{selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '○ Equipar kit'}</button>
+              <button type="button" className="inventory-equip-button" aria-pressed={selectedItemDetails.metadata?.equipped === true} disabled={updatingKitEquipId !== null || Number(selectedItemDetails.quantity) < 1} onClick={() => void toggleInventoryKitEquipped(selectedItemDetails)}>{selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '🧰 Equipar kit'}</button>
             </>}
             {definition.family === 'consumable' && <>
               <p>Efeito: {type === 'prolonged' ? 'A definir pelo mestre' : kitEffectLabel(effect)}</p>
@@ -18736,6 +18771,14 @@ style={{cursor:'pointer'}}>
             </>}
           </section>
         })()}
+        {isEquippableInventoryKit(selectedItemDetails) && !isKitType(selectedItemDetails.metadata?.kitType) && (
+          <section className="hb-kit-detail">
+            <h3>🧰 Kit equipável</h3>
+            <button type="button" className="inventory-equip-button" aria-pressed={selectedItemDetails.metadata?.equipped === true} disabled={updatingKitEquipId !== null || Number(selectedItemDetails.quantity) < 1} onClick={() => void toggleInventoryKitEquipped(selectedItemDetails)}>
+              {selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '🧰 Equipar kit'}
+            </button>
+          </section>
+        )}
         {((Array.isArray(selectedItemDetails.metadata?.categories) && selectedItemDetails.metadata.categories.includes('Consumíveis')) || selectedItemDetails.category === 'Consumíveis') && (() => {
           const level = Math.min(4, Math.max(1, Number(selectedItemDetails.metadata?.scarcityLevel) || 1))
           const die = ({ 1: 'd12', 2: 'd8', 3: 'd6', 4: 'd4' } as Record<number, string>)[level]

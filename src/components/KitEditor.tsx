@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import {
   KIT_DEFINITIONS, SCARCITY_DICE,
-  kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, kitSlots, kitWeight,
+  kitAvailableScarcityLevels, kitDefinition, kitFixedSkillBonuses, kitSlots, kitWeight,
   type KitBenefitMode, type KitEffect, type KitType,
 } from '../kitRules'
 import { KIT_SKILL_CATALOG } from '../kitSkillCatalog'
@@ -40,6 +40,13 @@ export default function KitEditor({
   const fixedBonuses = kitFixedSkillBonuses(type, benefitMode)
   const levels = kitAvailableScarcityLevels(type)
   const weight = kitWeight(type, Number(scarcityLevel), exhausted)
+  const effectPlaceholder = effect === 'damage'
+    ? 'Descreva o dano adicional concedido, quando se aplica e suas limitações...'
+    : effect === 'resistance'
+      ? 'Explique a resistência concedida, quando funciona e suas limitações...'
+      : effect === 'combat_point'
+        ? 'Explique como o ponto de combate temporário pode ser utilizado e suas restrições...'
+        : 'Descreva o benefício deste kit, como ele funciona e em quais situações pode ser utilizado...'
   return <section className="hb-kit-editor" aria-label="Tipos de kits">
     <header className="hb-kit-editor-head">
       <span className="hb-kit-editor-emblem" aria-hidden="true">🧰</span>
@@ -115,7 +122,7 @@ export default function KitEditor({
           </select>
         </label>}
         {type !== 'prolonged' && <label>Detalhes do efeito (opcional)
-          <textarea value={effectNotes} rows={2} maxLength={500} onChange={event => onEffectNotesChange(event.target.value)} placeholder={`Descreva o buff de ${kitEffectLabel(effect).toLowerCase()} (valor definido pelo mestre)`}/>
+          <textarea value={effectNotes} rows={2} maxLength={500} onChange={event => onEffectNotesChange(event.target.value)} placeholder={effectPlaceholder}/>
         </label>}
         <p className="hb-kit-editor-note">{type === 'immediate' ? 'Duração: até 1d6 rodadas.' : type === 'preparation' ? 'Duração: uma cena.' : 'Os efeitos e a duração do uso prolongado ainda não foram definidos.'} O dado de escassez continua sendo rolado na utilização do item.</p>
       </>}

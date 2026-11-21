@@ -16795,3 +16795,13 @@ button:disabled { opacity: .58; }
     overflow-x: auto;
   }
 }
+
+/* V225 — kits equipáveis possuem ação própria nas fichas e no inventário. */
+.inventory-item-card .kit-card-icon { color: #b8d99d; }
+.inventory-item-card .kit-card-icon:hover,
+.inventory-item-card .kit-card-icon.is-equipped {
+  color: #c5f5ba;
+  border-color: color-mix(in srgb, #72b998 65%, transparent);
+  background: color-mix(in srgb, #72b998 18%, transparent);
+}
+.inventory-item-card .inventory-equip-button:disabled { opacity: .55 !important; cursor: wait; transform: none; }
