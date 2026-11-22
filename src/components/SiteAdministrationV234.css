@@ -62,3 +62,8 @@
 .hb-admin-v234 .hb-admin-partial-warning ul{padding-left:18px;margin:0;color:var(--ad-muted)}
 .hb-admin-v234 .hb-admin-partial-warning button{margin-top:3px}
 .hb-admin-v234 .hb-admin-status button{justify-self:start;margin-top:12px}
+
+/* Banimentos de conta: estado visual específico, sem confundir com suspensão temporária. */
+.hb-admin-v234 .hb-admin-banned{color:#ffd0d4;border-color:rgba(230,80,90,.7);background:rgba(175,42,62,.18)}
+.hb-admin-v234 .hb-admin-banned-label{color:#f0a8af;font-weight:850}
+.hb-admin-v234 .hb-admin-ban-button{font-weight:850;border-color:rgba(226,80,96,.7)}

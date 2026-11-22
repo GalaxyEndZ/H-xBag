@@ -11,7 +11,8 @@ type Report = {
 }
 type StaffUser = {
   user_id: string; username: string; display_name: string; is_admin: boolean;
-  is_moderator: boolean; suspended_until: string | null; reason: string; warning_count: number
+  is_moderator: boolean; suspended_until: string | null; reason: string; warning_count: number;
+  is_banned: boolean; ban_reason: string; banned_at: string | null
 }
 type Audit = {
   id: string; actor_id: string | null; action: string; target_id: string | null;
@@ -30,6 +31,7 @@ const targetLabels: Record<string, string> = {
 }
 const actionLabels: Record<string, string> = {
   warn: 'Advertência', suspend: 'Suspensão aplicada', unsuspend: 'Suspensão encerrada',
+  ban_user: 'Conta banida', unban_user: 'Banimento revogado',
   remove_post: 'Publicação removida', remove_comment: 'Comentário removido', remove_group: 'Comunidade removida',
   review_report: 'Denúncia analisada', dismiss_report: 'Denúncia dispensada',
   grant_moderator: 'Moderador nomeado', revoke_moderator: 'Permissão revogada',
@@ -63,7 +65,7 @@ const isMissingIdentityService = (err: unknown) => {
 // Recuperação limitada aos nomes públicos das contas diretamente ligadas aos registros.
 // Identificadores de posts/grupos não são tratados como identificadores de usuários.
 async function fallbackAdminIdentities(reports: Report[], audit: Audit[]): Promise<IdentityMap> {
-  const userActions = new Set(['warn', 'suspend', 'unsuspend', 'grant_moderator', 'revoke_moderator'])
+  const userActions = new Set(['warn', 'suspend', 'unsuspend', 'ban_user', 'unban_user', 'grant_moderator', 'revoke_moderator'])
   const uuids = new Set<string>()
   for (const report of reports) {
     if (isUuid(report.reporter_id)) uuids.add(report.reporter_id)
@@ -161,7 +163,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   const [userSearch, setUserSearch] = useState('')
   const [users, setUsers] = useState<StaffUser[]>([])
   const [selectedUser, setSelectedUser] = useState<StaffUser | null>(null)
-  const [userFilter, setUserFilter] = useState<'all' | 'admin' | 'moderator' | 'suspended'>('all')
+  const [userFilter, setUserFilter] = useState<'all' | 'admin' | 'moderator' | 'suspended' | 'banned'>('all')
   const [reason, setReason] = useState('')
   const [days, setDays] = useState('3')
   const [historySearch, setHistorySearch] = useState('')
@@ -289,7 +291,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     if (!isUuid(id)) { setError('Identificador de usuário inválido.'); return }
     changePane('users'); setUserSearch(id); setUsers([]); setSelectedUser(null); setWorking(true)
     try {
-      const result = await supabase.rpc('hax_v234_find_users', { p_search: id, p_limit: 5 })
+      const result = await supabase.rpc('hax_v241_find_users', { p_search: id, p_limit: 5 })
       if (result.error) throw result.error
       const found = (result.data || []) as StaffUser[]
       setUsers(found)
@@ -303,14 +305,14 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     if (term.length < 2) { setError('Digite pelo menos 2 caracteres ou um UUID completo.'); return }
     setError(''); setWorking(true); setSelectedUser(null)
     try {
-      const result = await supabase.rpc('hax_v234_find_users', { p_search: term, p_limit: 50 })
+      const result = await supabase.rpc('hax_v241_find_users', { p_search: term, p_limit: 50 })
       if (result.error) throw result.error
       setUsers((result.data || []) as StaffUser[])
     } catch (err) { setError(safeError(err)) }
     finally { setWorking(false) }
   }
   const refreshUser = async (id: string) => {
-    const result = await supabase.rpc('hax_v234_find_users', { p_search: id, p_limit: 5 })
+    const result = await supabase.rpc('hax_v241_find_users', { p_search: id, p_limit: 5 })
     if (result.error) throw result.error
     const updated = ((result.data || []) as StaffUser[]).find(person => person.user_id === id)
     setSelectedUser(updated || null)
@@ -339,6 +341,31 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
       description: `${person.display_name} (@${person.username || shortId(person.user_id)})${action === 'suspend' ? ` ficará temporariamente impedido de interagir em áreas da comunidade por ${duration} dia(s).` : '.'} ${motive ? `Motivo: ${motive}` : ''}`,
       danger: action === 'suspend', success: `${actionLabels[action]} registrada no histórico.`,
       run: async () => { await moderationRpc(action, person.user_id, motive, action === 'suspend' ? duration : undefined); await refreshUser(person.user_id); setReason('') },
+    })
+  }
+  const banAction = (banned: boolean) => {
+    if (!selectedUser || working) return
+    const person = selectedUser
+    if (person.is_admin || person.user_id === userId) {
+      setError('Não é permitido aplicar essa medida a uma conta administrativa ou à própria conta.'); return
+    }
+    const motive = reason.trim()
+    if (motive.length < 8) { setError('Informe uma justificativa de pelo menos 8 caracteres.'); return }
+    request({
+      title: banned ? 'Banir esta conta?' : 'Revogar o banimento?',
+      description: `${person.display_name} (@${person.username || shortId(person.user_id)}). ${banned
+        ? 'A conta terá o acesso à interface bloqueado e as operações protegidas serão restringidas. O banimento não expira automaticamente.'
+        : 'O acesso poderá ser retomado, respeitando eventuais outras restrições ainda ativas.'} Motivo: ${motive}`,
+      danger: banned,
+      success: banned ? 'Banimento registrado no histórico.' : 'Banimento revogado e registrado no histórico.',
+      run: async () => {
+        const result = await supabase.rpc('hax_v241_set_ban', {
+          p_user: person.user_id, p_banned: banned, p_reason: motive,
+        })
+        if (result.error) throw result.error
+        await refreshUser(person.user_id)
+        setReason('')
+      },
     })
   }
   const reportAction = (action: 'review_report' | 'dismiss_report' | 'remove_post' | 'remove_comment' | 'remove_group') => {
@@ -387,7 +414,8 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   const filteredUsers = users.filter(person => userFilter === 'all' ||
     (userFilter === 'admin' && person.is_admin) ||
     (userFilter === 'moderator' && person.is_moderator) ||
-    (userFilter === 'suspended' && isCurrent(person.suspended_until)))
+    (userFilter === 'suspended' && isCurrent(person.suspended_until)) ||
+    (userFilter === 'banned' && person.is_banned))
   const filteredAudit = useMemo(() => audit.filter(entry =>
     (historyAction === 'all' || entry.action === historyAction) &&
     textIncludes(historySearch.trim(), entry.action, actionLabels[entry.action], entry.reason, entry.actor_id, entry.target_id, entry.report_id, identities[entry.id]?.actor_username, identities[entry.id]?.target_username, handle(identities[entry.id]?.actor_username, ''), handle(identities[entry.id]?.target_username, ''))
@@ -448,7 +476,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
         <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">TRANSPARÊNCIA</span><h4>Últimas decisões</h4><p>Rastreabilidade das ações realizadas pela administração.</p></div><button type="button" onClick={() => changePane('history')}>Ver histórico</button></div>
         <div className="hb-admin-mini-list">{audit.slice(0, 5).map(entry => <div className="hb-admin-mini-entry" key={entry.id}><span className="hb-admin-mini-icon">◷</span><span><strong>{actionLabels[entry.action] || entry.action}</strong><small>{formatDate(entry.created_at)} · Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}</small></span></div>)}{audit.length === 0 && <div className="hb-admin-empty">{failedSections.history ? 'Não foi possível consultar o histórico.' : 'Nenhuma decisão registrada nesta amostra.'}</div>}</div>
       </section>
-      <aside className="hb-admin-overview-advice"><strong>Escopo de proteção</strong><p>As suspensões limitam a participação em determinadas áreas da comunidade, mas não desconectam automaticamente a conta nem impedem todas as interações por mensagens. Considere esse alcance antes de aplicar uma medida.</p><span>O acesso à administração é reservado às contas autorizadas.</span></aside>
+      <aside className="hb-admin-overview-advice"><strong>Medidas disponíveis</strong><p>Suspensões são temporárias. Banimentos não expiram e bloqueiam o acesso ao site após a verificação da conta. A restrição é revalidada durante sessões abertas, mas não encerra automaticamente uma sessão já iniciada.</p><span>Somente administradores globais podem banir ou revogar banimentos.</span></aside>
     </div>}
 
     {pane === 'reports' && <section className="hb-admin-section">
@@ -466,7 +494,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
           <div className="hb-admin-inspection-title"><div><span className="hb-admin-section-eyebrow">DETALHES</span><strong>Denúncia selecionada</strong></div><button type="button" onClick={() => { previewSequence.current++; setSelectedReport(null); setPreview(null); setReason('') }} aria-label="Fechar denúncia">✕</button></div>
           <div className="hb-admin-data"><span>Estado</span><p><span className={`hb-admin-state ${inspection.status}`}>{statusLabels[inspection.status]}</span></p><span>Conteúdo denunciado</span><p>{targetLabels[inspection.target_type] || inspection.target_type}</p><span>Motivo</span><p>{inspection.reason}</p><span>Relato do denunciante</span><p>{inspection.details || 'Não foram enviados detalhes adicionais.'}</p><span>Alvo</span><p>{personLink(identities[inspection.id]?.target_username, identities[inspection.id]?.target_user_id, 'Autor não identificado')}</p><span>Denunciante</span><p>{personLink(identities[inspection.id]?.reporter_username, inspection.reporter_id)}</p><span>Referência do conteúdo</span><code>{inspection.target_id}</code><span>Recebida em</span><p>{formatDate(inspection.created_at)}</p></div>
           {previewBusy ? <p role="status">Buscando prévia do conteúdo…</p> : preview && <div className="hb-admin-preview"><strong>Prévia do conteúdo</strong><p>{preview.found ? preview.summary : 'O conteúdo não está disponível ou já foi removido.'}</p>{preview.author_id && <div className="hb-admin-preview-actions"><button type="button" disabled={working} onClick={() => void locateUser(preview.author_id!)}>Gerenciar autor</button>{personLink(identities[inspection.id]?.target_username, preview.author_id)}</div>}</div>}
-          {inspection.target_type === 'user' && <button type="button" className="hb-admin-secondary" disabled={working} onClick={() => void locateUser(inspection.target_id)}>Gerenciar usuário denunciado</button>}
+          {identities[inspection.id]?.target_user_id && <button type="button" className="hb-admin-secondary" disabled={working} onClick={() => void locateUser(identities[inspection.id].target_user_id!)}>Gerenciar conta do alvo</button>}{inspection.target_type === 'user' && !identities[inspection.id]?.target_user_id && <button type="button" className="hb-admin-secondary" disabled={working} onClick={() => void locateUser(inspection.target_id)}>Gerenciar usuário denunciado</button>}
           {inspection.status === 'pending' && <><label className="hb-admin-label">Justificativa da decisão<textarea rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Registre o motivo da decisão (obrigatório para exclusões)." /><small>{reason.length}/1000 caracteres</small></label><div className="hb-admin-actions"><button type="button" disabled={working} onClick={() => reportAction('review_report')}>✓ Marcar analisada</button><button type="button" disabled={working} onClick={() => reportAction('dismiss_report')}>Dispensar</button>{(['post', 'comment', 'group'] as string[]).includes(inspection.target_type) && <button type="button" className="danger" disabled={working || previewBusy} onClick={() => reportAction(inspection.target_type === 'post' ? 'remove_post' : inspection.target_type === 'comment' ? 'remove_comment' : 'remove_group')}>Remover conteúdo</button>}</div></>}
           {inspection.target_type === 'legacy_post' && <p className="hb-admin-footnote">O feed clássico permite análise, mas não remoção por esta central. Use o processo específico do sistema antigo.</p>}
           {inspection.status !== 'pending' && <p className="hb-admin-footnote">Esta denúncia já foi encerrada. A decisão permanece no histórico administrativo.</p>}
@@ -475,16 +503,16 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     </section>}
 
     {(pane === 'users' || pane === 'staff') && <section className="hb-admin-section">
-      <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">{pane === 'staff' ? 'PERMISSÕES' : 'SEGURANÇA DE CONTAS'}</span><h4>{pane === 'staff' ? 'Equipe de moderação' : 'Gerenciamento de usuários'}</h4><p>{pane === 'staff' ? 'Pesquise contas para nomear ou revogar moderadores. A atribuição de administrador global não está disponível neste painel.' : 'Consulte advertências e gerencie restrições de participação na comunidade.'}</p></div></div>
+      <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">{pane === 'staff' ? 'PERMISSÕES' : 'SEGURANÇA DE CONTAS'}</span><h4>{pane === 'staff' ? 'Equipe de moderação' : 'Gerenciamento de usuários'}</h4><p>{pane === 'staff' ? 'Pesquise contas para nomear ou revogar moderadores. A atribuição de administrador global não está disponível neste painel.' : 'Consulte advertências, aplique suspensões temporárias ou banimentos sem prazo de expiração.'}</p></div></div>
       <form className="hb-admin-search" onSubmit={e => void searchUsers(e)}><label className="hb-admin-filter-search">Localizar conta<input type="search" value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Nome, @usuário ou UUID" minLength={2} /></label><button type="submit" disabled={working}>{working ? 'Pesquisando…' : '⌕ Pesquisar'}</button></form>
-      <div className="hb-admin-user-toolbar"><label>Filtrar resultados<select value={userFilter} onChange={e => setUserFilter(e.target.value as typeof userFilter)}><option value="all">Todos encontrados</option><option value="admin">Administradores</option><option value="moderator">Moderadores</option><option value="suspended">Suspensos</option></select></label><span>{filteredUsers.length} resultado(s) visíveis · até 50 por pesquisa</span></div>
-      <div className="hb-admin-users-layout"><div className="hb-admin-users-list">{filteredUsers.map(person => <div key={person.user_id} className="hb-admin-user-row"><button type="button" className={selectedUser?.user_id === person.user_id ? 'selected' : ''} aria-pressed={selectedUser?.user_id === person.user_id} onClick={() => { setSelectedUser(person); setReason('') }}><span className="hb-admin-person-avatar">{(person.display_name || 'A').charAt(0).toUpperCase()}</span><span><strong>{person.display_name || 'Aventureiro'}</strong><small>{person.is_admin ? 'Admin' : person.is_moderator ? 'Moderador' : 'Jogador'}</small></span>{isCurrent(person.suspended_until) && <span className="hb-admin-mini-warning">Suspenso</span>}</button><div className="hb-admin-user-row-link">{personLink(person.username, person.user_id, 'Sem @usuário')}</div></div>)}{filteredUsers.length === 0 && <div className="hb-admin-empty">{users.length ? 'Nenhum resultado corresponde ao filtro.' : 'Pesquise uma conta para começar. Não existe uma listagem pública de todos os usuários.'}</div>}</div>
+      <div className="hb-admin-user-toolbar"><label>Filtrar resultados<select value={userFilter} onChange={e => setUserFilter(e.target.value as typeof userFilter)}><option value="all">Todos encontrados</option><option value="admin">Administradores</option><option value="moderator">Moderadores</option><option value="suspended">Suspensos</option><option value="banned">Banidos</option></select></label><span>{filteredUsers.length} resultado(s) visíveis · até 50 por pesquisa</span></div>
+      <div className="hb-admin-users-layout"><div className="hb-admin-users-list">{filteredUsers.map(person => <div key={person.user_id} className="hb-admin-user-row"><button type="button" className={selectedUser?.user_id === person.user_id ? 'selected' : ''} aria-pressed={selectedUser?.user_id === person.user_id} onClick={() => { setSelectedUser(person); setReason('') }}><span className="hb-admin-person-avatar">{(person.display_name || 'A').charAt(0).toUpperCase()}</span><span><strong>{person.display_name || 'Aventureiro'}</strong><small>{person.is_admin ? 'Admin' : person.is_moderator ? 'Moderador' : 'Jogador'}</small></span>{person.is_banned ? <span className="hb-admin-mini-warning hb-admin-banned">Banido</span> : isCurrent(person.suspended_until) && <span className="hb-admin-mini-warning">Suspenso</span>}</button><div className="hb-admin-user-row-link">{personLink(person.username, person.user_id, 'Sem @usuário')}</div></div>)}{filteredUsers.length === 0 && <div className="hb-admin-empty">{users.length ? 'Nenhum resultado corresponde ao filtro.' : 'Pesquise uma conta para começar. Não existe uma listagem pública de todos os usuários.'}</div>}</div>
         <div className="hb-admin-inspection">{selectedUser ? <>
           <div className="hb-admin-person-heading"><span className="hb-admin-person-avatar hb-admin-person-avatar-lg">{(selectedUser.display_name || 'A').charAt(0).toUpperCase()}</span><div><strong>{selectedUser.display_name || 'Aventureiro'}</strong><small>{personLink(selectedUser.username, selectedUser.user_id, 'Sem @usuário')}</small></div></div>
-          <div className="hb-admin-data"><span>Permissão global</span><p>{selectedUser.is_admin ? 'Administrador do site' : selectedUser.is_moderator ? 'Moderador do site' : 'Jogador'}</p><span>Advertências registradas</span><p>{selectedUser.warning_count}</p><span>Situação da conta na comunidade</span><p>{isCurrent(selectedUser.suspended_until) ? `Suspenso até ${formatDate(selectedUser.suspended_until!)}` : 'Sem suspensão ativa'}</p>{selectedUser.reason && <><span>Última justificativa registrada</span><p>{selectedUser.reason}</p></>}<span>Identificador</span><code>{selectedUser.user_id}</code></div>
+          <div className="hb-admin-data"><span>Permissão global</span><p>{selectedUser.is_admin ? 'Administrador do site' : selectedUser.is_moderator ? 'Moderador do site' : 'Jogador'}</p><span>Advertências registradas</span><p>{selectedUser.warning_count}</p><span>Situação da conta</span><p className={selectedUser.is_banned ? 'hb-admin-banned-label' : ''}>{selectedUser.is_banned ? `Banida desde ${selectedUser.banned_at ? formatDate(selectedUser.banned_at) : 'data indisponível'}` : isCurrent(selectedUser.suspended_until) ? `Suspensa até ${formatDate(selectedUser.suspended_until!)}` : 'Ativa'}</p>{selectedUser.is_banned && selectedUser.ban_reason && <><span>Motivo do banimento</span><p>{selectedUser.ban_reason}</p></>}{selectedUser.reason && <><span>Última justificativa registrada</span><p>{selectedUser.reason}</p></>}<span>Identificador</span><code>{selectedUser.user_id}</code></div>
           {onViewProfile && <button type="button" className="hb-admin-secondary" onClick={() => onViewProfile(selectedUser.user_id)}>Ver perfil público</button>}
           {selectedUser.is_admin && <p className="hb-admin-footnote">Contas administrativas não podem receber sanções por este painel, nem ter sua função global alterada pela interface.</p>}
-          {pane === 'users' && !selectedUser.is_admin && selectedUser.user_id !== userId && <><label className="hb-admin-label">Justificativa da medida<textarea rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Informe os fatos que fundamentam esta medida…" /><small>{reason.length}/1000 caracteres</small></label><label className="hb-admin-label hb-admin-duration">Duração da suspensão<select value={days} onChange={e => setDays(e.target.value)}>{[1, 3, 7, 14, 30, 90, 365].map(day => <option key={day} value={day}>{day} {day === 1 ? 'dia' : 'dias'}</option>)}</select></label><div className="hb-admin-actions"><button type="button" disabled={working} onClick={() => userAction('warn')}>⚑ Advertir</button><button type="button" disabled={working} className="danger" onClick={() => userAction('suspend')}>⊘ Suspender Social</button>{isCurrent(selectedUser.suspended_until) && <button type="button" disabled={working} onClick={() => userAction('unsuspend')}>Liberar acesso</button>}</div></>}
+          {pane === 'users' && !selectedUser.is_admin && selectedUser.user_id !== userId && <><label className="hb-admin-label">Justificativa da medida<textarea rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Informe os fatos que fundamentam esta medida…" /><small>{reason.length}/1000 caracteres</small></label><label className="hb-admin-label hb-admin-duration">Duração da suspensão<select value={days} onChange={e => setDays(e.target.value)}>{[1, 3, 7, 14, 30, 90, 365].map(day => <option key={day} value={day}>{day} {day === 1 ? 'dia' : 'dias'}</option>)}</select></label><div className="hb-admin-actions"><button type="button" disabled={working || selectedUser.is_banned} onClick={() => userAction('warn')}>⚑ Advertir</button><button type="button" disabled={working || selectedUser.is_banned} className="danger" onClick={() => userAction('suspend')}>⊘ Suspender Social</button>{isCurrent(selectedUser.suspended_until) && <button type="button" disabled={working} onClick={() => userAction('unsuspend')}>Encerrar suspensão</button>}{selectedUser.is_banned ? <button type="button" disabled={working} onClick={() => banAction(false)}>Revogar banimento</button> : <button type="button" disabled={working} className="danger hb-admin-ban-button" onClick={() => banAction(true)}>Banir conta</button>}</div></>}
           {pane === 'staff' && !selectedUser.is_admin && selectedUser.user_id !== userId && <div className="hb-admin-actions"><button type="button" disabled={working} className={selectedUser.is_moderator ? 'danger' : ''} onClick={() => moderatorAction(selectedUser)}>{selectedUser.is_moderator ? 'Revogar moderação' : '♜ Nomear moderador'}</button></div>}
         </> : <div className="hb-admin-empty">Selecione uma conta encontrada para consultar seu estado e as ações disponíveis.</div>}</div>
       </div>

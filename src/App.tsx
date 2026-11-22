@@ -1094,6 +1094,39 @@ function App() {
     })()
     return ()=>{active=false}
   },[session?.user.id])
+  // A sessão autenticada só abre o aplicativo depois da conferência de acesso.
+  // Nova checagem ao voltar à aba e periodicamente, inclusive em sessões existentes.
+  const [accountAccess, setAccountAccess] = useState<{
+    userId: string; state: 'allowed' | 'blocked' | 'error'; reason: string
+  } | null>(null)
+  const [accessRetry, setAccessRetry] = useState(0)
+  useEffect(() => {
+    const userId = session?.user.id
+    if (!userId) { setAccountAccess(null); return }
+    let active = true
+    let checking = false
+    const check = async () => {
+      if (!active || checking) return
+      checking = true
+      try {
+        const { data, error } = await supabase.rpc('hax_v241_my_ban')
+        if (!active) return
+        if (error) {
+          setAccountAccess({ userId, state: 'error', reason: '' })
+          return
+        }
+        const result = (data && typeof data === 'object' ? data : {}) as { banned?: boolean; reason?: string }
+        setAccountAccess({ userId, state: result.banned === true ? 'blocked' : 'allowed', reason: typeof result.reason === 'string' ? result.reason : '' })
+      } catch {
+        if (active) setAccountAccess({ userId, state: 'error', reason: '' })
+      } finally { checking = false }
+    }
+    void check()
+    const onFocus = () => { void check() }
+    const interval = window.setInterval(() => void check(), 30000)
+    window.addEventListener('focus', onFocus)
+    return () => { active = false; window.clearInterval(interval); window.removeEventListener('focus', onFocus) }
+  }, [session?.user.id, accessRetry])
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
 
@@ -10846,6 +10879,25 @@ counterAttackDT
     return <main style={centerStyle}>Verificando sua sessão...</main>
   }
 
+  if (session && (!accountAccess || accountAccess.userId !== session.user.id)) {
+    return <main style={centerStyle}>Verificando acesso à sua conta…</main>
+  }
+  if (session && accountAccess?.state === 'blocked') {
+    return <main style={{ ...centerStyle, display: 'grid', gap: 14, padding: 24, textAlign: 'center' }}>
+      <h1>Acesso à conta bloqueado</h1>
+      <p>Esta conta foi banida do HäxBag. Entre em contato com a administração caso deseje solicitar uma revisão.</p>
+      {accountAccess.reason && <p><strong>Motivo informado:</strong> {accountAccess.reason}</p>}
+      <button type="button" onClick={() => void handleSignOut()}>Sair da conta</button>
+    </main>
+  }
+  if (session && accountAccess?.state === 'error') {
+    return <main style={{ ...centerStyle, display: 'grid', gap: 14, padding: 24, textAlign: 'center' }}>
+      <h1>Não foi possível verificar o acesso</h1>
+      <p>Por segurança, o conteúdo permanece indisponível enquanto a verificação da conta falhar.</p>
+      <button type="button" onClick={() => setAccessRetry(value => value + 1)}>Tentar novamente</button>
+      <button type="button" onClick={() => void handleSignOut()}>Sair da conta</button>
+    </main>
+  }
   if (!session) return <Auth />
 
   return (
