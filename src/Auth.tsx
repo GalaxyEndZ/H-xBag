@@ -19,6 +19,7 @@ function readableAuthError(error: unknown): string {
   if (/password should be at least/i.test(text)) return 'A senha precisa ter pelo menos 8 caracteres.'
   if (/rate limit|too many requests/i.test(text)) return 'Muitas tentativas em pouco tempo. Tente novamente mais tarde.'
   if (/duplicate|unique/i.test(text)) return 'Esse nome de usuário já está em uso. Escolha outro.'
+  if (/análise da administração|validar este cadastro|security review/i.test(text)) return 'Por segurança, este cadastro precisa de análise da administração.'
   return text
 }
 

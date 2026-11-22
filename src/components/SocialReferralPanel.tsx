@@ -16,7 +16,7 @@ export default function SocialReferralPanel({active}:{active:boolean}) {
     setLoading(true)
     const {data,error:failure} = await supabase.rpc('hax_referral_my_stats')
     setLoading(false)
-    if (failure) {setError('Não foi possível carregar seus convites. Verifique a migração V167.');return}
+    if (failure) {setError('Não foi possível carregar os convites. Tente novamente ou contate a administração.');return}
     const result = (data || {}) as ReferralStats
     setCount(Math.max(0,Number(result.count)||0))
     setToken(String(result.token||''))
@@ -31,7 +31,7 @@ export default function SocialReferralPanel({active}:{active:boolean}) {
     setError('')
     const {data,error:failure} = await supabase.rpc('hax_referral_my_link')
     setBusy(false)
-    if(failure || !data){setError('Não foi possível gerar seu link pessoal. Confira a migração V167.');return ''}
+    if(failure || !data){setError('Não foi possível gerar o link. Tente novamente ou contate a administração.');return ''}
     const nextToken=String(data)
     setToken(nextToken)
     return toUrl(nextToken)
@@ -50,7 +50,7 @@ export default function SocialReferralPanel({active}:{active:boolean}) {
     window.open(`https://wa.me/?text=${encodeURIComponent(`Venha conhecer o HäxBag e criar suas aventuras comigo! ${link}`)}`,'_blank','noopener,noreferrer')
   }
   return <section className="hb-referral-social" aria-label="Seu convite social">
-    <header className="hb-referral-social-head"><div className="hb-referral-social-icon" aria-hidden="true">✧</div><div><span className="hb-referral-social-eyebrow">CONVITE SOCIAL · EMBAIXADOR</span><h3>Chame seus amigos para o HäxBag</h3><p>Compartilhe seu link exclusivo. Cada pessoa nova que se cadastrar e confirmar a conta aumenta o nível da sua insígnia.</p></div></header>
+    <header className="hb-referral-social-head"><div className="hb-referral-social-icon" aria-hidden="true">✧</div><div><span className="hb-referral-social-eyebrow">CONVITE SOCIAL · EMBAIXADOR</span><h3>Chame seus amigos para o HäxBag</h3><p>Compartilhe seu link exclusivo. Cada indicação válida, com cadastro confirmado e conexão distinta, aumenta o nível da sua insígnia.</p></div></header>
     <div className="hb-referral-social-steps" aria-label="Como funcionam as indicações"><span>⌁ Envie o link</span><b>→</b><span>♧ Nova conta</span><b>→</b><span>✓ Cadastro confirmado</span><b>→</b><span>✧ +1 nível</span></div>
     <div className="hb-referral-social-card">
       <button type="button" className="hb-referral-social-whatsapp" disabled={busy} onClick={()=>void shareLink()}>◉ Compartilhar no WhatsApp</button>
@@ -62,7 +62,7 @@ export default function SocialReferralPanel({active}:{active:boolean}) {
       {error&&<p className="hb-referral-social-error" role="alert">{error}</p>}
       {message&&<p className="hb-referral-social-message" role="status">{message}</p>}
     </div>
-    <div className="hb-referral-social-note"><strong>⚑ Convites de campanha também contam</strong><p>Se alguém criar uma nova conta pelo link de campanha que você gerou, a indicação será creditada à mesma insígnia. Cada novo usuário conta apenas uma vez. Entrar com uma conta já existente não gera nível.</p></div>
+    <div className="hb-referral-social-note"><strong>⚑ Convites de campanha também contam</strong><p>Se alguém criar uma nova conta pelo link de campanha que você gerou, a indicação será creditada à mesma insígnia. Para evitar convites artificiais, múltiplos cadastros da mesma conexão geram no máximo um crédito por indicador, e contas na mesma conexão do indicador não contam. Entrar com uma conta existente não gera nível.</p></div>
     <button type="button" className="hb-referral-social-refresh" disabled={loading} onClick={()=>void refresh()}>↻ Atualizar progresso</button>
   </section>
 }

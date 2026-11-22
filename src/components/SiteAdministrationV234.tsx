@@ -354,7 +354,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     request({
       title: banned ? 'Banir esta conta?' : 'Revogar o banimento?',
       description: `${person.display_name} (@${person.username || shortId(person.user_id)}). ${banned
-        ? 'A conta terá o acesso à interface bloqueado e as operações protegidas serão restringidas. O banimento não expira automaticamente.'
+        ? 'A conta terá o acesso bloqueado. Novos cadastros na mesma conexão também poderão ser impedidos; outras pessoas que compartilham essa rede podem ser afetadas. O banimento não expira automaticamente.'
         : 'O acesso poderá ser retomado, respeitando eventuais outras restrições ainda ativas.'} Motivo: ${motive}`,
       danger: banned,
       success: banned ? 'Banimento registrado no histórico.' : 'Banimento revogado e registrado no histórico.',

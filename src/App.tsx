@@ -5455,7 +5455,7 @@ async function handleCurrencyConversion() {
 
       const link = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`
       setCampaignInviteLink(link)
-      setNotice('Convite criado! Se uma pessoa nova se cadastrar por este link e confirmar a conta, você também evoluirá a insígnia Embaixador.')
+      setNotice('Convite criado! Indicações de novas contas confirmadas, elegíveis e com conexão distinta podem aumentar sua insígnia Embaixador.')
     } catch (inviteError) {
       const message = inviteError instanceof Error
         ? inviteError.message
@@ -17299,7 +17299,7 @@ style={{cursor:'pointer'}}>
 
 {selectedCampaign && isMaster && (
   <div className="add-form hb-form hb-admin-panel hb-invite-admin" style={{ marginTop: 20 }}>
-    <div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">CONVIDAR JOGADORES</span><h3>Convites de campanha</h3><p>Compartilhe um link exclusivo por mensagem ou WhatsApp. O convite também pode contribuir para a insígnia Embaixador quando uma nova conta confirmar o cadastro.</p></div></div>
+    <div className="hb-form-heading"><span className="hb-heading-icon">✉</span><div><span className="hb-kicker">CONVIDAR JOGADORES</span><h3>Convites de campanha</h3><p>Compartilhe um link exclusivo por mensagem ou WhatsApp. O convite também pode contribuir para a insígnia Embaixador quando uma nova conta elegível confirmar o cadastro.</p></div></div>
 
     <p>
       Gere um link para convidar jogadores para{' '}
