@@ -61,7 +61,10 @@ type Props = {
 type SocialRelationship = { following:boolean; follows_me:boolean; friends:boolean; blocked_by_me:boolean; blocked_me:boolean }
 const noRelationship:SocialRelationship = { following:false,follows_me:false,friends:false,blocked_by_me:false,blocked_me:false }
 
-const safeAccent = (value: string | undefined) => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#d9bd8b'
+const safeAccent = (value: string | undefined): string => {
+  const color = typeof value === 'string' ? value : ''
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#d9bd8b'
+}
 
 // Garante contraste entre o texto do botão e a cor que o dono do perfil escolheu.
 const followTextColor = (accent: string | undefined): string => {
