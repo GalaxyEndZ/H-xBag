@@ -1084,9 +1084,14 @@ function App() {
     let active=true
     setIsSiteAdmin(false)
     if(!session?.user.id)return ()=>{active=false}
-    void supabase.rpc('hax_v231_admin').then(({data,error})=>{
-      if(active && !error)setIsSiteAdmin(data===true)
-    }).catch(()=>{if(active)setIsSiteAdmin(false)})
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('hax_v231_admin')
+        if (active) setIsSiteAdmin(!error && data === true)
+      } catch {
+        if (active) setIsSiteAdmin(false)
+      }
+    })()
     return ()=>{active=false}
   },[session?.user.id])
   const [authLoading, setAuthLoading] = useState(true)

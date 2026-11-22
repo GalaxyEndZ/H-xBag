@@ -14,7 +14,6 @@ const formatDate = (date:string) => new Date(date).toLocaleString('pt-BR',{dateS
 const targetLabels:Record<string,string> = {post:'Publicação',comment:'Comentário',group:'Comunidade',user:'Usuário',legacy_post:'Publicação antiga'}
 const actionLabels:Record<string,string> = {warn:'Advertência',suspend:'Suspensão',unsuspend:'Suspensão encerrada',remove_post:'Publicação removida',remove_comment:'Comentário removido',remove_group:'Grupo removido',review_report:'Denúncia analisada',dismiss_report:'Denúncia dispensada',grant_moderator:'Moderador nomeado',revoke_moderator:'Permissão revogada'}
 const current = (until:string|null|undefined) => !!until && new Date(until).getTime()>Date.now()
-const toId = (input:string) => input.trim()
 const isUuid=(v:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v)
 
 export default function SiteAdministrationV234({userId,onViewProfile}:{userId:string;onViewProfile?:(userId:string)=>void}) {

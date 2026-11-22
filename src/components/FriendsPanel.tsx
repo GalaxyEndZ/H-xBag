@@ -112,9 +112,14 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     let live=true
     setVerifiedSiteAdmin(false)
     if(!active || !userId || !isSiteAdmin)return () => {live=false}
-    void supabase.rpc('hax_v234_role').then(({data,error})=>{
-      if(live && !error)setVerifiedSiteAdmin(data==='admin')
-    }).catch(()=>{if(live)setVerifiedSiteAdmin(false)})
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('hax_v234_role')
+        if (live) setVerifiedSiteAdmin(!error && data === 'admin')
+      } catch {
+        if (live) setVerifiedSiteAdmin(false)
+      }
+    })()
     return()=>{live=false}
   },[active,userId,isSiteAdmin])
   const canSeeAdministration=isSiteAdmin && verifiedSiteAdmin
