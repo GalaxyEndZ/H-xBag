@@ -1,6 +1,11 @@
+import { kitEquipmentProtections } from './kitRules'
+
 // Regras reutilizadas pelo combate de personagens e inimigos.
 // O formato dos itens é normalizado antes do cálculo, evitando que as fichas
 // dependam das tabelas de inventário umas das outras.
+export type ProtectionTier = 'basica' | 'moderada' | 'avancada'
+export type ProtectionMode = 'resistencia' | 'sanidade'
+
 export type SheetCombatEquipment = {
   name?: string
   weaponDamage?: string
@@ -10,6 +15,9 @@ export type SheetCombatEquipment = {
   protectionTier?: string
   protectionMode?: string
   kitType?: string
+  kitBenefitMode?: string
+  kitRulesVersion?: unknown
+  kitUniqueFeatures?: unknown
   kitSkills?: string[]
   kitSkillBonus?: number
   kitSkillBonuses?: number[]
@@ -21,7 +29,11 @@ export function calculateSheetDefenses(
   stats: { dexterity: number; resistance: number; combat: number; mental: number },
 ) {
   const armor = equippedItems.find(item => item.equipmentType === 'armor')
-  const protections = equippedItems.filter(item => item.equipmentType === 'protection')
+  // Kits com funcionalidade de proteção entram no MESMO conjunto das proteções
+  // de equipamento; aplica a mesma fração, atributo e tipo de dano, sem dupla contagem.
+  const protections = equippedItems.flatMap(item => item.equipmentType === 'protection'
+    ? [item]
+    : kitEquipmentProtections(item).map(protection => ({...protection,equipmentType:'protection'})))
   const armorClass = armor?.armorClass || 'leve'
   const armorDexterity = !armor ? stats.dexterity
     : armorClass === 'pesada' ? 0

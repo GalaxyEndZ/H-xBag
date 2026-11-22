@@ -57,7 +57,7 @@ import './DeferredModule.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
-import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, itemKitSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, itemKitRestType, parseKitUniqueFeatures, validateKitUniqueFeatures, KIT_UNIQUE_FEATURES, KIT_BENEFIT_MODES, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect, type KitUniqueFeature } from './kitRules'
+import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, itemKitSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, itemKitRestType, parseKitUniqueFeatures, kitEquipmentProtections, validateKitUniqueFeatures, KIT_UNIQUE_FEATURES, KIT_BENEFIT_MODES, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect, type KitUniqueFeature } from './kitRules'
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
@@ -7433,8 +7433,12 @@ async function sendItemToCharacter() {
     }
 
     let removalDamageMessage = ''
-    if (item.metadata?.equipmentType === 'protection' && sheet?.id && selectedCharacterId === item.character_id) {
-      const tier = item.metadata?.protectionTier
+    // Perder um kit de proteção equipado segue a mesma regra de perda das proteções de equipamento.
+    const lostProtectionTier = item.metadata?.equipmentType === 'protection'
+      ? item.metadata?.protectionTier
+      : item.metadata?.equipped === true ? kitEquipmentProtections(item.metadata)[0]?.protectionTier : null
+    if (lostProtectionTier && sheet?.id && selectedCharacterId === item.character_id) {
+      const tier = lostProtectionTier
       const rolls = tier === 'avancada' ? [12, 12, 4] : tier === 'moderada' ? [8, 8] : [8]
       const results = rolls.map(sides => Math.floor(Math.random() * sides) + 1)
       const damage = results.reduce((sum, value) => sum + value, 0)
@@ -8679,6 +8683,10 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                         armorCoverage: String(item.metadata?.armorCoverage || ''),
                         protectionTier: String(item.metadata?.protectionTier || 'basica'),
                         protectionMode: String(item.metadata?.protectionMode || 'resistencia'),
+                        kitType: String(item.metadata?.kitType || ''),
+                        kitBenefitMode: String(item.metadata?.kitBenefitMode || ''),
+                        kitRulesVersion: item.metadata?.kitRulesVersion,
+                        kitUniqueFeatures: item.metadata?.kitUniqueFeatures,
                       }))
                     const baseCharacterDefenses = calculateSheetDefenses(equippedCharacterItems, {
                       dexterity, resistance, combat, mental,
@@ -8977,10 +8985,11 @@ const field = (path: string, label: string, type: 'number' | 'text' = 'number', 
                       const availableArmors = renderInventoryItems.filter(item =>
                         item.character_id === renderSubjectId && item.metadata?.equipmentType === 'armor'
                       )
-                      const protectionItems = renderInventoryItems.filter(item =>
-                        item.character_id === renderSubjectId &&
-                        item.metadata?.equipmentType === 'protection' && item.metadata?.equipped === true
-                      )
+                      const protectionItems = renderInventoryItems
+                        .filter(item => item.character_id === renderSubjectId && item.metadata?.equipped === true)
+                        .flatMap(item => item.metadata?.equipmentType === 'protection'
+                          ? [{metadata:item.metadata}]
+                          : kitEquipmentProtections(item.metadata).map(protection => ({metadata:protection})))
                       const armorClassLabel = armorClass === 'pesada' ? 'Pesada' : armorClass === 'media' ? 'Média' : 'Leve'
                       const armorCoverageLabel = !equippedArmor ? 'Nenhuma'
                         : armorCovers('cortante_perfurante') && armorCovers('especial_bruto') ? 'Completa'
@@ -18882,7 +18891,7 @@ style={{cursor:'pointer'}}>
             {itemKitRestType(selectedItemDetails.metadata) && <p>🛏️ {definition.exampleItem} · Descanso {itemKitRestType(selectedItemDetails.metadata) === 'precario' ? 'Precário' : itemKitRestType(selectedItemDetails.metadata) === 'mediano' ? 'Mediano' : 'Completo'}.</p>}
             {definition.family === 'equippable' && <>
               {type === 'equip_standard' && mode === 'protection' ? <p>Benefício: proteção moderada.</p> : <ul>{skills.map((skill,i) => <li key={`${i}-${skill}`}>{formatKitSkill(skill)}{kitBonuses[i]>0 ? ` +${kitBonuses[i]}` : ' · bônus ainda não configurado'}</li>)}</ul>}
-              {parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).length>0 && <ul>{parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).map((feature,index)=><li key={index}>{KIT_UNIQUE_FEATURES.find(option=>option.key===feature.key)?.label ?? 'Funcionalidade única'}{feature.amount ? ` (+${feature.amount})` : ''}{feature.mainSkill ? ` — ${feature.mainSkill}` : ''}{feature.details ? ` · ${feature.details}` : ''}</li>)}</ul>}
+              {parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).length>0 && <ul>{parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).map((feature,index)=><li key={index}>{KIT_UNIQUE_FEATURES.find(option=>option.key===feature.key)?.label ?? 'Funcionalidade única'}{feature.key==='protection' ? ` (${feature.protectionTier==='avancada'?'avançada':feature.protectionTier==='moderada'?'moderada':'básica'} · ${feature.protectionMode==='sanidade'?'sanidade':'resistência'})` : feature.amount ? ` (+${feature.amount})` : ''}{feature.mainSkill ? ` — ${feature.mainSkill}` : ''}{feature.details ? ` · ${feature.details}` : ''}</li>)}</ul>}
               {description && <p>Detalhes adicionais: {description}</p>}
               <p>{skills.length ? `Bônus por perícia: ${kitBonuses.map(value => value > 0 ? `+${value}` : 'não configurado').join(' · ')}. Válidos somente com o kit equipado.` : itemKitRestType(selectedItemDetails.metadata) ? 'Item de descanso (sem bônus de perícias nesta opção).' : 'Esta opção não concede bônus de perícias.'}</p>
               <button type="button" className="inventory-equip-button" aria-pressed={selectedItemDetails.metadata?.equipped === true} disabled={updatingKitEquipId !== null || Number(selectedItemDetails.quantity) < 1} onClick={() => void toggleInventoryKitEquipped(selectedItemDetails)}>{selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '🧰 Equipar kit'}</button>

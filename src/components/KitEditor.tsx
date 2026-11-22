@@ -125,7 +125,7 @@ export default function KitEditor({
             {skillBonus.trim() && <small> Este item possuía bônus antigo de +{skillBonus}; ao salvar a edição, passa a seguir a regra atual.</small>}
           </p>
         </div>}
-        {benefitMode === 'protection' && type === 'equip_standard' && <p className="hb-kit-editor-note">O kit concede proteção moderada. A forma de aplicar segue o sistema de proteção já existente.</p>}
+        {benefitMode === 'protection' && type === 'equip_standard' && <p className="hb-kit-editor-note">Kit antigo: concede proteção moderada de Resistência, usando as mesmas regras dos equipamentos.</p>}
         {uniqueCount>0 && <div className="hb-kit-unique-grid">
           <strong>Funcionalidades únicas ({uniqueCount})</strong>
           {Array.from({length:uniqueCount}, (_,index)=>{
@@ -133,7 +133,7 @@ export default function KitEditor({
             const spec=KIT_UNIQUE_FEATURES.find(entry=>entry.key===feature.key)
             return <div className="hb-kit-unique-entry" key={`${type}-${benefitMode}-${index}`}>
               <label>Funcionalidade {index+1}
-                <select value={feature.key} onChange={event=>changeFeature(index,{key:event.target.value as KitUniqueFeature['key'],amount:'',mainSkill:'',details:''})}>
+                <select value={feature.key} onChange={event=>changeFeature(index,{key:event.target.value as KitUniqueFeature['key'],amount:'',mainSkill:'',details:'',protectionTier:'basica',protectionMode:'resistencia'})}>
                   <option value="">Escolha uma funcionalidade...</option>
                   {KIT_UNIQUE_FEATURES.filter(entry=>type==='equip_rare'||!entry.rareOnly).map(entry=><option key={entry.key} value={entry.key} disabled={uniqueFeatures.some((other,i)=>i!==index&&other.key===entry.key)}>{entry.label}</option>)}
                 </select>
@@ -141,6 +141,22 @@ export default function KitEditor({
               {spec?.needsAmount && <label>Valor do benefício definido pelo mestre
                 <input type="number" min="0.01" step="any" max="100000" value={feature.amount} onChange={event=>changeFeature(index,{amount:event.target.value})} placeholder="Ex.: 1, 2, 5..."/>
               </label>}
+              {feature.key==='protection' && <>
+                <label>Nível de proteção
+                  <select value={feature.protectionTier??'basica'} onChange={event=>changeFeature(index,{protectionTier:event.target.value as NonNullable<KitUniqueFeature['protectionTier']>})}>
+                    <option value="basica">Básica · ¼ do atributo</option>
+                    <option value="moderada">Moderada · ½ do atributo</option>
+                    <option value="avancada">Avançada · atributo integral</option>
+                  </select>
+                </label>
+                <label>Tipo de proteção
+                  <select value={feature.protectionMode??'resistencia'} onChange={event=>changeFeature(index,{protectionMode:event.target.value as NonNullable<KitUniqueFeature['protectionMode']>})}>
+                    <option value="resistencia">Resistência · dano especial e bruto</option>
+                    <option value="sanidade">Sanidade · pontos mentais</option>
+                  </select>
+                </label>
+                <p className="hb-kit-editor-note">Usa o mesmo cálculo da proteção dos equipamentos. Só funciona enquanto o kit estiver equipado.</p>
+              </>}
               {feature.key==='main_skill' && <label>Perícia principal
                 <select value={feature.mainSkill||''} onChange={event=>changeFeature(index,{mainSkill:event.target.value})}>
                   <option value="">Selecione a perícia...</option>

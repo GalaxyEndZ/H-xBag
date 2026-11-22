@@ -1,3 +1,5 @@
+import type { ProtectionMode, ProtectionTier } from './combatDefenses'
+
 /**
  * Kit definitions supplied for the HäxBag inventory system (V83).
  * V219: bônus oficiais de cada espaço dos kits equipáveis.
@@ -12,10 +14,18 @@ export type KitType = typeof KIT_TYPE_KEYS[number]
 export type KitFamily = 'equippable' | 'consumable'
 export type KitBenefitMode = 'rest' | 'skills' | 'skills_unique' | 'unique_pair' | 'three_archetype' | 'general_and_archetype' | 'unique_triple' | 'rare_skills_two_unique' | 'rare_mixed_two_unique' | 'protection' | 'main_and_archetype'
 export type KitUniqueFeatureKey = 'extra_damage' | 'protection' | 'armor_class' | 'main_skill' | 'remove_condition' | 'constitution' | 'health_points' | 'resistance_points' | 'complex_actions' | 'initiative_dice'
-export type KitUniqueFeature = {key: KitUniqueFeatureKey | ''; amount: string; details: string; mainSkill?: string}
+export type KitUniqueFeature = {
+  key: KitUniqueFeatureKey | ''
+  amount: string
+  details: string
+  mainSkill?: string
+  /** Mesmas opções de proteção dos equipamentos convencionais. */
+  protectionTier?: ProtectionTier
+  protectionMode?: ProtectionMode
+}
 export const KIT_UNIQUE_FEATURES: {key: KitUniqueFeatureKey; label: string; rareOnly?: boolean; needsAmount?: boolean}[] = [
   {key:'extra_damage',label:'Aumentar o dano extra',needsAmount:true},
-  {key:'protection',label:'Conceder proteção'},
+  {key:'protection',label:'Conceder proteção (mesmas regras dos equipamentos)'},
   {key:'armor_class',label:'Aumentar o valor de CA',needsAmount:true},
   {key:'main_skill',label:'Aumentar uma perícia principal',needsAmount:true},
   {key:'remove_condition',label:'Capacidade de retirar condições'},
@@ -45,7 +55,15 @@ export function itemKitRestType(metadata:Record<string, unknown>|null|undefined)
 export function parseKitUniqueFeatures(value:unknown):KitUniqueFeature[] {
   if(!Array.isArray(value))return []
   return value.slice(0,3).filter((entry):entry is Record<string,unknown>=>Boolean(entry)&&typeof entry==='object'&&!Array.isArray(entry))
-    .map(entry=>({key:KIT_UNIQUE_FEATURES.some(f=>f.key===entry.key)?entry.key as KitUniqueFeatureKey:'',amount:typeof entry.amount==='string'?entry.amount:String(entry.amount??''),details:typeof entry.details==='string'?entry.details:'',mainSkill:typeof entry.mainSkill==='string'?entry.mainSkill:''}))
+    .map(entry=>({
+      key:KIT_UNIQUE_FEATURES.some(f=>f.key===entry.key)?entry.key as KitUniqueFeatureKey:'',
+      amount:typeof entry.amount==='string'?entry.amount:String(entry.amount??''),
+      details:typeof entry.details==='string'?entry.details:'',
+      mainSkill:typeof entry.mainSkill==='string'?entry.mainSkill:'',
+      // Benefícios anteriores não tinham classificação: básica / resistência é a escolha de compatibilidade.
+      protectionTier: entry.key==='protection' ? (entry.protectionTier==='moderada'||entry.protectionTier==='avancada'?entry.protectionTier:'basica') : undefined,
+      protectionMode: entry.key==='protection' ? (entry.protectionMode==='sanidade'?'sanidade':'resistencia') : undefined,
+    }))
 }
 export function validateKitUniqueFeatures(type:KitType|null|undefined,mode:KitBenefitMode,features:readonly KitUniqueFeature[]):string|null {
   const count=kitUniqueSlots(type,mode)
@@ -64,6 +82,35 @@ export function validateKitUniqueFeatures(type:KitType|null|undefined,mode:KitBe
   return null
 }
 
+
+
+/**
+ * Proteções de kits equipáveis seguem exatamente as proteções de equipamentos:
+ * básica (¼), moderada (½) e avançada (integral); física usa RESISTÊNCIA,
+ * sanidade usa MENTAL. O consumo/remoção fica sob as mesmas regras do equipamento.
+ * Recebe metadados de um kit já equipado (a verificação de equipped é do chamador).
+ */
+export function kitEquipmentProtections(metadata: {
+  kitType?: unknown
+  kitBenefitMode?: unknown
+  kitRulesVersion?: unknown
+  kitUniqueFeatures?: unknown
+} | null | undefined): Array<{protectionTier: ProtectionTier; protectionMode: ProtectionMode}> {
+  if (!metadata || (metadata.kitType!=='equip_standard' && metadata.kitType!=='equip_rare')) return []
+  // Preserva kits antigos de proteção moderada mesmo antes da escolha de funcionalidades.
+  if (metadata.kitType==='equip_standard' && metadata.kitBenefitMode==='protection') {
+    return [{protectionTier:'moderada',protectionMode:'resistencia'}]
+  }
+  if (metadata.kitRulesVersion!==2 || !(
+    ['skills_unique','unique_pair','rare_skills_two_unique','rare_mixed_two_unique','unique_triple'] as string[]
+  ).includes(String(metadata.kitBenefitMode))) return []
+  return parseKitUniqueFeatures(metadata.kitUniqueFeatures)
+    .filter(feature=>feature.key==='protection')
+    .map(feature=>({
+      protectionTier:feature.protectionTier??'basica',
+      protectionMode:feature.protectionMode??'resistencia',
+    }))
+}
 
 /** Efeitos de kits equipados com valor numérico. Sem automatizar ações manuais do mestre. */
 export function equippedKitFeatureBonuses(items: readonly {metadata?:Record<string,unknown>|null}[], key:KitUniqueFeatureKey, mainSkill?:string):number {

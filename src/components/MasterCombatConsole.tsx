@@ -60,6 +60,8 @@ const getEquipment = (p: Participant, byCharacter: Record<string, SheetCombatEqu
     name: String(item.name ?? ''), equipmentType: String(item.equipmentType ?? ''),
     armorClass: String(item.armorClass ?? ''), armorCoverage: String(item.armorCoverage ?? ''),
     protectionTier: String(item.protectionTier ?? ''), protectionMode: String(item.protectionMode ?? 'resistencia'),
+    kitBenefitMode: String(item.kitBenefitMode ?? ''), kitRulesVersion: item.kitRulesVersion,
+    kitUniqueFeatures: item.kitUniqueFeatures,
     kitType: String(item.kitType ?? ''), kitSkills: Array.isArray(item.kitSkills) ? item.kitSkills as string[] : [],
     kitSkillBonus: Number(item.kitSkillBonus ?? 0),
     kitSkillBonuses: Array.isArray(item.kitSkillBonuses) ? item.kitSkillBonuses as number[] : undefined,
@@ -237,6 +239,8 @@ export default function MasterCombatConsole({ campaignId, seasonId, participants
         list.push({ name: item.name, equipmentType: String(metadata.equipmentType ?? ''),
           armorClass: String(metadata.armorClass ?? ''), armorCoverage: String(metadata.armorCoverage ?? ''),
           protectionTier: String(metadata.protectionTier ?? ''), protectionMode: String(metadata.protectionMode ?? 'resistencia'),
+          kitBenefitMode: String(metadata.kitBenefitMode ?? ''), kitRulesVersion: metadata.kitRulesVersion,
+          kitUniqueFeatures: metadata.kitUniqueFeatures,
           kitType: String(metadata.kitType ?? ''), kitSkills: Array.isArray(metadata.kitSkills) ? metadata.kitSkills as string[] : [],
           kitSkillBonus: Number(metadata.kitSkillBonus ?? 0),
           kitSkillBonuses: Array.isArray(metadata.kitSkillBonuses) ? metadata.kitSkillBonuses as number[] : undefined })
