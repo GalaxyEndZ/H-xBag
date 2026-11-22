@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../supabase'
+import type { HaxSocialTab } from '../siteNavigation'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
 import './FriendsPanel.css'
 import './SocialV156.css'
@@ -68,7 +69,7 @@ type Props = {
     coverPosition?: number
   }
 }
-export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'|'administration'|'showcase'|'tablefinder'|'trends'|'insights'|'security'|'characternews'
+export type SocialTab = HaxSocialTab
 type Tab = SocialTab
 type Summary = { followers: number; following: number; friends: number; blocked: number; unread: number }
 const EMPTY_SUMMARY: Summary = { followers: 0, following: 0, friends: 0, blocked: 0, unread: 0 }
