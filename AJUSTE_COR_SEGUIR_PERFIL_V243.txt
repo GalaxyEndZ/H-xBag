@@ -1,0 +1,17 @@
+HäxBag V243 — Cor personalizada no botão Seguir / Seguindo
+
+Correção visual baseada na V242.
+
+O que foi feito:
+- O botão Seguir / Seguindo do perfil público usa a cor de destaque do próprio perfil, não a cor da temporada do visitante.
+- O botão de seguir do rodapé utiliza a mesma cor.
+- O texto do botão ganha cor preta ou branca conforme o contraste da cor selecionada.
+- A lógica de amizade, seguir, deixar de seguir, dados e permissões foi preservada.
+
+Para instalar apenas a correção:
+1. Extraia o ZIP de correção na pasta raiz do projeto HäxBag, mantendo o diretório src/components.
+2. Substitua os 3 arquivos.
+3. Rode npm run build e publique.
+4. Se o navegador mantiver o CSS antigo, pressione Ctrl+F5.
+
+Não há SQL novo. O teste de sintaxe TSX/CSS passou. O build completo não foi executado neste ambiente porque as dependências do projeto não estão instaladas.

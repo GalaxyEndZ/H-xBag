@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../supabase'
 import './SiteAdministrationV234.css'
+import { SocialV245AdminAppeals } from './SocialExpansionV245'
 
 type Role = 'admin' | 'moderator' | 'user' | 'visitor'
 type Pane = 'overview' | 'reports' | 'users' | 'staff' | 'history'
@@ -32,6 +33,7 @@ const targetLabels: Record<string, string> = {
 const actionLabels: Record<string, string> = {
   warn: 'Advertência', suspend: 'Suspensão aplicada', unsuspend: 'Suspensão encerrada',
   ban_user: 'Conta banida', unban_user: 'Banimento revogado',
+  appeal_accepted: 'Contestação aprovada', appeal_rejected: 'Contestação recusada',
   remove_post: 'Publicação removida', remove_comment: 'Comentário removido', remove_group: 'Comunidade removida',
   review_report: 'Denúncia analisada', dismiss_report: 'Denúncia dispensada',
   grant_moderator: 'Moderador nomeado', revoke_moderator: 'Permissão revogada',
@@ -527,6 +529,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
       <p className="hb-admin-footnote">A exportação inclui apenas as linhas atualmente carregadas e filtradas. As ações originais não podem ser editadas pelo navegador.</p>
     </section>}
 
+    <SocialV245AdminAppeals onViewProfile={onViewProfile}/>
     <footer className="hb-admin-footer"><span>HäxBag · Administração segura</span><p>O acesso é exclusivo de administradores globais e todas as operações críticas são verificadas pelas permissões de acesso. Moderadores de campanha ou da comunidade não têm acesso a esta central.</p></footer>
 
     {confirmation && <div className="hb-admin-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !working) setConfirmation(null) }}><div role="alertdialog" aria-modal="true" aria-labelledby="hb-admin-confirm-title" aria-describedby="hb-admin-confirm-desc" className="hb-admin-dialog"><span className="hb-admin-dialog-symbol">{confirmation.danger ? '⚠' : '✦'}</span><h4 id="hb-admin-confirm-title">{confirmation.title}</h4><p id="hb-admin-confirm-desc">{confirmation.description}</p><div className="hb-admin-actions"><button type="button" disabled={working} onClick={() => setConfirmation(null)}>Cancelar</button><button type="button" className={confirmation.danger ? 'danger' : ''} disabled={working} onClick={() => void perform(confirmation.run, confirmation.success)}>{working ? 'Registrando…' : 'Confirmar ação'}</button></div></div></div>}

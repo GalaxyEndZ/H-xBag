@@ -57,6 +57,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   const [profile,setProfile]=useState<Showcase>(()=>defaultProfile(userId))
   const [savedProfile,setSavedProfile]=useState<Showcase>(()=>defaultProfile(userId))
   const [activeTab,setActiveTab]=useState<'overview'|'appearance'|'heroes'|'badges'|'chronicles'|'community'|'privacy'>('overview')
+  const [badgeFilter,setBadgeFilter]=useState<'all'|'earned'|'locked'>('all')
   const [awards,setAwards]=useState<Award[]>([])
   const [referralToken,setReferralToken]=useState('')
   const [referralCount,setReferralCount]=useState(0)
@@ -414,7 +415,8 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
       <section className="hpl-panel">
         <div className="hpl-panel-heading hpl-heading-row"><div><span className="hpl-overline">HONRAS OFICIAIS DO HÄXBAG</span><h3>Insígnias e reconhecimento</h3><p>Somente insígnias registradas pelo site são exibidas no seu perfil. O catálogo inclui reconhecimentos permanentes e progressivos.</p></div><span className="hpl-count">{allBadges.length} recebidas</span></div>
         <div className="hpl-v137-badge-banner"><span>✦</span><div><strong>Reconhecimento verdadeiro</strong><p>Insígnias não são escolhidas nem criadas pelos jogadores ou mestres. A Primordial é automática durante a beta; a Fundador é exclusiva da administração.</p></div><span className={`hpl-v137-beta-status ${betaActive?'is-open':''}`}>{betaActive?'◉ Beta ativa':'◈ Beta encerrada'}</span></div>
-        <div className="hpl-badges hpl-v137-badge-grid">{officialBadgeCatalog.map(badge=>{
+        <div className="hb-v245-badge-filters" role="group" aria-label="Filtrar insígnias"><button type="button" aria-pressed={badgeFilter==='all'} onClick={()=>setBadgeFilter('all')}>Todas</button><button type="button" aria-pressed={badgeFilter==='earned'} onClick={()=>setBadgeFilter('earned')}>Conquistadas</button><button type="button" aria-pressed={badgeFilter==='locked'} onClick={()=>setBadgeFilter('locked')}>A conquistar</button></div>
+        <div className="hpl-badges hpl-v137-badge-grid">{officialBadgeCatalog.filter(badge=>badgeFilter==='all'||(badgeFilter==='earned'?allBadges.some(a=>a.id===badge.id):!allBadges.some(a=>a.id===badge.id))).map(badge=>{
           const owned=allBadges.find(item=>item.id===badge.id)
           return <article key={badge.id} className={`hpl-badge hpl-v137-official-badge badge-${badge.id} ${owned?'selected is-earned':'is-locked'}`}>
             <span className="hpl-badge-art" aria-hidden="true">{badge.symbol}</span>

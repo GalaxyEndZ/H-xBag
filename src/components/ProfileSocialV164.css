@@ -43,9 +43,9 @@
   outline-offset:3px;
 }
 .hb-public-content .hb-v164-profile-social-actions>button.hb-v164-follow-action{
-  border-color:transparent;
-  background:var(--season-primary,#d9bd8b)!important;
-  color:#171511!important;
+  border:1px solid var(--hb-public-accent,var(--season-primary,#d9bd8b))!important;
+  background:var(--hb-public-accent,var(--season-primary,#d9bd8b))!important;
+  color:var(--hb-public-follow-text,#171511)!important;
   font-weight:750;
 }
 .hb-public-content .hb-v164-profile-social-actions>button.hb-v164-follow-action:hover:not(:disabled){

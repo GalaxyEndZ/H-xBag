@@ -1,3 +1,5 @@
+import { SocialV245AppealForm } from './components/SocialExpansionV245'
+import { useSocialV245MfaGate, SocialV245MfaPrompt } from './components/SocialV245MfaGate'
 import FloatingChat from './components/FloatingChat'
 import { readHaxLocation, haxLocationUrl, haxShouldPush, type HaxLocation, type HaxPage, type HaxSocialTab } from './siteNavigation'
 import './components/ProfileSocialV164.css'
@@ -1079,6 +1081,7 @@ function App() {
   const lastHaxLocationRef = useRef<HaxLocation | null>(null)
   const [haxHistoryRevision, setHaxHistoryRevision] = useState(0)                                                                                                                                                                                                                                                                                                                                                                                                                                                                
   const [session, setSession] = useState<Session | null>(null)
+  const {gate:twoFactorGate,retry:retryTwoFactorGate}=useSocialV245MfaGate(session?.user.id)
   const [isSiteAdmin,setIsSiteAdmin] = useState(false)
   useEffect(()=>{
     let active=true
@@ -1717,18 +1720,38 @@ const resetCreatureFilters = () => {
   const [notificationBusy,setNotificationBusy]=useState(false)
   const [unreadMessages,setUnreadMessages]=useState(0)
   const [pendingCampaignInvites,setPendingCampaignInvites]=useState(0)
+  const [unreadCommunityNotices,setUnreadCommunityNotices]=useState(0)
   const refreshNotifications=async()=>{
     setNotificationBusy(true)
     try{
-      const [social,campaign]=await Promise.all([
+      const [social,campaign,community]=await Promise.all([
         supabase.rpc('hax_social_summary'),
         supabase.rpc('hb_list_direct_invites'),
+        session?.user.id
+          ? supabase.from('hax_v231_notifications').select('id',{count:'exact',head:true}).eq('recipient_id',session.user.id).is('read_at',null)
+          : Promise.resolve({count:0,error:null}),
       ])
       if(!social.error)setUnreadMessages(Math.max(0,Number((social.data as {unread?:number}|null)?.unread||0)))
       if(!campaign.error)setPendingCampaignInvites(Array.isArray(campaign.data)?campaign.data.length:0)
+      if(!community.error)setUnreadCommunityNotices(Math.max(0,community.count??0))
     }catch{/* Acesso às notificações não impede a navegação. */}
     finally{setNotificationBusy(false)}
   }
+  useEffect(()=>{
+    if(!session?.user.id){setUnreadCommunityNotices(0);return}
+    const uid=session.user.id
+    let active=true
+    const update=async()=>{
+      const {count,error}=await supabase.from('hax_v231_notifications')
+        .select('id',{count:'exact',head:true}).eq('recipient_id',uid).is('read_at',null)
+      if(active&&!error)setUnreadCommunityNotices(Math.max(0,count??0))
+    }
+    void update()
+    const timer=window.setInterval(()=>{void update()},60000)
+    const onRead=()=>{void update()}
+    window.addEventListener('haxbag:social-notifications-updated',onRead)
+    return()=>{active=false;window.clearInterval(timer);window.removeEventListener('haxbag:social-notifications-updated',onRead)}
+  },[session?.user.id])
   const [socialOpened, setSocialOpened] = useState(false)
   const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
   const [commentAuthorProfile, setCommentAuthorProfile] = useState<{ id: string; display_name: string; username?: string } | null>(null)
@@ -10887,6 +10910,7 @@ counterAttackDT
       <h1>Acesso à conta bloqueado</h1>
       <p>Esta conta foi banida do HäxBag. Entre em contato com a administração caso deseje solicitar uma revisão.</p>
       {accountAccess.reason && <p><strong>Motivo informado:</strong> {accountAccess.reason}</p>}
+      <SocialV245AppealForm userId={session.user.id}/>
       <button type="button" onClick={() => void handleSignOut()}>Sair da conta</button>
     </main>
   }
@@ -10899,6 +10923,10 @@ counterAttackDT
     </main>
   }
   if (!session) return <Auth />
+  if (twoFactorGate.userId === session.user.id && twoFactorGate.status === 'checking') return <main style={centerStyle}>Verificando autenticação adicional…</main>
+  if (twoFactorGate.userId === session.user.id && twoFactorGate.status === 'error') return <main style={{...centerStyle,display:'grid',gap:10,padding:24}}><h2>Verificação de segurança indisponível</h2><p>{twoFactorGate.message}</p><button type="button" onClick={retryTwoFactorGate}>Tentar novamente</button><button type="button" onClick={()=>void supabase.auth.signOut()}>Sair da conta</button></main>
+  if (twoFactorGate.userId === session.user.id && twoFactorGate.status === 'required' && twoFactorGate.factorId) return <SocialV245MfaPrompt factorId={twoFactorGate.factorId} onVerified={retryTwoFactorGate}/>
+
 
   return (
     <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
@@ -11171,16 +11199,17 @@ counterAttackDT
             <span className="online-dot" />
             Conectado
           <div className="hb-v172-floating-actions hb-v178-notifications-bell" aria-label="Acesso rápido às notificações">
-            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" aria-label={`Notificações${unreadMessages+pendingCampaignInvites>0?`, ${unreadMessages+pendingCampaignInvites} pendentes`:''}`} title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>
+            <button type="button" aria-expanded={notificationsOpen} aria-controls="hb-v172-notification-panel" aria-label={`Notificações${unreadMessages+pendingCampaignInvites+unreadCommunityNotices>0?`, ${unreadMessages+pendingCampaignInvites+unreadCommunityNotices} pendentes`:''}`} title="Notificações" onClick={()=>{setNotificationsOpen(v=>!v);void refreshNotifications()}}>
               <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
-              {unreadMessages + pendingCampaignInvites > 0 && <span className="hb-v178-notification-badge">{unreadMessages + pendingCampaignInvites > 99 ? '99+' : unreadMessages + pendingCampaignInvites}</span>}
+              {unreadMessages + pendingCampaignInvites + unreadCommunityNotices > 0 && <span className="hb-v178-notification-badge">{unreadMessages + pendingCampaignInvites + unreadCommunityNotices > 99 ? '99+' : unreadMessages + pendingCampaignInvites + unreadCommunityNotices}</span>}
             </button>
             {notificationsOpen&&<section id="hb-v172-notification-panel" className="hb-v172-notification-panel" aria-label="Suas notificações">
               <header><strong>Notificações</strong><button type="button" onClick={()=>setNotificationsOpen(false)} aria-label="Fechar notificações">✕</button></header>
               {notificationBusy&&<small>Atualizando…</small>}
               <button type="button" onClick={()=>{setNotificationsOpen(false);openSocialTab('messages')}}>✉ Mensagens não lidas <strong>{unreadMessages}</strong></button>
               <button type="button" onClick={()=>{setNotificationsOpen(false);setActivePage('campaigns')}}>⚑ Convites de campanha <strong>{pendingCampaignInvites}</strong></button>
-              {!notificationBusy&&unreadMessages+pendingCampaignInvites===0&&<small>Nenhuma mensagem ou convite pendente.</small>}
+              <button type="button" onClick={()=>{setNotificationsOpen(false);openSocialTab('notifications')}}>↗ Atividades e seguidores <strong>{unreadCommunityNotices}</strong></button>
+              {!notificationBusy&&unreadMessages+pendingCampaignInvites+unreadCommunityNotices===0&&<small>Nenhuma notificação pendente.</small>}
               <button type="button" onClick={()=>void refreshNotifications()} disabled={notificationBusy}>↻ Atualizar</button>
             </section>}
           </div>

@@ -15,6 +15,8 @@ import SocialReferralPanel from './SocialReferralPanel'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 import SocialV231Suite, { type SocialV231Page } from './SocialV231Suite'
 import SiteAdministrationV234 from './SiteAdministrationV234'
+import SocialExpansionV245 from './SocialExpansionV245'
+import { useSocialV245Chat } from './useSocialV245Chat'
 import './SocialRedesignV232.css'
 
 type Person = {
@@ -66,7 +68,7 @@ type Props = {
     coverPosition?: number
   }
 }
-export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'|'administration'
+export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'|'administration'|'showcase'|'tablefinder'|'trends'|'insights'|'security'|'characternews'
 type Tab = SocialTab
 type Summary = { followers: number; following: number; friends: number; blocked: number; unread: number }
 const EMPTY_SUMMARY: Summary = { followers: 0, following: 0, friends: 0, blocked: 0, unread: 0 }
@@ -92,6 +94,12 @@ const pageInfo:Record<SocialTab,{kicker:string;title:string;description:string;i
   notifications:{kicker:'ATIVIDADES',title:'Suas notificações',description:'Acompanhe as interações e novidades importantes.',icon:'◉'},
   activity:{kicker:'JORNADA',title:'Sua atividade',description:'Relembre suas participações e escolha o que será público.',icon:'✦'},
   moderation:{kicker:'PRIVACIDADE',title:'Segurança e privacidade',description:'Preferências sociais e proteção da sua conta.',icon:'⊘'},
+  showcase:{kicker:'IDENTIDADE',title:'Vitrine do perfil',description:'Organize suas publicações, personagens e imagens favoritas.',icon:'✦'},
+  tablefinder:{kicker:'NOVA AVENTURA',title:'Procurar mesa',description:'Encontre campanhas procurando jogadores e anuncie suas vagas.',icon:'⚔'},
+  trends:{kicker:'CONVERSAS DA COMUNIDADE',title:'Assuntos em alta',description:'Acompanhe os tópicos mais comentados.',icon:'#'},
+  insights:{kicker:'MINHA JORNADA',title:'Estatísticas pessoais',description:'Interações e publicações da sua conta.',icon:'◈'},
+  security:{kicker:'PROTEÇÃO',title:'Segurança da conta',description:'Sessões e segundo fator de autenticação.',icon:'◇'},
+  characternews:{kicker:'DIÁRIO RPG',title:'Marcos dos personagens',description:'Compartilhe a evolução dos seus personagens.',icon:'⚔'},
   administration:{kicker:'ACESSO RESTRITO',title:'Painel Administrativo',description:'Denúncias, usuários, equipe e histórico de moderação do HäxBag.',icon:'♜'},
 }
 
@@ -173,6 +181,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [conversations,setConversations] = useState<Conversation[]>([])
   const [selectedChat,setSelectedChat] = useState<Conversation|null>(null)
   const [chatMessages,setChatMessages] = useState<ChatMessage[]>([])
+  const v245Chat=useSocialV245Chat(userId,chatMessages,active&&tab==='messages'&&!!selectedChat,async()=>{if(selectedChat)await loadMessages(selectedChat.partner_id)})
   const [messageDraft,setMessageDraft] = useState('')
   const [replyMessage,setReplyMessage] = useState<ChatMessage|null>(null)
   const [messagePhoto,setMessagePhoto] = useState<{file:File;preview:string}|null>(null)
@@ -658,7 +667,13 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     {id:'discover',label:'⌕ Explorar'},
     {id:'communities',label:'♧ Comunidades'},
     {id:'events',label:'◷ Eventos'},
+    {id:'tablefinder',label:'⚔ Procurar mesa'},
+    {id:'trends',label:'# Tendências'},
     {id:'saved',label:'▤ Salvos'},
+    {id:'showcase',label:'✦ Minha vitrine'},
+    {id:'characternews',label:'⚔ Personagens'},
+    {id:'insights',label:'◈ Estatísticas'},
+    {id:'security',label:'◇ Segurança'},
     {id:'moderation',label:'⚙ Privacidade'},
     ...(canSeeAdministration ? [{id:'administration' as Tab,label:'♜ Painel Administrativo'}] : []),
     {id:'activity',label:'✦ Atividade'},
@@ -702,11 +717,11 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
           </div>
         </div>
         <span className="hb-v158-nav-label">DESCOBRIR</span>
-        <nav className="hb-social-tabs hb-v232-primary-nav" aria-label="Descoberta e comunidade">{tabs.filter(item=>(['feed','discover','communities','events','saved'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
+        <nav className="hb-social-tabs hb-v232-primary-nav" aria-label="Descoberta e comunidade">{tabs.filter(item=>(['feed','discover','communities','events','tablefinder','trends','saved'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
         <span className="hb-v158-nav-label">CONEXÕES</span>
         <nav className="hb-social-tabs hb-v232-network-nav" aria-label="Seus contatos e conversas">{tabs.filter(item=>(['friends','following','followers','messages','notifications'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
         <span className="hb-v158-nav-label hb-v180-sidebar-secondary-label">SUA CONTA</span>
-        <nav className="hb-social-tabs hb-v180-secondary-nav" aria-label="Atividade e privacidade">{tabs.filter(item=>(['activity','referral','blocked','moderation'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
+        <nav className="hb-social-tabs hb-v180-secondary-nav" aria-label="Atividade e privacidade">{tabs.filter(item=>(['activity','showcase','characternews','insights','security','referral','blocked','moderation'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
         {canSeeAdministration&&<><span className="hb-v158-nav-label">ADMINISTRAÇÃO DO SITE</span><nav className="hb-social-tabs hb-v180-secondary-nav" aria-label="Administração global"><button type="button" className={tab==='administration'?'selected':''} aria-current={tab==='administration'?'page':undefined} onClick={()=>setTab('administration')}>♜ Painel Administrativo</button></nav></>}
         <div className="hb-v158-sidebar-actions">
           <button type="button" onClick={onEditOwnProfile}>✎ Personalizar meu perfil</button>
@@ -726,7 +741,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       <button type="button" className="hb-v180-quickbar-primary" onClick={focusComposer}><span aria-hidden="true">✎</span> Nova publicação</button>
       <button type="button" className={tab==='discover'?'is-active':''} onClick={()=>setTab('discover')}><span aria-hidden="true">⌕</span> Explorar</button>
       <button type="button" className={tab==='communities'?'is-active':''} onClick={()=>setTab('communities')}><span aria-hidden="true">♧</span> Comunidades</button>
-      <button type="button" className={tab==='events'?'is-active':''} onClick={()=>setTab('events')}><span aria-hidden="true">◷</span> Eventos</button>
+      <button type="button" className={tab==='events'?'is-active':''} onClick={()=>setTab('events')}><span aria-hidden="true">◷</span> Eventos</button><button type="button" className={tab==='tablefinder'?'is-active':''} onClick={()=>setTab('tablefinder')}><span aria-hidden="true">⚔</span> Procurar mesa</button>
       <button type="button" className={tab==='saved'?'is-active':''} onClick={()=>setTab('saved')}><span aria-hidden="true">▤</span> Salvos</button>
       <button type="button" className={tab==='messages'?'is-active':''} onClick={()=>setTab('messages')}><span aria-hidden="true">✉</span> Mensagens {summary.unread>0&&<em>{summary.unread}</em>}</button>
     </div>
@@ -775,6 +790,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       ? <SiteAdministrationV234 userId={userId} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}} />
       : <section className="hb-social-empty" role="alert"><h3>Área restrita</h3><p>O Painel Administrativo é exclusivo dos administradores globais do HäxBag.</p><button type="button" onClick={()=>setTab('feed')}>Voltar ao Social</button></section>)}
     {(['communities','saved','events','notifications','activity','moderation'] as SocialV231Page[]).includes(tab as SocialV231Page)&&<SocialV231Suite page={tab as SocialV231Page} userId={userId} profileName={profileIdentity?.name} onNavigate={next=>setTab(next)} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}/>}
+    {(['showcase','tablefinder','trends','insights','security','characternews'] as Tab[]).includes(tab)&&<SocialExpansionV245 page={tab as 'showcase'|'tablefinder'|'trends'|'insights'|'security'|'characternews'} userId={userId} onViewProfile={id=>id===userId?onViewOwnProfile?.():setProfile({id,display_name:'Aventureiro'})} onNavigate={next=>setTab(next)}/>}
+
     {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat hb-v201-chat ${selectedChat?'has-active-chat':''}`} aria-label="Mensagens privadas">
       <aside className="hb-social-chat-sidebar" aria-label="Seus contatos">
         <div className="hb-v201-chat-side-heading">
@@ -820,6 +837,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
             <div><input ref={chatSearchInputRef} id="hb-v201-search-messages" type="search" value={messageSearch} onChange={event=>setMessageSearch(event.target.value)} placeholder="Digite uma palavra ou trecho da conversa…" />{messageSearch&&<button type="button" onClick={()=>setMessageSearch('')}>Limpar</button>}</div>
             {messageSearch&&<small>{visibleChatMessages.length} {visibleChatMessages.length===1?'resultado encontrado':'resultados encontrados'} em {chatMessages.length} mensagens carregadas.</small>}
           </div>}
+          {v245Chat.error&&<div className="hb-v245-chat-hint" role="status">Não foi possível carregar um recurso do chat: {v245Chat.error}</div>}
+          {v245Chat.pins.length>0&&<div className="hb-v245-pinned-bar"><strong>◇ Mensagens fixadas</strong>{chatMessages.filter(m=>v245Chat.pins.some(p=>p.message_id===m.message_id)).slice(-3).map(m=><button key={m.message_id} type="button" onClick={()=>{setMessageSearch(m.body.slice(0,30));setShowMessageSearch(true)}}>{m.body.slice(0,65)||'Imagem fixada'}</button>)}</div>}
           <div className="hb-social-chat-messages hb-v201-chat-messages" ref={chatScrollRef} aria-label={`Mensagens com ${selectedChat.display_name}`} aria-live="polite">
             {visibleChatMessages.map((message,index)=>{
               const previous=visibleChatMessages[index-1]
@@ -835,8 +854,12 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
                       {message.image_path&&(chatImageUrls[message.message_id]?<a className="hb-v201-chat-image-link" href={chatImageUrls[message.message_id]} target="_blank" rel="noopener noreferrer" title="Abrir foto em tamanho maior"><img className="hb-v172-chat-image" src={chatImageUrls[message.message_id]} alt={`Foto enviada por ${own?'você':selectedChat.display_name}`} loading="lazy" /></a>:<span className="hb-v201-image-loading">Carregando imagem…</span>)}
                       {message.body!=='📷 Foto'&&<p>{message.body}</p>}
                     </>}
+                    {v245Chat.reactions.some(r=>r.message_id===message.message_id)&&<div className="hb-v245-chat-reactions">{v245Chat.emojiOptions.filter(emoji=>v245Chat.reactions.some(r=>r.message_id===message.message_id&&r.emoji===emoji)).map(emoji=><button type="button" key={emoji} disabled={v245Chat.busy} className={v245Chat.reactions.some(r=>r.message_id===message.message_id&&r.user_id===userId&&r.emoji===emoji)?'is-selected':''} onClick={()=>void v245Chat.react(message.message_id,emoji)}>{emoji} {v245Chat.reactions.filter(r=>r.message_id===message.message_id&&r.emoji===emoji).length}</button>)}</div>}
                     <div className="hb-v201-message-footer">
-                      {!message.deleted_at&&<div className="hb-v201-message-tools"><button type="button" onClick={()=>{setReplyMessage(message);setMessageDraft(value=>value)}}>↪ Responder</button>
+                      {!message.deleted_at&&<div className="hb-v201-message-tools"><details className="hb-v245-chat-react-menu"><summary aria-label="Reagir à mensagem">☺ Reagir</summary><div>{v245Chat.emojiOptions.map(emoji=><button key={emoji} type="button" disabled={v245Chat.busy} onClick={()=>void v245Chat.react(message.message_id,emoji)}>{emoji}</button>)}</div></details>
+                        <button type="button" disabled={v245Chat.busy} onClick={()=>void v245Chat.pin(message.message_id)}>{v245Chat.pins.some(p=>p.message_id===message.message_id)?'◉ Desafixar':'◇ Fixar'}</button>
+                        {own&&!message.image_path&&new Date(message.created_at).getTime()>Date.now()-900000&&<button type="button" disabled={v245Chat.busy} onClick={()=>void v245Chat.edit(message.message_id,message.body)}>Editar</button>}
+<button type="button" onClick={()=>{setReplyMessage(message);setMessageDraft(value=>value)}}>↪ Responder</button>
                         {message.body!=='📷 Foto'&&Boolean(message.body.trim())&&<button className="hb-v189-copy-message" type="button" onClick={()=>void copyChatMessage(message)} aria-label="Copiar texto desta mensagem">{copiedMessageId===message.message_id?'✓ Copiado':'⧉ Copiar'}</button>}
                         {own&&<button className="hb-v172-delete-message" type="button" disabled={!!busy} onClick={()=>void deleteChatMessage(message)} title="Apagar mensagem para todos">Apagar</button>}
                       </div>}

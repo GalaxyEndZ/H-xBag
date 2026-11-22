@@ -67,7 +67,16 @@
 }
 .hb-profile-v233 .hb-public-content .hb-v164-profile-social-actions>button:hover{background:color-mix(in srgb,var(--prf-accent) 9%,var(--prf-raised));border-color:color-mix(in srgb,var(--prf-accent) 47%,transparent)}
 .hb-profile-v233 .hb-public-content .hb-v164-profile-social-actions>button.hb-v164-follow-action{
-  background:var(--prf-accent);color:var(--season-on-primary,#161616);border-color:var(--prf-accent);font-weight:850;padding-inline:19px;
+  background:var(--hb-public-accent,var(--prf-accent))!important;
+  color:var(--hb-public-follow-text,#171511)!important;
+  border-color:var(--hb-public-accent,var(--prf-accent))!important;
+  font-weight:850;padding-inline:19px;
+}
+/* A ação repetida no rodapé segue a mesma identidade cromática do botão principal. */
+.hb-profile-v233 .hb-public-content .hb-public-footer-actions>button.hb-public-follow-footer{
+  background:var(--hb-public-accent,var(--prf-accent));
+  color:var(--hb-public-follow-text,#171511);
+  border-color:var(--hb-public-accent,var(--prf-accent));
 }
 .hb-profile-v233 .hb-public-content .hb-v164-profile-social-actions>button.hb-v230-copy-handle{margin-left:auto;background:transparent;color:var(--prf-muted);border-color:transparent}
 .hb-profile-v233 .hb-v233-stats-heading{
