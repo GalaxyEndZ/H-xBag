@@ -15,6 +15,7 @@ import './SocialV214.css'
 import SocialReferralPanel from './SocialReferralPanel'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 import SocialV231Suite, { type SocialV231Page } from './SocialV231Suite'
+import SocialPostActionsV249 from './SocialPostActionsV249'
 import SiteAdministrationV234 from './SiteAdministrationV234'
 import SocialExpansionV245 from './SocialExpansionV245'
 import { useSocialV245Chat } from './useSocialV245Chat'
@@ -176,6 +177,11 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [feedLoaded,setFeedLoaded] = useState(false)
   const [likePending,setLikePending] = useState<Record<string,boolean>>({})
   const [savedLegacyIds,setSavedLegacyIds] = useState<Set<string>>(() => new Set())
+  const [pinnedLegacyIds,setPinnedLegacyIds] = useState<Set<string>>(() => new Set())
+  const [mutedLegacyIds,setMutedLegacyIds] = useState<Set<string>>(() => new Set())
+  const [shareNonce,setShareNonce] = useState(0)
+  const [editingLegacyId,setEditingLegacyId] = useState<string|null>(null)
+  const [editingLegacyContent,setEditingLegacyContent] = useState('')
   const [legacyReportPost,setLegacyReportPost] = useState<Post|null>(null)
   const [legacyReportReason,setLegacyReportReason] = useState('Conteúdo inadequado')
   const [legacyReportDetails,setLegacyReportDetails] = useState('')
@@ -302,6 +308,65 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       .then(({data,error:failure})=>{if(!cancelled&&!failure)setSavedLegacyIds(new Set((data||[]).map(row=>String(row.post_id))))})
     return()=>{cancelled=true}
   },[active,tab,userId,posts.length])
+  useEffect(()=>{
+    if(!active||tab!=='feed'||!userId)return
+    let live=true
+    void (async()=>{
+      const {data,error:failure}=await supabase.from('hax_v231_preferences').select('muted_user_ids').eq('user_id',userId).maybeSingle()
+      if(live&&!failure)setMutedLegacyIds(new Set(((data?.muted_user_ids||[]) as string[])))
+    })()
+    return()=>{live=false}
+  },[active,tab,userId])
+  useEffect(()=>{
+    if(!active||tab!=='feed'||!posts.length)return
+    let live=true
+    void (async()=>{
+      const {data,error:failure}=await supabase.from('hax_social_posts').select('id,pinned').in('id',posts.map(p=>p.post_id))
+      if(live&&!failure)setPinnedLegacyIds(new Set((data||[]).filter(p=>p.pinned).map(p=>p.id)))
+    })()
+    return()=>{live=false}
+  },[active,tab,posts])
+  async function editLegacyPost(event:FormEvent,post:Post){
+    event.preventDefault()
+    const content=editingLegacyContent.trim()
+    if(!content||content.length>1200){setError('Use entre 1 e 1200 caracteres.');return}
+    setBusy(`edit:${post.post_id}`);setError('')
+    try{
+      await rpc('hax_v249_edit_legacy_post',{p_post:post.post_id,p_content:content})
+      setPosts(previous=>previous.map(item=>item.post_id===post.post_id?{...item,content}:item))
+      setEditingLegacyId(null);setNotice('Publicação editada.')
+    }catch(failure){setError(errorMessageV231(failure))}finally{setBusy('')}
+  }
+  async function pinLegacyPost(post:Post){
+    setBusy(`pin:${post.post_id}`);setError('')
+    try{
+      const pinned=await rpc<boolean>('hax_v249_pin_legacy_post',{p_post:post.post_id})
+      setPinnedLegacyIds(previous=>{const next=new Set(previous);if(pinned)next.add(post.post_id);else next.delete(post.post_id);return next})
+      setNotice(pinned?'Publicação fixada.':'Publicação desafixada.')
+    }catch(failure){setError(errorMessageV231(failure))}finally{setBusy('')}
+  }
+  async function shareLegacyPost(post:Post,mode:'repost'|'quote'){
+    if(post.visibility!=='public'){setError('Somente publicações públicas podem ser compartilhadas.');return}
+    const content=mode==='quote'?window.prompt('Adicione seu comentário à publicação (até 3000 caracteres):',''):'Republicou uma publicação.'
+    if(content===null)return
+    if(!content.trim()){setError('Escreva um comentário antes de citar.');return}
+    setBusy(`share:${post.post_id}`);setError('')
+    try{
+      const {error:failure}=await supabase.from('hax_v231_posts').insert({author_id:userId,group_id:null,display_name:profileIdentity?.name||'Aventureiro',content:content.trim().slice(0,3000),legacy_quoted_post_id:post.post_id,share_mode:mode})
+      if(failure)throw new Error(failure.message)
+      setShareNonce(value=>value+1)
+      setNotice(mode==='quote'?'Publicação citada no feed.':'Publicação republicada no feed.')
+    }catch(failure){setError(errorMessageV231(failure))}finally{setBusy('')}
+  }
+  async function muteLegacyAuthor(post:Post){
+    const updated=[...new Set([...mutedLegacyIds,post.author_id])]
+    setBusy(`mute:${post.post_id}`);setError('')
+    try{
+      const {error:failure}=await supabase.from('hax_v231_preferences').upsert({user_id:userId,muted_user_ids:updated},{onConflict:'user_id'})
+      if(failure)throw new Error(failure.message)
+      setMutedLegacyIds(new Set(updated));setShareNonce(value=>value+1);setNotice(`As publicações de ${nameOf(post)} foram silenciadas.`)
+    }catch(failure){setError(errorMessageV231(failure))}finally{setBusy('')}
+  }
   async function toggleLegacySave(post:Post){
     if(!userId)return
     setBusy(`save:${post.post_id}`);setError('')
@@ -702,8 +767,27 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const renderLegacyFeedPost = (post: Post) => <article key={post.post_id} className="hb-social-post hb-v214-post"><div className="hb-social-post-top"><button type="button" onClick={()=>post.author_id===userId?onViewOwnProfile?.():setProfile({id:post.author_id,display_name:post.display_name,username:post.username})}>{avatarFor(post.author_id,nameOf(post))}<span><strong>{post.display_name}</strong><small>@{post.username||'aventureiro'}</small></span></button><small className="hb-v160-post-date"><time dateTime={post.created_at} title={new Date(post.created_at).toLocaleString('pt-BR')}>{formatDate(post.created_at)}</time><span className="hb-v160-visibility">{visibilityLabels[post.visibility]}</span></small></div>{post.content&&<div className="hb-v189-post-text">
           <p id={`hb-v189-post-text-${post.post_id}`}>{post.content.length>420&&!expandedPosts.has(post.post_id)?`${post.content.slice(0,420).trimEnd()}…`:post.content}</p>
           {post.content.length>420&&<button type="button" className="hb-v189-read-more" aria-expanded={expandedPosts.has(post.post_id)} aria-controls={`hb-v189-post-text-${post.post_id}`} onClick={()=>setExpandedPosts(current=>{const next=new Set(current);if(next.has(post.post_id))next.delete(post.post_id);else next.add(post.post_id);return next})}>{expandedPosts.has(post.post_id)?'Mostrar menos ↑':'Ler publicação completa ↓'}</button>}
-        </div>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer({urls:post.image_paths.map(p=>photoUrls[p]).filter(Boolean),index:post.image_paths.slice(0,index).filter(p=>Boolean(photoUrls[p])).length,author:nameOf(post)})} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<footer><button type="button" className={post.liked?'liked':''} onClick={()=>void like(post)} aria-pressed={post.liked} disabled={!!likePending[post.post_id]}>{post.liked?'♥':'♡'} {Number(post.like_count)} curtida{Number(post.like_count)===1?'':'s'}</button><SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount} onOpenProfile={person=>person.id===userId ? onViewOwnProfile?.() : setProfile({id:person.id,display_name:person.display_name,username:person.username})}/><button type="button" className="hb-v231-legacy-save" aria-pressed={savedLegacyIds.has(post.post_id)} disabled={!!busy} onClick={()=>void toggleLegacySave(post)}>{savedLegacyIds.has(post.post_id)?'▣ Salvo':'▤ Salvar'}</button>{post.author_id!==userId&&<button type="button" onClick={()=>setLegacyReportPost(post)}>⚑ Denunciar</button>}{!!post.content.trim()&&<button type="button" className="hb-v214-copy-post" onClick={()=>void copyPost(post)} aria-label={`Copiar texto da publicação de ${nameOf(post)}`}>{copiedPostId===post.post_id?'✓ Copiado':'⧉ Copiar texto'}</button>}{post.author_id===userId&&<button className="hb-social-delete" type="button" onClick={()=>void deletePost(post)}>Excluir</button>}</footer></article>
-
+        </div>}{post.image_paths?.length>0&&<div className={`hb-v162-post-gallery gallery-${Math.min(post.image_paths.length,4)}`}>{post.image_paths.map((path,index)=>photoUrls[path]?<button key={path} type="button" onClick={()=>setImageViewer({urls:post.image_paths.map(p=>photoUrls[p]).filter(Boolean),index:post.image_paths.slice(0,index).filter(p=>Boolean(photoUrls[p])).length,author:nameOf(post)})} aria-label={`Ampliar foto ${index+1} da publicação`}><img src={photoUrls[path]} alt={`Foto ${index+1} da publicação de ${nameOf(post)}`} loading="lazy" /></button>:<div key={path} className="hb-v162-media-placeholder" aria-label="Carregando foto">▧</div>)}</div>}<div className="hb-v249-legacy-options">
+      {pinnedLegacyIds.has(post.post_id)&&<div className="hb-v249-pinned-note">📌 Publicação fixada</div>}
+      {editingLegacyId===post.post_id&&<form className="hb-v249-legacy-editor" onSubmit={event=>void editLegacyPost(event,post)}>
+        <label htmlFor={`hb-v249-edit-${post.post_id}`}>Editar publicação</label>
+        <textarea id={`hb-v249-edit-${post.post_id}`} maxLength={1200} value={editingLegacyContent} onChange={event=>setEditingLegacyContent(event.target.value)}/>
+        <div><button type="button" onClick={()=>setEditingLegacyId(null)}>Cancelar</button><button type="submit" disabled={!!busy||!editingLegacyContent.trim()}>Salvar edição</button></div>
+      </form>}
+    </div>
+    <footer className="hb-v249-footer"><SocialPostActionsV249
+      liked={post.liked} likeCount={Number(post.like_count)} onLike={()=>void like(post)}
+      comments={<SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount} onOpenProfile={person=>person.id===userId?onViewOwnProfile?.():setProfile({id:person.id,display_name:person.display_name,username:person.username})}/>}
+      saved={savedLegacyIds.has(post.post_id)} onSave={()=>void toggleLegacySave(post)}
+      canShare={post.visibility==='public'} onRepost={()=>void shareLegacyPost(post,'repost')} onQuote={()=>void shareLegacyPost(post,'quote')}
+      canCopy={!!post.content.trim()} onCopy={()=>void copyPost(post)} copied={copiedPostId===post.post_id}
+      canEdit={post.author_id===userId} onEdit={()=>{setEditingLegacyId(post.post_id);setEditingLegacyContent(post.content)}}
+      canPin={post.author_id===userId} pinned={pinnedLegacyIds.has(post.post_id)} onPin={()=>void pinLegacyPost(post)}
+      canDelete={post.author_id===userId} onDelete={()=>void deletePost(post)}
+      canMute={post.author_id!==userId} onMute={()=>void muteLegacyAuthor(post)}
+      canReport={post.author_id!==userId} onReport={()=>setLegacyReportPost(post)}
+      busy={!!busy||!!likePending[post.post_id]}
+    /></footer></article>
   return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-v189 hb-social-v201 hb-social-v214 hb-social-v232 hb-social-page-${tab} ${readingMode&&tab==='feed'?'hb-v214-reading-mode':''}`} aria-label="Comunidade do HäxBag">
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
@@ -776,12 +860,13 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         <SocialV231Suite page="feed" userId={userId} profileName={profileIdentity?.name}
           onNavigate={next=>setTab(next)}
           onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}
-          legacyPosts={feedLoaded?visiblePosts.map(post=>({...post,engagement:Math.max(0,Number(post.like_count)||0)+Math.max(0,commentCounts[post.post_id]||0)})):[]} renderLegacyPost={id=>{const post=visiblePosts.find(item=>item.post_id===id);return post?renderLegacyFeedPost(post):null}}
+          legacyPosts={feedLoaded?visiblePosts.filter(post=>!mutedLegacyIds.has(post.author_id)).map(post=>({...post,pinned:pinnedLegacyIds.has(post.post_id),engagement:Math.max(0,Number(post.like_count)||0)+Math.max(0,commentCounts[post.post_id]||0)})):[]} renderLegacyPost={id=>{const post=visiblePosts.find(item=>item.post_id===id&&!mutedLegacyIds.has(item.author_id));return post?renderLegacyFeedPost(post):null}}
           feedScope={feedScope} feedSearch={feedSearch} onlyPhotos={onlyPhotos} feedOrder={feedOrder}
           followingUserIds={(people.following||[]).map(person=>person.person_id)}
           friendsUserIds={(people.friends||[]).map(person=>person.person_id)}
-          legacyLoading={!feedLoaded||feedBusy}
-          onRefreshLegacy={()=>void loadFeed(null,false,feedScope)} onSearchFeed={setFeedSearch} />
+          refreshNonce={shareNonce} legacyLoading={!feedLoaded||feedBusy}
+          onRefreshLegacy={()=>void loadFeed(null,false,feedScope)} onSearchFeed={setFeedSearch}
+          onMuteAuthor={id=>setMutedLegacyIds(previous=>new Set([...previous,id]))} />
         {feedOrder==='popular'&&<p className="hb-v189-sort-hint">✦ Mais interações considera curtidas e comentários dos registros já carregados.</p>}
 
         {feedBusy&&<div className="hb-v160-skeletons" aria-label="Carregando publicações" aria-busy="true"><div/><div/></div>}

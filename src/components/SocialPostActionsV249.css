@@ -1,0 +1,54 @@
+/* Ações consistentes para todas as publicações do feed. */
+.hb-social-hub .hb-v249-post-actions,
+.hb-v231-unified-section .hb-v249-post-actions {
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;
+  width:100%;gap:5px 7px;min-width:0;border-top:1px solid var(--sr-line,var(--hs-line,rgba(255,255,255,.14)));
+  padding:12px 0 0;margin-top:10px;
+}
+.hb-social-hub .hb-v249-footer{display:block;padding:0;margin:0;border:0;}
+.hb-social-hub .hb-v249-post-actions button,
+.hb-v231-unified-section .hb-v249-post-actions button {
+  font:inherit;font-size:.75rem;font-weight:690;line-height:1.2;
+  min-height:34px;padding:8px 10px;border-radius:9px;
+  background:transparent;color:var(--sr-muted,var(--hs-muted,inherit));
+  border:1px solid transparent;cursor:pointer;white-space:normal;
+  transition:background-color .15s,border-color .15s,color .15s;
+}
+.hb-social-hub .hb-v249-post-actions button:hover:not(:disabled),
+.hb-v231-unified-section .hb-v249-post-actions button:hover:not(:disabled),
+.hb-social-hub .hb-v249-post-actions button:focus-visible,
+.hb-v231-unified-section .hb-v249-post-actions button:focus-visible {
+  color:var(--sr-ink,var(--hs-ink,inherit));
+  border-color:var(--sr-line,var(--hs-line,rgba(255,255,255,.18)));
+  background:var(--sr-glow,rgba(165,155,145,.1));outline-offset:2px;
+}
+.hb-social-hub .hb-v249-post-actions button[aria-pressed="true"],
+.hb-v231-unified-section .hb-v249-post-actions button[aria-pressed="true"]{
+  color:var(--sr-accent,var(--hs-accent,#e59d64));
+}
+.hb-social-hub .hb-v249-post-actions button.hb-v249-danger{color:#e9a3a5}
+.hb-social-hub .hb-v249-post-actions button:disabled{opacity:.45;cursor:not-allowed}
+.hb-social-hub .hb-v249-post-actions .hb-v181-comments-toggle{margin:0}
+.hb-v249-legacy-editor{display:grid;gap:8px;margin:12px 0}
+.hb-v249-legacy-editor textarea{min-height:88px;width:100%;resize:vertical;padding:10px;color:inherit;background:var(--hs-surface,transparent);border:1px solid var(--hs-line,rgba(255,255,255,.2));border-radius:10px}
+.hb-v249-legacy-editor>div{display:flex;gap:8px;flex-wrap:wrap}
+.hb-v249-legacy-editor button{padding:8px 12px;border:1px solid var(--hs-line,rgba(255,255,255,.2));background:transparent;color:inherit;border-radius:8px}
+.hb-v249-pinned-note{font-size:.72rem;color:var(--sr-accent,var(--hs-accent,#e59d64));margin-top:8px}
+.hb-v249-quoted-legacy{border:1px solid var(--sr-line,var(--v231-line,rgba(255,255,255,.14)));border-radius:11px;padding:12px;margin:10px 0}
+.hb-v249-quoted-legacy small{display:block;font-size:.7rem;opacity:.8}
+.hb-v249-quoted-legacy p{margin:9px 0;font-size:.81rem;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.hb-v249-quoted-legacy button{border:0;background:transparent;color:var(--sr-accent,var(--v231-accent,inherit));padding:0;cursor:pointer}
+@media(max-width:640px){.hb-social-hub .hb-v249-post-actions button,.hb-v231-unified-section .hb-v249-post-actions button{font-size:.72rem;padding:7px 8px;min-height:34px}}
+@media(prefers-reduced-motion:reduce){.hb-v249-post-actions button{transition:none}}
+/* O corpo do comentário clássico ocupa a largura total sem deslocar os botões. */
+.hb-v249-post-actions>.hb-v181-comments{display:contents}
+.hb-v249-post-actions .hb-v181-comments-panel{flex:0 0 100%;width:100%;min-width:0;order:99}
+/* Unifica superfícies e espaçamentos sem sobrepor a personalização da temporada. */
+.hb-v248-unified-feed .hb-v248-feed-entry.is-classic>.hb-social-post,
+.hb-v248-unified-feed .hb-v248-feed-entry.is-special .hb-v231-post{
+ background:var(--sr-raised,var(--season-surface,#232226));
+ border:1px solid var(--sr-line,var(--season-line,rgba(255,255,255,.14)));
+ border-radius:15px;box-shadow:none;padding:clamp(15px,1.7vw,21px);
+}
+.hb-v248-unified-feed .hb-v248-feed-entry.is-classic>.hb-social-post:hover,
+.hb-v248-unified-feed .hb-v248-feed-entry.is-special .hb-v231-post:hover{border-color:var(--sr-strong-line,var(--season-primary,#bda581))}

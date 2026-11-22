@@ -3,11 +3,12 @@ import { supabase } from '../supabase'
 import './SocialV231Suite.css'
 import './SocialExpansionV245.css'
 import './SocialV248Unified.css'
+import SocialPostActionsV249 from './SocialPostActionsV249'
 
 export type SocialV231Page = 'feed'|'discover'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'
 type Group = {id:string;owner_id:string;name:string;description:string;rules:string;topic:string;is_public:boolean;created_at:string}
 type Member = {group_id:string;user_id:string;role:'owner'|'moderator'|'member';status:'active'|'pending';joined_at:string}
-type Post = {id:string;author_id:string;group_id:string|null;character_id:string|null;character_name:string|null;character_emoji:string|null;display_name:string;content:string;pinned:boolean;created_at:string;updated_at:string;quoted_post_id?:string|null;share_mode?:'quote'|'repost'|null}
+type Post = {id:string;author_id:string;group_id:string|null;character_id:string|null;character_name:string|null;character_emoji:string|null;display_name:string;content:string;pinned:boolean;created_at:string;updated_at:string;quoted_post_id?:string|null;legacy_quoted_post_id?:string|null;share_mode?:'quote'|'repost'|null}
 type Comment = {id:string;post_id:string;parent_id:string|null;author_id:string;body:string;created_at:string}
 type Poll = {post_id:string;question:string;options:string[];ends_at:string}
 type Vote = {post_id:string;user_id:string;option_index:number}
@@ -19,13 +20,14 @@ type Notice = {id:string;kind:string;title:string;actor_id:string|null;target_id
 type Prefs = {user_id:string;activity_public:boolean;notifications_enabled:boolean;muted_user_ids:string[]}
 type Character = {id:string;name:string;emoji:string|null}
 type Activity = {kind:string;id:string;title:string;created_at:string}
-type LegacyTimelinePost = {post_id:string;author_id:string;created_at:string;like_count:number;engagement?:number;image_paths?:string[]}
+type LegacyQuotedPost = {id:string;author_id:string;content:string;visibility:string}
+type LegacyTimelinePost = {post_id:string;author_id:string;created_at:string;like_count:number;engagement?:number;image_paths?:string[];pinned?:boolean}
 type TimelineScope = 'all'|'following'|'friends'|'mine'
 type TimelineOrder = 'recent'|'oldest'|'popular'
 type Props = {page:SocialV231Page;userId:string;profileName?:string;onNavigate?:(tab:'feed'|'discover'|'messages'|'communities')=>void;onViewProfile?:(userId:string)=>void;
   legacyPosts?:LegacyTimelinePost[];renderLegacyPost?:(id:string)=>ReactNode;
   feedScope?:TimelineScope;feedSearch?:string;onlyPhotos?:boolean;feedOrder?:TimelineOrder;
-  followingUserIds?:string[];friendsUserIds?:string[];legacyLoading?:boolean;onRefreshLegacy?:()=>void;onSearchFeed?:(term:string)=>void}
+  followingUserIds?:string[];friendsUserIds?:string[];legacyLoading?:boolean;onRefreshLegacy?:()=>void;onSearchFeed?:(term:string)=>void;refreshNonce?:number;onMuteAuthor?:(id:string)=>void}
 
 const date = (value:string) => new Date(value).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
 const dateLong = (value:string) => new Date(value).toLocaleString('pt-BR',{dateStyle:'medium',timeStyle:'short'})
@@ -36,31 +38,32 @@ const fail = (response:{error:{message:string}|null}) => {if(response.error)thro
 const defaultPrefs = (uid:string):Prefs => ({user_id:uid,activity_public:false,notifications_enabled:true,muted_user_ids:[]})
 const emptyPoll=['','']
 
-function CommentThread({postId,comments,userId,send,remove,busy}:{postId:string;comments:Comment[];userId:string;send:(id:string,body:string,parent:string|null)=>Promise<void>;remove:(id:string)=>Promise<void>;busy:boolean}) {
+function CommentThread({postId,comments,userId,send,remove,busy,expanded,onExpandedChange}:{postId:string;comments:Comment[];userId:string;send:(id:string,body:string,parent:string|null)=>Promise<void>;remove:(id:string)=>Promise<void>;busy:boolean;expanded:boolean;onExpandedChange:(open:boolean)=>void}) {
   const [text,setText]=useState('')
   const [replyTo,setReplyTo]=useState<string|null>(null)
-  const [show,setShow]=useState(false)
   const relevant=comments.filter(c=>c.post_id===postId)
-  const submit=async(e:FormEvent)=>{e.preventDefault();if(!text.trim())return;await send(postId,text.trim(),replyTo);setText('');setReplyTo(null);setShow(true)}
+  const submit=async(e:FormEvent)=>{e.preventDefault();if(!text.trim())return;await send(postId,text.trim(),replyTo);setText('');setReplyTo(null);onExpandedChange(true)}
   const CommentRow=({item,depth}:{item:Comment;depth:number})=><div className={`hb-v231-comment ${depth?'is-reply':''}`}>
     <div><strong>{item.author_id===userId?'Você':`Aventureiro · ${item.author_id.slice(0,7)}`}</strong><time>{date(item.created_at)}</time></div>
     <p>{item.body}</p>
-    <div className="hb-v231-inline-actions"><button type="button" onClick={()=>{setReplyTo(item.id);setShow(true)}}>↪ Responder</button>{item.author_id===userId&&<button type="button" disabled={busy} onClick={()=>void remove(item.id)}>Excluir</button>}</div>
+    <div className="hb-v231-inline-actions"><button type="button" onClick={()=>{setReplyTo(item.id);onExpandedChange(true)}}>↪ Responder</button>{item.author_id===userId&&<button type="button" disabled={busy} onClick={()=>void remove(item.id)}>Excluir</button>}</div>
     {depth===0&&relevant.filter(child=>child.parent_id===item.id).map(child=><CommentRow key={child.id} item={child} depth={1}/>)}
   </div>
   return <section className="hb-v231-comments">
-    <button type="button" className="hb-v231-text-button" onClick={()=>setShow(value=>!value)} aria-expanded={show}>💬 {relevant.length} {relevant.length===1?'comentário':'comentários'} {show?'↑':'↓'}</button>
-    {show&&<div className="hb-v231-comment-body">
+    {expanded&&<div className="hb-v231-comment-body">
       {relevant.filter(comment=>!comment.parent_id).map(item=><CommentRow key={item.id} item={item} depth={0}/>)}
       <form onSubmit={e=>void submit(e)}><label>{replyTo?'Sua resposta':'Adicionar comentário'}<textarea rows={2} maxLength={1600} value={text} onChange={e=>setText(e.target.value)} placeholder="Compartilhe uma ideia ou mencione @alguém…"/></label><div className="hb-v231-inline-actions">{replyTo&&<button type="button" onClick={()=>setReplyTo(null)}>Cancelar resposta</button>}<button type="submit" disabled={!text.trim()||busy}>Comentar</button></div></form>
     </div>}
   </section>
 }
 
-function PostCard({post,uid,groups,likes,comments,polls,votes,bookmarked,busy,onLike,onVote,onSave,onComment,onRemoveComment,onEdit,onDelete,onPin,onReport,onMute,canModerate,onViewProfile,originalPost,onShare}:{post:Post;uid:string;groups:Group[];likes:Like[];comments:Comment[];polls:Poll[];votes:Vote[];bookmarked:boolean;busy:boolean;onLike:(post:Post)=>Promise<void>;onVote:(postId:string,index:number)=>Promise<void>;onSave:(post:Post)=>Promise<void>;onComment:(postId:string,body:string,parent:string|null)=>Promise<void>;onRemoveComment:(id:string)=>Promise<void>;onEdit:(post:Post,content:string)=>Promise<void>;onDelete:(post:Post)=>Promise<void>;onPin:(post:Post)=>Promise<void>;onReport:(type:string,id:string)=>void;onMute:(userId:string)=>Promise<void>;canModerate:boolean;onViewProfile?:(userId:string)=>void;originalPost?:Post;onShare:(post:Post,mode:'quote'|'repost')=>Promise<void>}) {
+function PostCard({post,uid,groups,likes,comments,polls,votes,bookmarked,busy,onLike,onVote,onSave,onComment,onRemoveComment,onEdit,onDelete,onPin,onReport,onMute,canModerate,onViewProfile,originalPost,onShare,legacyOriginal}:{post:Post;uid:string;groups:Group[];likes:Like[];comments:Comment[];polls:Poll[];votes:Vote[];bookmarked:boolean;busy:boolean;onLike:(post:Post)=>Promise<void>;onVote:(postId:string,index:number)=>Promise<void>;onSave:(post:Post)=>Promise<void>;onComment:(postId:string,body:string,parent:string|null)=>Promise<void>;onRemoveComment:(id:string)=>Promise<void>;onEdit:(post:Post,content:string)=>Promise<void>;onDelete:(post:Post)=>Promise<void>;onPin:(post:Post)=>Promise<void>;onReport:(type:string,id:string)=>void;onMute:(userId:string)=>Promise<void>;canModerate:boolean;onViewProfile?:(userId:string)=>void;originalPost?:Post;legacyOriginal?:LegacyQuotedPost;onShare:(post:Post,mode:'quote'|'repost')=>Promise<void>}) {
   const [editing,setEditing]=useState(false)
   const [edited,setEdited]=useState(post.content)
   const [expanded,setExpanded]=useState(false)
+  const [commentsOpen,setCommentsOpen]=useState(false)
+  const [copied,setCopied]=useState(false)
+  const [copyError,setCopyError]=useState('')
   const poll=polls.find(value=>value.post_id===post.id)
   const options=poll?.options||[]
   const tally=options.map((_,index)=>votes.filter(v=>v.post_id===post.id&&v.option_index===index).length)
@@ -74,11 +77,24 @@ function PostCard({post,uid,groups,likes,comments,polls,votes,bookmarked,busy,on
   return <article className={`hb-v231-post ${post.pinned?'is-pinned':''}`}>
     <header><div className="hb-v231-avatar">{post.character_emoji||post.display_name?.slice(0,1)?.toUpperCase()||'✦'}</div><div className="hb-v231-byline"><button type="button" onClick={()=>onViewProfile?.(post.author_id)}><strong>{post.character_name||post.display_name||'Aventureiro'}</strong></button><small>{post.character_name&&<span>Personagem de {post.display_name} · </span>}{date(post.created_at)} {post.group_id&&`· ${groups.find(g=>g.id===post.group_id)?.name||'Grupo'}`}</small></div>{post.pinned&&<span className="hb-v231-pill">📌 Fixado</span>}</header>
     {editing?<form className="hb-v231-edit-post" onSubmit={async e=>{e.preventDefault();if(!edited.trim())return;await onEdit(post,edited.trim());setEditing(false)}}><textarea rows={4} value={edited} maxLength={3000} onChange={e=>setEdited(e.target.value)}/><div className="hb-v231-inline-actions"><button type="button" onClick={()=>{setEditing(false);setEdited(post.content)}}>Cancelar</button><button disabled={busy||!edited.trim()} type="submit">Salvar edição</button></div></form>:<p className="hb-v231-post-text">{expanded?post.content:short(post.content,700)}{post.content.length>700&&<button type="button" className="hb-v231-text-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Mostrar menos':'Ler mais'}</button>}</p>}
+    {post.legacy_quoted_post_id&&<div className="hb-v249-quoted-legacy"><small>{post.share_mode==='repost'?'↗ PUBLICAÇÃO REPUBLICADA':'❝ PUBLICAÇÃO CITADA'}</small>{legacyOriginal?<><p>{short(legacyOriginal.content,420)}</p><button type="button" onClick={()=>onViewProfile?.(legacyOriginal.author_id)}>Visitar autor original ↗</button></>:<p>O conteúdo original não está mais disponível.</p>}</div>}
     {post.quoted_post_id&&<div className="hb-v245-quoted-card"><small>{post.share_mode==='repost'?'↗ PUBLICAÇÃO REPUBLICADA':'❝ PUBLICAÇÃO CITADA'}</small>{originalPost?<><p>{short(originalPost.content,420)}</p><button type="button" onClick={()=>onViewProfile?.(originalPost.author_id)}>Visitar autor original ↗</button></>:<p>O conteúdo original não está mais disponível.</p>}</div>}
     {linkPreview&&<a className="hb-v231-link-preview" href={linkPreview.href} target="_blank" rel="noopener noreferrer nofollow"><strong>↗ {linkPreview.domain}</strong><small>{linkPreview.path||'Abrir link'}</small></a>}
     {poll&&<section className="hb-v231-poll"><strong>📊 {poll.question}</strong>{options.map((answer,index)=><button type="button" key={index} disabled={busy||new Date(poll.ends_at).getTime()<=Date.now()} className={voted===index?'is-selected':''} onClick={()=>void onVote(post.id,index)}><span>{answer}</span><span>{total?Math.round(100*tally[index]/total):0}%</span><span className="hb-v231-poll-bar" style={{width:`${total?100*tally[index]/total:0}%`}}/></button>)}<small>{total} {total===1?'voto':'votos'} · {new Date(poll.ends_at)>new Date()?'Encerra '+dateLong(poll.ends_at):'Enquete encerrada'}</small></section>}
-    <div className="hb-v231-post-actions"><button type="button" disabled={busy} aria-pressed={liked} onClick={()=>void onLike(post)}>{liked?'♥':'♡'} {likeCount}</button><button type="button" aria-pressed={bookmarked} disabled={busy} onClick={()=>void onSave(post)}>{bookmarked?'▣ Salvo':'▤ Salvar'}</button>{!post.group_id&&<><button type="button" disabled={busy} onClick={()=>void onShare(post,'repost')}>↗ Republicar</button><button type="button" disabled={busy} onClick={()=>void onShare(post,'quote')}>❝ Citar</button></>}{isMine&&<><button type="button" onClick={()=>{setEdited(post.content);setEditing(true)}}>Editar</button><button type="button" disabled={busy} onClick={()=>void onPin(post)}>{post.pinned?'Desafixar':'Fixar'}</button></>}{(isMine||canModerate)&&<button type="button" disabled={busy} onClick={()=>void onDelete(post)}>Excluir</button>}{!isMine&&<><button type="button" disabled={busy} onClick={()=>void onMute(post.author_id)}>Silenciar autor</button><button type="button" onClick={()=>onReport('post',post.id)}>⚑ Denunciar</button></>}</div>
-    <CommentThread postId={post.id} comments={comments} userId={uid} send={onComment} remove={onRemoveComment} busy={busy}/>
+    <SocialPostActionsV249
+      liked={liked} likeCount={likeCount} onLike={()=>void onLike(post)}
+      comments={<button type="button" aria-expanded={commentsOpen} onClick={()=>setCommentsOpen(open=>!open)}>💬 Comentar · {comments.filter(c=>c.post_id===post.id).length}</button>}
+      saved={bookmarked} onSave={()=>void onSave(post)}
+      canShare={!post.group_id} onRepost={()=>void onShare(post,'repost')} onQuote={()=>void onShare(post,'quote')}
+      canCopy={!!post.content.trim()} copied={copied} onCopy={()=>void (async()=>{try{await navigator.clipboard.writeText(post.content);setCopied(true);setCopyError('')}catch{setCopyError('Não foi possível copiar o texto.')}})()}
+      canEdit={isMine} onEdit={()=>{setEdited(post.content);setEditing(true)}}
+      canPin={isMine} pinned={post.pinned} onPin={()=>void onPin(post)}
+      canDelete={isMine||canModerate} onDelete={()=>void onDelete(post)}
+      canMute={!isMine} onMute={()=>void onMute(post.author_id)}
+      canReport={!isMine} onReport={()=>onReport('post',post.id)} busy={busy}
+    />
+    {copyError&&<p role="alert" className="hb-condition-error">{copyError}</p>}
+    {commentsOpen&&<CommentThread postId={post.id} comments={comments} userId={uid} send={onComment} remove={onRemoveComment} busy={busy} expanded={commentsOpen} onExpandedChange={setCommentsOpen}/>}
   </article>
 }
 
@@ -91,7 +107,7 @@ export function SocialV231PublicActivity({authorId}:{authorId:string}) {
 
 export default function SocialV231Suite({page,userId,profileName,onNavigate,onViewProfile,
   legacyPosts=[],renderLegacyPost,feedScope='all',feedSearch='',onlyPhotos=false,feedOrder='recent',
-  followingUserIds=[],friendsUserIds=[],legacyLoading=false,onRefreshLegacy,onSearchFeed}:Props){
+  followingUserIds=[],friendsUserIds=[],legacyLoading=false,onRefreshLegacy,onSearchFeed,refreshNonce=0,onMuteAuthor}:Props){
   const [ready,setReady]=useState(false)
   const [schemaMissing,setSchemaMissing]=useState(false)
   const [error,setError]=useState('')
@@ -101,6 +117,7 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
   const [members,setMembers]=useState<Member[]>([])
   const [posts,setPosts]=useState<Post[]>([])
   const [quotedPosts,setQuotedPosts]=useState<Record<string,Post>>({})
+  const [legacyQuotedPosts,setLegacyQuotedPosts]=useState<Record<string,LegacyQuotedPost>>({})
   const [likes,setLikes]=useState<Like[]>([])
   const [comments,setComments]=useState<Comment[]>([])
   const [polls,setPolls]=useState<Poll[]>([])
@@ -203,6 +220,17 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
     })()
     return()=>{live=false}
   },[posts])
+  useEffect(()=>{
+    const missing=[...new Set(posts.map(p=>p.legacy_quoted_post_id).filter((id):id is string=>!!id))]
+    if(!missing.length)return
+    let live=true
+    void (async()=>{
+      const {data,error}=await supabase.from('hax_social_posts').select('id,author_id,content,visibility').in('id',missing)
+      if(live&&!error&&data)setLegacyQuotedPosts(existing=>({...existing,...Object.fromEntries((data as LegacyQuotedPost[]).filter(item=>item.visibility==='public').map(p=>[p.id,p]))}))
+    })()
+    return()=>{live=false}
+  },[posts])
+  useEffect(()=>{if(refreshNonce>0)void load()},[refreshNonce,load])
   useEffect(()=>{if(!userId)return
     try{const raw=window.sessionStorage.getItem(`hax-v231-draft:${userId}`);if(raw){const saved=JSON.parse(raw) as {text?:unknown;group?:unknown;character?:unknown};if(typeof saved.text==='string')setPostText(saved.text.slice(0,3000));if(typeof saved.group==='string')setPostGroup(saved.group);if(typeof saved.character==='string')setPostCharacter(saved.character)}}catch{/* Sessão privada pode bloquear armazenamento. */}
     setDraftReady(userId)
@@ -263,7 +291,11 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
   const editPost=async(post:Post,content:string)=>perform(async()=>{fail(await supabase.from('hax_v231_posts').update({content}).eq('id',post.id).eq('author_id',userId))},'Publicação editada.')
   const removePost=async(post:Post)=>perform(async()=>{if(!window.confirm('Excluir esta publicação?'))return;fail(await supabase.from('hax_v231_posts').delete().eq('id',post.id))},'Publicação excluída.')
   const pinPost=async(post:Post)=>perform(async()=>{fail(await supabase.from('hax_v231_posts').update({pinned:!post.pinned}).eq('id',post.id).eq('author_id',userId))},'Destaque atualizado.')
-  const mutePostAuthor=async(id:string)=>updatePrefs({muted_user_ids:[...new Set([...(prefs.muted_user_ids||[]),id])]})
+  const mutePostAuthor=async(id:string)=>perform(async()=>{
+    const muted=[...new Set([...(prefs.muted_user_ids||[]),id])]
+    fail(await supabase.from('hax_v231_preferences').upsert({...prefs,muted_user_ids:muted,user_id:userId,updated_at:new Date().toISOString()},{onConflict:'user_id'}))
+    onMuteAuthor?.(id)
+  },'Autor silenciado.')
   const report=async(event:FormEvent)=>{event.preventDefault();if(!reportTarget)return
     await perform(async()=>{fail(await supabase.from('hax_v231_reports').insert({reporter_id:userId,target_type:reportTarget.type,target_id:reportTarget.id,reason:reportReason,details:reportDetail.trim()}));setReportTarget(null);setReportDetail('')},'Denúncia recebida para análise.')
   }
@@ -309,11 +341,11 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
   if(schemaMissing)return <div className="hb-v231-install"><strong>✦ Recursos adicionais indisponíveis</strong><p>Algumas ferramentas da comunidade ainda precisam ser habilitadas.</p><button type="button" onClick={()=>void load()}>Tentar novamente</button></div>
   const filteredNotifications=notifications.filter(n=>noticeFilter==='all'||(noticeFilter==='other'?!['follow','like','comment'].includes(n.kind):n.kind===noticeFilter))
   const selected=groupById(selectedGroup)
-  const renderPosts=(list:Post[])=>list.length?<div className="hb-v231-post-list">{list.map(post=><PostCard key={post.id} post={post} uid={userId} groups={groups} likes={likes} comments={comments} polls={polls} votes={votes} bookmarked={saved.some(s=>s.post_id===post.id)} busy={busy} onLike={like} onVote={vote} onSave={savePost} onComment={comment} onRemoveComment={removeComment} onEdit={editPost} onDelete={removePost} onPin={pinPost} onReport={(type,id)=>setReportTarget({type,id})} onMute={mutePostAuthor} canModerate={!!(post.group_id&&groups.find(g=>g.id===post.group_id)?.owner_id===userId)||!!(post.group_id&&members.some(m=>m.group_id===post.group_id&&m.user_id===userId&&m.role==='moderator'&&m.status==='active'))} onViewProfile={onViewProfile} originalPost={posts.find(p=>p.id===post.quoted_post_id)||(post.quoted_post_id?quotedPosts[post.quoted_post_id]:undefined)} onShare={sharePost}/>)}</div>:<div className="hb-v231-empty">Nenhuma publicação encontrada para esta seleção.</div>
+  const renderPosts=(list:Post[])=>list.length?<div className="hb-v231-post-list">{list.map(post=><PostCard key={post.id} post={post} uid={userId} groups={groups} likes={likes} comments={comments} polls={polls} votes={votes} bookmarked={saved.some(s=>s.post_id===post.id)} busy={busy} onLike={like} onVote={vote} onSave={savePost} onComment={comment} onRemoveComment={removeComment} onEdit={editPost} onDelete={removePost} onPin={pinPost} onReport={(type,id)=>setReportTarget({type,id})} onMute={mutePostAuthor} canModerate={!!(post.group_id&&groups.find(g=>g.id===post.group_id)?.owner_id===userId)||!!(post.group_id&&members.some(m=>m.group_id===post.group_id&&m.user_id===userId&&m.role==='moderator'&&m.status==='active'))} onViewProfile={onViewProfile} originalPost={posts.find(p=>p.id===post.quoted_post_id)||(post.quoted_post_id?quotedPosts[post.quoted_post_id]:undefined)} legacyOriginal={post.legacy_quoted_post_id?legacyQuotedPosts[post.legacy_quoted_post_id]:undefined} onShare={sharePost}/>)}</div>:<div className="hb-v231-empty">Nenhuma publicação encontrada para esta seleção.</div>
   // Uma só linha do tempo: preserva as operações originais de cada tipo de publicação.
   // O backend continua responsável por controlar a visibilidade de posts e grupos privados.
   const timeline=(()=>{
-    type TimelineEntry = {key:string;kind:'legacy'|'special';createdAt:number;engagement:number;legacyId?:string;post?:Post}
+    type TimelineEntry = {key:string;kind:'legacy'|'special';createdAt:number;engagement:number;pinned:boolean;legacyId?:string;post?:Post}
     const following=new Set(followingUserIds)
     const friends=new Set(friendsUserIds)
     const term=fold(feedSearch.trim())
@@ -324,14 +356,14 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
       if(term&&!fold(`${post.content} ${post.display_name} ${post.character_name||''} ${groupById(post.group_id||'')?.name||''}`).includes(term))return false
       return true
     }).map(post=>({key:`special:${post.id}`,kind:'special',createdAt:new Date(post.created_at).getTime()||0,
-      engagement:likes.filter(item=>item.post_id===post.id).length+comments.filter(item=>item.post_id===post.id).length,post}))
+      engagement:likes.filter(item=>item.post_id===post.id).length+comments.filter(item=>item.post_id===post.id).length,pinned:post.pinned&&post.author_id===userId,post}))
     const legacy:TimelineEntry[]=renderLegacyPost?legacyPosts.map(post=>({
-      key:`legacy:${post.post_id}`,kind:'legacy',legacyId:post.post_id,
+      key:`legacy:${post.post_id}`,kind:'legacy',legacyId:post.post_id,pinned:!!post.pinned&&post.author_id===userId,
       createdAt:new Date(post.created_at).getTime()||0,engagement:Math.max(0,Number(post.engagement??post.like_count)||0)
     })):[]
-    return [...special,...legacy].sort((a,b)=>feedOrder==='popular'?
+    return [...special,...legacy].sort((a,b)=>Number(b.pinned)-Number(a.pinned)||(feedOrder==='popular'?
       b.engagement-a.engagement||b.createdAt-a.createdAt:
-      feedOrder==='oldest'?a.createdAt-b.createdAt:b.createdAt-a.createdAt)
+      feedOrder==='oldest'?a.createdAt-b.createdAt:b.createdAt-a.createdAt))
   })()
   const composer=<section className="hb-v231-composer-panel"><button type="button" className="hb-v231-composer-toggle" onClick={()=>setComposeOpen(open=>!open)} aria-expanded={composeOpen}><span>✎ Publicar como personagem, criar enquete ou publicar em um grupo</span><span>{composeOpen?'−':'+'}</span></button>{composeOpen&&<form onSubmit={e=>void createPost(e)} className="hb-v231-form"><label>Conte sua história<textarea value={postText} maxLength={3000} rows={4} onChange={e=>setPostText(e.target.value)} placeholder="Compartilhe sua campanha, use #hashtags ou mencione @jogadores…" required/></label><div className="hb-v231-form-grid"><label>Identidade da publicação<select value={postCharacter} onChange={e=>setPostCharacter(e.target.value)}><option value="">Minha conta · {profileName||'Aventureiro'}</option>{characters.map(ch=><option key={ch.id} value={ch.id}>{ch.emoji||'⚔'} {ch.name} (personagem)</option>)}</select></label><label>Destino<select value={postGroup} onChange={e=>setPostGroup(e.target.value)}><option value="">Feed público</option>{myGroups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></label></div><label className="hb-v231-check"><input type="checkbox" checked={pollActive} onChange={e=>setPollActive(e.target.checked)}/> Adicionar enquete (7 dias)</label>{pollActive&&<div className="hb-v231-poll-options"><input maxLength={240} value={pollQuestion} onChange={e=>setPollQuestion(e.target.value)} placeholder="Pergunta da enquete" required/>{pollOptions.map((opt,index)=><div key={index}><input maxLength={120} value={opt} onChange={e=>setPollOptions(current=>current.map((v,i)=>i===index?e.target.value:v))} placeholder={`Alternativa ${index+1}`} required/>{pollOptions.length>2&&<button type="button" onClick={()=>setPollOptions(options=>options.filter((_,i)=>i!==index))} aria-label="Remover alternativa">×</button>}</div>)}{pollOptions.length<4&&<button type="button" onClick={()=>setPollOptions(current=>[...current,''])}>＋ Alternativa</button>}</div>}<div className="hb-v231-form-footer"><small>{postText.length}/3000 · O autor da conta continuará identificável mesmo quando publicar como personagem.</small><button type="submit" disabled={busy||!postText.trim()}>{busy?'Publicando…':'Publicar ✦'}</button></div></form>}</section>
 
