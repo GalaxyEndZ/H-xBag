@@ -1,4 +1,5 @@
-import type { Dispatch, SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { supabase } from '../supabase'
 import {
   KIT_DEFINITIONS, SCARCITY_DICE,
   kitAvailableScarcityLevels, kitDefinition, kitFixedSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, KIT_UNIQUE_FEATURES, KIT_MAIN_SKILLS, kitWeight,
@@ -8,6 +9,7 @@ import { KIT_SKILL_CATALOG } from '../kitSkillCatalog'
 import './KitEditor.css'
 
 export type KitEditorProps = {
+  campaignId?: string | null
   type: KitType | null
   onTypeChange: (type: KitType | null) => void
   benefitMode: KitBenefitMode
@@ -31,12 +33,27 @@ export type KitEditorProps = {
 }
 
 export default function KitEditor({
-  type, onTypeChange, benefitMode, onBenefitModeChange, skills, setSkills, skillBonus, onSkillBonusChange,
+  campaignId, type, onTypeChange, benefitMode, onBenefitModeChange, skills, setSkills, skillBonus, onSkillBonusChange,
   uniqueEffect, onUniqueEffectChange, uniqueFeatures, onUniqueFeaturesChange, effect, onEffectChange,
   effectNotes, onEffectNotesChange, scarcityLevel, onScarcityLevelChange,
   exhausted, onExhaustedChange,
 }: KitEditorProps) {
   void onSkillBonusChange // A propriedade permanece na interface durante a transição do bônus antigo.
+  const [conditionOptions,setConditionOptions] = useState<{id:string;name:string;emoji?:string}[]>([])
+  const [conditionLoadError,setConditionLoadError] = useState('')
+  useEffect(()=>{
+    let alive=true
+    setConditionOptions([])
+    setConditionLoadError('')
+    if(!campaignId)return
+    void supabase.rpc('hax_list_condition_definitions',{p_campaign_id:campaignId}).then(({data,error})=>{
+      if(!alive)return
+      if(error){setConditionLoadError('Não foi possível carregar as condições da campanha.');return}
+      setConditionOptions(((data||[]) as {id:string;name:string;emoji?:string}[]).filter(item=>item.id&&item.name))
+    })
+    return ()=>{alive=false}
+  },[campaignId])
+
   const definition = kitDefinition(type)
   const slots = type ? kitSlots(type, benefitMode) : []
   const fixedBonuses = kitFixedSkillBonuses(type, benefitMode)
@@ -133,7 +150,7 @@ export default function KitEditor({
             const spec=KIT_UNIQUE_FEATURES.find(entry=>entry.key===feature.key)
             return <div className="hb-kit-unique-entry" key={`${type}-${benefitMode}-${index}`}>
               <label>Funcionalidade {index+1}
-                <select value={feature.key} onChange={event=>changeFeature(index,{key:event.target.value as KitUniqueFeature['key'],amount:'',mainSkill:'',details:'',protectionTier:'basica',protectionMode:'resistencia'})}>
+                <select value={feature.key} onChange={event=>changeFeature(index,{key:event.target.value as KitUniqueFeature['key'],amount:'',mainSkill:'',conditionId:'',details:'',protectionTier:'basica',protectionMode:'resistencia'})}>
                   <option value="">Escolha uma funcionalidade...</option>
                   {KIT_UNIQUE_FEATURES.filter(entry=>type==='equip_rare'||!entry.rareOnly).map(entry=><option key={entry.key} value={entry.key} disabled={uniqueFeatures.some((other,i)=>i!==index&&other.key===entry.key)}>{entry.label}</option>)}
                 </select>
@@ -163,12 +180,23 @@ export default function KitEditor({
                   {KIT_MAIN_SKILLS.map(skill=><option key={skill} value={skill}>{skill}</option>)}
                 </select>
               </label>}
+              {feature.key==='remove_condition'&&<>
+                <label>Condição vinculada (mesma biblioteca do painel de Condições)
+                  <select value={feature.conditionId||''} onChange={event=>changeFeature(index,{conditionId:event.target.value})} disabled={!campaignId}>
+                    <option value="">Selecione a condição que pode ser removida...</option>
+                    {feature.conditionId && !conditionOptions.some(option=>option.id===feature.conditionId)&&<option value={feature.conditionId}>Condição salva anteriormente (indisponível na biblioteca)</option>}
+                    {conditionOptions.map(option=><option key={option.id} value={option.id}>{option.emoji||'✧'} {option.name}</option>)}
+                  </select>
+                </label>
+                {conditionLoadError&&<small role="status">{conditionLoadError}</small>}
+                <p className="hb-kit-editor-note">O mestre remove a condição no próprio painel de Condições, usando a mesma ação e permissões existentes. O kit não remove condições ao equipar.</p>
+              </>}
               {feature.key && <label>Descrição e condições da funcionalidade
-                <textarea rows={2} maxLength={600} value={feature.details} onChange={event=>changeFeature(index,{details:event.target.value})} placeholder={feature.key==='remove_condition'?'Quais condições podem ser retiradas? A retirada permanece sob controle do mestre.':'Descreva as situações e limitações do benefício...'}/>
+                <textarea rows={2} maxLength={600} value={feature.details} onChange={event=>changeFeature(index,{details:event.target.value})} placeholder={feature.key==='remove_condition'?'Condições de uso e limitações definidas pelo mestre...':'Descreva as situações e limitações do benefício...'}/>
               </label>}
             </div>
           })}
-          <p className="hb-kit-editor-note">Valores numéricos são definidos pelo mestre. Habilidades de retirar condições exigem decisão do mestre; não removem condições automaticamente.</p>
+          <p className="hb-kit-editor-note">Valores numéricos são definidos pelo mestre. Retirada de condições usa a mesma operação do painel do mestre; nunca é automática.</p>
         </div>}
         {(benefitMode==='protection'||(benefitMode==='main_and_archetype'&&Boolean(uniqueEffect)))&&<label>Descrição de kit antigo
           <textarea value={uniqueEffect} onChange={event=>onUniqueEffectChange(event.target.value)} maxLength={1000} rows={2}/>

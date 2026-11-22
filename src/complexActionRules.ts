@@ -44,8 +44,9 @@ export function complexPreparationError(
   sourceSkillKey: string,
   targetSkillKey: string,
   result: number,
+  maxPerScene = MAX_COMPLEX_ACTIONS_PER_SCENE,
 ): string | null {
-  if (preparations.length >= MAX_COMPLEX_ACTIONS_PER_SCENE) return 'Limite de três preparações atingido nesta cena.'
+  if (preparations.length >= maxPerScene) return `Limite de ${maxPerScene} preparações atingido nesta cena.`
   if (!sourceSkillKey) return 'Escolha uma perícia de arquétipo disponível para realizar o preparo.'
   if (!isComplexMainSkillKey(targetSkillKey)) return 'Escolha Vigor, Mental, Combate, Destreza, Resistência ou Habilidade como destino.'
   if (preparations.some(preparation => preparation.sourceSkillKey === sourceSkillKey))

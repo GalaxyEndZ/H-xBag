@@ -1540,6 +1540,7 @@ export default function MasterChest({ campaignId, characters, currencyOptions, o
           <div className="mc-editor-section-title"><span>02</span><div><strong>Equipamento e regras</strong><small>Compatível com os campos de armas, armaduras, proteções e consumíveis das fichas</small></div></div>
           <p>Configure as regras das classificações selecionadas. Os tipos de equipamento aparecem somente em “Equipamento”.</p>
           {draft.categories.includes('Kits') && <KitEditor
+            campaignId={campaignId}
             type={draft.kitType}
             onTypeChange={value => {
               setDraft(current => {

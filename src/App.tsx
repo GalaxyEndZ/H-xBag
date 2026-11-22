@@ -57,7 +57,7 @@ import './DeferredModule.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
-import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, itemKitSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, itemKitRestType, parseKitUniqueFeatures, kitEquipmentProtections, validateKitUniqueFeatures, KIT_UNIQUE_FEATURES, KIT_BENEFIT_MODES, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect, type KitUniqueFeature } from './kitRules'
+import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, itemKitSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, itemKitRestType, parseKitUniqueFeatures, kitEquipmentProtections, equippedKitFeatureBonuses, validateKitUniqueFeatures, KIT_UNIQUE_FEATURES, KIT_BENEFIT_MODES, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect, type KitUniqueFeature } from './kitRules'
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
@@ -614,6 +614,7 @@ function calculateSheetResourceMaximums(
     familyTier?: { pv?: number; ps?: number; pr?: number } | null
     familyBreathingBonus: number
     rankStatus?: { pv: number; ps: number; pr: number } | null
+    kitResourceBonuses?: {pv:number;pr:number;vigor?:number;mental?:number;ability?:number}
   },
 ) {
   const read = (path: string, fallback: any = 0): any =>
@@ -635,12 +636,12 @@ function calculateSheetResourceMaximums(
   const family = options.usesFamilyTiers ? options.familyTier : null
   const rank = options.rankStatus
   return {
-    pv: Math.max(0, vigor * 10 + (family?.pv ?? 0) + (rank?.pv ?? 0) +
-      number('progression.classStatus.pv') + number('progression.statusBonuses.pv')),
-    ps: Math.max(0, mental * 10 + (family?.ps ?? 0) + (rank?.ps ?? 0) +
+    pv: Math.max(0, (vigor + (options.kitResourceBonuses?.vigor??0)) * 10 + (family?.pv ?? 0) + (rank?.pv ?? 0) +
+      number('progression.classStatus.pv') + number('progression.statusBonuses.pv') + (options.kitResourceBonuses?.pv??0)),
+    ps: Math.max(0, (mental + (options.kitResourceBonuses?.mental??0)) * 10 + (family?.ps ?? 0) + (rank?.ps ?? 0) +
       number('progression.classStatus.ps') + number('progression.statusBonuses.ps')),
-    pr: Math.max(0, (breathing + ability) * 10 + (family?.pr ?? 0) + (rank?.pr ?? 0) +
-      number('progression.classStatus.pr') + number('progression.statusBonuses.pr')),
+    pr: Math.max(0, (breathing + ability + (options.kitResourceBonuses?.ability??0)) * 10 + (family?.pr ?? 0) + (rank?.pr ?? 0) +
+      number('progression.classStatus.pr') + number('progression.statusBonuses.pr') + (options.kitResourceBonuses?.pr??0)),
   }
 }
 
@@ -1346,6 +1347,21 @@ function App() {
   const [characterGrants, setCharacterGrants] = useState<CharacterGrant[]>([])
   const [visibilitySaving, setVisibilitySaving] = useState(false)
   const [items, setItems] = useState<Item[]>([])
+  const [masterShieldKitItems,setMasterShieldKitItems] = useState<Item[]>([])
+  const kitItemsForCharacter = (characterId:string):Item[] => {
+    const inventory = items.some(item=>item.character_id===characterId) ? items : masterShieldKitItems
+    return inventory.filter(item=>item.character_id===characterId && item.quantity>0)
+  }
+  // Modificadores de kits não alteram permanentemente a ficha; usados também pelo Escudo do Mestre.
+  const kitBonusForCharacter = (characterId:string,key:Parameters<typeof equippedKitFeatureBonuses>[1], mainSkill?:string) =>
+    equippedKitFeatureBonuses(kitItemsForCharacter(characterId),key,mainSkill)
+  const kitResourceBonusesForCharacter = (characterId:string) => ({
+    pv:kitBonusForCharacter(characterId,'health_points'),
+    pr:kitBonusForCharacter(characterId,'resistance_points'),
+    vigor:equippedKitSkillBonuses(kitItemsForCharacter(characterId),characterId,'VIGOR').reduce((sum,item)=>sum+item.bonus,0),
+    mental:equippedKitSkillBonuses(kitItemsForCharacter(characterId),characterId,'MENTAL').reduce((sum,item)=>sum+item.bonus,0),
+    ability:equippedKitSkillBonuses(kitItemsForCharacter(characterId),characterId,'HABILIDADE').reduce((sum,item)=>sum+item.bonus,0),
+  })
   const [transferItem, setTransferItem] = useState<Item | null>(null)
   const [transferTargetId, setTransferTargetId] = useState('')
   const [transferQuantity, setTransferQuantity] = useState(1)
@@ -1538,6 +1554,7 @@ const resetCreatureFilters = () => {
     }
   }
   const shopKitFields = shopItemCategories.includes('Kits') ? <KitEditor
+    campaignId={selectedCampaignId}
     type={activeShopKitType} onTypeChange={setShopKitTypeWithCategory}
     benefitMode={shopKitBenefitMode} onBenefitModeChange={mode => {setShopKitBenefitMode(mode);setShopKitSkills([]);setShopKitUniqueFeatures([])}}
     skills={shopKitSkills} setSkills={setShopKitSkills}
@@ -2133,6 +2150,25 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<HaxPage>(initialHaxLocation.current.page)
+  const kitRosterIds = characters.map(character=>character.id).sort().join(',')
+  useEffect(()=>{
+    let alive=true
+    const refresh=async()=>{
+      if(!isMaster || !selectedCampaignId || (activePage!=='master-shield' && activePage!=='player-table') || !kitRosterIds){
+        if(alive)setMasterShieldKitItems([])
+        return
+      }
+      const {data,error}=await supabase.from('inventory_items')
+        .select('id,character_id,name,description,category,quantity,weight,metadata,unit_price,currency_id,sale_blocked')
+        .in('character_id',kitRosterIds.split(','))
+        .gt('quantity',0)
+      if(alive)setMasterShieldKitItems(error?[]:(data||[]) as Item[])
+    }
+    void refresh()
+    const interval=setInterval(()=>void refresh(),15000)
+    return ()=>{alive=false;clearInterval(interval)}
+  },[selectedCampaignId,isMaster,activePage,kitRosterIds])
+
   const lastRpgPage = useRef<Exclude<typeof activePage,'profile'|'minigames'>>('overview')
   const [socialNavigationTab,setSocialNavigationTab] = useState<HaxSocialTab>(initialHaxLocation.current.tab)
   useEffect(() => {
@@ -2555,6 +2591,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     }
   }
   const kitEditorFields = newItemCategories.includes('Kits') ? <KitEditor
+    campaignId={selectedCampaignId}
     type={activeKitType}
     onTypeChange={setKitTypeWithCategory}
     benefitMode={newKitBenefitMode}
@@ -7611,6 +7648,7 @@ async function sendItemToCharacter() {
       familyTier: systemFeatures.usesFamilyTiers ? getSystemFamilyTier(tier) : null,
       familyBreathingBonus: systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier,'breathing') : 0,
       rankStatus: systemFeatures.usesRanks ? getSystemRankStatus(rank) : null,
+      kitResourceBonuses:kitResourceBonusesForCharacter(entry.id),
     }) }
   })
   const masterShieldReadyTurns = masterShieldInitiativeEntries.filter(entry => entry.initiative !== null)
@@ -7644,6 +7682,7 @@ async function sendItemToCharacter() {
       familyTier: systemFeatures.usesFamilyTiers ? getSystemFamilyTier(tier) : null,
       familyBreathingBonus: systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'breathing') : 0,
       rankStatus: systemFeatures.usesRanks ? getSystemRankStatus(rank) : null,
+      kitResourceBonuses:kitResourceBonusesForCharacter(character.id),
     })
     const pv = Number(data.status?.current?.pv ?? limits.pv)
     if (limits.pv > 0 && Number.isFinite(pv) && pv / limits.pv <= .25) masterShieldLowPvCharacterIds.add(character.id)
@@ -8651,6 +8690,14 @@ useEffect(() => {
 
                       updateRenderDraft(JSON.stringify(next, null, 2))
                     }
+                    const equippedKitBonus = (key:Parameters<typeof equippedKitFeatureBonuses>[1]):number =>
+                      forEnemy || !renderSubjectId ? 0 : equippedKitFeatureBonuses(
+                        renderInventoryItems.filter(item=>item.character_id===renderSubjectId && item.quantity>0),key)
+                    const kitExtraDamage = equippedKitBonus('extra_damage')
+                    const kitArmorClass = equippedKitBonus('armor_class')
+                    const kitConstitution = equippedKitBonus('constitution')
+                    const kitComplexActionCount = Math.min(COMPLEX_MAIN_SKILLS.length,MAX_COMPLEX_ACTIONS_PER_SCENE + Math.floor(equippedKitBonus('complex_actions')))
+                    const kitInitiativeDice = Math.min(19,Math.floor(equippedKitBonus('initiative_dice')))
                     // Modificadores das perícias principais se aplicam aos valores em uso;
                     // os pontos salvos na ficha permanecem intactos.
                     const mainSkill = (key: 'vigor'|'mental'|'combat'|'dexterity'|'resistance'|'ability') =>
@@ -8674,6 +8721,7 @@ useEffect(() => {
 const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                     const equippedWeapon = renderInventoryItems.find(item => item.character_id === renderSubjectId && item.metadata?.equipped === true && Array.isArray(item.metadata?.categories) && item.metadata.categories.includes('Armas'))
                     const equippedWeaponDamage = equippedWeapon ? String(equippedWeapon.metadata?.weaponDamage || '—') : '—'
+                    const totalExtraDamage = [equippedWeaponDamage==='—'?'':equippedWeaponDamage,kitExtraDamage>0?`+${kitExtraDamage} (kit)`:''].filter(Boolean).join(' ')||'—'
                     const equippedArmor = renderInventoryItems.find(item => item.character_id === renderSubjectId && item.metadata?.equipped === true && item.metadata?.equipmentType === 'armor')
                     const equippedCharacterItems: SheetCombatEquipment[] = renderInventoryItems
                       .filter(item => item.character_id === renderSubjectId && item.metadata?.equipped === true)
@@ -8755,7 +8803,7 @@ const attribute =
   const baseBonus =
     kind === 'Ataque bruto' || kind === 'Ataque ágil' ? combat :
     (kind === 'Ataque especial' || kind === 'Tiro' || kind === 'Disparo') ? ability :
-    kind === 'Bloqueio' ? resistance + vigor :
+    kind === 'Bloqueio' ? resistance + vigor + kitConstitution :
     armorDexterity
   const preparationBonus = forEnemy ? 0 : primaryKeys.reduce((sum,key) => sum + pendingComplexBonus(complexPreparations,key),0)
   const bonus = baseBonus + preparationBonus
@@ -8830,7 +8878,7 @@ const attribute =
       (kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate'
 
     setCombatActionResult(
-      `${kind}: ${diceDescription} + ${bonusName} (${bonus}) = ${total}.`
+      `${kind}: ${diceDescription} + ${bonusName} (${bonus}) = ${total}. Dano extra equipado: ${totalExtraDamage}.`
     )
   }
 
@@ -8917,6 +8965,7 @@ const attribute =
                       familyBreathingBonus: usesFamilyTiers
                         ? getSystemAttributeBonus(familyTierKey, 'breathing') : 0,
                       rankStatus,
+                      kitResourceBonuses:{pv:equippedKitBonus('health_points'),pr:equippedKitBonus('resistance_points')},
                     })
                     // Uma condição em perícia principal afeta também as derivações que
                     // dependem dessa perícia, sem modificar os pontos salvos na ficha.
@@ -10021,7 +10070,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 {!isKisatsutaiSystem && field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
-                      {panel('3. Combate', <><div className="sheet-editor-combat-content"><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {equippedWeaponDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA DA ARMA EQUIPADA</small><div style={{fontSize:20,fontWeight:800}}>{equippedWeaponDamage}</div><small>Definido pela classificação da arma no inventário.</small></div>{field('combat.armor','Armadura')}{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
+                      {panel('3. Combate', <><div className="sheet-editor-combat-content"><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {totalExtraDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA (ARMA + KITS)</small><div style={{fontSize:20,fontWeight:800}}>{totalExtraDamage}</div><small>Arma equipada e bônus dos kits em uso.</small></div>{field('combat.armor','Armadura')}<div className="equipment-rules-preview"><small>CA com kits equipados</small><strong>{Math.max(0,Number(read('combat.armor',0))||0)+kitArmorClass}</strong>{kitArmorClass>0&&<small>Inclui +{kitArmorClass} de kit, sem alterar o valor salvo.</small>}</div>{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
   <small>DESLOCAMENTO</small>
 <div className="sheet-movement-values">
   <strong>
@@ -10038,7 +10087,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 </div>
   <small>Ações de Movimento × Destreza</small>
 </div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat + armorDexterity}</div>
-<small>Combate + Destreza de Armadura</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor}</div><small>Resistência + Vigor</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
+<small>Combate + Destreza de Armadura</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO (COM KITS)</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor+kitConstitution}</div><small>Resistência + Vigor{kitConstitution?` + kits (+${kitConstitution})`: ''}</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
 
                       {panel('4. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
 {panel(
@@ -10276,12 +10325,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
   <div className="sheet-summary-values">
     {[
       ['Dano base', baseDamage],
-      ['Dano extra', equippedWeaponDamage],
+      ['Dano extra', totalExtraDamage],
+      ['CA (incluindo kits)', Math.max(0,Number(read('combat.armor',0))||0)+kitArmorClass],
       ['Deslocamento', Math.max(0, applyConditionModifier(Math.max(1, Math.floor((movementActions * dexterity) / (renderOverloaded ? 2 : 1))), activeCombatConditions, 'combat_stats', 'movement'))],
       ['Ações', movementActions + extraActions],
       ['Reações', reactions],
 ['Contra-ataque', counterAttackDT],
-['Constituição', resistance + vigor],
+['Constituição', resistance + vigor + kitConstitution],
 ['Crítico', criticalValue],
 ...(usesFamilyTiers ? [['Essência', read('combat.essence', '—')]] : [])
     ].map(([label, value]) => (
@@ -10433,8 +10483,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             const result = complexResult.trim() ? Number(complexResult) : Number.NaN
                             const validResult = Number.isInteger(result) && result >= 0
                             const complexBonus = validResult ? complexBonusFromResult(result) : 0
-                            const remainingPreparations = Math.max(0, MAX_COMPLEX_ACTIONS_PER_SCENE - complexSceneCount)
-                            const actionError = complexPreparationError(complexPreparations,chosen?.key || '',targetSkill?.key || '',result)
+                            const remainingPreparations = Math.max(0, kitComplexActionCount - complexSceneCount)
+                            const actionError = complexPreparationError(complexPreparations,chosen?.key || '',targetSkill?.key || '',result,kitComplexActionCount)
                             const canPrepare = !actionError
                             const actionHint = actionError || 'Pronto para preparar: a perícia de arquétipo e a beneficiada só podem participar uma vez por cena.'
                             const thresholds = [{label:'15–19',bonus:1},{label:'20–24',bonus:2},{label:'25–29',bonus:3},{label:'30–34',bonus:4},{label:'35+',bonus:5}]
@@ -10475,14 +10525,14 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               `}</style>
                               <div className="hax-complex-head">
                                 <div><strong>🧠 Ações Complexas</strong><small>Use uma perícia de arquétipo para preparar um bônus em uma das seis perícias principais. Cada origem e cada destino só podem ser escolhidos uma vez por cena.</small></div>
-                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/{MAX_COMPLEX_ACTIONS_PER_SCENE} nesta cena</span>
+                                <span className="hax-complex-pill">⏳ Preparo: 1 ação · {complexSceneCount}/{kitComplexActionCount} nesta cena</span>
                               </div>
                               <div className="hax-complex-overview">
-                                <div className="hax-complex-stat"><small>Preparações usadas</small><strong>{complexSceneCount} / {MAX_COMPLEX_ACTIONS_PER_SCENE}</strong></div>
+                                <div className="hax-complex-stat"><small>Preparações usadas</small><strong>{complexSceneCount} / {kitComplexActionCount}</strong></div>
                                 <div className="hax-complex-stat"><small>Restantes</small><strong>{remainingPreparations}</strong></div>
                                 <div className="hax-complex-stat"><small>Bônus atual</small><strong>{validResult && complexBonus > 0 ? `+${complexBonus}` : '—'}</strong></div>
                               </div>
-                              <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={MAX_COMPLEX_ACTIONS_PER_SCENE}><span style={{width:`${complexSceneCount / MAX_COMPLEX_ACTIONS_PER_SCENE * 100}%`}} /></div>
+                              <div className="hax-complex-progress" role="progressbar" aria-label="Ações complexas utilizadas nesta cena" aria-valuenow={complexSceneCount} aria-valuemin={0} aria-valuemax={kitComplexActionCount}><span style={{width:`${Math.min(100,complexSceneCount / kitComplexActionCount * 100)}%`}} /></div>
                               <div className="hax-complex-fields">
                                 <label><span>1 · 🎲 Atributo</span><select value={complexAttribute} onChange={event=>setComplexAttribute(event.target.value)}><option value="intelligence">Intelecto</option><option value="strength">Força</option><option value="agility">Agilidade</option><option value="defense">Defesa</option><option value="resistance">Respiração</option></select></label>
                                 <label><span>2 · 📚 Perícia de arquétipo utilizada</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia de arquétipo...</option>{extraSkills.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key)}>{skill.label} (+{skill.bonus}){complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key) ? ' · Já usada nesta cena' : ''}</option>)}</select></label>
@@ -10505,7 +10555,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                     targetSkillKey: targetSkill.key, targetSkillLabel: targetSkill.label,
                                     bonus: complexBonus, consumed: false, actionsRemaining: 3,
                                   }
-                                  setComplexPreparations(previous => complexPreparationError(previous,chosen.key,targetSkill.key,result) ? previous : [...advanceComplexAction(previous),preparation])
+                                  setComplexPreparations(previous => complexPreparationError(previous,chosen.key,targetSkill.key,result,kitComplexActionCount) ? previous : [...advanceComplexAction(previous),preparation])
                                   setComplexSkill('');setComplexMainSkill('');setComplexResult('')
                                   setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para ${targetSkill.label} (perícia principal). Uma ação de preparo utilizada.`)
                                 }}>🎯 Preparar ação</button>
@@ -10514,7 +10564,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               </div>
                               {complexPreparations.length > 0 && <div className="hax-complex-history"><strong>Preparações desta cena</strong><ul>{complexPreparations.map(preparation => <li key={preparation.sourceSkillKey}><span>{preparation.sourceSkillLabel} → {preparation.targetSkillLabel}</span><strong>+{preparation.bonus}</strong><small>{preparation.consumed ? 'Expirado' : `${preparation.actionsRemaining ?? 3} ação(ões) restante(s)`}</small></li>)}</ul></div>}
                               {extraSkills.length === 0 && <div className="hax-complex-empty"><span>📚</span><div><strong>Nenhuma perícia de arquétipo disponível</strong><small>Treine ou receba uma perícia de arquétipo na ficha para habilitar o preparo.</small></div></div>}
-                              <small className="hax-complex-note hax-complex-footer">💡 Até três preparações por cena. Cada perícia de arquétipo pode preparar uma ação uma única vez; cada perícia beneficiada pode receber no máximo um bônus. O bônus permanece durante as próximas 3 ações e expira após a terceira. Apenas “Nova cena” libera os usos.</small>
+                              <small className="hax-complex-note hax-complex-footer">💡 Até {kitComplexActionCount} preparações por cena com os kits equipados. Cada perícia de arquétipo pode preparar uma ação uma única vez; cada perícia beneficiada pode receber no máximo um bônus. O bônus permanece durante as próximas 3 ações e expira após a terceira. Apenas “Nova cena” libera os usos.</small>
                             </div>
                           })()}
                           {isKisatsutaiSystem && !forEnemy && restActionsOpen && <div id="haxbag-rest-actions"><RestActionsPanel
@@ -10577,7 +10627,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 type="button"
                                 className="combat-action-card"
                                 onClick={() => {
-                                  const diceCount = 1
+                                  const diceCount = 1 + kitInitiativeDice
                                   const rolls = Array.from({ length: diceCount }, () => rollD20())
                                   const highest = Math.max(...rolls)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'dexterity')
@@ -10593,7 +10643,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                               >
                                 <span className="combat-action-icon">⚡</span>
                                 <strong>Iniciativa</strong>
-                                <small>1D20 + Destreza de armadura ({armorDexterity})</small>
+                                <small>{1+kitInitiativeDice}D20 + Destreza de armadura ({armorDexterity})</small>
                               </button>
 
                               <button
@@ -14478,6 +14528,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                           ? getSystemAttributeBonus(tierKey, 'breathing') : 0,
                         rankStatus: systemFeatures.usesRanks
                           ? getSystemRankStatus(rankId) : null,
+                        kitResourceBonuses:kitResourceBonusesForCharacter(character.id),
                       })
                       const maxes = maximums
                       const current = data.status?.current ?? {}
@@ -18891,7 +18942,7 @@ style={{cursor:'pointer'}}>
             {itemKitRestType(selectedItemDetails.metadata) && <p>🛏️ {definition.exampleItem} · Descanso {itemKitRestType(selectedItemDetails.metadata) === 'precario' ? 'Precário' : itemKitRestType(selectedItemDetails.metadata) === 'mediano' ? 'Mediano' : 'Completo'}.</p>}
             {definition.family === 'equippable' && <>
               {type === 'equip_standard' && mode === 'protection' ? <p>Benefício: proteção moderada.</p> : <ul>{skills.map((skill,i) => <li key={`${i}-${skill}`}>{formatKitSkill(skill)}{kitBonuses[i]>0 ? ` +${kitBonuses[i]}` : ' · bônus ainda não configurado'}</li>)}</ul>}
-              {parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).length>0 && <ul>{parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).map((feature,index)=><li key={index}>{KIT_UNIQUE_FEATURES.find(option=>option.key===feature.key)?.label ?? 'Funcionalidade única'}{feature.key==='protection' ? ` (${feature.protectionTier==='avancada'?'avançada':feature.protectionTier==='moderada'?'moderada':'básica'} · ${feature.protectionMode==='sanidade'?'sanidade':'resistência'})` : feature.amount ? ` (+${feature.amount})` : ''}{feature.mainSkill ? ` — ${feature.mainSkill}` : ''}{feature.details ? ` · ${feature.details}` : ''}</li>)}</ul>}
+              {parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).length>0 && <ul>{parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).map((feature,index)=><li key={index}>{KIT_UNIQUE_FEATURES.find(option=>option.key===feature.key)?.label ?? 'Funcionalidade única'}{feature.key==='protection' ? ` (${feature.protectionTier==='avancada'?'avançada':feature.protectionTier==='moderada'?'moderada':'básica'} · ${feature.protectionMode==='sanidade'?'sanidade':'resistência'})` : feature.amount ? ` (+${feature.amount})` : ''}{feature.mainSkill ? ` — ${feature.mainSkill}` : ''}{feature.key==='remove_condition'&&feature.conditionId?' · condição da biblioteca configurada':''}{feature.details ? ` · ${feature.details}` : ''}</li>)}</ul>}
               {description && <p>Detalhes adicionais: {description}</p>}
               <p>{skills.length ? `Bônus por perícia: ${kitBonuses.map(value => value > 0 ? `+${value}` : 'não configurado').join(' · ')}. Válidos somente com o kit equipado.` : itemKitRestType(selectedItemDetails.metadata) ? 'Item de descanso (sem bônus de perícias nesta opção).' : 'Esta opção não concede bônus de perícias.'}</p>
               <button type="button" className="inventory-equip-button" aria-pressed={selectedItemDetails.metadata?.equipped === true} disabled={updatingKitEquipId !== null || Number(selectedItemDetails.quantity) < 1} onClick={() => void toggleInventoryKitEquipped(selectedItemDetails)}>{selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '🧰 Equipar kit'}</button>

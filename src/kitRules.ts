@@ -19,6 +19,8 @@ export type KitUniqueFeature = {
   amount: string
   details: string
   mainSkill?: string
+  /** Mesma definição da biblioteca de Condições usada pelo painel do mestre. */
+  conditionId?: string
   /** Mesmas opções de proteção dos equipamentos convencionais. */
   protectionTier?: ProtectionTier
   protectionMode?: ProtectionMode
@@ -60,6 +62,7 @@ export function parseKitUniqueFeatures(value:unknown):KitUniqueFeature[] {
       amount:typeof entry.amount==='string'?entry.amount:String(entry.amount??''),
       details:typeof entry.details==='string'?entry.details:'',
       mainSkill:typeof entry.mainSkill==='string'?entry.mainSkill:'',
+      conditionId:typeof entry.conditionId==='string'?entry.conditionId:'',
       // Benefícios anteriores não tinham classificação: básica / resistência é a escolha de compatibilidade.
       protectionTier: entry.key==='protection' ? (entry.protectionTier==='moderada'||entry.protectionTier==='avancada'?entry.protectionTier:'basica') : undefined,
       protectionMode: entry.key==='protection' ? (entry.protectionMode==='sanidade'?'sanidade':'resistencia') : undefined,
@@ -73,6 +76,7 @@ export function validateKitUniqueFeatures(type:KitType|null|undefined,mode:KitBe
   if(new Set(picked.map(feature=>feature.key)).size!==count)return 'Escolha funcionalidades únicas diferentes para cada espaço.'
   if(picked.some(feature=>!KIT_UNIQUE_FEATURES.some(f=>f.key===feature.key&&(type==='equip_rare'||!f.rareOnly))))return 'Esta funcionalidade não está disponível neste nível de kit.'
   if(picked.some(feature=>feature.key==='main_skill'&&!KIT_MAIN_SKILLS.includes(feature.mainSkill as typeof KIT_MAIN_SKILLS[number])))return 'Selecione a perícia principal beneficiada.'
+  if(picked.some(feature=>feature.key==='remove_condition' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(feature.conditionId||'')))return 'Selecione a condição da biblioteca que o kit permite remover.'
   if(picked.some(feature=>{
     const rule=KIT_UNIQUE_FEATURES.find(f=>f.key===feature.key)
     if(!rule?.needsAmount)return false
@@ -124,6 +128,18 @@ export function equippedKitFeatureBonuses(items: readonly {metadata?:Record<stri
       return sub+(Number.isFinite(n)&&n>0?n:0)
     },0)
   },0)
+}
+
+/** Condições vinculadas a kits equipados: mesmos IDs da biblioteca e mesma remoção manual do painel. */
+export function equippedKitRemovesCondition(items:readonly {name:string;metadata?:Record<string,unknown>|null}[], definitionId:string):string[] {
+  if(!definitionId)return []
+  return items.flatMap(item=>{
+    const meta=item.metadata
+    if(!meta || meta.equipped!==true || !['equip_standard','equip_rare'].includes(String(meta.kitType)) || meta.kitRulesVersion!==2) return []
+    if(!['skills_unique','unique_pair','rare_skills_two_unique','rare_mixed_two_unique','unique_triple'].includes(String(meta.kitBenefitMode)))return []
+    return parseKitUniqueFeatures(meta.kitUniqueFeatures).some(feature=>feature.key==='remove_condition'&&feature.conditionId===definitionId)
+      ? [item.name] : []
+  })
 }
 
 export type KitEffect = 'damage' | 'resistance' | 'combat_point'
