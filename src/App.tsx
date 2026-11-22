@@ -1079,6 +1079,16 @@ function App() {
   const lastHaxLocationRef = useRef<HaxLocation | null>(null)
   const [haxHistoryRevision, setHaxHistoryRevision] = useState(0)                                                                                                                                                                                                                                                                                                                                                                                                                                                                
   const [session, setSession] = useState<Session | null>(null)
+  const [isSiteAdmin,setIsSiteAdmin] = useState(false)
+  useEffect(()=>{
+    let active=true
+    setIsSiteAdmin(false)
+    if(!session?.user.id)return ()=>{active=false}
+    void supabase.rpc('hax_v231_admin').then(({data,error})=>{
+      if(active && !error)setIsSiteAdmin(data===true)
+    }).catch(()=>{if(active)setIsSiteAdmin(false)})
+    return ()=>{active=false}
+  },[session?.user.id])
   const [authLoading, setAuthLoading] = useState(true)
   const [loading, setLoading] = useState(false)
 
@@ -10749,6 +10759,11 @@ counterAttackDT
       action:() => openSocialTab(tab),
     })
   }
+  if(isSiteAdmin)quickCommands.push({
+    id:'social:administration',label:'Painel Administrativo',symbol:'♜',section:'Administração',
+    description:'Gerenciar denúncias, usuários, moderadores e histórico do site',
+    action:()=>openSocialTab('administration'),
+  })
   for (const campaign of campaigns) {
     quickCommands.push({
       id:`campaign:${campaign.id}`, label:campaign.name, symbol:'⚑', section:'Campanhas',
@@ -10880,6 +10895,7 @@ counterAttackDT
                 ['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança'],
               ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
+            {isSiteAdmin&&<div className="hb-sidebar-nav-group hb-site-admin-nav"><span className="hb-sidebar-group-title">ADMINISTRAÇÃO</span><button type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab==='administration'?'active':''}`} onClick={()=>openSocialTab('administration')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Painel Administrativo</span></button></div>}
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">
               <span className="hb-sidebar-group-title">MINHA IDENTIDADE</span>
               {([
@@ -13221,6 +13237,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
             <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <DeferredModule><FriendsPanel
               active={profileSection === 'friends'}
+              isSiteAdmin={isSiteAdmin}
               selectedTab={socialNavigationTab}
               onSelectTab={setSocialNavigationTab}
               campaignId={selectedCampaignId}

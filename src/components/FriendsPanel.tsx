@@ -14,6 +14,7 @@ import './SocialV214.css'
 import SocialReferralPanel from './SocialReferralPanel'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 import SocialV231Suite, { type SocialV231Page } from './SocialV231Suite'
+import SiteAdministrationV234 from './SiteAdministrationV234'
 import './SocialRedesignV232.css'
 
 type Person = {
@@ -51,6 +52,7 @@ type Props = {
   campaignName: string
   canInvite: boolean
   active?: boolean
+  isSiteAdmin?: boolean
   selectedTab?: SocialTab
   onSelectTab?: (tab: SocialTab) => void
   onViewOwnProfile?: () => void
@@ -64,7 +66,7 @@ type Props = {
     coverPosition?: number
   }
 }
-export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'
+export type SocialTab = 'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'|'administration'
 type Tab = SocialTab
 type Summary = { followers: number; following: number; friends: number; blocked: number; unread: number }
 const EMPTY_SUMMARY: Summary = { followers: 0, following: 0, friends: 0, blocked: 0, unread: 0 }
@@ -89,10 +91,11 @@ const pageInfo:Record<SocialTab,{kicker:string;title:string;description:string;i
   events:{kicker:'AGENDA',title:'Eventos da comunidade',description:'Encontros, sessões abertas e atividades compartilhadas.',icon:'◷'},
   notifications:{kicker:'ATIVIDADES',title:'Suas notificações',description:'Acompanhe as interações e novidades importantes.',icon:'◉'},
   activity:{kicker:'JORNADA',title:'Sua atividade',description:'Relembre suas participações e escolha o que será público.',icon:'✦'},
-  moderation:{kicker:'SEGURANÇA',title:'Segurança e moderação',description:'Preferências sociais, denúncias e ferramentas administrativas.',icon:'⊘'},
+  moderation:{kicker:'PRIVACIDADE',title:'Segurança e privacidade',description:'Preferências sociais e proteção da sua conta.',icon:'⊘'},
+  administration:{kicker:'ACESSO RESTRITO',title:'Painel Administrativo',description:'Denúncias, usuários, equipe e histórico de moderação do HäxBag.',icon:'♜'},
 }
 
-export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity }: Props) {
+export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, isSiteAdmin = false, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity }: Props) {
   const [internalTab,setInternalTab] = useState<Tab>('feed')
   const tab = selectedTab ?? internalTab
   const setTab = (next:Tab) => {
@@ -104,6 +107,17 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     }
   }
   const [userId,setUserId] = useState('')
+  const [verifiedSiteAdmin,setVerifiedSiteAdmin] = useState(false)
+  useEffect(()=>{
+    let live=true
+    setVerifiedSiteAdmin(false)
+    if(!active || !userId || !isSiteAdmin)return () => {live=false}
+    void supabase.rpc('hax_v234_role').then(({data,error})=>{
+      if(live && !error)setVerifiedSiteAdmin(data==='admin')
+    }).catch(()=>{if(live)setVerifiedSiteAdmin(false)})
+    return()=>{live=false}
+  },[active,userId,isSiteAdmin])
+  const canSeeAdministration=isSiteAdmin && verifiedSiteAdmin
   const [summary,setSummary] = useState<Summary>(EMPTY_SUMMARY)
   const [people,setPeople] = useState<Record<string,Person[]>>({})
   const [search,setSearch] = useState('')
@@ -641,6 +655,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     {id:'events',label:'◷ Eventos'},
     {id:'saved',label:'▤ Salvos'},
     {id:'moderation',label:'⚙ Privacidade'},
+    ...(canSeeAdministration ? [{id:'administration' as Tab,label:'♜ Painel Administrativo'}] : []),
     {id:'activity',label:'✦ Atividade'},
     {id:'notifications',label:'◉ Notificações'},
     {id:'messages',label:'✉ Mensagens',count:summary.unread},
@@ -687,6 +702,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         <nav className="hb-social-tabs hb-v232-network-nav" aria-label="Seus contatos e conversas">{tabs.filter(item=>(['friends','following','followers','messages','notifications'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
         <span className="hb-v158-nav-label hb-v180-sidebar-secondary-label">SUA CONTA</span>
         <nav className="hb-social-tabs hb-v180-secondary-nav" aria-label="Atividade e privacidade">{tabs.filter(item=>(['activity','referral','blocked','moderation'] as Tab[]).includes(item.id)).map(item=><button key={item.id} type="button" className={tab===item.id?'selected':''} aria-current={tab===item.id?'page':undefined} onClick={()=>{setTab(item.id);setNotice('');setError('')}}>{item.label}{item.count!==undefined&&item.count>0&&<small>{item.count}</small>}</button>)}</nav>
+        {canSeeAdministration&&<><span className="hb-v158-nav-label">ADMINISTRAÇÃO DO SITE</span><nav className="hb-social-tabs hb-v180-secondary-nav" aria-label="Administração global"><button type="button" className={tab==='administration'?'selected':''} aria-current={tab==='administration'?'page':undefined} onClick={()=>setTab('administration')}>♜ Painel Administrativo</button></nav></>}
         <div className="hb-v158-sidebar-actions">
           <button type="button" onClick={onEditOwnProfile}>✎ Personalizar meu perfil</button>
           <small>Uma amizade começa quando vocês se seguem mutuamente.</small>
@@ -750,6 +766,9 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     {tab==='discover'&&<section className="hb-social-list-pane hb-v214-discover"><div className="hb-social-pane-top"><div><span className="hb-social-overline">NOVAS CONEXÕES</span><h3>Descobrir aventureiros</h3><p>Busque por nome ou @usuário. Não são exibidas pessoas com quem você tenha bloqueio.</p></div></div><label className="hb-social-search-label hb-v160-discover-search"><span>Pesquisar jogadores</span><span className="hb-v160-search-input"><span aria-hidden="true">⌕</span><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Nome ou @usuário — ao menos 2 caracteres" autoComplete="off" /></span></label>
       <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div><SocialV231Suite page="discover" userId={userId} profileName={profileIdentity?.name} onNavigate={next=>setTab(next)}/>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
 
+    {tab==='administration'&&(canSeeAdministration
+      ? <SiteAdministrationV234 userId={userId} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}} />
+      : <section className="hb-social-empty" role="alert"><h3>Área restrita</h3><p>O Painel Administrativo é exclusivo dos administradores globais do HäxBag.</p><button type="button" onClick={()=>setTab('feed')}>Voltar ao Social</button></section>)}
     {(['communities','saved','events','notifications','activity','moderation'] as SocialV231Page[]).includes(tab as SocialV231Page)&&<SocialV231Suite page={tab as SocialV231Page} userId={userId} profileName={profileIdentity?.name} onNavigate={next=>setTab(next)} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}/>}
     {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat hb-v201-chat ${selectedChat?'has-active-chat':''}`} aria-label="Mensagens privadas">
       <aside className="hb-social-chat-sidebar" aria-label="Seus contatos">
