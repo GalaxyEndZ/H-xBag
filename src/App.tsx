@@ -57,7 +57,7 @@ import './DeferredModule.css'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
-import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, itemKitSkillBonuses, kitSlots, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect } from './kitRules'
+import { KIT_DEFINITIONS, isKitType, kitAvailableScarcityLevels, kitDefinition, kitEffectLabel, kitFixedSkillBonuses, itemKitSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, itemKitRestType, parseKitUniqueFeatures, validateKitUniqueFeatures, KIT_UNIQUE_FEATURES, KIT_BENEFIT_MODES, kitWeight, normalizeKitLevel, type KitType, type KitBenefitMode, type KitEffect, type KitUniqueFeature } from './kitRules'
 import { validateKitSkillSelection, formatKitSkill, equippedKitSkillBonuses } from './kitSkillCatalog'
 import { MAX_CURRENCY_BALANCE, isValidCurrencyAmount, fitsCurrencyBalance, roundCurrency, calculateCurrencyExchange } from './currencyLimits'
 import { MAX_COMPLEX_ACTIONS_PER_SCENE, COMPLEX_MAIN_SKILLS, complexBonusFromResult, complexPreparationError, pendingComplexBonus, advanceComplexAction, type ComplexPreparation } from './complexActionRules'
@@ -917,8 +917,8 @@ function RestActionsPanel({ onApply, canApply, maxPR, breathing, vigor, breathin
   const allowedBonus = rest === 'mediano' || rest === 'completo' ? ['nenhum','refeicao','meditacao'] : ['nenhum']
   const hasCategory = (item: Item, category: string) => item.category === category || (Array.isArray(item.metadata?.categories) && item.metadata.categories.includes(category))
   const usable = (item: Item) => hasCategory(item, 'Consumíveis') && item.quantity > 0 && item.metadata?.scarcityExhausted !== true && Number(item.metadata?.scarcityCharge ?? 1) > 0
-  const restingEquipment = inventoryItems.filter(item => item.quantity > 0 && item.metadata?.equipped === true && isKitType(item.metadata?.kitType) && kitDefinition(item.metadata.kitType)?.restType)
-  const matchingRestEquipment = restingEquipment.filter(item => kitDefinition(item.metadata?.kitType as KitType)?.restType === rest)
+  const restingEquipment = inventoryItems.filter(item => item.quantity > 0 && item.metadata?.equipped === true && isKitType(item.metadata?.kitType) && itemKitRestType(item.metadata))
+  const matchingRestEquipment = restingEquipment.filter(item => itemKitRestType(item.metadata) === rest)
   const foods = inventoryItems.filter(item => usable(item) && hasCategory(item, 'Alimentos'))
   const bandages = inventoryItems.filter(item => usable(item) && /bandag(em|ens)/i.test(item.name))
   const therapistKits = inventoryItems.filter(item => usable(item) && /kit de terapeuta|kit terap[eê]utic|incenso/i.test(item.name))
@@ -1513,6 +1513,7 @@ const resetCreatureFilters = () => {
   const [shopKitSkills, setShopKitSkills] = useState<string[]>([])
   const [shopKitSkillBonus, setShopKitSkillBonus] = useState('')
   const [shopKitUniqueEffect, setShopKitUniqueEffect] = useState('')
+  const [shopKitUniqueFeatures, setShopKitUniqueFeatures] = useState<KitUniqueFeature[]>([])
   const [shopKitEffect, setShopKitEffect] = useState<KitEffect | null>(null)
   const [shopKitEffectNotes, setShopKitEffectNotes] = useState('')
   const activeShopKitType = shopItemCategories.includes('Kits') ? shopKitType : null
@@ -1521,8 +1522,9 @@ const resetCreatureFilters = () => {
   function setShopKitTypeWithCategory(type: KitType | null) {
     setShopKitType(type)
     if (type) setShopItemEquipmentType('none')
-    setShopKitBenefitMode(type === 'equip_rare' ? 'three_archetype' : 'skills')
+    setShopKitBenefitMode('rest')
     setShopKitSkills([])
+    setShopKitUniqueFeatures([])
     setShopKitSkillBonus('')
     if (!type) return
     const def = KIT_DEFINITIONS[type]
@@ -1537,10 +1539,11 @@ const resetCreatureFilters = () => {
   }
   const shopKitFields = shopItemCategories.includes('Kits') ? <KitEditor
     type={activeShopKitType} onTypeChange={setShopKitTypeWithCategory}
-    benefitMode={shopKitBenefitMode} onBenefitModeChange={mode => {setShopKitBenefitMode(mode);setShopKitSkills([])}}
+    benefitMode={shopKitBenefitMode} onBenefitModeChange={mode => {setShopKitBenefitMode(mode);setShopKitSkills([]);setShopKitUniqueFeatures([])}}
     skills={shopKitSkills} setSkills={setShopKitSkills}
     skillBonus={shopKitSkillBonus} onSkillBonusChange={setShopKitSkillBonus}
     uniqueEffect={shopKitUniqueEffect} onUniqueEffectChange={setShopKitUniqueEffect}
+    uniqueFeatures={shopKitUniqueFeatures} onUniqueFeaturesChange={setShopKitUniqueFeatures}
     effect={shopKitEffect} onEffectChange={setShopKitEffect}
     effectNotes={shopKitEffectNotes} onEffectNotesChange={setShopKitEffectNotes}
     scarcityLevel={shopItemScarcityLevel} onScarcityLevelChange={level => setShopItemScarcityLevel(level as '1'|'2'|'3'|'4')}
@@ -2523,6 +2526,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [newKitSkills, setNewKitSkills] = useState<string[]>([])
   const [newKitSkillBonus, setNewKitSkillBonus] = useState('')
   const [newKitUniqueEffect, setNewKitUniqueEffect] = useState('')
+  const [newKitUniqueFeatures, setNewKitUniqueFeatures] = useState<KitUniqueFeature[]>([])
   const [newKitEffect, setNewKitEffect] = useState<KitEffect | null>(null)
   const [newKitEffectNotes, setNewKitEffectNotes] = useState('')
   const activeKitType = newItemCategories.includes('Kits') ? newKitType : null
@@ -2531,8 +2535,9 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   function setKitTypeWithCategory(type: KitType | null) {
     setNewKitType(type)
     if (type) setNewEquipmentType('none')
-    setNewKitBenefitMode(type === 'equip_rare' ? 'three_archetype' : 'skills')
+    setNewKitBenefitMode('rest')
     setNewKitSkills([])
+    setNewKitUniqueFeatures([])
     setNewKitSkillBonus('')
     if (!type) return
     const definition = KIT_DEFINITIONS[type]
@@ -2553,12 +2558,13 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     type={activeKitType}
     onTypeChange={setKitTypeWithCategory}
     benefitMode={newKitBenefitMode}
-    onBenefitModeChange={mode => { setNewKitBenefitMode(mode); setNewKitSkills([]) }}
+    onBenefitModeChange={mode => { setNewKitBenefitMode(mode); setNewKitSkills([]); setNewKitUniqueFeatures([]) }}
     skills={newKitSkills}
     setSkills={setNewKitSkills}
     skillBonus={newKitSkillBonus} onSkillBonusChange={setNewKitSkillBonus}
     uniqueEffect={newKitUniqueEffect}
     onUniqueEffectChange={setNewKitUniqueEffect}
+    uniqueFeatures={newKitUniqueFeatures} onUniqueFeaturesChange={setNewKitUniqueFeatures}
     effect={newKitEffect}
     onEffectChange={setNewKitEffect}
     effectNotes={newKitEffectNotes}
@@ -4394,6 +4400,8 @@ async function saveShopItem() {
   if (activeShopKitType && activeShopKitDef?.family === 'equippable') {
     const invalid=validateKitSkillSelection(activeShopKitType, shopKitBenefitMode, shopKitSkills, shopKitSkillBonus)
     if(invalid){setError(invalid);return}
+    const invalidFeature=validateKitUniqueFeatures(activeShopKitType,shopKitBenefitMode,shopKitUniqueFeatures)
+    if(invalidFeature){setError(invalidFeature);return}
 
   }
   if (!Number.isFinite(price) || price < 0) {
@@ -4441,8 +4449,10 @@ async function saveShopItem() {
       kitSkills: activeShopKitDef?.family === 'equippable' ? shopKitSkills.slice(0,kitSlots(activeShopKitType!,shopKitBenefitMode).length).map(entry => entry.trim()) : null,
       kitSkillBonus: null,
       kitSkillBonuses: activeShopKitDef?.family === 'equippable' ? kitFixedSkillBonuses(activeShopKitType, shopKitBenefitMode) : null,
-      kitRestType: activeShopKitDef?.restType ?? null,
-      kitUniqueEffect: activeShopKitType === 'equip_rare' ? shopKitUniqueEffect.trim() : null,
+      kitRestType: activeShopKitDef?.family === 'equippable' ? kitRestType(activeShopKitType, shopKitBenefitMode) : null,
+      kitRulesVersion: activeShopKitDef?.family === 'equippable' ? 2 : null,
+      kitUniqueFeatures: activeShopKitDef?.family === 'equippable' ? shopKitUniqueFeatures.slice(0,kitUniqueSlots(activeShopKitType,shopKitBenefitMode)) : null,
+      kitUniqueEffect: activeShopKitDef?.family === 'equippable' ? shopKitUniqueEffect.trim() : null,
       kitEffect: activeShopKitDef?.family === 'consumable' && activeShopKitType !== 'prolonged' ? shopKitEffect : null,
       kitEffectNotes: activeShopKitDef?.family === 'consumable' ? shopKitEffectNotes.trim() : null,
       kitDuration: activeShopKitType === 'immediate' ? '1d6_rodadas' : activeShopKitType === 'preparation' ? 'cena' : null,
@@ -4547,7 +4557,7 @@ cyberneticData: isCyberFlowerSystem && shopEquipmentTypeForSave === 'cybernetic'
     setShopKitBenefitMode('skills')
     setShopKitSkills([])
     setShopKitSkillBonus('')
-    setShopKitUniqueEffect('')
+    setShopKitUniqueEffect('');setShopKitUniqueFeatures([])
     setShopKitEffect(null)
     setShopKitEffectNotes('')
     setShowShopItemForm(false)
@@ -4604,10 +4614,11 @@ setShopCyberneticEffects(
   setShopItemScarcityLevel(['1', '2', '3', '4'].includes(String(item.metadata?.scarcityLevel ?? '1')) ? String(item.metadata?.scarcityLevel ?? '1') as '1' | '2' | '3' | '4' : '1')
   setShopItemScarcityExhausted(item.metadata?.scarcityExhausted === true)
   setShopKitType(isKitType(item.metadata?.kitType) ? item.metadata.kitType : null)
-  setShopKitBenefitMode(['skills','protection','three_archetype','general_and_archetype','main_and_archetype'].includes(String(item.metadata?.kitBenefitMode)) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
+  setShopKitBenefitMode(KIT_BENEFIT_MODES.includes(String(item.metadata?.kitBenefitMode) as KitBenefitMode) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
   setShopKitSkills(Array.isArray(item.metadata?.kitSkills) ? item.metadata.kitSkills.filter((entry):entry is string => typeof entry === 'string') : [])
   setShopKitSkillBonus(Number.isInteger(Number(item.metadata?.kitSkillBonus)) && Number(item.metadata?.kitSkillBonus)>0 ? String(item.metadata?.kitSkillBonus) : '')
   setShopKitUniqueEffect(typeof item.metadata?.kitUniqueEffect === 'string' ? item.metadata.kitUniqueEffect : '')
+  setShopKitUniqueFeatures(parseKitUniqueFeatures(item.metadata?.kitUniqueFeatures))
   setShopKitEffect(['damage','resistance','combat_point'].includes(String(item.metadata?.kitEffect)) ? item.metadata?.kitEffect as KitEffect : null)
   setShopKitEffectNotes(typeof item.metadata?.kitEffectNotes === 'string' ? item.metadata.kitEffectNotes : '')
   setShopItemWeight(String(item.weight))
@@ -6951,7 +6962,7 @@ async function deleteCharacter(character: Character) {
     setNewKitBenefitMode('skills')
     setNewKitSkills([])
     setNewKitSkillBonus('')
-    setNewKitUniqueEffect('')
+    setNewKitUniqueEffect('');setNewKitUniqueFeatures([])
     setNewKitEffect(null)
     setNewKitEffectNotes('')
     setNewItemRarity('comum')
@@ -6969,10 +6980,11 @@ async function deleteCharacter(character: Character) {
     setNewScarcityLevel(['1', '2', '3', '4'].includes(String(item.metadata?.scarcityLevel ?? '1')) ? String(item.metadata?.scarcityLevel ?? '1') as '1' | '2' | '3' | '4' : '1')
     setNewScarcityExhausted(item.metadata?.scarcityExhausted === true)
     setNewKitType(isKitType(item.metadata?.kitType) ? item.metadata.kitType : null)
-    setNewKitBenefitMode(['skills','protection','three_archetype','general_and_archetype','main_and_archetype'].includes(String(item.metadata?.kitBenefitMode)) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
+    setNewKitBenefitMode(KIT_BENEFIT_MODES.includes(String(item.metadata?.kitBenefitMode) as KitBenefitMode) ? item.metadata?.kitBenefitMode as KitBenefitMode : 'skills')
     setNewKitSkills(Array.isArray(item.metadata?.kitSkills) ? item.metadata.kitSkills.filter((entry): entry is string => typeof entry === 'string') : [])
     setNewKitSkillBonus(Number.isInteger(Number(item.metadata?.kitSkillBonus)) && Number(item.metadata?.kitSkillBonus)>0 ? String(item.metadata?.kitSkillBonus) : '')
     setNewKitUniqueEffect(typeof item.metadata?.kitUniqueEffect === 'string' ? item.metadata.kitUniqueEffect : '')
+    setNewKitUniqueFeatures(parseKitUniqueFeatures(item.metadata?.kitUniqueFeatures))
     setNewKitEffect(['damage','resistance','combat_point'].includes(String(item.metadata?.kitEffect)) ? item.metadata?.kitEffect as KitEffect : null)
     setNewKitEffectNotes(typeof item.metadata?.kitEffectNotes === 'string' ? item.metadata.kitEffectNotes : '')
     setNewItemCategories(Array.isArray(item.metadata?.categories) ? item.metadata.categories.filter((value): value is string => typeof value === 'string') : [item.category])
@@ -7038,6 +7050,8 @@ const weight = activeKitType
     if (activeKitType && activeKitDefinition?.family === 'equippable') {
       const invalid=validateKitSkillSelection(activeKitType,newKitBenefitMode,newKitSkills,newKitSkillBonus)
       if(invalid){setError(invalid);return}
+      const invalidFeature=validateKitUniqueFeatures(activeKitType,newKitBenefitMode,newKitUniqueFeatures)
+      if(invalidFeature){setError(invalidFeature);return}
 
     }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
@@ -7075,8 +7089,10 @@ const weight = activeKitType
   kitSkills: activeKitDefinition?.family === 'equippable' ? newKitSkills.slice(0, kitSlots(activeKitType!, newKitBenefitMode).length).map(skill => skill.trim()) : null,
   kitSkillBonus: null,
   kitSkillBonuses: activeKitDefinition?.family === 'equippable' ? kitFixedSkillBonuses(activeKitType, newKitBenefitMode) : null,
-  kitRestType: activeKitDefinition?.restType ?? null,
-  kitUniqueEffect: activeKitType === 'equip_rare' ? newKitUniqueEffect.trim() : null,
+  kitRestType: activeKitDefinition?.family === 'equippable' ? kitRestType(activeKitType,newKitBenefitMode) : null,
+  kitRulesVersion: activeKitDefinition?.family === 'equippable' ? 2 : null,
+  kitUniqueFeatures: activeKitDefinition?.family === 'equippable' ? newKitUniqueFeatures.slice(0,kitUniqueSlots(activeKitType,newKitBenefitMode)) : null,
+  kitUniqueEffect: activeKitDefinition?.family === 'equippable' ? newKitUniqueEffect.trim() : null,
   kitEffect: activeKitDefinition?.family === 'consumable' && activeKitType !== 'prolonged' ? newKitEffect : null,
   kitEffectNotes: activeKitDefinition?.family === 'consumable' ? newKitEffectNotes.trim() : null,
   kitDuration: activeKitType === 'immediate' ? '1d6_rodadas' : activeKitType === 'preparation' ? 'cena' : null,
@@ -16537,7 +16553,7 @@ style={{cursor:'pointer'}}>
         setShopKitBenefitMode('skills')
         setShopKitSkills([])
     setShopKitSkillBonus('')
-        setShopKitUniqueEffect('')
+        setShopKitUniqueEffect('');setShopKitUniqueFeatures([])
         setShopKitEffect(null)
         setShopKitEffectNotes('')
         setShowShopItemForm(value => !value)
@@ -18863,11 +18879,12 @@ style={{cursor:'pointer'}}>
           return <section className="hb-kit-detail">
             <h3>🧰 {definition.name}</h3>
             <p>{definition.description}</p>
-            {definition.restType && <p>🛏️ {definition.exampleItem} · Descanso {definition.restType === 'precario' ? 'precário' : definition.restType === 'mediano' ? 'mediano' : 'completo'}.</p>}
+            {itemKitRestType(selectedItemDetails.metadata) && <p>🛏️ {definition.exampleItem} · Descanso {itemKitRestType(selectedItemDetails.metadata) === 'precario' ? 'Precário' : itemKitRestType(selectedItemDetails.metadata) === 'mediano' ? 'Mediano' : 'Completo'}.</p>}
             {definition.family === 'equippable' && <>
               {type === 'equip_standard' && mode === 'protection' ? <p>Benefício: proteção moderada.</p> : <ul>{skills.map((skill,i) => <li key={`${i}-${skill}`}>{formatKitSkill(skill)}{kitBonuses[i]>0 ? ` +${kitBonuses[i]}` : ' · bônus ainda não configurado'}</li>)}</ul>}
-              {type === 'equip_rare' && description && <p>Funcionalidade única: {description}</p>}
-              <p>{skills.length ? `Bônus por perícia: ${kitBonuses.map(value => value > 0 ? `+${value}` : 'não configurado').join(' · ')}. Válidos somente com o kit equipado.` : 'Benefício: proteção moderada (kit antigo).'}</p>
+              {parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).length>0 && <ul>{parseKitUniqueFeatures(selectedItemDetails.metadata?.kitUniqueFeatures).map((feature,index)=><li key={index}>{KIT_UNIQUE_FEATURES.find(option=>option.key===feature.key)?.label ?? 'Funcionalidade única'}{feature.amount ? ` (+${feature.amount})` : ''}{feature.mainSkill ? ` — ${feature.mainSkill}` : ''}{feature.details ? ` · ${feature.details}` : ''}</li>)}</ul>}
+              {description && <p>Detalhes adicionais: {description}</p>}
+              <p>{skills.length ? `Bônus por perícia: ${kitBonuses.map(value => value > 0 ? `+${value}` : 'não configurado').join(' · ')}. Válidos somente com o kit equipado.` : itemKitRestType(selectedItemDetails.metadata) ? 'Item de descanso (sem bônus de perícias nesta opção).' : 'Esta opção não concede bônus de perícias.'}</p>
               <button type="button" className="inventory-equip-button" aria-pressed={selectedItemDetails.metadata?.equipped === true} disabled={updatingKitEquipId !== null || Number(selectedItemDetails.quantity) < 1} onClick={() => void toggleInventoryKitEquipped(selectedItemDetails)}>{selectedItemDetails.metadata?.equipped === true ? '✓ Kit equipado · Desequipar' : '🧰 Equipar kit'}</button>
             </>}
             {definition.family === 'consumable' && <>

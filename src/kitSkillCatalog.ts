@@ -1,5 +1,5 @@
 import { KISATSUTAI_SKILL_GROUPS } from './systems/kisatsutai/extendedData'
-import { KIT_MAIN_SKILLS, itemKitSkillBonuses, kitSlots, type KitType, type KitBenefitMode } from './kitRules'
+import { KIT_MAIN_SKILLS, itemKitSkillBonuses, kitSlots, equippedKitFeatureBonuses, type KitType, type KitBenefitMode } from './kitRules'
 
 /** Mesma fonte de perícias utilizada pelas fichas do Kisatsutai e pelas Condições. */
 const EXTRA_GROUPS = new Set(['Sociais','Conhecimentos Gerais','Naturais'])
@@ -37,7 +37,9 @@ export function equippedKitSkillBonuses(items:readonly {name:string;character_id
     if(item.character_id!==characterId || meta.equipped!==true || !['equip_simple','equip_standard','equip_rare'].includes(String(meta.kitType)))return []
     const keys=Array.isArray(meta.kitSkills)?meta.kitSkills:[]
     const values=itemKitSkillBonuses(meta)
-    return keys.flatMap((key:string,index:number)=>key===skillKey && (values[index]??0)>0
+    const bonuses=keys.flatMap((key:string,index:number)=>key===skillKey && (values[index]??0)>0
       ? [{name:item.name,bonus:values[index]}] : [])
+    const featureBonus=equippedKitFeatureBonuses([item], 'main_skill',skillKey)
+    return featureBonus > 0 ? [...bonuses,{name:item.name,bonus:featureBonus}] : bonuses
   })
 }

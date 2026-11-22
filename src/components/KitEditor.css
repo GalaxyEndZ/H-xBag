@@ -39,3 +39,11 @@
   border:1px solid var(--season-line,#41464d);
   color:var(--season-text,#f0f2f5);font-size:12px;line-height:1.6}
 .hb-kit-editor .hb-kit-skill-bonus small {display:block;color:var(--season-muted,#a5adb4)}
+
+/* Kits equipáveis: escolha exclusiva e funcionalidades personalizáveis. */
+.hb-kit-editor .hb-kit-unique-grid {display:grid;gap:12px;min-width:0;padding:14px;border:1px solid color-mix(in srgb,var(--season-primary,#d5b989) 27%,var(--season-line,#41464d));border-radius:13px;background:color-mix(in srgb,var(--season-primary,#d5b989) 5%,var(--season-bg,#090e13))}
+.hb-kit-editor .hb-kit-unique-grid > strong {font-size:13px;color:var(--season-primary,#d5b989)}
+.hb-kit-editor .hb-kit-unique-entry {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:11px;padding:12px;border-radius:11px;background:var(--season-surface-alt,#11171d);border:1px solid var(--season-line,#41464d);min-width:0}
+.hb-kit-editor .hb-kit-unique-entry label:has(textarea) {grid-column:1/-1}
+.hb-kit-editor .hb-kit-unique-entry input[type=number] {font-variant-numeric:tabular-nums}
+@media(max-width:560px){.hb-kit-editor .hb-kit-unique-grid{padding:10px}.hb-kit-editor .hb-kit-unique-entry{padding:10px}}

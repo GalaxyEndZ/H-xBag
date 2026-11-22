@@ -10,7 +10,75 @@ export const KIT_TYPE_KEYS = [
 ] as const
 export type KitType = typeof KIT_TYPE_KEYS[number]
 export type KitFamily = 'equippable' | 'consumable'
-export type KitBenefitMode = 'skills' | 'protection' | 'three_archetype' | 'general_and_archetype' | 'main_and_archetype'
+export type KitBenefitMode = 'rest' | 'skills' | 'skills_unique' | 'unique_pair' | 'three_archetype' | 'general_and_archetype' | 'unique_triple' | 'rare_skills_two_unique' | 'rare_mixed_two_unique' | 'protection' | 'main_and_archetype'
+export type KitUniqueFeatureKey = 'extra_damage' | 'protection' | 'armor_class' | 'main_skill' | 'remove_condition' | 'constitution' | 'health_points' | 'resistance_points' | 'complex_actions' | 'initiative_dice'
+export type KitUniqueFeature = {key: KitUniqueFeatureKey | ''; amount: string; details: string; mainSkill?: string}
+export const KIT_UNIQUE_FEATURES: {key: KitUniqueFeatureKey; label: string; rareOnly?: boolean; needsAmount?: boolean}[] = [
+  {key:'extra_damage',label:'Aumentar o dano extra',needsAmount:true},
+  {key:'protection',label:'Conceder proteção'},
+  {key:'armor_class',label:'Aumentar o valor de CA',needsAmount:true},
+  {key:'main_skill',label:'Aumentar uma perícia principal',needsAmount:true},
+  {key:'remove_condition',label:'Capacidade de retirar condições'},
+  {key:'constitution',label:'Aumentar Constituição',rareOnly:true,needsAmount:true},
+  {key:'health_points',label:'Aumentar PV máximo',rareOnly:true,needsAmount:true},
+  {key:'resistance_points',label:'Aumentar PR máximo',rareOnly:true,needsAmount:true},
+  {key:'complex_actions',label:'Aumentar ações complexas disponíveis',rareOnly:true,needsAmount:true},
+  {key:'initiative_dice',label:'Aumentar dados de iniciativa',rareOnly:true,needsAmount:true},
+]
+export function kitUniqueSlots(type:KitType|null|undefined, mode:KitBenefitMode):number {
+  if(type==='equip_standard')return mode==='skills_unique'?1:mode==='unique_pair'?2:0
+  if(type==='equip_rare')return mode==='unique_triple'?3:mode==='rare_skills_two_unique'||mode==='rare_mixed_two_unique'?2:0
+  return 0
+}
+export function kitRestType(type:KitType|null|undefined, mode:KitBenefitMode):KitDefinition['restType']|null {
+  return mode==='rest' ? kitDefinition(type)?.restType ?? null : null
+}
+export function itemKitRestType(metadata:Record<string, unknown>|null|undefined):KitDefinition['restType']|null {
+  const type=isKitType(metadata?.kitType)?metadata.kitType:null
+  if(!type)return null
+  if(metadata?.kitBenefitMode==='rest')return kitDefinition(type)?.restType ?? null
+  // Kits anteriores à escolha exclusiva tinham descanso associado ao próprio subtipo.
+  if(metadata?.kitRulesVersion !== 2 && ['precario','mediano','completo'].includes(String(metadata?.kitRestType)))
+    return metadata?.kitRestType as KitDefinition['restType']
+  return null
+}
+export function parseKitUniqueFeatures(value:unknown):KitUniqueFeature[] {
+  if(!Array.isArray(value))return []
+  return value.slice(0,3).filter((entry):entry is Record<string,unknown>=>Boolean(entry)&&typeof entry==='object'&&!Array.isArray(entry))
+    .map(entry=>({key:KIT_UNIQUE_FEATURES.some(f=>f.key===entry.key)?entry.key as KitUniqueFeatureKey:'',amount:typeof entry.amount==='string'?entry.amount:String(entry.amount??''),details:typeof entry.details==='string'?entry.details:'',mainSkill:typeof entry.mainSkill==='string'?entry.mainSkill:''}))
+}
+export function validateKitUniqueFeatures(type:KitType|null|undefined,mode:KitBenefitMode,features:readonly KitUniqueFeature[]):string|null {
+  const count=kitUniqueSlots(type,mode)
+  if(!count)return null
+  const picked=features.slice(0,count)
+  if(picked.length!==count||picked.some(feature=>!feature.key))return `Configure as ${count} funcionalidades únicas do kit.`
+  if(new Set(picked.map(feature=>feature.key)).size!==count)return 'Escolha funcionalidades únicas diferentes para cada espaço.'
+  if(picked.some(feature=>!KIT_UNIQUE_FEATURES.some(f=>f.key===feature.key&&(type==='equip_rare'||!f.rareOnly))))return 'Esta funcionalidade não está disponível neste nível de kit.'
+  if(picked.some(feature=>feature.key==='main_skill'&&!KIT_MAIN_SKILLS.includes(feature.mainSkill as typeof KIT_MAIN_SKILLS[number])))return 'Selecione a perícia principal beneficiada.'
+  if(picked.some(feature=>{
+    const rule=KIT_UNIQUE_FEATURES.find(f=>f.key===feature.key)
+    if(!rule?.needsAmount)return false
+    const number=Number(feature.amount.replace(',','.'))
+    return !feature.amount.trim()||!Number.isFinite(number)||number<=0||number>100000
+  }))return 'Informe um valor numérico positivo para cada bônus que precisa de quantidade.'
+  return null
+}
+
+
+/** Efeitos de kits equipados com valor numérico. Sem automatizar ações manuais do mestre. */
+export function equippedKitFeatureBonuses(items: readonly {metadata?:Record<string,unknown>|null}[], key:KitUniqueFeatureKey, mainSkill?:string):number {
+  return items.reduce((sum,item)=>{
+    const meta=item.metadata
+    if(meta?.equipped!==true || !isKitType(meta.kitType) || !['equip_standard','equip_rare'].includes(meta.kitType)) return sum
+    if(meta.kitRulesVersion!==2 || !(['skills_unique','unique_pair','rare_skills_two_unique','rare_mixed_two_unique','unique_triple'] as KitBenefitMode[]).includes(meta.kitBenefitMode as KitBenefitMode)) return sum
+    return sum + parseKitUniqueFeatures(meta.kitUniqueFeatures).reduce((sub,feature)=>{
+      if(feature.key!==key || (key==='main_skill' && String(feature.mainSkill||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR') !== String(mainSkill||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR'))) return sub
+      const n=Number(feature.amount.replace(',','.'))
+      return sub+(Number.isFinite(n)&&n>0?n:0)
+    },0)
+  },0)
+}
+
 export type KitEffect = 'damage' | 'resistance' | 'combat_point'
 export type ScarcityLevel = 1 | 2 | 3 | 4
 export type KitDefinition = {
@@ -28,17 +96,17 @@ export const KIT_DEFINITIONS: Record<KitType, KitDefinition> = {
   equip_simple: {
     type: 'equip_simple', name: 'Equipável simples', family: 'equippable', fixedWeight: 1,
     exampleItem: 'Saco de dormir', restType: 'precario',
-    description: 'Saco de dormir (descanso precário). Aumenta duas perícias gerais/extras em +10 e +10.',
+    description: 'Escolha UMA opção: Saco de dormir (Descanso Precário) OU +10 em duas perícias extras.',
   },
   equip_standard: {
     type: 'equip_standard', name: 'Equipável padrão', family: 'equippable', fixedWeight: 2,
     exampleItem: 'Futon', restType: 'mediano',
-    description: 'Futon (descanso mediano). Aumenta duas perícias de arquétipo em +15 e +10.',
+    description: 'Escolha UMA opção: Futon (Descanso Mediano), duas perícias de arquétipo (+15/+10) e uma funcionalidade única, OU duas funcionalidades únicas.',
   },
   equip_rare: {
     type: 'equip_rare', name: 'Equipável raro', family: 'equippable', fixedWeight: 4.5,
     exampleItem: 'Barraca de acampamento', restType: 'completo',
-    description: 'Barraca de acampamento (descanso completo). Aumenta três perícias de arquétipo OU duas de arquétipo e uma geral em +15, +15 e +10.',
+    description: 'Escolha UMA opção: Barraca de acampamento (Descanso Completo), três perícias (+15/+15/+10) e duas funcionalidades únicas, OU três funcionalidades únicas.',
   },
   immediate: {
     type: 'immediate', name: 'Consumível de uso imediato', family: 'consumable',
@@ -84,45 +152,39 @@ export function normalizeKitLevel(type: KitType, level: number): ScarcityLevel |
   if (!available.length) return null
   return available.includes(level as ScarcityLevel) ? level as ScarcityLevel : available[0]
 }
-/** Ordem dos bônus corresponde à ordem dos campos apresentados no editor. */
-export function kitFixedSkillBonuses(type: KitType | null | undefined, mode: KitBenefitMode): number[] {
-  if (type === 'equip_simple') return [10, 10]
-  if (type === 'equip_standard') return mode === 'protection' ? [] : [15, 10]
-  if (type === 'equip_rare') return [15, 15, 10]
+/** Os bônus variam exclusivamente com a alternativa escolhida. */
+export function kitFixedSkillBonuses(type:KitType|null|undefined,mode:KitBenefitMode):number[] {
+  if(type==='equip_simple' && mode==='skills')return [10,10]
+  if(type==='equip_standard' && (mode==='skills_unique'||mode==='skills'))return [15,10]
+  if(type==='equip_rare' && (mode==='three_archetype'||mode==='general_and_archetype'||mode==='main_and_archetype'||mode==='rare_skills_two_unique'||mode==='rare_mixed_two_unique'))return [15,15,10]
   return []
 }
-
-/** Mantém compatibilidade com equipamentos anteriores, que salvavam só kitSkillBonus. */
-export function itemKitSkillBonuses(metadata: {kitSkills?: unknown; kitSkillBonuses?: unknown; kitSkillBonus?: unknown}): number[] {
-  const skills = Array.isArray(metadata.kitSkills) ? metadata.kitSkills : []
-  const values = metadata.kitSkillBonuses
-  if (Array.isArray(values) && values.length === skills.length &&
-      values.every(value => Number.isSafeInteger(value) && value > 0)) return values as number[]
-  const legacy = Number(metadata.kitSkillBonus)
-  return skills.map(() => Number.isSafeInteger(legacy) && legacy > 0 ? legacy : 0)
+/** Retorna os bônus salvos por posição, sem alterar o funcionamento de itens antigos. */
+export function itemKitSkillBonuses(metadata:Record<string,unknown>):number[] {
+  const skills=Array.isArray(metadata.kitSkills)?metadata.kitSkills:[]
+  const values=metadata.kitSkillBonuses
+  if(Array.isArray(values)&&values.length>=skills.length&&values.every(value=>Number.isFinite(Number(value))&&Number(value)>=0))
+    return values.slice(0,skills.length).map(Number)
+  const legacy=Number(metadata.kitSkillBonus)
+  return skills.map(()=>Number.isSafeInteger(legacy)&&legacy>0?legacy:0)
 }
-
-export function kitSlots(type: KitType, benefitMode: KitBenefitMode): {group: 'extra' | 'archetype' | 'main'; label: string}[] {
-  if (type === 'equip_simple') return [
-    {group: 'extra', label: 'Perícia extra 1'}, {group: 'extra', label: 'Perícia extra 2'},
-  ]
-  if (type === 'equip_standard' && benefitMode !== 'protection') return [
-    {group: 'archetype', label: 'Perícia de arquétipo 1'}, {group: 'archetype', label: 'Perícia de arquétipo 2'},
-  ]
-  if (type === 'equip_rare' && benefitMode === 'main_and_archetype') return [
-    {group: 'main', label: 'Perícia principal'},
-    {group: 'archetype', label: 'Perícia de arquétipo 1'},
-    {group: 'archetype', label: 'Perícia de arquétipo 2'},
-  ]
-  if (type === 'equip_rare') return [
-    {group: 'archetype', label: 'Perícia de arquétipo 1'},
-    {group: 'archetype', label: 'Perícia de arquétipo 2'},
-    benefitMode === 'general_and_archetype'
-      ? {group: 'extra', label: 'Perícia geral'}
-      : {group: 'archetype', label: 'Perícia de arquétipo 3'},
+export function kitSlots(type:KitType,mode:KitBenefitMode):{group:'extra'|'archetype'|'main';label:string}[] {
+  if(type==='equip_simple'&&mode==='skills')return [{group:'extra',label:'Perícia extra 1'},{group:'extra',label:'Perícia extra 2'}]
+  if(type==='equip_standard'&&(mode==='skills_unique'||mode==='skills'))return [{group:'archetype',label:'Perícia de arquétipo 1'},{group:'archetype',label:'Perícia de arquétipo 2'}]
+  if(type==='equip_rare'&&mode==='main_and_archetype')return [{group:'main',label:'Perícia principal'},{group:'archetype',label:'Perícia de arquétipo 1'},{group:'archetype',label:'Perícia de arquétipo 2'}]
+  if(type==='equip_rare'&&(['three_archetype','general_and_archetype','rare_skills_two_unique','rare_mixed_two_unique'] as KitBenefitMode[]).includes(mode))return [
+    {group:'archetype',label:'Perícia de arquétipo 1'},
+    {group:'archetype',label:'Perícia de arquétipo 2'},
+    (mode==='general_and_archetype'||mode==='rare_mixed_two_unique')?{group:'extra',label:'Perícia extra'}:{group:'archetype',label:'Perícia de arquétipo 3'},
   ]
   return []
 }
 export function kitEffectLabel(effect: KitEffect | null): string {
   return effect === 'damage' ? 'Dano' : effect === 'resistance' ? 'Resistência' : effect === 'combat_point' ? 'Ponto de combate' : 'Não definido'
 }
+
+/** Tipo único entre o editor, as lojas, o baú e os metadados salvos. */
+export const KIT_BENEFIT_MODES: readonly KitBenefitMode[] = [
+  'rest','skills','skills_unique','unique_pair','three_archetype',
+  'general_and_archetype','rare_skills_two_unique','rare_mixed_two_unique','unique_triple','protection','main_and_archetype',
+]

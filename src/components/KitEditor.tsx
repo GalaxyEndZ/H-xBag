@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
 import {
   KIT_DEFINITIONS, SCARCITY_DICE,
-  kitAvailableScarcityLevels, kitDefinition, kitFixedSkillBonuses, kitSlots, kitWeight,
-  type KitBenefitMode, type KitEffect, type KitType,
+  kitAvailableScarcityLevels, kitDefinition, kitFixedSkillBonuses, kitSlots, kitUniqueSlots, kitRestType, KIT_UNIQUE_FEATURES, KIT_MAIN_SKILLS, kitWeight,
+  type KitBenefitMode, type KitEffect, type KitType, type KitUniqueFeature,
 } from '../kitRules'
 import { KIT_SKILL_CATALOG } from '../kitSkillCatalog'
 import './KitEditor.css'
@@ -17,6 +17,8 @@ export type KitEditorProps = {
   skillBonus: string
   onSkillBonusChange: (value: string) => void
   uniqueEffect: string
+  uniqueFeatures: KitUniqueFeature[]
+  onUniqueFeaturesChange: (value: KitUniqueFeature[]) => void
   onUniqueEffectChange: (value: string) => void
   effect: KitEffect | null
   onEffectChange: (value: KitEffect | null) => void
@@ -30,7 +32,7 @@ export type KitEditorProps = {
 
 export default function KitEditor({
   type, onTypeChange, benefitMode, onBenefitModeChange, skills, setSkills, skillBonus, onSkillBonusChange,
-  uniqueEffect, onUniqueEffectChange, effect, onEffectChange,
+  uniqueEffect, onUniqueEffectChange, uniqueFeatures, onUniqueFeaturesChange, effect, onEffectChange,
   effectNotes, onEffectNotesChange, scarcityLevel, onScarcityLevelChange,
   exhausted, onExhaustedChange,
 }: KitEditorProps) {
@@ -38,6 +40,13 @@ export default function KitEditor({
   const definition = kitDefinition(type)
   const slots = type ? kitSlots(type, benefitMode) : []
   const fixedBonuses = kitFixedSkillBonuses(type, benefitMode)
+  const uniqueCount = kitUniqueSlots(type, benefitMode)
+  const selectedRest = kitRestType(type, benefitMode)
+  const changeFeature = (index: number, patch: Partial<KitUniqueFeature>) => {
+    const next = Array.from({length: uniqueCount}, (_, i) => uniqueFeatures[i] ?? {key:'',amount:'',details:'',mainSkill:''} as KitUniqueFeature)
+    next[index] = {...next[index],...patch}
+    onUniqueFeaturesChange(next)
+  }
   const levels = kitAvailableScarcityLevels(type)
   const weight = kitWeight(type, Number(scarcityLevel), exhausted)
   const effectPlaceholder = effect === 'damage'
@@ -67,23 +76,41 @@ export default function KitEditor({
     </label>
     {definition && <>
       <div className="hb-kit-summary"><strong>{definition.name}</strong><p>{definition.description}</p>
-        {definition.exampleItem && <span>🛏️ Exemplo: <b>{definition.exampleItem}</b> · Descanso {definition.restType === 'precario' ? 'precário' : definition.restType === 'mediano' ? 'mediano' : 'completo'}</span>}
+        {selectedRest && definition.exampleItem && <span>🛏️ <b>{definition.exampleItem}</b> · Descanso {selectedRest === 'precario' ? 'precário' : selectedRest === 'mediano' ? 'mediano' : 'completo'}</span>}
         <span>Peso: <b>{weight === null ? 'Selecione um nível válido' : `${weight.toLocaleString('pt-BR', {maximumFractionDigits:2})} kg`}</b></span>
       </div>
       {definition.family === 'equippable' && <>
-        {type === 'equip_standard' && <label>Benefício do kit padrão
-          <select value={benefitMode === 'protection' ? 'protection' : 'skills'} onChange={event => onBenefitModeChange(event.target.value as KitBenefitMode)}>
-            <option value="skills">Duas perícias de arquétipo</option>
-            {benefitMode === 'protection' && <option value="protection">Proteção moderada (kit antigo)</option>}
+        {type === 'equip_simple' && <label>Escolha uma das duas opções do kit simples
+          <select value={benefitMode==='rest'?'rest':'skills'} onChange={event=>onBenefitModeChange(event.target.value as KitBenefitMode)}>
+            <option value="rest">Item de descanso · Saco de dormir (Descanso Precário)</option>
+            <option value="skills">Duas perícias extras · +10 e +10</option>
           </select>
         </label>}
-        {type === 'equip_rare' && <label>Benefício do kit raro
-          <select value={benefitMode === 'main_and_archetype' || benefitMode === 'general_and_archetype' ? benefitMode : 'three_archetype'} onChange={event => onBenefitModeChange(event.target.value as KitBenefitMode)}>
-            <option value="three_archetype">Três perícias de arquétipo</option>
-            <option value="general_and_archetype">Duas de arquétipo + uma geral</option>
-            {benefitMode === 'main_and_archetype' && <option value="main_and_archetype">Uma principal + duas de arquétipo (kit antigo)</option>}
+        {type === 'equip_standard' && <label>Escolha uma das três opções do kit padrão
+          <select value={benefitMode} onChange={event=>onBenefitModeChange(event.target.value as KitBenefitMode)}>
+            <option value="rest">Item de descanso · Futon (Descanso Mediano)</option>
+            <option value="skills_unique">Duas perícias de arquétipo (+15/+10) e uma funcionalidade única</option>
+            <option value="unique_pair">Duas funcionalidades únicas</option>
+            {(benefitMode==='skills'||benefitMode==='protection')&&<option value={benefitMode}>Configuração antiga (mantida)</option>}
           </select>
         </label>}
+        {type === 'equip_rare' && <>
+          <label>Escolha uma das três opções do kit raro
+            <select value={benefitMode==='rare_skills_two_unique'||benefitMode==='rare_mixed_two_unique'?'skill_features':benefitMode} onChange={event=>onBenefitModeChange((event.target.value==='skill_features'?'rare_skills_two_unique':event.target.value) as KitBenefitMode)}>
+              <option value="rest">Item de descanso · Barraca (Descanso Completo)</option>
+              <option value="skill_features">Três perícias (+15/+15/+10) e duas funcionalidades únicas</option>
+              <option value="unique_triple">Três funcionalidades únicas</option>
+              {(['three_archetype','general_and_archetype','main_and_archetype'] as KitBenefitMode[]).includes(benefitMode)&&<option value="main_and_archetype">Configuração antiga (mantida)</option>}
+            </select>
+          </label>
+          {(benefitMode==='rare_skills_two_unique'||benefitMode==='rare_mixed_two_unique')&&<label>Distribuição dos três bônus
+            <select value={benefitMode} onChange={event=>onBenefitModeChange(event.target.value as KitBenefitMode)}>
+              <option value="rare_skills_two_unique">Três perícias de arquétipo (+15/+15/+10)</option>
+              <option value="rare_mixed_two_unique">Duas de arquétipo e uma extra (+15/+15/+10)</option>
+            </select>
+          </label>}
+        </>}
+        {selectedRest && <p className="hb-kit-editor-note">🛏️ Esta opção concede somente Descanso {selectedRest==='precario'?'Precário':selectedRest==='mediano'?'Mediano':'Completo'}. Não concede bônus de perícia nem funcionalidades únicas.</p>}
         {slots.length > 0 && <div className="hb-kit-skill-grid">
           {slots.map((slot, index) => <label key={`${type}-${benefitMode}-${index}`}>{slot.label} <strong className="hb-kit-fixed-bonus">+{fixedBonuses[index]}</strong>
             <select value={skills[index] || ''} onChange={event => setSkills(current => { const next = [...current]; next[index] = event.target.value; return next })}>
@@ -99,8 +126,36 @@ export default function KitEditor({
           </p>
         </div>}
         {benefitMode === 'protection' && type === 'equip_standard' && <p className="hb-kit-editor-note">O kit concede proteção moderada. A forma de aplicar segue o sistema de proteção já existente.</p>}
-        {type === 'equip_rare' && <label>Funcionalidade adicional (opcional)
-          <textarea value={uniqueEffect} onChange={event => onUniqueEffectChange(event.target.value)} maxLength={1000} rows={3} placeholder="Descreva a função exclusiva deste kit..."/>
+        {uniqueCount>0 && <div className="hb-kit-unique-grid">
+          <strong>Funcionalidades únicas ({uniqueCount})</strong>
+          {Array.from({length:uniqueCount}, (_,index)=>{
+            const feature=uniqueFeatures[index]??{key:'',amount:'',details:'',mainSkill:''} as KitUniqueFeature
+            const spec=KIT_UNIQUE_FEATURES.find(entry=>entry.key===feature.key)
+            return <div className="hb-kit-unique-entry" key={`${type}-${benefitMode}-${index}`}>
+              <label>Funcionalidade {index+1}
+                <select value={feature.key} onChange={event=>changeFeature(index,{key:event.target.value as KitUniqueFeature['key'],amount:'',mainSkill:'',details:''})}>
+                  <option value="">Escolha uma funcionalidade...</option>
+                  {KIT_UNIQUE_FEATURES.filter(entry=>type==='equip_rare'||!entry.rareOnly).map(entry=><option key={entry.key} value={entry.key} disabled={uniqueFeatures.some((other,i)=>i!==index&&other.key===entry.key)}>{entry.label}</option>)}
+                </select>
+              </label>
+              {spec?.needsAmount && <label>Valor do benefício definido pelo mestre
+                <input type="number" min="0.01" step="any" max="100000" value={feature.amount} onChange={event=>changeFeature(index,{amount:event.target.value})} placeholder="Ex.: 1, 2, 5..."/>
+              </label>}
+              {feature.key==='main_skill' && <label>Perícia principal
+                <select value={feature.mainSkill||''} onChange={event=>changeFeature(index,{mainSkill:event.target.value})}>
+                  <option value="">Selecione a perícia...</option>
+                  {KIT_MAIN_SKILLS.map(skill=><option key={skill} value={skill}>{skill}</option>)}
+                </select>
+              </label>}
+              {feature.key && <label>Descrição e condições da funcionalidade
+                <textarea rows={2} maxLength={600} value={feature.details} onChange={event=>changeFeature(index,{details:event.target.value})} placeholder={feature.key==='remove_condition'?'Quais condições podem ser retiradas? A retirada permanece sob controle do mestre.':'Descreva as situações e limitações do benefício...'}/>
+              </label>}
+            </div>
+          })}
+          <p className="hb-kit-editor-note">Valores numéricos são definidos pelo mestre. Habilidades de retirar condições exigem decisão do mestre; não removem condições automaticamente.</p>
+        </div>}
+        {(benefitMode==='protection'||(benefitMode==='main_and_archetype'&&Boolean(uniqueEffect)))&&<label>Descrição de kit antigo
+          <textarea value={uniqueEffect} onChange={event=>onUniqueEffectChange(event.target.value)} maxLength={1000} rows={2}/>
         </label>}
         <p className="hb-kit-editor-note">As perícias vêm do catálogo do RPG. Os bônus agora são fixos por posição, conforme o tipo de kit.</p>
       </>}
