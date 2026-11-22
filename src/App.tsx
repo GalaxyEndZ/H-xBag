@@ -1,5 +1,5 @@
 import FloatingChat from './components/FloatingChat'
-import { readHaxLocation, haxLocationUrl, haxShouldPush, type HaxLocation, type HaxPage } from './siteNavigation'
+import { readHaxLocation, haxLocationUrl, haxShouldPush, type HaxLocation, type HaxPage, type HaxSocialTab } from './siteNavigation'
 import './components/ProfileSocialV164.css'
 import './components/ProfileSocialV165.css'
 import {
@@ -2060,7 +2060,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
 
   const [activePage, setActivePage] = useState<HaxPage>(initialHaxLocation.current.page)
   const lastRpgPage = useRef<Exclude<typeof activePage,'profile'|'minigames'>>('overview')
-  const [socialNavigationTab,setSocialNavigationTab] = useState<'feed'|'friends'|'following'|'followers'|'discover'|'messages'|'blocked'|'referral'>(initialHaxLocation.current.tab)
+  const [socialNavigationTab,setSocialNavigationTab] = useState<HaxSocialTab>(initialHaxLocation.current.tab)
   useEffect(() => {
     if (activePage !== 'profile' && activePage !== 'minigames') lastRpgPage.current = activePage
   }, [activePage])
@@ -10740,6 +10740,8 @@ counterAttackDT
     ['followers','Seguidores','↙'],['following','Seguindo','↗'],
     ['discover','Descobrir pessoas','⌕'],['referral','Convite social · Embaixador','✧'],
     ['blocked','Contas bloqueadas','⊘'],
+    ['communities','Comunidades','♧'],['events','Eventos','◷'],['saved','Publicações salvas','▤'],
+    ['notifications','Notificações','◉'],['activity','Minha atividade','✦'],['moderation','Segurança Social','⚑'],
   ] as const)) {
     quickCommands.push({
       id:`social:${tab}`,label,symbol,section:'Social',
@@ -10873,7 +10875,9 @@ counterAttackDT
               {([
                 ['feed','✦','Feed'],['messages','✉','Mensagens'],['friends','♧','Amigos'],
                 ['following','↗','Seguindo'],['followers','↙','Seguidores'],
-                ['discover','⌕','Descobrir'],['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],
+                ['discover','⌕','Explorar'],['communities','♧','Comunidades'],['events','◷','Eventos'],
+                ['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade'],
+                ['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança'],
               ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">

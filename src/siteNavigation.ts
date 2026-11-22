@@ -13,7 +13,7 @@ export type HaxPage = typeof HAX_PAGES[number]
 export const HAX_PROFILE_SECTIONS = ['overview', 'journey', 'studio', 'legacy', 'friends', 'account'] as const
 export type HaxProfileSection = typeof HAX_PROFILE_SECTIONS[number]
 
-export const HAX_SOCIAL_TABS = ['feed', 'friends', 'following', 'followers', 'discover', 'messages', 'blocked', 'referral'] as const
+export const HAX_SOCIAL_TABS = ['feed', 'friends', 'following', 'followers', 'discover', 'messages', 'blocked', 'referral', 'communities', 'saved', 'events', 'notifications', 'activity', 'moderation'] as const
 export type HaxSocialTab = typeof HAX_SOCIAL_TABS[number]
 
 export type HaxLocation = {

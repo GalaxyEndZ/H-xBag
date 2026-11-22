@@ -4,7 +4,10 @@ import { supabase } from '../supabase'
 import './PublicAdventurerProfile.css'
 import './PublicProfileV151.css'
 import './ProfileSocialV165.css'
+import './PublicProfileV230.css'
+import './ProfileRedesignV233.css'
 import ProfilePostsV164 from './ProfilePostsV164'
+import { SocialV231PublicActivity } from './SocialV231Suite'
 
 export type AdventurerRef = {
   id: string
@@ -172,6 +175,15 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
       onFriendUpdate?.()
     }
   }
+  async function copyProfileHandle() {
+    const handle = `@${profile?.username || selectedPerson.username || 'aventureiro'}`
+    try {
+      await navigator.clipboard.writeText(handle)
+      setNotice(`${handle} copiado. Você pode compartilhar esse nome com seus amigos.`)
+    } catch {
+      setNotice(`Nome do aventureiro: ${handle}`)
+    }
+  }
   async function inviteToCampaign() {
     if (!selectedCampaign || actionBusy || !campaigns.some(campaign => campaign.id === selectedCampaign)) return
     setActionBusy(true)
@@ -191,7 +203,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
   const tabs: { id: Tab; label: string; symbol: string; count?: number }[] = [
     { id: 'presentation', label: 'Sobre', symbol: '✦' },
     { id: 'posts', label: 'Publicações', symbol: '▦' },
-    ...(view?.identity_card_visible ? [{ id: 'identity' as Tab, label: 'Carta de Identidade', symbol: '♙' }] : []),
+    ...(view?.identity_card_visible && allow('show_identity_card') ? [{ id: 'identity' as Tab, label: 'Carta de Identidade', symbol: '♙' }] : []),
     ...(allow('show_characters') ? [{ id: 'characters' as Tab, label: 'Personagens', symbol: '⚔', count: heroes.length }] : []),
     ...(allow('show_badges') ? [{ id: 'badges' as Tab, label: 'Insígnias', symbol: '✧', count: badges.length }] : []),
     ...(allow('show_journal') ? [{ id: 'chronicles' as Tab, label: 'Crônicas', symbol: '▤', count: chronicles.length }] : []),
@@ -199,9 +211,9 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
 
   return createPortal(
     <div className="hb-public-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
-      <section ref={dialogRef} className="hb-public-dialog" role="dialog" aria-modal="true" aria-labelledby="hb-public-profile-name">
+      <section ref={dialogRef} className="hb-public-dialog hb-profile-v233" role="dialog" aria-modal="true" aria-labelledby="hb-public-profile-name">
         <div className="hb-public-toolbar">
-          <div className="hb-public-toolbar-caption"><span aria-hidden="true">✦</span><span>HÄXBAG</span><span className="hb-public-toolbar-divider" aria-hidden="true"/><span>PERFIL SOCIAL</span></div>
+          <div className="hb-public-toolbar-caption"><span className="hb-v233-toolbar-logo" aria-hidden="true">✦</span><span>HÄXBAG</span><span className="hb-public-toolbar-divider" aria-hidden="true"/><span>Perfil da comunidade</span></div>
           <div className="hb-v184-public-toolbar-actions">
             {profileHistory.length > 0 && <button type="button" className="hb-v184-profile-back" onClick={returnToPreviousProfile}>← Voltar</button>}
             <button ref={closeRef} className="hb-public-close" type="button" onClick={onClose} aria-label="Fechar perfil">✕</button>
@@ -221,37 +233,62 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
               <span className="hb-public-eyebrow">PERFIL NA COMUNIDADE</span>
               <h2 id="hb-public-profile-name">{view.display_name || selectedPerson.display_name}</h2>
               <span className="hb-public-handle">@{view.username || selectedPerson.username || 'aventureiro'}</span>
-              {view.status && allow('show_status') && <span className="hb-public-status"><i aria-hidden="true"/>{view.status}</span>}
+              {view.status && allow('show_status') && <span className={`hb-public-status ${/indisponível|offline/i.test(view.status)?'is-offline':''}`}><i aria-hidden="true"/>{view.status}</span>}
+              {allow('show_bio') && view.bio?.trim() && <p className="hb-v230-bio-preview">{view.bio.trim()}</p>}
             </div>
             <div className="hb-public-relationship">{viewingSelf ? '✦ Prévia do seu perfil público' : relationship.friends ? '✧ Vocês são amigos' : relationship.following ? '↗ Você segue este aventureiro' : relationship.follows_me ? '↙ Esta pessoa segue você' : '◇ Aventureiro da comunidade'}</div>
           </header>
           <div className="hb-v164-profile-social-actions">
             {!viewingSelf && !relationship.blocked_by_me && !relationship.blocked_me && <button type="button" className="hb-v164-follow-action" onClick={()=>void toggleFollow()} disabled={actionBusy}>{relationship.following?'✓ Seguindo':relationship.follows_me?'+ Seguir de volta':'+ Seguir'}</button>}
             {!viewingSelf && relationship.friends && onMessage && <button type="button" onClick={()=>onMessage(selectedPerson)}>✉ Enviar mensagem</button>}
-            <button type="button" onClick={()=>setTab('posts')}>▦ Publicações e fotos</button>
+            <button type="button" className={tab==='posts'?'is-current':''} onClick={()=>setTab('posts')}>▦ Publicações e fotos</button>
+            <button type="button" onClick={()=>setTab('presentation')}>✦ Sobre o aventureiro</button>
+            <button type="button" className="hb-v230-copy-handle" onClick={()=>void copyProfileHandle()} aria-label="Copiar nome de usuário">⌁ Copiar @</button>
           </div>
+          <div className="hb-v233-stats-heading"><span>EXPLORAR A JORNADA</span><small>Personagens, campanhas e marcos compartilhados</small></div>
           <div className="hb-public-stats">
-            {typeof view.character_count === 'number' && view.character_count >= 0 && allow('show_characters') && <div><span aria-hidden="true">⚔</span><strong>{view.character_count}</strong><small>Personagens</small></div>}
+            {typeof view.character_count === 'number' && view.character_count >= 0 && allow('show_characters') && <button type="button" onClick={()=>setTab('characters')} aria-label={`Ver personagens de ${view.display_name}`}><span aria-hidden="true">⚔</span><strong>{view.character_count}</strong><small>Personagens <span aria-hidden="true">↗</span></small></button>}
             {typeof view.campaign_count === 'number' && view.campaign_count >= 0 && allow('show_campaigns') && <div><span aria-hidden="true">⚑</span><strong>{view.campaign_count}</strong><small>Campanhas</small></div>}
-            {allow('show_badges') && <div><span aria-hidden="true">✧</span><strong>{badges.length}</strong><small>Insígnias em destaque</small></div>}
-            {allow('show_journal') && <div><span aria-hidden="true">▤</span><strong>{chronicles.length}</strong><small>Crônicas públicas</small></div>}
+            {allow('show_badges') && <button type="button" onClick={()=>setTab('badges')} aria-label={`Ver insígnias de ${view.display_name}`}><span aria-hidden="true">✧</span><strong>{badges.length}</strong><small>Insígnias <span aria-hidden="true">↗</span></small></button>}
+            {allow('show_journal') && <button type="button" onClick={()=>setTab('chronicles')} aria-label={`Ver crônicas de ${view.display_name}`}><span aria-hidden="true">▤</span><strong>{chronicles.length}</strong><small>Crônicas <span aria-hidden="true">↗</span></small></button>}
           </div>
-          <nav className="hb-public-tabs" aria-label="Seções do perfil público">
-            {tabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} className={tab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)}><span aria-hidden="true">{item.symbol}</span>{item.label}{item.count !== undefined && <small>{item.count}</small>}</button>)}
+          <nav className="hb-public-tabs" aria-label="Seções do perfil público" role="tablist">
+            {tabs.map((item,index) => <button key={item.id} type="button" role="tab" tabIndex={tab===item.id?0:-1} aria-selected={tab === item.id} className={tab === item.id ? 'is-active' : ''} onClick={() => setTab(item.id)} onKeyDown={event=>{
+              if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return
+              event.preventDefault()
+              const nextIndex=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length
+              const next=tabs[nextIndex]
+              if(next){setTab(next.id);(event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[nextIndex])?.focus()}
+            }}><span aria-hidden="true">{item.symbol}</span>{item.label}{item.count !== undefined && <small>{item.count}</small>}</button>)}
           </nav>
           <main className="hb-public-main">
-            <div hidden={tab!=='posts'}><ProfilePostsV164 authorId={selectedPerson.id} active={tab==='posts'} isSelf={viewingSelf} avatarUrl={view.avatar_image} onOpenProfile={openCommentAuthorProfile}/></div>
-            {tab === 'presentation' && <div className="hb-public-overview">
+            <div hidden={tab!=='posts'} className="hb-v230-posts-tab" role="tabpanel" aria-label="Publicações">
+              <div className="hb-v233-posts-heading"><div><span className="hb-public-overline">ATIVIDADE DA COMUNIDADE</span><h3>Mural do aventureiro</h3><p>Histórias, registros e momentos compartilhados neste perfil.</p></div><span className="hb-v233-posts-mark" aria-hidden="true">✦</span></div>
+              {((allow('show_bio') && !!view.bio?.trim()) || (allow('show_badges') && badges.length > 0) || (allow('show_characters') && heroes.length > 0)) && <div className="hb-v230-posts-highlights">
+                <div className="hb-v230-posts-highlights-copy"><span className="hb-public-overline">UM POUCO SOBRE ESTA JORNADA</span><strong>{view.display_name}</strong><p>{allow('show_bio') && view.bio?.trim() ? view.bio.trim() : 'Conheça os personagens e reconhecimentos compartilhados neste perfil.'}</p></div>
+                <div className="hb-v230-highlights-links">
+                  {allow('show_characters') && heroes.length>0 && <button type="button" onClick={()=>setTab('characters')}>⚔ {heroes.length} em destaque</button>}
+                  {allow('show_badges') && badges.length>0 && <button type="button" onClick={()=>setTab('badges')}>✧ {badges.length} insígnia{badges.length!==1?'s':''}</button>}
+                </div>
+              </div>}
+              <SocialV231PublicActivity authorId={selectedPerson.id}/><ProfilePostsV164 authorId={selectedPerson.id} active={tab==='posts'} isSelf={viewingSelf} avatarUrl={view.avatar_image} onOpenProfile={openCommentAuthorProfile}/>
+            </div>
+            {tab === 'presentation' && <div className="hb-public-overview hb-v230-overview">
               <section className="hb-public-panel hb-public-about"><span className="hb-public-overline">CONHEÇA ESTA PESSOA</span><h3>Sobre</h3>{view.bio && allow('show_bio') ? <p className="hb-public-biography">{view.bio}</p> : <p className="hb-public-muted">{!allow('show_bio') ? 'Esta apresentação é privada.' : 'O aventureiro ainda não escreveu sua apresentação.'}</p>}</section>
               <section className="hb-public-panel hb-public-glimpse"><span className="hb-public-overline">UNIVERSO RPG</span><h3>Personagens e conquistas</h3>
-                {view.identity_card_visible && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('identity')}><span>♙</span><strong>Carta de Identidade personalizada</strong><span>Ver ↗</span></button>}
+                {view.identity_card_visible && allow('show_identity_card') && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('identity')}><span>♙</span><strong>Carta de Identidade personalizada</strong><span>Ver ↗</span></button>}
                 {allow('show_characters') && heroes.length > 0 && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('characters')}><span>⚔</span><strong>{heroes.length} personagem{heroes.length === 1 ? '' : 's'} em destaque</strong><span>Ver ↗</span></button>}
                 {allow('show_badges') && badges.length > 0 && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('badges')}><span>✧</span><strong>{badges.length} insígnia{badges.length === 1 ? '' : 's'}</strong><span>Ver ↗</span></button>}
                 {allow('show_journal') && chronicles.length > 0 && <button type="button" className="hb-public-glimpse-row" onClick={() => setTab('chronicles')}><span>▤</span><strong>{chronicles.length} crônica{chronicles.length === 1 ? '' : 's'}</strong><span>Ver ↗</span></button>}
-                {!(view.identity_card_visible || allow('show_characters') && heroes.length || allow('show_badges') && badges.length || allow('show_journal') && chronicles.length) && <p className="hb-public-muted">Os destaques desta jornada ainda não foram compartilhados.</p>}
+                {!((view.identity_card_visible && allow('show_identity_card')) || allow('show_characters') && heroes.length || allow('show_badges') && badges.length || allow('show_journal') && chronicles.length) && <p className="hb-public-muted">Os destaques desta jornada ainda não foram compartilhados.</p>}
               </section>
+              {(allow('show_badges') && badges.length>0 || allow('show_journal') && chronicles.length>0) && <section className="hb-public-panel hb-v230-journey-snapshot">
+                <span className="hb-public-overline">MARCAS DA JORNADA</span><h3>Conquistas & memórias</h3>
+                {allow('show_badges') && badges.length>0 && <div className="hb-v230-awards-preview"><span aria-hidden="true" className="hb-v230-awards-icon">{badges[0].symbol||'✧'}</span><div><small>INSÍGNIA OFICIAL</small><strong>{badges[0].title}</strong><span>{badges[0].description || 'Reconhecimento desta jornada.'}</span></div><button type="button" onClick={()=>setTab('badges')}>Ver todas ↗</button></div>}
+                {allow('show_journal') && chronicles.length>0 && <button type="button" className="hb-v230-chronicle-preview" onClick={()=>setTab('chronicles')}><span aria-hidden="true">▤</span><span><small>ÚLTIMA CRÔNICA</small><strong>{chronicles[0].title}</strong><small>{chronicles[0].date ? new Date(`${chronicles[0].date.slice(0,10)}T12:00:00`).toLocaleDateString('pt-BR') : 'Marco da jornada'}</small></span><span aria-hidden="true">↗</span></button>}
+              </section>}
             </div>}
-            {tab === 'identity' && view.identity_card_visible && <section className="hb-public-panel hb-public-identity-card-section">
+            {tab === 'identity' && view.identity_card_visible && allow('show_identity_card') && <section className="hb-public-panel hb-public-identity-card-section">
               <span className="hb-public-overline">UMA CARTA ÚNICA</span><h3>Carta de Identidade</h3>
               <div className={`hb-public-identity-card hb-public-identity-card-v135 ${view.identity_card_image?'has-image':''}`} data-cover={view.identity_card_cover_theme || 'eclipse'}>
                 {view.identity_card_image && <><img className="hb-public-identity-card-background" src={view.identity_card_image} alt="" style={{objectPosition:`center ${view.identity_card_position ?? 50}%`}}/><span className="hb-public-identity-card-shade" aria-hidden="true"/></>}

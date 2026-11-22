@@ -3,6 +3,8 @@ import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
 import { profileFrameNames, profileThemePalette, type ProfileAppearance } from '../profileTheme'
 import './ProfileLegacy.css'
+import './ProfileLegacyV230.css'
+import './ProfileRedesignV233.css'
 
 type PrivacyKey = 'show_bio'|'show_characters'|'show_campaigns'|'show_badges'|'show_journal'|'show_status'|'show_identity_card'
 type Privacy = Record<PrivacyKey,boolean>
@@ -181,6 +183,14 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
   const hasChanges=JSON.stringify(profile)!==JSON.stringify(savedProfile)
   const featuredAwards=allBadges
   const publiclyVisible=Object.values(profile.privacy).filter(Boolean).length
+  const showcaseSteps = [
+    {id:'avatar', label:'Escolher um retrato', done:!!profile.avatar_image, target:'appearance' as const},
+    {id:'cover', label:'Personalizar a capa', done:!!profile.cover_image, target:'appearance' as const},
+    {id:'heroes', label:'Destacar um personagem', done:profile.featured_ids.some(id=>characters.some(character=>character.id===id)), target:'heroes' as const},
+    {id:'chronicles', label:'Registrar uma crônica', done:profile.journal.length>0, target:'chronicles' as const},
+  ]
+  const showcaseCompleted=showcaseSteps.filter(step=>step.done).length
+  const showcasePercent=Math.round(showcaseCompleted/showcaseSteps.length*100)
   const featured=profile.featured_ids.map(id=>characters.find(character=>character.id===id)).filter((value):value is Hero=>!!value).slice(0,3)
   const timeline=useMemo(()=>{
     const entries:Chronicle[]=[...profile.journal,...completedMissions,...completedSeasons]
@@ -272,7 +282,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     }
   }
   if(loading)return <section className="hpl-loading" role="status"><span className="hpl-loading-mark">✦</span><strong>Preparando sua história</strong><small>Carregando identidade do aventureiro…</small></section>
-  return <section className="hpl-root hpl-v128" id="hb-profile-legacy-plus" style={{'--hpl-accent':profileThemePalette({accent:profile.accent,frame:profile.frame as ProfileAppearance['frame'],layout:profile.layout as ProfileAppearance['layout']}).primary} as React.CSSProperties} aria-labelledby="hpl-title">
+  return <section className="hpl-root hpl-v128 hpl-v233" id="hb-profile-legacy-plus" style={{'--hpl-accent':profileThemePalette({accent:profile.accent,frame:profile.frame as ProfileAppearance['frame'],layout:profile.layout as ProfileAppearance['layout']}).primary} as React.CSSProperties} aria-labelledby="hpl-title">
     <header className="hpl-intro">
       <div className="hpl-intro-copy">
         <span className="hpl-overline"><span aria-hidden="true">✦</span> O ATELIÊ DO AVENTUREIRO</span>
@@ -282,6 +292,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
       <div className="hpl-intro-actions">
         <span className={`hpl-save-state ${hasChanges?'pending':'saved'}`} role="status">{hasChanges?'● Alterações não salvas':'✓ Personalização atualizada'}</span>
         {hasChanges&&<button type="button" className="hpl-reset" disabled={saving} onClick={()=>{setProfile(savedProfile);setNotice('Alterações não salvas descartadas.')}}>Desfazer mudanças</button>}
+        <button type="button" className="hpl-v230-public-preview" title="Exibe a versão pública já salva" onClick={()=>setVisitorPerson({id:userId,display_name:displayName,username})}>◈ Ver meu perfil público</button>
         <button type="button" className="hpl-primary" disabled={saving||!hasChanges} onClick={()=>void save()}>{saving?'Salvando…':'✦ Salvar perfil'}</button>
       </div>
     </header>
@@ -291,7 +302,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
 
     <div className={`hpl-spotlight layout-${profile.layout}`}>
       <div className="hpl-spotlight-card">
-        <div className="hpl-cover" style={profile.cover_image?{backgroundImage:`linear-gradient(180deg, transparent 40%, rgba(10,12,14,.66)),url(${profile.cover_image})`,backgroundPosition:`center, center ${profile.cover_position}%`,backgroundSize:'cover'}:{}}>
+        <div className={`hpl-cover ${profile.cover_image ? 'has-personal-cover' : 'has-theme-cover'}`} style={profile.cover_image?{backgroundImage:`linear-gradient(180deg, transparent 40%, rgba(10,12,14,.66)),url(${profile.cover_image})`,backgroundPosition:`center, center ${profile.cover_position}%`,backgroundSize:'cover'}:{}}>
           <div className="hpl-cover-top"><span>✦ HÄXBAG</span><span>REGISTRO PESSOAL · I</span></div>
           <span className="hpl-cover-ornament" aria-hidden="true">✧</span>
           <span className="hpl-cover-bottom">O LIVRO DAS SUAS JORNADAS</span>
@@ -304,8 +315,9 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
             <span className="hpl-handle">@{username||'aventureiro'}</span>
             <span className={`hpl-status ${profile.status==='offline'?'is-offline':''}`}><i aria-hidden="true"/>{statusText(profile)||'Status personalizado'}</span>
           </div>
-          <button className="hpl-spotlight-edit" type="button" onClick={()=>setActiveTab('appearance')} aria-label="Personalizar aparência do perfil">✎ <span>Personalizar</span></button>
+          <div className="hpl-v230-spotlight-actions"><button className="hpl-spotlight-edit" type="button" onClick={()=>setActiveTab('appearance')} aria-label="Personalizar aparência do perfil">✎ <span>Personalizar</span></button><button className="hpl-v230-spotlight-preview" type="button" title="Exibe a versão pública já salva" onClick={()=>setVisitorPerson({id:userId,display_name:displayName,username})}>◈ <span>Ver como visitante</span></button></div>
         </div>
+        <div className="hpl-v233-spotlight-caption"><span aria-hidden="true">✧</span><span>Seu espaço, sua história. Esta é uma prévia das alterações locais; visite o perfil público para ver o conteúdo salvo.</span></div>
         <div className="hpl-spotlight-bottom">
           <div className="hpl-spotlight-stat"><strong>{characters.length}</strong><span>Personagens</span></div>
           <div className="hpl-spotlight-stat"><strong>{campaigns.length}</strong><span>Campanhas</span></div>
@@ -321,6 +333,13 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         <div className="hpl-aside-sub"><strong>Insígnias favoritas</strong><button type="button" onClick={()=>setActiveTab('badges')}>Escolher ↗</button></div>
         <div className="hpl-mini-badges">{featuredAwards.length?featuredAwards.map(award=><span key={award.id} title={award.title} aria-label={award.title}>{award.symbol}</span>):<p>As insígnias oficiais aparecerão aqui quando forem concedidas.</p>}</div>
         <div className="hpl-aside-foot"><span>PRIVACIDADE DA VITRINE</span><strong>{publiclyVisible} de 7 áreas visíveis</strong><button type="button" onClick={()=>setActiveTab('privacy')}>Gerenciar privacidade</button></div>
+        <div className="hpl-v230-progress-card">
+          <div className="hpl-v230-progress-title"><strong>Prepare sua vitrine</strong><span>{showcasePercent}%</span></div>
+          <div className="hpl-v230-progress-track" role="progressbar" aria-label="Preparação da vitrine" aria-valuemin={0} aria-valuemax={100} aria-valuenow={showcasePercent}><span style={{width:`${showcasePercent}%`}}/></div>
+          <p>Personalize a forma como sua história aparece para outros jogadores.</p>
+          <div className="hpl-v230-progress-steps">{showcaseSteps.map(step=><button type="button" key={step.id} onClick={()=>setActiveTab(step.target)}><span aria-hidden="true" className={step.done?'is-complete':''}>{step.done?'✓':'○'}</span><span>{step.label}</span><span aria-hidden="true">↗</span></button>)}</div>
+          <small>A prévia pública exibe as informações já salvas na sua conta.</small>
+        </div>
       </aside>
     </div>
 
@@ -346,7 +365,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
           <div><span>Disposição</span><strong>{profile.layout==='gallery'?'Galeria':profile.layout==='compact'?'Compacta':'Clássica'}</strong></div>
           <div><span>Informações públicas</span><strong>{publiclyVisible} de 7 áreas</strong></div>
         </div>
-        <div className="hpl-overview-actions"><button type="button" className="hpl-primary" onClick={()=>setInviteDialogOpen(true)}>✧ Convidar amigos · Embaixador</button><button type="button" className="hpl-primary" onClick={()=>setActiveTab('appearance')}>Ajustar minha identidade <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setActiveTab('privacy')}>Definir o que mostrar</button></div>
+        <div className="hpl-overview-actions"><button type="button" className="hpl-v230-overview-preview" onClick={()=>setVisitorPerson({id:userId,display_name:displayName,username})}>◈ Prévia pública</button><button type="button" className="hpl-primary" onClick={()=>setInviteDialogOpen(true)}>✧ Convidar amigos · Embaixador</button><button type="button" className="hpl-primary" onClick={()=>setActiveTab('appearance')}>Ajustar minha identidade <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setActiveTab('privacy')}>Definir o que mostrar</button></div>
       </article>
       <article className="hpl-panel hpl-v136-theme-overview">
         <div className="hpl-panel-heading"><span className="hpl-overline">PALETA PESSOAL · SÓ NO PERFIL</span><h3>Seu mundo, suas cores</h3><p>Esta paleta acompanha todas as seções do seu Perfil, mas não altera os temas das campanhas.</p></div>

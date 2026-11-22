@@ -1,0 +1,48 @@
+/* HäxBag V230 · ateliê: prévia pública e preparação da vitrine. */
+.hpl-v128 .hpl-intro-actions{align-items:center;gap:10px}
+.hpl-v128 .hpl-v230-public-preview,
+.hpl-v128 .hpl-v230-spotlight-preview,
+.hpl-v128 .hpl-v230-overview-preview{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:41px;padding:10px 15px;border:1px solid color-mix(in srgb,var(--hpl-accent) 36%,var(--hpl-line));border-radius:11px;background:color-mix(in srgb,var(--hpl-accent) 8%,var(--hpl-surface));font-size:12px;font-weight:800;line-height:1.35;color:var(--hpl-ink)}
+.hpl-v128 .hpl-v230-public-preview:hover,
+.hpl-v128 .hpl-v230-spotlight-preview:hover,
+.hpl-v128 .hpl-v230-overview-preview:hover{background:color-mix(in srgb,var(--hpl-accent) 16%,var(--hpl-surface))}
+.hpl-v128 .hpl-v230-spotlight-actions{display:grid;align-content:center;justify-items:stretch;gap:8px;min-width:154px;margin-top:20px}
+.hpl-v128 .hpl-v230-spotlight-actions .hpl-spotlight-edit{margin:0;min-height:40px}
+.hpl-v128 .hpl-v230-spotlight-actions .hpl-v230-spotlight-preview{min-height:40px;font-size:11px;padding:9px 10px}
+.hpl-v128 .hpl-spotlight-card{isolation:isolate}
+.hpl-v128 .hpl-spotlight-identity{align-items:center}
+.hpl-v128 .hpl-spotlight-copy{margin-top:25px}
+.hpl-v128 .hpl-v230-progress-card{display:grid;gap:11px;margin-top:6px;padding:17px 15px 14px;border:1px solid color-mix(in srgb,var(--hpl-accent) 27%,var(--hpl-line));border-radius:14px;background:color-mix(in srgb,var(--hpl-accent) 6%,var(--hpl-surface-alt))}
+.hpl-v128 .hpl-v230-progress-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hpl-v128 .hpl-v230-progress-title strong{font-size:13px}
+.hpl-v128 .hpl-v230-progress-title>span{font-size:14px;color:var(--hpl-accent);font-weight:850;font-variant-numeric:tabular-nums}
+.hpl-v128 .hpl-v230-progress-track{height:7px;overflow:hidden;border-radius:999px;background:color-mix(in srgb,var(--hpl-accent) 13%,var(--hpl-surface))}
+.hpl-v128 .hpl-v230-progress-track>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--hpl-accent),color-mix(in srgb,var(--hpl-accent) 68%,#fff));transition:width .2s}
+.hpl-v128 .hpl-v230-progress-card>p{font-size:11px;color:var(--hpl-muted);line-height:1.55;margin:0}
+.hpl-v128 .hpl-v230-progress-card>small{font-size:10px;line-height:1.5;color:var(--hpl-muted)}
+.hpl-v128 .hpl-v230-progress-steps{display:grid;gap:4px}
+.hpl-v128 .hpl-v230-progress-steps button{display:flex;gap:9px;align-items:center;text-align:left;border:1px solid transparent;border-radius:8px;padding:7px 5px;background:transparent;font-size:11px;color:var(--hpl-ink)}
+.hpl-v128 .hpl-v230-progress-steps button>span:first-child{display:grid;place-items:center;flex:none;width:20px;height:20px;border-radius:7px;background:var(--hpl-surface);color:var(--hpl-muted);border:1px solid var(--hpl-line);font-weight:800}
+.hpl-v128 .hpl-v230-progress-steps button>span:first-child.is-complete{color:var(--hpl-accent);border-color:color-mix(in srgb,var(--hpl-accent) 45%,transparent)}
+.hpl-v128 .hpl-v230-progress-steps button>span:nth-child(2){flex:1}
+.hpl-v128 .hpl-v230-progress-steps button>span:last-child{color:var(--hpl-accent)}
+.hpl-v128 .hpl-v230-progress-steps button:hover{border-color:var(--hpl-line);background:color-mix(in srgb,var(--hpl-accent) 8%,transparent)}
+.hpl-v128 .hpl-overview-actions .hpl-v230-overview-preview{min-height:41px}
+@media(max-width:930px){
+  .hpl-v128 .hpl-v230-spotlight-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;min-width:0;margin:0;align-self:stretch;gap:9px}
+  .hpl-v128 .hpl-v230-spotlight-actions>button{flex:1 1 150px}
+  .hpl-v128 .hpl-v230-progress-steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .hpl-v128 .hpl-intro-actions{gap:8px}
+  .hpl-v128 .hpl-intro-actions .hpl-v230-public-preview{flex:1 1 100%;min-height:43px}
+  .hpl-v128 .hpl-v230-spotlight-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:0}
+  .hpl-v128 .hpl-v230-spotlight-actions>button{font-size:10px;white-space:normal}
+  .hpl-v128 .hpl-spotlight-copy{margin-top:32px}
+  .hpl-v128 .hpl-v230-progress-steps{grid-template-columns:1fr}
+  .hpl-v128 .hpl-overview-actions>button{flex:1 1 100%}
+}
+@media(max-width:380px){
+  .hpl-v128 .hpl-v230-spotlight-actions{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){.hpl-v128 .hpl-v230-progress-track>span{transition:none}}
