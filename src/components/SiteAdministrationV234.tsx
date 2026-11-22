@@ -18,6 +18,11 @@ type Audit = {
   report_id: string | null; reason: string; created_at: string; context: Record<string, unknown>
 }
 type Preview = { found: boolean; type: string; summary?: string; author_id?: string; display_name?: string }
+type Identity = {
+  kind: 'audit' | 'report'; record_id: string; actor_username: string | null;
+  target_username: string | null; reporter_username: string | null; target_user_id: string | null
+}
+type IdentityMap = Record<string, Identity>
 type Confirmation = { title: string; description: string; danger: boolean; run: () => Promise<void>; success: string }
 
 const targetLabels: Record<string, string> = {
@@ -31,6 +36,7 @@ const actionLabels: Record<string, string> = {
 }
 const statusLabels: Record<ReportStatus, string> = { pending: 'Pendente', reviewed: 'Analisada', dismissed: 'Dispensada' }
 const shortId = (id: string | null | undefined) => id ? id.slice(0, 8) : '—'
+const handle = (username: string | null | undefined, fallback = 'Conta indisponível') => username?.trim() ? `@${username.trim().replace(/^@+/, '')}` : fallback
 const safeError = (err: unknown): string => err instanceof Error ? err.message : String(err)
 const formatDate = (date: string) => {
   const parsed = new Date(date)
@@ -46,10 +52,11 @@ const exportCell = (value: unknown): string => {
   const safe = /^[\s]*[=+@\-\t\r]/.test(raw) ? `'${raw}` : raw
   return `"${safe.replace(/"/g, '""')}"`
 }
-function downloadAudit(items: Audit[]) {
-  const cols = ['Data', 'Ação', 'Responsável', 'Alvo', 'Denúncia', 'Justificativa']
+function downloadAudit(items: Audit[], identities: IdentityMap) {
+  const cols = ['Data', 'Ação', 'Responsável', 'Alvo', 'Denúncia', 'Justificativa', 'ID do responsável', 'ID do conteúdo ou conta']
   const rows = items.map(item => [item.created_at, actionLabels[item.action] || item.action,
-    item.actor_id, item.target_id, item.report_id, item.reason])
+    handle(identities[item.id]?.actor_username), handle(identities[item.id]?.target_username, 'Autor não identificado'),
+    item.report_id, item.reason, item.actor_id, item.target_id])
   const csv = '\uFEFF' + [cols, ...rows].map(row => row.map(exportCell).join(';')).join('\r\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
   const anchor = document.createElement('a')
@@ -72,6 +79,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   const [success, setSuccess] = useState('')
   const [reports, setReports] = useState<Report[]>([])
   const [audit, setAudit] = useState<Audit[]>([])
+  const [identities, setIdentities] = useState<IdentityMap>({})
   const [lastLoaded, setLastLoaded] = useState<Date | null>(null)
   const [statusFilter, setStatusFilter] = useState<ReportStatus | 'all'>('pending')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -101,26 +109,32 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     const nextRole = String(rights.data || 'user') as Role
     setRole(nextRole)
     if (nextRole !== 'admin') {
-      setReports([]); setAudit([]); setUsers([]); setSelectedReport(null); setSelectedUser(null)
+      setReports([]); setAudit([]); setIdentities({}); setUsers([]); setSelectedReport(null); setSelectedUser(null)
       return
     }
-    const [reps, logs] = await Promise.all([
+    const [reps, logs, people] = await Promise.all([
       supabase.from('hax_v231_reports')
         .select('id,reporter_id,target_id,target_type,reason,details,status,created_at,reviewer_id')
         .order('created_at', { ascending: false }).limit(200),
       supabase.from('hax_v234_audit')
         .select('id,actor_id,action,target_id,report_id,reason,created_at,context')
         .order('created_at', { ascending: false }).limit(150),
+      supabase.rpc('hax_v237_admin_people'),
     ])
     if (sequence !== loadSequence.current) return
-    if (reps.error || logs.error) {
+    if (reps.error || logs.error || people.error) {
       // Do not keep showing privileged data if permissions or retrieval fail.
-      setRole('visitor')
-      throw reps.error || logs.error
+      setRole('visitor'); setReports([]); setAudit([]); setIdentities({})
+      throw reps.error || logs.error || people.error
     }
     const nextReports = (reps.data || []) as Report[]
     setReports(nextReports)
     setAudit((logs.data || []) as Audit[])
+    const nextIdentities: IdentityMap = {}
+    for (const person of (people.data || []) as Identity[]) {
+      if (person.kind === 'audit' || person.kind === 'report') nextIdentities[person.record_id] = person
+    }
+    setIdentities(nextIdentities)
     setLastLoaded(new Date())
     setSelectedReport(old => old ? nextReports.find(report => report.id === old.id) || null : null)
   }, [userId])
@@ -130,7 +144,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     previewSequence.current += 1
     setRole('visitor'); setLoading(true); setError(''); setSuccess('')
     void reload().catch(err => {
-      if (live) setError(`Falha ao carregar a administração. Confira a migração V234 e suas permissões. ${safeError(err)}`)
+      if (live) setError(`Não foi possível carregar o painel. Verifique suas permissões de acesso. ${safeError(err)}`)
     }).finally(() => { if (live) setLoading(false) })
     return () => { live = false; previewSequence.current += 1; loadSequence.current += 1 }
   }, [reload])
@@ -206,7 +220,7 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     if (person.is_admin || person.user_id === userId) { setError('Esta conta não pode receber essa medida.'); return }
     request({
       title: action === 'warn' ? 'Registrar advertência' : action === 'suspend' ? 'Confirmar suspensão' : 'Encerrar suspensão',
-      description: `${person.display_name} (@${person.username || shortId(person.user_id)})${action === 'suspend' ? ` ficará impedido de publicar no Social V231 por ${duration} dia(s).` : '.'} ${motive ? `Motivo: ${motive}` : ''}`,
+      description: `${person.display_name} (@${person.username || shortId(person.user_id)})${action === 'suspend' ? ` ficará temporariamente impedido de interagir em áreas da comunidade por ${duration} dia(s).` : '.'} ${motive ? `Motivo: ${motive}` : ''}`,
       danger: action === 'suspend', success: `${actionLabels[action]} registrada no histórico.`,
       run: async () => { await moderationRpc(action, person.user_id, motive, action === 'suspend' ? duration : undefined); await refreshUser(person.user_id); setReason('') },
     })
@@ -249,23 +263,38 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   const filteredReports = useMemo(() => reports.filter(report =>
     (statusFilter === 'all' || report.status === statusFilter) &&
     (typeFilter === 'all' || report.target_type === typeFilter) &&
-    textIncludes(reportSearch.trim(), report.reason, report.details, report.target_id, report.reporter_id)
+    textIncludes(reportSearch.trim(), report.reason, report.details, report.target_id, report.reporter_id, identities[report.id]?.target_username, identities[report.id]?.reporter_username, handle(identities[report.id]?.target_username, ''), handle(identities[report.id]?.reporter_username, ''))
   ).sort((a, b) => reportOrder === 'recent'
     ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     : new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
-  [reports, statusFilter, typeFilter, reportSearch, reportOrder])
+  [reports, statusFilter, typeFilter, reportSearch, reportOrder, identities])
   const filteredUsers = users.filter(person => userFilter === 'all' ||
     (userFilter === 'admin' && person.is_admin) ||
     (userFilter === 'moderator' && person.is_moderator) ||
     (userFilter === 'suspended' && isCurrent(person.suspended_until)))
   const filteredAudit = useMemo(() => audit.filter(entry =>
     (historyAction === 'all' || entry.action === historyAction) &&
-    textIncludes(historySearch.trim(), entry.action, actionLabels[entry.action], entry.reason, entry.actor_id, entry.target_id, entry.report_id)
-  ), [audit, historySearch, historyAction])
+    textIncludes(historySearch.trim(), entry.action, actionLabels[entry.action], entry.reason, entry.actor_id, entry.target_id, entry.report_id, identities[entry.id]?.actor_username, identities[entry.id]?.target_username, handle(identities[entry.id]?.actor_username, ''), handle(identities[entry.id]?.target_username, ''))
+  ), [audit, historySearch, historyAction, identities])
   const inspection = selectedReport && reports.some(item => item.id === selectedReport.id) ? selectedReport : null
 
   if (loading) return <section className="hb-admin-v234 hb-admin-status" role="status">Validando acesso administrativo e carregando dados…</section>
   if (role !== 'admin') return <section className="hb-admin-v234 hb-admin-status"><h3>Acesso restrito</h3><p>Este painel é exclusivo de administradores globais do HäxBag.</p>{error && <p role="alert">{error}</p>}</section>
+  // Open the existing public profile viewer only for a resolved, real account.
+  // Historic records can reference removed content or accounts without a username.
+  const personLink = (username: string | null | undefined, profileId: string | null | undefined, fallback = 'Conta indisponível') => {
+    const text = handle(username, fallback)
+    if (!onViewProfile || !username?.trim() || !isUuid(profileId || '')) {
+      return <span className="hb-admin-person-handle">{text}</span>
+    }
+    return <button
+      type="button"
+      className="hb-admin-person-handle hb-admin-person-link"
+      title={`Abrir perfil de ${text}`}
+      aria-label={`Abrir perfil de ${text}`}
+      onClick={() => onViewProfile(profileId!)}
+    >{text}<span className="hb-admin-person-link-arrow" aria-hidden="true">↗</span></button>
+  }
   const goToReport = (item: Report) => { changePane('reports'); setStatusFilter('all'); setTypeFilter('all'); setReportSearch(''); void inspect(item) }
 
   return <section className="hb-admin-v234 hb-admin-v236" aria-label="Painel Administrativo exclusivo do HäxBag">
@@ -295,15 +324,15 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
       </section>
       <section className="hb-admin-section hb-admin-overview-history">
         <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">TRANSPARÊNCIA</span><h4>Últimas decisões</h4><p>Rastreabilidade das ações realizadas pela administração.</p></div><button type="button" onClick={() => changePane('history')}>Ver histórico</button></div>
-        <div className="hb-admin-mini-list">{audit.slice(0, 5).map(entry => <div className="hb-admin-mini-entry" key={entry.id}><span className="hb-admin-mini-icon">◷</span><span><strong>{actionLabels[entry.action] || entry.action}</strong><small>{formatDate(entry.created_at)} · Alvo {shortId(entry.target_id)}</small></span></div>)}{audit.length === 0 && <div className="hb-admin-empty">Nenhuma decisão registrada nesta amostra.</div>}</div>
+        <div className="hb-admin-mini-list">{audit.slice(0, 5).map(entry => <div className="hb-admin-mini-entry" key={entry.id}><span className="hb-admin-mini-icon">◷</span><span><strong>{actionLabels[entry.action] || entry.action}</strong><small>{formatDate(entry.created_at)} · Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}</small></span></div>)}{audit.length === 0 && <div className="hb-admin-empty">Nenhuma decisão registrada nesta amostra.</div>}</div>
       </section>
-      <aside className="hb-admin-overview-advice"><strong>Escopo de proteção</strong><p>As suspensões atuais restringem alterações nas tabelas do Social V231. Não encerram a sessão Supabase nem bloqueiam integralmente o feed e chat clássicos. Tome decisões levando esse alcance em conta.</p><span>Administradores globais são designados exclusivamente pelo banco de dados.</span></aside>
+      <aside className="hb-admin-overview-advice"><strong>Escopo de proteção</strong><p>As suspensões limitam a participação em determinadas áreas da comunidade, mas não desconectam automaticamente a conta nem impedem todas as interações por mensagens. Considere esse alcance antes de aplicar uma medida.</p><span>O acesso à administração é reservado às contas autorizadas.</span></aside>
     </div>}
 
     {pane === 'reports' && <section className="hb-admin-section">
       <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">CENTRAL DE ANÁLISE</span><h4>Denúncias da comunidade</h4><p>Veja o contexto antes de decidir. Exclusões de conteúdo são permanentes.</p></div><span className="hb-admin-results-count">{filteredReports.length} de {reports.length} carregadas</span></div>
       <div className="hb-admin-filters hb-admin-filters-reports">
-        <label className="hb-admin-filter-search">Pesquisar denúncias<input type="search" value={reportSearch} onChange={e => setReportSearch(e.target.value)} placeholder="Motivo, detalhes ou identificador" /></label>
+        <label className="hb-admin-filter-search">Pesquisar denúncias<input type="search" value={reportSearch} onChange={e => setReportSearch(e.target.value)} placeholder="Motivo, @usuário ou referência" /></label>
         <label>Situação<select value={statusFilter} onChange={e => setStatusFilter(e.target.value as ReportStatus | 'all')}><option value="pending">Pendentes</option><option value="all">Todas</option><option value="reviewed">Analisadas</option><option value="dismissed">Dispensadas</option></select></label>
         <label>Conteúdo<select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="all">Todos os tipos</option>{Object.entries(targetLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>Ordem<select value={reportOrder} onChange={e => setReportOrder(e.target.value as 'recent' | 'oldest')}><option value="recent">Mais recentes</option><option value="oldest">Mais antigas</option></select></label>
@@ -312,8 +341,8 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
         <div className="hb-admin-report-list" aria-label="Lista de denúncias">{filteredReports.map(item => <button type="button" className={`hb-admin-report-card ${inspection?.id === item.id ? 'selected' : ''}`} aria-pressed={inspection?.id === item.id} key={item.id} onClick={() => void inspect(item)}><span className="hb-admin-report-meta">{targetLabels[item.target_type] || item.target_type} · {formatDate(item.created_at)}</span><strong>{item.reason}</strong><small>{item.details || 'Sem detalhes adicionais.'}</small><span className={`hb-admin-state ${item.status}`}>{statusLabels[item.status] || item.status}</span></button>)}{!filteredReports.length && <div className="hb-admin-empty">Nenhuma denúncia corresponde aos filtros atuais.</div>}</div>
         <div className="hb-admin-inspection">{inspection ? <>
           <div className="hb-admin-inspection-title"><div><span className="hb-admin-section-eyebrow">DETALHES</span><strong>Denúncia selecionada</strong></div><button type="button" onClick={() => { previewSequence.current++; setSelectedReport(null); setPreview(null); setReason('') }} aria-label="Fechar denúncia">✕</button></div>
-          <div className="hb-admin-data"><span>Estado</span><p><span className={`hb-admin-state ${inspection.status}`}>{statusLabels[inspection.status]}</span></p><span>Conteúdo denunciado</span><p>{targetLabels[inspection.target_type] || inspection.target_type}</p><span>Motivo</span><p>{inspection.reason}</p><span>Relato do denunciante</span><p>{inspection.details || 'Não foram enviados detalhes adicionais.'}</p><span>Alvo</span><code>{inspection.target_id}</code><span>Denunciante</span><code>{inspection.reporter_id}</code><span>Recebida em</span><p>{formatDate(inspection.created_at)}</p></div>
-          {previewBusy ? <p role="status">Buscando prévia do conteúdo…</p> : preview && <div className="hb-admin-preview"><strong>Prévia do conteúdo</strong><p>{preview.found ? preview.summary : 'O conteúdo não está disponível ou já foi removido.'}</p>{preview.author_id && <button type="button" disabled={working} onClick={() => void locateUser(preview.author_id!)}>Gerenciar autor ({shortId(preview.author_id)})</button>}</div>}
+          <div className="hb-admin-data"><span>Estado</span><p><span className={`hb-admin-state ${inspection.status}`}>{statusLabels[inspection.status]}</span></p><span>Conteúdo denunciado</span><p>{targetLabels[inspection.target_type] || inspection.target_type}</p><span>Motivo</span><p>{inspection.reason}</p><span>Relato do denunciante</span><p>{inspection.details || 'Não foram enviados detalhes adicionais.'}</p><span>Alvo</span><p>{personLink(identities[inspection.id]?.target_username, identities[inspection.id]?.target_user_id, 'Autor não identificado')}</p><span>Denunciante</span><p>{personLink(identities[inspection.id]?.reporter_username, inspection.reporter_id)}</p><span>Referência do conteúdo</span><code>{inspection.target_id}</code><span>Recebida em</span><p>{formatDate(inspection.created_at)}</p></div>
+          {previewBusy ? <p role="status">Buscando prévia do conteúdo…</p> : preview && <div className="hb-admin-preview"><strong>Prévia do conteúdo</strong><p>{preview.found ? preview.summary : 'O conteúdo não está disponível ou já foi removido.'}</p>{preview.author_id && <div className="hb-admin-preview-actions"><button type="button" disabled={working} onClick={() => void locateUser(preview.author_id!)}>Gerenciar autor</button>{personLink(identities[inspection.id]?.target_username, preview.author_id)}</div>}</div>}
           {inspection.target_type === 'user' && <button type="button" className="hb-admin-secondary" disabled={working} onClick={() => void locateUser(inspection.target_id)}>Gerenciar usuário denunciado</button>}
           {inspection.status === 'pending' && <><label className="hb-admin-label">Justificativa da decisão<textarea rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Registre o motivo da decisão (obrigatório para exclusões)." /><small>{reason.length}/1000 caracteres</small></label><div className="hb-admin-actions"><button type="button" disabled={working} onClick={() => reportAction('review_report')}>✓ Marcar analisada</button><button type="button" disabled={working} onClick={() => reportAction('dismiss_report')}>Dispensar</button>{(['post', 'comment', 'group'] as string[]).includes(inspection.target_type) && <button type="button" className="danger" disabled={working || previewBusy} onClick={() => reportAction(inspection.target_type === 'post' ? 'remove_post' : inspection.target_type === 'comment' ? 'remove_comment' : 'remove_group')}>Remover conteúdo</button>}</div></>}
           {inspection.target_type === 'legacy_post' && <p className="hb-admin-footnote">O feed clássico permite análise, mas não remoção por esta central. Use o processo específico do sistema antigo.</p>}
@@ -323,30 +352,30 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     </section>}
 
     {(pane === 'users' || pane === 'staff') && <section className="hb-admin-section">
-      <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">{pane === 'staff' ? 'PERMISSÕES' : 'SEGURANÇA DE CONTAS'}</span><h4>{pane === 'staff' ? 'Equipe de moderação' : 'Gerenciamento de usuários'}</h4><p>{pane === 'staff' ? 'Pesquise contas para nomear ou revogar moderadores. Administradores são definidos somente no banco.' : 'Consulte o histórico de advertências e gerencie sanções do Social V231.'}</p></div></div>
+      <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">{pane === 'staff' ? 'PERMISSÕES' : 'SEGURANÇA DE CONTAS'}</span><h4>{pane === 'staff' ? 'Equipe de moderação' : 'Gerenciamento de usuários'}</h4><p>{pane === 'staff' ? 'Pesquise contas para nomear ou revogar moderadores. A atribuição de administrador global não está disponível neste painel.' : 'Consulte advertências e gerencie restrições de participação na comunidade.'}</p></div></div>
       <form className="hb-admin-search" onSubmit={e => void searchUsers(e)}><label className="hb-admin-filter-search">Localizar conta<input type="search" value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Nome, @usuário ou UUID" minLength={2} /></label><button type="submit" disabled={working}>{working ? 'Pesquisando…' : '⌕ Pesquisar'}</button></form>
       <div className="hb-admin-user-toolbar"><label>Filtrar resultados<select value={userFilter} onChange={e => setUserFilter(e.target.value as typeof userFilter)}><option value="all">Todos encontrados</option><option value="admin">Administradores</option><option value="moderator">Moderadores</option><option value="suspended">Suspensos</option></select></label><span>{filteredUsers.length} resultado(s) visíveis · até 50 por pesquisa</span></div>
-      <div className="hb-admin-users-layout"><div className="hb-admin-users-list">{filteredUsers.map(person => <button key={person.user_id} type="button" className={selectedUser?.user_id === person.user_id ? 'selected' : ''} aria-pressed={selectedUser?.user_id === person.user_id} onClick={() => { setSelectedUser(person); setReason('') }}><span className="hb-admin-person-avatar">{(person.display_name || 'A').charAt(0).toUpperCase()}</span><span><strong>{person.display_name || 'Aventureiro'}</strong><small>@{person.username || shortId(person.user_id)} · {person.is_admin ? 'Admin' : person.is_moderator ? 'Moderador' : 'Jogador'}</small></span>{isCurrent(person.suspended_until) && <span className="hb-admin-mini-warning">Suspenso</span>}</button>)}{filteredUsers.length === 0 && <div className="hb-admin-empty">{users.length ? 'Nenhum resultado corresponde ao filtro.' : 'Pesquise uma conta para começar. Não existe uma listagem pública de todos os usuários.'}</div>}</div>
+      <div className="hb-admin-users-layout"><div className="hb-admin-users-list">{filteredUsers.map(person => <div key={person.user_id} className="hb-admin-user-row"><button type="button" className={selectedUser?.user_id === person.user_id ? 'selected' : ''} aria-pressed={selectedUser?.user_id === person.user_id} onClick={() => { setSelectedUser(person); setReason('') }}><span className="hb-admin-person-avatar">{(person.display_name || 'A').charAt(0).toUpperCase()}</span><span><strong>{person.display_name || 'Aventureiro'}</strong><small>{person.is_admin ? 'Admin' : person.is_moderator ? 'Moderador' : 'Jogador'}</small></span>{isCurrent(person.suspended_until) && <span className="hb-admin-mini-warning">Suspenso</span>}</button><div className="hb-admin-user-row-link">{personLink(person.username, person.user_id, 'Sem @usuário')}</div></div>)}{filteredUsers.length === 0 && <div className="hb-admin-empty">{users.length ? 'Nenhum resultado corresponde ao filtro.' : 'Pesquise uma conta para começar. Não existe uma listagem pública de todos os usuários.'}</div>}</div>
         <div className="hb-admin-inspection">{selectedUser ? <>
-          <div className="hb-admin-person-heading"><span className="hb-admin-person-avatar hb-admin-person-avatar-lg">{(selectedUser.display_name || 'A').charAt(0).toUpperCase()}</span><div><strong>{selectedUser.display_name || 'Aventureiro'}</strong><small>@{selectedUser.username || 'aventureiro'}</small></div></div>
-          <div className="hb-admin-data"><span>Permissão global</span><p>{selectedUser.is_admin ? 'Administrador do site' : selectedUser.is_moderator ? 'Moderador do site' : 'Jogador'}</p><span>Advertências registradas</span><p>{selectedUser.warning_count}</p><span>Estado da conta no Social V231</span><p>{isCurrent(selectedUser.suspended_until) ? `Suspenso até ${formatDate(selectedUser.suspended_until!)}` : 'Sem suspensão ativa'}</p>{selectedUser.reason && <><span>Última justificativa registrada</span><p>{selectedUser.reason}</p></>}<span>Identificador</span><code>{selectedUser.user_id}</code></div>
+          <div className="hb-admin-person-heading"><span className="hb-admin-person-avatar hb-admin-person-avatar-lg">{(selectedUser.display_name || 'A').charAt(0).toUpperCase()}</span><div><strong>{selectedUser.display_name || 'Aventureiro'}</strong><small>{personLink(selectedUser.username, selectedUser.user_id, 'Sem @usuário')}</small></div></div>
+          <div className="hb-admin-data"><span>Permissão global</span><p>{selectedUser.is_admin ? 'Administrador do site' : selectedUser.is_moderator ? 'Moderador do site' : 'Jogador'}</p><span>Advertências registradas</span><p>{selectedUser.warning_count}</p><span>Situação da conta na comunidade</span><p>{isCurrent(selectedUser.suspended_until) ? `Suspenso até ${formatDate(selectedUser.suspended_until!)}` : 'Sem suspensão ativa'}</p>{selectedUser.reason && <><span>Última justificativa registrada</span><p>{selectedUser.reason}</p></>}<span>Identificador</span><code>{selectedUser.user_id}</code></div>
           {onViewProfile && <button type="button" className="hb-admin-secondary" onClick={() => onViewProfile(selectedUser.user_id)}>Ver perfil público</button>}
           {selectedUser.is_admin && <p className="hb-admin-footnote">Contas administrativas não podem receber sanções por este painel, nem ter sua função global alterada pela interface.</p>}
           {pane === 'users' && !selectedUser.is_admin && selectedUser.user_id !== userId && <><label className="hb-admin-label">Justificativa da medida<textarea rows={3} maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder="Informe os fatos que fundamentam esta medida…" /><small>{reason.length}/1000 caracteres</small></label><label className="hb-admin-label hb-admin-duration">Duração da suspensão<select value={days} onChange={e => setDays(e.target.value)}>{[1, 3, 7, 14, 30, 90, 365].map(day => <option key={day} value={day}>{day} {day === 1 ? 'dia' : 'dias'}</option>)}</select></label><div className="hb-admin-actions"><button type="button" disabled={working} onClick={() => userAction('warn')}>⚑ Advertir</button><button type="button" disabled={working} className="danger" onClick={() => userAction('suspend')}>⊘ Suspender Social</button>{isCurrent(selectedUser.suspended_until) && <button type="button" disabled={working} onClick={() => userAction('unsuspend')}>Liberar acesso</button>}</div></>}
           {pane === 'staff' && !selectedUser.is_admin && selectedUser.user_id !== userId && <div className="hb-admin-actions"><button type="button" disabled={working} className={selectedUser.is_moderator ? 'danger' : ''} onClick={() => moderatorAction(selectedUser)}>{selectedUser.is_moderator ? 'Revogar moderação' : '♜ Nomear moderador'}</button></div>}
         </> : <div className="hb-admin-empty">Selecione uma conta encontrada para consultar seu estado e as ações disponíveis.</div>}</div>
       </div>
-      {pane === 'staff' && <p className="hb-admin-footnote">Por segurança, esta tela consulta moderadores por pesquisa de conta. A migração V234 não fornece uma RPC para listar automaticamente toda a equipe.</p>}
+      {pane === 'staff' && <p className="hb-admin-footnote">Por segurança, localize moderadores pela pesquisa de contas. A lista completa da equipe não está disponível nesta página.</p>}
     </section>}
 
     {pane === 'history' && <section className="hb-admin-section">
-      <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">AUDITORIA</span><h4>Histórico de moderação</h4><p>Decisões registradas pelo backend com responsável, alvo e justificativa.</p></div><button type="button" disabled={!filteredAudit.length} onClick={() => downloadAudit(filteredAudit)}>↓ Exportar CSV filtrado</button></div>
-      <div className="hb-admin-filters hb-admin-history-filters"><label className="hb-admin-filter-search">Pesquisar no histórico<input type="search" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Ação, motivo, UUID…" /></label><label>Tipo de ação<select value={historyAction} onChange={e => setHistoryAction(e.target.value)}><option value="all">Todas as ações</option>{Object.entries(actionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><span>{filteredAudit.length} registro(s) · até 150 carregados</span></div>
-      <div className="hb-admin-history">{filteredAudit.map(entry => <article key={entry.id}><span className="hb-admin-action-icon">◷</span><div><strong>{actionLabels[entry.action] || entry.action}</strong><p>{entry.reason || 'Nenhuma justificativa adicional registrada.'}</p><small>Responsável: {shortId(entry.actor_id)} · Alvo: {shortId(entry.target_id)}{entry.report_id ? ` · Denúncia: ${shortId(entry.report_id)}` : ''}</small></div><time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time></article>)}{!filteredAudit.length && <div className="hb-admin-empty">Nenhum evento corresponde à pesquisa.</div>}</div>
+      <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">AUDITORIA</span><h4>Histórico de moderação</h4><p>Decisões registradas com responsável, alvo e justificativa.</p></div><button type="button" disabled={!filteredAudit.length} onClick={() => downloadAudit(filteredAudit, identities)}>↓ Exportar CSV filtrado</button></div>
+      <div className="hb-admin-filters hb-admin-history-filters"><label className="hb-admin-filter-search">Pesquisar no histórico<input type="search" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Ação, motivo ou @usuário…" /></label><label>Tipo de ação<select value={historyAction} onChange={e => setHistoryAction(e.target.value)}><option value="all">Todas as ações</option>{Object.entries(actionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><span>{filteredAudit.length} registro(s) · até 150 carregados</span></div>
+      <div className="hb-admin-history">{filteredAudit.map(entry => <article key={entry.id}><span className="hb-admin-action-icon">◷</span><div><strong>{actionLabels[entry.action] || entry.action}</strong><p>{entry.reason || 'Nenhuma justificativa adicional registrada.'}</p><small>Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}{entry.report_id ? ` · Denúncia: ${shortId(entry.report_id)}` : ''}</small></div><time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time></article>)}{!filteredAudit.length && <div className="hb-admin-empty">Nenhum evento corresponde à pesquisa.</div>}</div>
       <p className="hb-admin-footnote">A exportação inclui apenas as linhas atualmente carregadas e filtradas. As ações originais não podem ser editadas pelo navegador.</p>
     </section>}
 
-    <footer className="hb-admin-footer"><span>HäxBag · Administração segura</span><p>O acesso é exclusivo de administradores globais e cada operação crítica é validada pelas funções SQL. Moderadores de campanha ou da comunidade não têm acesso a esta central.</p></footer>
+    <footer className="hb-admin-footer"><span>HäxBag · Administração segura</span><p>O acesso é exclusivo de administradores globais e todas as operações críticas são verificadas pelas permissões de acesso. Moderadores de campanha ou da comunidade não têm acesso a esta central.</p></footer>
 
     {confirmation && <div className="hb-admin-dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !working) setConfirmation(null) }}><div role="alertdialog" aria-modal="true" aria-labelledby="hb-admin-confirm-title" aria-describedby="hb-admin-confirm-desc" className="hb-admin-dialog"><span className="hb-admin-dialog-symbol">{confirmation.danger ? '⚠' : '✦'}</span><h4 id="hb-admin-confirm-title">{confirmation.title}</h4><p id="hb-admin-confirm-desc">{confirmation.description}</p><div className="hb-admin-actions"><button type="button" disabled={working} onClick={() => setConfirmation(null)}>Cancelar</button><button type="button" className={confirmation.danger ? 'danger' : ''} disabled={working} onClick={() => void perform(confirmation.run, confirmation.success)}>{working ? 'Registrando…' : 'Confirmar ação'}</button></div></div></div>}
   </section>

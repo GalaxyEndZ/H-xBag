@@ -15,3 +15,33 @@
 .hb-admin-dialog-backdrop{position:fixed;z-index:20000;inset:0;padding:18px;display:grid;place-items:center;background:rgba(5,7,12,.8)}.hb-admin-dialog{width:min(100%,475px);display:grid;gap:13px;padding:clamp(21px,3vw,27px);border:1px solid var(--ad-accent-line);border-radius:18px;background:var(--ad-bg);box-shadow:0 32px 80px rgba(0,0,0,.35)}.hb-admin-dialog-symbol{color:var(--ad-accent);font-size:1.45rem}.hb-admin-dialog h4{font-size:1.25rem;letter-spacing:-.03em}.hb-admin-dialog p{color:var(--ad-muted);line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}.hb-admin-dialog .hb-admin-actions{justify-content:flex-end;margin-top:8px}
 @media(max-width:1100px){.hb-admin-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-admin-overview-grid{grid-template-columns:1fr}}@media(max-width:780px){.hb-admin-report-grid,.hb-admin-users-layout{grid-template-columns:1fr}.hb-admin-report-list,.hb-admin-users-list{max-height:320px}.hb-admin-hero{align-items:start}.hb-admin-hero-side{justify-items:start}}@media(max-width:520px){.hb-admin-v234{gap:13px}.hb-admin-hero{flex-direction:column;padding:19px;border-radius:16px}.hb-admin-hero h3{font-size:1.65rem}.hb-admin-hero-tags{gap:7px;flex-direction:column}.hb-admin-hero-side{width:100%;gap:8px}.hb-admin-metrics{gap:8px}.hb-admin-metrics button{padding:14px 12px}.hb-admin-metrics button strong{font-size:1.65rem}.hb-admin-nav{gap:4px}.hb-admin-nav button{flex:1 1 42%;padding:9px 7px}.hb-admin-section{padding:14px;border-radius:15px}.hb-admin-inspection{padding:14px}.hb-admin-filters>label{flex:1 1 100%}.hb-admin-search{flex-wrap:wrap}.hb-admin-search button{width:100%}.hb-admin-user-toolbar label{max-width:none}.hb-admin-history article{flex-wrap:wrap}.hb-admin-history article time{margin-left:47px}.hb-admin-actions button{flex:1 1 auto}}
 @media(prefers-reduced-motion:reduce){.hb-admin-v234 button{transition:none}}
+
+/* Identificação humana de envolvidos — nomes públicos no histórico e denúncias. */
+.hb-admin-v234 .hb-admin-person-handle{font-weight:780;color:var(--ad-accent);overflow-wrap:anywhere}
+.hb-admin-v234 .hb-admin-history .hb-admin-person-handle{color:var(--ad-ink)}
+.hb-admin-v234 .hb-admin-history article small{overflow-wrap:anywhere;line-height:1.65}
+
+/* Perfis públicos: @usuários com navegação real, acessível e sem alterar decisões de moderação. */
+.hb-admin-v234 .hb-admin-person-link{
+  display:inline-flex;align-items:center;gap:5px;vertical-align:baseline;
+  width:auto;min-width:0;min-height:0;padding:0 2px;border:0;border-radius:4px;
+  background:transparent;color:var(--ad-accent);font:inherit;font-weight:780;
+  line-height:inherit;text-align:left;overflow-wrap:anywhere;
+}
+.hb-admin-v234 .hb-admin-person-link:hover:not(:disabled){
+  background:transparent;color:var(--ad-ink);text-decoration:underline;text-underline-offset:3px;
+}
+.hb-admin-v234 .hb-admin-person-link-arrow{font-size:.72em;line-height:1;color:inherit;opacity:.65}
+.hb-admin-v234 .hb-admin-person-link:focus-visible{outline:2px solid var(--ad-accent);outline-offset:3px}
+.hb-admin-v234 .hb-admin-history .hb-admin-person-link{color:var(--ad-accent)}
+.hb-admin-v234 .hb-admin-mini-entry small .hb-admin-person-link{font-size:inherit}
+.hb-admin-v234 .hb-admin-user-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch;min-width:0}
+.hb-admin-v234 .hb-admin-user-row>button{min-width:0}
+.hb-admin-v234 .hb-admin-user-row-link{display:flex;align-items:center;justify-content:end;min-width:0;padding:0 8px;border:1px solid var(--ad-line);border-radius:10px;background:var(--ad-alt)}
+.hb-admin-v234 .hb-admin-user-row-link .hb-admin-person-link{font-size:.73rem;max-width:160px}
+@media(max-width:520px){
+  .hb-admin-v234 .hb-admin-user-row{grid-template-columns:1fr}
+  .hb-admin-v234 .hb-admin-user-row-link{justify-content:start;padding:6px 12px}
+}
+
+.hb-admin-v234 .hb-admin-preview-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
