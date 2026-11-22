@@ -45,3 +45,20 @@
 }
 
 .hb-admin-v234 .hb-admin-preview-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* Carregamento parcial: o acesso permanece restrito a administradores autenticados. */
+.hb-admin-v234 .hb-admin-partial-warning,
+.hb-admin-v234 .hb-admin-inline-warning{
+  border:1px solid color-mix(in srgb,#dfa959 44%,var(--ad-line));
+  border-radius:13px;
+  background:color-mix(in srgb,#c88d44 9%,var(--ad-bg));
+  color:var(--ad-ink);
+  padding:15px 18px;
+  font-size:.79rem;
+  line-height:1.6;
+}
+.hb-admin-v234 .hb-admin-partial-warning{display:grid;gap:8px;justify-items:start}
+.hb-admin-v234 .hb-admin-partial-warning strong{font-weight:820}
+.hb-admin-v234 .hb-admin-partial-warning ul{padding-left:18px;margin:0;color:var(--ad-muted)}
+.hb-admin-v234 .hb-admin-partial-warning button{margin-top:3px}
+.hb-admin-v234 .hb-admin-status button{justify-self:start;margin-top:12px}

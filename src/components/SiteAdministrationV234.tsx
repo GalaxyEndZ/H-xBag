@@ -37,7 +37,71 @@ const actionLabels: Record<string, string> = {
 const statusLabels: Record<ReportStatus, string> = { pending: 'Pendente', reviewed: 'Analisada', dismissed: 'Dispensada' }
 const shortId = (id: string | null | undefined) => id ? id.slice(0, 8) : '—'
 const handle = (username: string | null | undefined, fallback = 'Conta indisponível') => username?.trim() ? `@${username.trim().replace(/^@+/, '')}` : fallback
-const safeError = (err: unknown): string => err instanceof Error ? err.message : String(err)
+// A consulta pode devolver um objeto de erro que não herda de Error.
+// Não exibir [object Object] nem dados de implementação na interface.
+const safeError = (err: unknown): string => {
+  if (typeof err === 'string' && err.trim()) return err.trim().slice(0, 320)
+  if (err instanceof Error && err.message.trim()) return err.message.trim().slice(0, 320)
+  if (err && typeof err === 'object') {
+    const record = err as Record<string, unknown>
+    const description = [record.message, record.details, record.hint]
+      .filter((value): value is string => typeof value === 'string' && !!value.trim())
+      .slice(0, 2).join(' — ')
+    if (description) return description.slice(0, 320)
+    if (typeof record.code === 'string' && record.code.trim()) {
+      return `Falha de consulta (código ${record.code}).`
+    }
+  }
+  return 'Não foi possível concluir a operação. Tente novamente.'
+}
+const isMissingIdentityService = (err: unknown) => {
+  if (!err || typeof err !== 'object') return false
+  const record = err as Record<string, unknown>
+  return record.code === 'PGRST202' || record.code === '42883'
+}
+
+// Recuperação limitada aos nomes públicos das contas diretamente ligadas aos registros.
+// Identificadores de posts/grupos não são tratados como identificadores de usuários.
+async function fallbackAdminIdentities(reports: Report[], audit: Audit[]): Promise<IdentityMap> {
+  const userActions = new Set(['warn', 'suspend', 'unsuspend', 'grant_moderator', 'revoke_moderator'])
+  const uuids = new Set<string>()
+  for (const report of reports) {
+    if (isUuid(report.reporter_id)) uuids.add(report.reporter_id)
+    if (report.reviewer_id && isUuid(report.reviewer_id)) uuids.add(report.reviewer_id)
+    if (report.target_type === 'user' && isUuid(report.target_id)) uuids.add(report.target_id)
+  }
+  for (const entry of audit) {
+    if (entry.actor_id && isUuid(entry.actor_id)) uuids.add(entry.actor_id)
+    if (entry.target_id && userActions.has(entry.action) && isUuid(entry.target_id)) uuids.add(entry.target_id)
+  }
+  const names = new Map<string, string>()
+  const ids = [...uuids]
+  for (let offset = 0; offset < ids.length; offset += 60) {
+    const { data, error } = await supabase.from('profiles').select('id,username').in('id', ids.slice(offset, offset + 60))
+    if (error) throw error
+    for (const person of (data || []) as { id: string; username: string | null }[]) {
+      if (person.username?.trim()) names.set(person.id, person.username.trim())
+    }
+  }
+  const next: IdentityMap = {}
+  const byReport = new Map(reports.map(report => [report.id, report]))
+  for (const report of reports) {
+    const target = report.target_type === 'user' ? report.target_id : null
+    next[report.id] = { kind: 'report', record_id: report.id, actor_username: report.reviewer_id ? names.get(report.reviewer_id) || null : null,
+      reporter_username: names.get(report.reporter_id) || null,
+      target_username: target ? names.get(target) || null : null,
+      target_user_id: target }
+  }
+  for (const entry of audit) {
+    const related = byReport.get(entry.report_id || (['review_report', 'dismiss_report'].includes(entry.action) ? entry.target_id || '' : ''))
+    const target = userActions.has(entry.action) ? entry.target_id : (related?.target_type === 'user' ? related.target_id : null)
+    next[entry.id] = { kind: 'audit', record_id: entry.id, actor_username: entry.actor_id ? names.get(entry.actor_id) || null : null,
+      reporter_username: related ? names.get(related.reporter_id) || null : null,
+      target_username: target ? names.get(target) || null : null,
+      target_user_id: target }
+  }
+  return next
+}
 const formatDate = (date: string) => {
   const parsed = new Date(date)
   return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
@@ -77,6 +141,10 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   const [working, setWorking] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [accessUnavailable, setAccessUnavailable] = useState(false)
+  const [retryIndex, setRetryIndex] = useState(0)
+  const [dataNotices, setDataNotices] = useState<string[]>([])
+  const [failedSections, setFailedSections] = useState({ reports: false, history: false })
   const [reports, setReports] = useState<Report[]>([])
   const [audit, setAudit] = useState<Audit[]>([])
   const [identities, setIdentities] = useState<IdentityMap>({})
@@ -102,39 +170,67 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
 
   const reload = useCallback(async () => {
     const sequence = ++loadSequence.current
-    if (!userId) { setRole('visitor'); return }
-    const rights = await supabase.rpc('hax_v234_role')
+    if (!userId) { setRole('visitor'); setAccessUnavailable(false); return }
+    // A autorização é sempre confirmada antes de carregar qualquer informação sensível.
+    const rights = await Promise.resolve(supabase.rpc('hax_v234_role'))
+      .catch(error => ({ data: null, error }))
     if (sequence !== loadSequence.current) return
-    if (rights.error) { setRole('visitor'); throw rights.error }
+    if (rights.error) {
+      setRole('visitor'); setAccessUnavailable(true)
+      setReports([]); setAudit([]); setIdentities({}); setUsers([])
+      throw rights.error
+    }
+    setAccessUnavailable(false)
     const nextRole = String(rights.data || 'user') as Role
     setRole(nextRole)
     if (nextRole !== 'admin') {
       setReports([]); setAudit([]); setIdentities({}); setUsers([]); setSelectedReport(null); setSelectedUser(null)
+      setDataNotices([]); setFailedSections({ reports: false, history: false })
       return
     }
+    // Falhas de um recurso auxiliar não desautorizam uma conta já validada pelo servidor.
+    // Converter os objetos PromiseLike em Promise nativa evita erro de compilação no .catch.
     const [reps, logs, people] = await Promise.all([
-      supabase.from('hax_v231_reports')
+      Promise.resolve(supabase.from('hax_v231_reports')
         .select('id,reporter_id,target_id,target_type,reason,details,status,created_at,reviewer_id')
-        .order('created_at', { ascending: false }).limit(200),
-      supabase.from('hax_v234_audit')
+        .order('created_at', { ascending: false }).limit(200)).catch(error => ({ data: null, error })),
+      Promise.resolve(supabase.from('hax_v234_audit')
         .select('id,actor_id,action,target_id,report_id,reason,created_at,context')
-        .order('created_at', { ascending: false }).limit(150),
-      supabase.rpc('hax_v237_admin_people'),
+        .order('created_at', { ascending: false }).limit(150)).catch(error => ({ data: null, error })),
+      Promise.resolve(supabase.rpc('hax_v237_admin_people')).catch(error => ({ data: null, error })),
     ])
     if (sequence !== loadSequence.current) return
-    if (reps.error || logs.error || people.error) {
-      // Do not keep showing privileged data if permissions or retrieval fail.
-      setRole('visitor'); setReports([]); setAudit([]); setIdentities({})
-      throw reps.error || logs.error || people.error
-    }
+    const issues: string[] = []
+    const reportsUnavailable = !!reps.error
+    const historyUnavailable = !!logs.error
     const nextReports = (reps.data || []) as Report[]
+    const nextAudit = (logs.data || []) as Audit[]
     setReports(nextReports)
-    setAudit((logs.data || []) as Audit[])
-    const nextIdentities: IdentityMap = {}
-    for (const person of (people.data || []) as Identity[]) {
-      if (person.kind === 'audit' || person.kind === 'report') nextIdentities[person.record_id] = person
+    setAudit(nextAudit)
+    setFailedSections({ reports: reportsUnavailable, history: historyUnavailable })
+    if (reportsUnavailable) issues.push(`Denúncias indisponíveis: ${safeError(reps.error)}`)
+    if (historyUnavailable) issues.push(`Histórico indisponível: ${safeError(logs.error)}`)
+
+    let nextIdentities: IdentityMap = {}
+    if (!people.error) {
+      for (const person of (people.data || []) as Identity[]) {
+        if (person.kind === 'audit' || person.kind === 'report') nextIdentities[person.record_id] = person
+      }
+    } else {
+      // A busca de @ é um complemento; não deve derrubar denúncias e histórico.
+      try {
+        nextIdentities = await fallbackAdminIdentities(nextReports, nextAudit)
+      } catch {
+        // Mantém os registros visíveis, mas nunca inventa a identidade de um autor.
+      }
+      if (sequence !== loadSequence.current) return
+      issues.push(isMissingIdentityService(people.error)
+        ? 'Alguns @usuários não puderam ser identificados. A atualização de identificação das contas ainda precisa ser aplicada.'
+        : `Identificação de contas parcialmente indisponível: ${safeError(people.error)}`)
     }
+    if (sequence !== loadSequence.current) return
     setIdentities(nextIdentities)
+    setDataNotices(issues)
     setLastLoaded(new Date())
     setSelectedReport(old => old ? nextReports.find(report => report.id === old.id) || null : null)
   }, [userId])
@@ -142,12 +238,12 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   useEffect(() => {
     let live = true
     previewSequence.current += 1
-    setRole('visitor'); setLoading(true); setError(''); setSuccess('')
+    setRole('visitor'); setLoading(true); setError(''); setSuccess(''); setDataNotices([])
     void reload().catch(err => {
-      if (live) setError(`Não foi possível carregar o painel. Verifique suas permissões de acesso. ${safeError(err)}`)
+      if (live) setError(`Não foi possível verificar seu acesso. ${safeError(err)}`)
     }).finally(() => { if (live) setLoading(false) })
     return () => { live = false; previewSequence.current += 1; loadSequence.current += 1 }
-  }, [reload])
+  }, [reload, retryIndex])
 
   const perform = async (operation: () => Promise<void>, message: string) => {
     if (working) return
@@ -279,7 +375,12 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
   const inspection = selectedReport && reports.some(item => item.id === selectedReport.id) ? selectedReport : null
 
   if (loading) return <section className="hb-admin-v234 hb-admin-status" role="status">Validando acesso administrativo e carregando dados…</section>
-  if (role !== 'admin') return <section className="hb-admin-v234 hb-admin-status"><h3>Acesso restrito</h3><p>Este painel é exclusivo de administradores globais do HäxBag.</p>{error && <p role="alert">{error}</p>}</section>
+  if (role !== 'admin') return <section className="hb-admin-v234 hb-admin-status">
+    <h3>{accessUnavailable ? 'Não foi possível verificar seu acesso' : 'Acesso restrito'}</h3>
+    <p>{accessUnavailable ? 'A validação da sua conta falhou. Isso não significa que sua permissão de administrador foi revogada.' : 'Este painel é exclusivo de administradores globais do HäxBag.'}</p>
+    {error && <p role="alert">{error}</p>}
+    {accessUnavailable && <button type="button" onClick={() => setRetryIndex(value => value + 1)}>Tentar novamente</button>}
+  </section>
   // Open the existing public profile viewer only for a resolved, real account.
   // Historic records can reference removed content or accounts without a username.
   const personLink = (username: string | null | undefined, profileId: string | null | undefined, fallback = 'Conta indisponível') => {
@@ -303,13 +404,14 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
       <div className="hb-admin-hero-side"><span className="hb-admin-role">✦ Administração global</span><small>{lastLoaded ? `Atualizado ${lastLoaded.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 'Sem atualização'}</small><button type="button" disabled={working} onClick={() => void perform(async () => {}, 'Dados atualizados.')}>↻ Atualizar dados</button></div>
     </header>
 
+    {dataNotices.length > 0 && <div className="hb-admin-partial-warning" role="status"><strong>Alguns dados não foram carregados</strong><ul>{dataNotices.map((notice, index) => <li key={index}>{notice}</li>)}</ul><button type="button" disabled={working} onClick={() => void perform(async () => {}, 'Consulta atualizada.')}>Tentar carregar novamente</button></div>}
     <div className="hb-admin-metrics" aria-label="Resumo da amostra carregada">
-      <button type="button" onClick={() => { setStatusFilter('pending'); changePane('reports') }}><span>Denúncias pendentes</span><strong>{pending.length}</strong><small>Exigem análise <span aria-hidden="true">↗</span></small></button>
-      <button type="button" onClick={() => { setStatusFilter('reviewed'); changePane('reports') }}><span>Denúncias analisadas</span><strong>{reviewedCount}</strong><small>Na amostra carregada <span aria-hidden="true">↗</span></small></button>
-      <button type="button" onClick={() => { setStatusFilter('dismissed'); changePane('reports') }}><span>Denúncias dispensadas</span><strong>{dismissedCount}</strong><small>Na amostra carregada <span aria-hidden="true">↗</span></small></button>
-      <button type="button" onClick={() => changePane('history')}><span>Decisões registradas</span><strong>{audit.length}</strong><small>Eventos recentes <span aria-hidden="true">↗</span></small></button>
+      <button type="button" disabled={failedSections.reports} onClick={() => { setStatusFilter('pending'); changePane('reports') }}><span>Denúncias pendentes</span><strong>{failedSections.reports ? '—' : pending.length}</strong><small>Exigem análise <span aria-hidden="true">↗</span></small></button>
+      <button type="button" disabled={failedSections.reports} onClick={() => { setStatusFilter('reviewed'); changePane('reports') }}><span>Denúncias analisadas</span><strong>{failedSections.reports ? '—' : reviewedCount}</strong><small>Na amostra carregada <span aria-hidden="true">↗</span></small></button>
+      <button type="button" disabled={failedSections.reports} onClick={() => { setStatusFilter('dismissed'); changePane('reports') }}><span>Denúncias dispensadas</span><strong>{failedSections.reports ? '—' : dismissedCount}</strong><small>Na amostra carregada <span aria-hidden="true">↗</span></small></button>
+      <button type="button" disabled={failedSections.history} onClick={() => changePane('history')}><span>Decisões registradas</span><strong>{failedSections.history ? '—' : audit.length}</strong><small>Eventos recentes <span aria-hidden="true">↗</span></small></button>
     </div>
-    <p className="hb-admin-sample-note">Resumo dos últimos {reports.length} registros de denúncias (limite de 200) e {audit.length} eventos de auditoria (limite de 150). Estes números não representam necessariamente os totais históricos do site.</p>
+    <p className="hb-admin-sample-note">Resumo da amostra carregada: {failedSections.reports ? 'denúncias indisponíveis' : `${reports.length} denúncias (até 200)`} e {failedSections.history ? 'histórico indisponível' : `${audit.length} decisões (até 150)`}. Estes números não representam necessariamente os totais históricos do site.</p>
 
     <nav className="hb-admin-nav" aria-label="Seções administrativas">
       {([['overview', '◈ Visão geral'], ['reports', '⚑ Denúncias'], ['users', '♙ Usuários'], ['staff', '♜ Equipe'], ['history', '◷ Histórico']] as const).map(([key, label]) => <button key={key} type="button" aria-current={pane === key ? 'page' : undefined} className={pane === key ? 'is-active' : ''} onClick={() => changePane(key)}>{label}{key === 'reports' && pending.length > 0 && <span className="hb-admin-nav-count">{pending.length}</span>}</button>)}
@@ -320,11 +422,11 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     {pane === 'overview' && <div className="hb-admin-overview-grid">
       <section className="hb-admin-section hb-admin-overview-queue">
         <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">EM FOCO</span><h4>Próximas denúncias</h4><p>Comece pelas pendências mais antigas para reduzir o tempo de espera.</p></div><button type="button" onClick={() => { setStatusFilter('pending'); setReportOrder('oldest'); changePane('reports') }}>Ver fila completa</button></div>
-        <div className="hb-admin-mini-list">{[...pending].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(0, 5).map(item => <button key={item.id} type="button" onClick={() => goToReport(item)}><span className="hb-admin-mini-icon">⚑</span><span><strong>{item.reason}</strong><small>{targetLabels[item.target_type] || item.target_type} · {formatDate(item.created_at)}</small></span><span className="hb-admin-mini-arrow">›</span></button>)}{pending.length === 0 && <div className="hb-admin-empty">Nenhuma denúncia pendente entre os registros carregados.</div>}</div>
+        <div className="hb-admin-mini-list">{[...pending].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).slice(0, 5).map(item => <button key={item.id} type="button" onClick={() => goToReport(item)}><span className="hb-admin-mini-icon">⚑</span><span><strong>{item.reason}</strong><small>{targetLabels[item.target_type] || item.target_type} · {formatDate(item.created_at)}</small></span><span className="hb-admin-mini-arrow">›</span></button>)}{pending.length === 0 && <div className="hb-admin-empty">{failedSections.reports ? 'Não foi possível consultar as denúncias.' : 'Nenhuma denúncia pendente entre os registros carregados.'}</div>}</div>
       </section>
       <section className="hb-admin-section hb-admin-overview-history">
         <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">TRANSPARÊNCIA</span><h4>Últimas decisões</h4><p>Rastreabilidade das ações realizadas pela administração.</p></div><button type="button" onClick={() => changePane('history')}>Ver histórico</button></div>
-        <div className="hb-admin-mini-list">{audit.slice(0, 5).map(entry => <div className="hb-admin-mini-entry" key={entry.id}><span className="hb-admin-mini-icon">◷</span><span><strong>{actionLabels[entry.action] || entry.action}</strong><small>{formatDate(entry.created_at)} · Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}</small></span></div>)}{audit.length === 0 && <div className="hb-admin-empty">Nenhuma decisão registrada nesta amostra.</div>}</div>
+        <div className="hb-admin-mini-list">{audit.slice(0, 5).map(entry => <div className="hb-admin-mini-entry" key={entry.id}><span className="hb-admin-mini-icon">◷</span><span><strong>{actionLabels[entry.action] || entry.action}</strong><small>{formatDate(entry.created_at)} · Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}</small></span></div>)}{audit.length === 0 && <div className="hb-admin-empty">{failedSections.history ? 'Não foi possível consultar o histórico.' : 'Nenhuma decisão registrada nesta amostra.'}</div>}</div>
       </section>
       <aside className="hb-admin-overview-advice"><strong>Escopo de proteção</strong><p>As suspensões limitam a participação em determinadas áreas da comunidade, mas não desconectam automaticamente a conta nem impedem todas as interações por mensagens. Considere esse alcance antes de aplicar uma medida.</p><span>O acesso à administração é reservado às contas autorizadas.</span></aside>
     </div>}
@@ -337,8 +439,9 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
         <label>Conteúdo<select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}><option value="all">Todos os tipos</option>{Object.entries(targetLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>Ordem<select value={reportOrder} onChange={e => setReportOrder(e.target.value as 'recent' | 'oldest')}><option value="recent">Mais recentes</option><option value="oldest">Mais antigas</option></select></label>
       </div>
+      {failedSections.reports && <p className="hb-admin-inline-warning" role="status">A fila de denúncias não pôde ser consultada. Use “Atualizar dados” para tentar novamente.</p>}
       <div className="hb-admin-report-grid">
-        <div className="hb-admin-report-list" aria-label="Lista de denúncias">{filteredReports.map(item => <button type="button" className={`hb-admin-report-card ${inspection?.id === item.id ? 'selected' : ''}`} aria-pressed={inspection?.id === item.id} key={item.id} onClick={() => void inspect(item)}><span className="hb-admin-report-meta">{targetLabels[item.target_type] || item.target_type} · {formatDate(item.created_at)}</span><strong>{item.reason}</strong><small>{item.details || 'Sem detalhes adicionais.'}</small><span className={`hb-admin-state ${item.status}`}>{statusLabels[item.status] || item.status}</span></button>)}{!filteredReports.length && <div className="hb-admin-empty">Nenhuma denúncia corresponde aos filtros atuais.</div>}</div>
+        <div className="hb-admin-report-list" aria-label="Lista de denúncias">{filteredReports.map(item => <button type="button" className={`hb-admin-report-card ${inspection?.id === item.id ? 'selected' : ''}`} aria-pressed={inspection?.id === item.id} key={item.id} onClick={() => void inspect(item)}><span className="hb-admin-report-meta">{targetLabels[item.target_type] || item.target_type} · {formatDate(item.created_at)}</span><strong>{item.reason}</strong><small>{item.details || 'Sem detalhes adicionais.'}</small><span className={`hb-admin-state ${item.status}`}>{statusLabels[item.status] || item.status}</span></button>)}{!filteredReports.length && <div className="hb-admin-empty">{failedSections.reports ? 'Os dados de denúncias estão indisponíveis.' : 'Nenhuma denúncia corresponde aos filtros atuais.'}</div>}</div>
         <div className="hb-admin-inspection">{inspection ? <>
           <div className="hb-admin-inspection-title"><div><span className="hb-admin-section-eyebrow">DETALHES</span><strong>Denúncia selecionada</strong></div><button type="button" onClick={() => { previewSequence.current++; setSelectedReport(null); setPreview(null); setReason('') }} aria-label="Fechar denúncia">✕</button></div>
           <div className="hb-admin-data"><span>Estado</span><p><span className={`hb-admin-state ${inspection.status}`}>{statusLabels[inspection.status]}</span></p><span>Conteúdo denunciado</span><p>{targetLabels[inspection.target_type] || inspection.target_type}</p><span>Motivo</span><p>{inspection.reason}</p><span>Relato do denunciante</span><p>{inspection.details || 'Não foram enviados detalhes adicionais.'}</p><span>Alvo</span><p>{personLink(identities[inspection.id]?.target_username, identities[inspection.id]?.target_user_id, 'Autor não identificado')}</p><span>Denunciante</span><p>{personLink(identities[inspection.id]?.reporter_username, inspection.reporter_id)}</p><span>Referência do conteúdo</span><code>{inspection.target_id}</code><span>Recebida em</span><p>{formatDate(inspection.created_at)}</p></div>
@@ -371,7 +474,8 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     {pane === 'history' && <section className="hb-admin-section">
       <div className="hb-admin-section-title"><div><span className="hb-admin-section-eyebrow">AUDITORIA</span><h4>Histórico de moderação</h4><p>Decisões registradas com responsável, alvo e justificativa.</p></div><button type="button" disabled={!filteredAudit.length} onClick={() => downloadAudit(filteredAudit, identities)}>↓ Exportar CSV filtrado</button></div>
       <div className="hb-admin-filters hb-admin-history-filters"><label className="hb-admin-filter-search">Pesquisar no histórico<input type="search" value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Ação, motivo ou @usuário…" /></label><label>Tipo de ação<select value={historyAction} onChange={e => setHistoryAction(e.target.value)}><option value="all">Todas as ações</option>{Object.entries(actionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><span>{filteredAudit.length} registro(s) · até 150 carregados</span></div>
-      <div className="hb-admin-history">{filteredAudit.map(entry => <article key={entry.id}><span className="hb-admin-action-icon">◷</span><div><strong>{actionLabels[entry.action] || entry.action}</strong><p>{entry.reason || 'Nenhuma justificativa adicional registrada.'}</p><small>Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}{entry.report_id ? ` · Denúncia: ${shortId(entry.report_id)}` : ''}</small></div><time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time></article>)}{!filteredAudit.length && <div className="hb-admin-empty">Nenhum evento corresponde à pesquisa.</div>}</div>
+      {failedSections.history && <p className="hb-admin-inline-warning" role="status">O histórico não pôde ser consultado. Use “Atualizar dados” para tentar novamente.</p>}
+      <div className="hb-admin-history">{filteredAudit.map(entry => <article key={entry.id}><span className="hb-admin-action-icon">◷</span><div><strong>{actionLabels[entry.action] || entry.action}</strong><p>{entry.reason || 'Nenhuma justificativa adicional registrada.'}</p><small>Responsável: {personLink(identities[entry.id]?.actor_username, entry.actor_id)} · Alvo: {personLink(identities[entry.id]?.target_username, identities[entry.id]?.target_user_id, 'Autor não identificado')}{entry.report_id ? ` · Denúncia: ${shortId(entry.report_id)}` : ''}</small></div><time dateTime={entry.created_at}>{formatDate(entry.created_at)}</time></article>)}{!filteredAudit.length && <div className="hb-admin-empty">{failedSections.history ? 'O histórico está indisponível.' : 'Nenhum evento corresponde à pesquisa.'}</div>}</div>
       <p className="hb-admin-footnote">A exportação inclui apenas as linhas atualmente carregadas e filtradas. As ações originais não podem ser editadas pelo navegador.</p>
     </section>}
 
