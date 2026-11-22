@@ -17,7 +17,7 @@ type Audit = {
   id: string; actor_id: string | null; action: string; target_id: string | null;
   report_id: string | null; reason: string; created_at: string; context: Record<string, unknown>
 }
-type Preview = { found: boolean; type: string; summary?: string; author_id?: string; display_name?: string }
+type Preview = { found: boolean; type: string; summary?: string; author_id?: string | null; author_username?: string | null; display_name?: string }
 type Identity = {
   kind: 'audit' | 'report'; record_id: string; actor_username: string | null;
   target_username: string | null; reporter_username: string | null; target_user_id: string | null
@@ -261,7 +261,27 @@ export default function SiteAdministrationV234({ userId, onViewProfile }: {
     try {
       const result = await supabase.rpc('hax_v234_report_preview', { p_report_id: item.id })
       if (result.error) throw result.error
-      if (sequence === previewSequence.current) setPreview(result.data as Preview)
+      if (sequence === previewSequence.current) {
+        const nextPreview = (result.data || null) as Preview | null
+        setPreview(nextPreview)
+        // A prévia confirma a autoria diretamente no servidor. Completa o @ do
+        // registro selecionado quando a lista de identidades ainda não o trouxe.
+        if (nextPreview?.author_id && isUuid(nextPreview.author_id)) {
+          setIdentities(current => {
+            const known = current[item.id]
+            return {
+              ...current,
+              [item.id]: {
+                kind: 'report', record_id: item.id,
+                actor_username: known?.actor_username ?? null,
+                reporter_username: known?.reporter_username ?? null,
+                target_user_id: nextPreview.author_id ?? null,
+                target_username: nextPreview.author_username?.trim() || known?.target_username || null,
+              },
+            }
+          })
+        }
+      }
     } catch (err) { if (sequence === previewSequence.current) setError(safeError(err)) }
     finally { if (sequence === previewSequence.current) setPreviewBusy(false) }
   }
