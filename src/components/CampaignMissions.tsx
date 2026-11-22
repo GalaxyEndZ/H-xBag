@@ -178,12 +178,34 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
     else { setNotice(`Missão concluída! ${rewardCount ? 'Recompensas processadas sem repetir faixas pagas.' : 'Sem recompensa material configurada.'}`); await refresh();onDelivered?.() }
   }
   async function removeMission(mission: Mission) {
-    if (!isMaster || saving || mission.status === 'completed' || !window.confirm(`Excluir a missão “${mission.title}”?`)) return
-    setSaving(true);setError('')
-    const result = await supabase.from('campaign_missions').delete().eq('id',mission.id).eq('campaign_id',campaignId)
+    if (!isMaster || saving) return
+    const rewardsAlreadyDelivered = mission.status === 'completed'
+      || Boolean(mission.rewards_delivered_at)
+      || mission.awarded_milestones.length > 0
+    const statusLabel = mission.status === 'completed' ? 'concluída'
+      : mission.status === 'active' ? 'em progresso' : 'falhada'
+    const warning = rewardsAlreadyDelivered
+      ? 'As recompensas e condições já concedidas aos personagens NÃO serão retiradas. '
+      : ''
+    if (!window.confirm(`Excluir permanentemente a missão “${mission.title}” (${statusLabel})?\n\n${warning}O registro da missão e seu progresso serão apagados. Esta ação não pode ser desfeita.`)) return
+    setSaving(true)
+    setError('')
+    setNotice('')
+    // A função verifica no servidor se o usuário é mestre desta campanha.
+    // Não depende do estado da missão nem do resultado silencioso de DELETE com RLS.
+    const result = await supabase.rpc('hax_mission_delete', { p_mission_id: mission.id })
     setSaving(false)
-    if (result.error) setError(`Erro ao excluir: ${result.error.message}`)
-    else {setNotice('Missão excluída.');await refresh()}
+    if (result.error) {
+      setError(`Não foi possível excluir a missão: ${result.error.message}`)
+      return
+    }
+    if (result.data !== true) {
+      setError('A missão não foi excluída. Atualize a lista e tente novamente.')
+      return
+    }
+    if (editorId === mission.id) { setShowEditor(false); setEditorId(null) }
+    setNotice('Missão excluída. Recompensas já entregues foram preservadas.')
+    await refresh()
   }
 
   return <section className="hb-missions" aria-labelledby="hb-missions-title">
@@ -227,7 +249,7 @@ export default function CampaignMissions({ campaignId, seasonId, seasons, charac
           {mission.status === 'active' && <button type="button" className="hb-missions-primary" disabled={!canFinish(mission)||saving} onClick={()=>void finishMission(mission)}>✓ Concluir e entregar drops</button>}
           {mission.status === 'failed' && <button type="button" className="hb-missions-soft" disabled={saving} onClick={()=>void setStatus(mission,'active')}>Reativar</button>}
           {mission.status === 'active' && <button type="button" className="hb-missions-soft" disabled={saving} onClick={()=>void setStatus(mission,'failed')}>Marcar falhada</button>}
-          {mission.status !== 'completed' && <button type="button" className="hb-missions-danger" disabled={saving} onClick={()=>void removeMission(mission)}>Excluir</button>}
+          <button type="button" className="hb-missions-danger" disabled={saving} onClick={()=>void removeMission(mission)} aria-label={`Excluir missão ${mission.title}`}>Excluir</button>
           {mission.status === 'completed' && <span className="hb-mission-complete-note">✓ Concluída {mission.completed_at ? new Date(mission.completed_at).toLocaleString('pt-BR') : ''}{mission.rewards_delivered_at ? ' · Drops entregues' : ''}</span>}
         </footer>}
       </article>)}
