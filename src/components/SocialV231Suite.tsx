@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../supabase'
 import './SocialV231Suite.css'
 import './SocialExpansionV245.css'
 import './SocialV248Unified.css'
 import SocialPostActionsV249 from './SocialPostActionsV249'
+import SocialShareComposerV250, { type ShareIdentityV250 } from './SocialShareComposerV250'
 
 export type SocialV231Page = 'feed'|'discover'|'communities'|'saved'|'events'|'notifications'|'activity'|'moderation'
 type Group = {id:string;owner_id:string;name:string;description:string;rules:string;topic:string;is_public:boolean;created_at:string}
@@ -21,11 +22,12 @@ type Prefs = {user_id:string;activity_public:boolean;notifications_enabled:boole
 type Character = {id:string;name:string;emoji:string|null}
 type Activity = {kind:string;id:string;title:string;created_at:string}
 type LegacyQuotedPost = {id:string;author_id:string;content:string;visibility:string}
+type PublicIdentityV250 = {avatar_image?:string;display_name?:string;username?:string}
 type LegacyTimelinePost = {post_id:string;author_id:string;created_at:string;like_count:number;engagement?:number;image_paths?:string[];pinned?:boolean}
 type TimelineScope = 'all'|'following'|'friends'|'mine'
 type TimelineOrder = 'recent'|'oldest'|'popular'
 type Props = {page:SocialV231Page;userId:string;profileName?:string;onNavigate?:(tab:'feed'|'discover'|'messages'|'communities')=>void;onViewProfile?:(userId:string)=>void;
-  legacyPosts?:LegacyTimelinePost[];renderLegacyPost?:(id:string)=>ReactNode;
+  legacyPosts?:LegacyTimelinePost[];renderLegacyPost?:(id:string)=>ReactNode;currentAvatar?:string;currentUsername?:string;
   feedScope?:TimelineScope;feedSearch?:string;onlyPhotos?:boolean;feedOrder?:TimelineOrder;
   followingUserIds?:string[];friendsUserIds?:string[];legacyLoading?:boolean;onRefreshLegacy?:()=>void;onSearchFeed?:(term:string)=>void;refreshNonce?:number;onMuteAuthor?:(id:string)=>void}
 
@@ -57,7 +59,18 @@ function CommentThread({postId,comments,userId,send,remove,busy,expanded,onExpan
   </section>
 }
 
-function PostCard({post,uid,groups,likes,comments,polls,votes,bookmarked,busy,onLike,onVote,onSave,onComment,onRemoveComment,onEdit,onDelete,onPin,onReport,onMute,canModerate,onViewProfile,originalPost,onShare,legacyOriginal}:{post:Post;uid:string;groups:Group[];likes:Like[];comments:Comment[];polls:Poll[];votes:Vote[];bookmarked:boolean;busy:boolean;onLike:(post:Post)=>Promise<void>;onVote:(postId:string,index:number)=>Promise<void>;onSave:(post:Post)=>Promise<void>;onComment:(postId:string,body:string,parent:string|null)=>Promise<void>;onRemoveComment:(id:string)=>Promise<void>;onEdit:(post:Post,content:string)=>Promise<void>;onDelete:(post:Post)=>Promise<void>;onPin:(post:Post)=>Promise<void>;onReport:(type:string,id:string)=>void;onMute:(userId:string)=>Promise<void>;canModerate:boolean;onViewProfile?:(userId:string)=>void;originalPost?:Post;legacyOriginal?:LegacyQuotedPost;onShare:(post:Post,mode:'quote'|'repost')=>Promise<void>}) {
+function QuotedOriginalV250({original,label,identity,onViewProfile}:{original?:{author_id:string;content:string};label:string;identity?:ShareIdentityV250;onViewProfile?:(userId:string)=>void}) {
+  return <div className="hb-v250-quoted-content"><small>{label}</small>{original ? <>
+    <div className="hb-v250-post-original-author">
+      <span className="hb-v250-avatar" aria-hidden="true">{identity?.name?.slice(0,1).toLocaleUpperCase('pt-BR')||'✦'}{identity?.avatar&&<img src={identity.avatar} alt="" onError={e=>{e.currentTarget.style.display='none'}}/>}</span>
+      <div><button type="button" onClick={()=>onViewProfile?.(original.author_id)}><strong>{identity?.name||'Autor original'}</strong></button>{identity?.username&&<small> @{identity.username.replace(/^@/,'')}</small>}</div>
+    </div>
+    <p>{short(original.content,420)}</p>
+    <button type="button" onClick={()=>onViewProfile?.(original.author_id)}>Ver perfil do autor original ↗</button>
+  </> : <p>O conteúdo original não está mais disponível.</p>}</div>
+}
+
+function PostCard({post,uid,groups,likes,comments,polls,votes,bookmarked,busy,onLike,onVote,onSave,onComment,onRemoveComment,onEdit,onDelete,onPin,onReport,onMute,canModerate,onViewProfile,originalPost,onShare,legacyOriginal,authorAvatar,authorUsername,originalIdentity,legacyOriginalIdentity}:{post:Post;uid:string;groups:Group[];likes:Like[];comments:Comment[];polls:Poll[];votes:Vote[];bookmarked:boolean;busy:boolean;onLike:(post:Post)=>Promise<void>;onVote:(postId:string,index:number)=>Promise<void>;onSave:(post:Post)=>Promise<void>;onComment:(postId:string,body:string,parent:string|null)=>Promise<void>;onRemoveComment:(id:string)=>Promise<void>;onEdit:(post:Post,content:string)=>Promise<void>;onDelete:(post:Post)=>Promise<void>;onPin:(post:Post)=>Promise<void>;onReport:(type:string,id:string)=>void;onMute:(userId:string)=>Promise<void>;canModerate:boolean;onViewProfile?:(userId:string)=>void;originalPost?:Post;legacyOriginal?:LegacyQuotedPost;onShare:(post:Post,mode:'quote'|'repost')=>void;authorAvatar?:string;authorUsername?:string;originalIdentity?:ShareIdentityV250;legacyOriginalIdentity?:ShareIdentityV250}) {
   const [editing,setEditing]=useState(false)
   const [edited,setEdited]=useState(post.content)
   const [expanded,setExpanded]=useState(false)
@@ -75,10 +88,10 @@ function PostCard({post,uid,groups,likes,comments,polls,votes,bookmarked,busy,on
   const likeCount=likes.filter(l=>l.post_id===post.id).length
   const liked=likes.some(l=>l.post_id===post.id&&l.user_id===uid)
   return <article className={`hb-v231-post ${post.pinned?'is-pinned':''}`}>
-    <header><div className="hb-v231-avatar">{post.character_emoji||post.display_name?.slice(0,1)?.toUpperCase()||'✦'}</div><div className="hb-v231-byline"><button type="button" onClick={()=>onViewProfile?.(post.author_id)}><strong>{post.character_name||post.display_name||'Aventureiro'}</strong></button><small>{post.character_name&&<span>Personagem de {post.display_name} · </span>}{date(post.created_at)} {post.group_id&&`· ${groups.find(g=>g.id===post.group_id)?.name||'Grupo'}`}</small></div>{post.pinned&&<span className="hb-v231-pill">📌 Fixado</span>}</header>
-    {editing?<form className="hb-v231-edit-post" onSubmit={async e=>{e.preventDefault();if(!edited.trim())return;await onEdit(post,edited.trim());setEditing(false)}}><textarea rows={4} value={edited} maxLength={3000} onChange={e=>setEdited(e.target.value)}/><div className="hb-v231-inline-actions"><button type="button" onClick={()=>{setEditing(false);setEdited(post.content)}}>Cancelar</button><button disabled={busy||!edited.trim()} type="submit">Salvar edição</button></div></form>:<p className="hb-v231-post-text">{expanded?post.content:short(post.content,700)}{post.content.length>700&&<button type="button" className="hb-v231-text-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Mostrar menos':'Ler mais'}</button>}</p>}
-    {post.legacy_quoted_post_id&&<div className="hb-v249-quoted-legacy"><small>{post.share_mode==='repost'?'↗ PUBLICAÇÃO REPUBLICADA':'❝ PUBLICAÇÃO CITADA'}</small>{legacyOriginal?<><p>{short(legacyOriginal.content,420)}</p><button type="button" onClick={()=>onViewProfile?.(legacyOriginal.author_id)}>Visitar autor original ↗</button></>:<p>O conteúdo original não está mais disponível.</p>}</div>}
-    {post.quoted_post_id&&<div className="hb-v245-quoted-card"><small>{post.share_mode==='repost'?'↗ PUBLICAÇÃO REPUBLICADA':'❝ PUBLICAÇÃO CITADA'}</small>{originalPost?<><p>{short(originalPost.content,420)}</p><button type="button" onClick={()=>onViewProfile?.(originalPost.author_id)}>Visitar autor original ↗</button></>:<p>O conteúdo original não está mais disponível.</p>}</div>}
+    <header><div className="hb-v231-avatar hb-v250-post-avatar">{post.character_emoji||post.display_name?.slice(0,1)?.toUpperCase()||'✦'}{!post.character_emoji&&authorAvatar&&<img src={authorAvatar} alt="" loading="lazy" onError={event=>{event.currentTarget.style.display='none'}}/>}</div><div className="hb-v231-byline"><button type="button" onClick={()=>onViewProfile?.(post.author_id)}><strong>{post.character_name||post.display_name||'Aventureiro'}</strong></button><small>{post.character_name&&<span>Personagem de {post.display_name} · </span>}{authorUsername&&<span>@{authorUsername.replace(/^@/,'')} · </span>}{date(post.created_at)} {post.group_id&&`· ${groups.find(g=>g.id===post.group_id)?.name||'Grupo'}`}</small></div>{post.pinned&&<span className="hb-v231-pill">📌 Fixado</span>}</header>
+    {editing?<form className="hb-v231-edit-post" onSubmit={async e=>{e.preventDefault();if(!edited.trim())return;await onEdit(post,edited.trim());setEditing(false)}}><textarea rows={4} value={edited} maxLength={3000} onChange={e=>setEdited(e.target.value)}/><div className="hb-v231-inline-actions"><button type="button" onClick={()=>{setEditing(false);setEdited(post.content)}}>Cancelar</button><button disabled={busy||!edited.trim()} type="submit">Salvar edição</button></div></form>:<p className={post.share_mode==='repost'&&post.content==='Republicou uma publicação.'?'hb-v250-share-event':'hb-v231-post-text'}>{expanded?post.content:short(post.content,700)}{post.content.length>700&&<button type="button" className="hb-v231-text-button" onClick={()=>setExpanded(!expanded)}>{expanded?'Mostrar menos':'Ler mais'}</button>}</p>}
+    {post.legacy_quoted_post_id&&<div className="hb-v249-quoted-legacy"><QuotedOriginalV250 original={legacyOriginal} identity={legacyOriginalIdentity} label={post.share_mode==='repost'?'↗ PUBLICAÇÃO REPUBLICADA':'❝ PUBLICAÇÃO CITADA'} onViewProfile={onViewProfile}/></div>}
+    {post.quoted_post_id&&<div className="hb-v245-quoted-card"><QuotedOriginalV250 original={originalPost} identity={originalIdentity} label={post.share_mode==='repost'?'↗ PUBLICAÇÃO REPUBLICADA':'❝ PUBLICAÇÃO CITADA'} onViewProfile={onViewProfile}/></div>}
     {linkPreview&&<a className="hb-v231-link-preview" href={linkPreview.href} target="_blank" rel="noopener noreferrer nofollow"><strong>↗ {linkPreview.domain}</strong><small>{linkPreview.path||'Abrir link'}</small></a>}
     {poll&&<section className="hb-v231-poll"><strong>📊 {poll.question}</strong>{options.map((answer,index)=><button type="button" key={index} disabled={busy||new Date(poll.ends_at).getTime()<=Date.now()} className={voted===index?'is-selected':''} onClick={()=>void onVote(post.id,index)}><span>{answer}</span><span>{total?Math.round(100*tally[index]/total):0}%</span><span className="hb-v231-poll-bar" style={{width:`${total?100*tally[index]/total:0}%`}}/></button>)}<small>{total} {total===1?'voto':'votos'} · {new Date(poll.ends_at)>new Date()?'Encerra '+dateLong(poll.ends_at):'Enquete encerrada'}</small></section>}
     <SocialPostActionsV249
@@ -106,7 +119,7 @@ export function SocialV231PublicActivity({authorId}:{authorId:string}) {
 }
 
 export default function SocialV231Suite({page,userId,profileName,onNavigate,onViewProfile,
-  legacyPosts=[],renderLegacyPost,feedScope='all',feedSearch='',onlyPhotos=false,feedOrder='recent',
+  legacyPosts=[],renderLegacyPost,currentAvatar,currentUsername,feedScope='all',feedSearch='',onlyPhotos=false,feedOrder='recent',
   followingUserIds=[],friendsUserIds=[],legacyLoading=false,onRefreshLegacy,onSearchFeed,refreshNonce=0,onMuteAuthor}:Props){
   const [ready,setReady]=useState(false)
   const [schemaMissing,setSchemaMissing]=useState(false)
@@ -118,6 +131,10 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
   const [posts,setPosts]=useState<Post[]>([])
   const [quotedPosts,setQuotedPosts]=useState<Record<string,Post>>({})
   const [legacyQuotedPosts,setLegacyQuotedPosts]=useState<Record<string,LegacyQuotedPost>>({})
+  const [publicIdentities,setPublicIdentities]=useState<Record<string,PublicIdentityV250>>({})
+  const identityLoadedRef=useRef(new Set<string>())
+  const identityLoadingRef=useRef(new Set<string>())
+  const [shareTarget,setShareTarget]=useState<{post:Post;mode:'quote'|'repost'}|null>(null)
   const [likes,setLikes]=useState<Like[]>([])
   const [comments,setComments]=useState<Comment[]>([])
   const [polls,setPolls]=useState<Poll[]>([])
@@ -230,6 +247,34 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
     })()
     return()=>{live=false}
   },[posts])
+  // Fotos públicas das contas: reaproveita a mesma consulta utilizada no feed clássico.
+  // Identidades são carregadas em pequenos lotes e guardadas em cache para evitar repetição.
+  const visibleIdentityIds=useMemo(()=>[...new Set([...posts,...Object.values(quotedPosts),...Object.values(legacyQuotedPosts)].map(p=>p.author_id).filter(Boolean))],[posts,quotedPosts,legacyQuotedPosts])
+  useEffect(()=>{
+    let live=true
+    const ids=visibleIdentityIds.filter(id=>!identityLoadedRef.current.has(id)&&!identityLoadingRef.current.has(id))
+    if(!ids.length)return()=>{live=false}
+    void (async()=>{
+      for(let i=0;i<ids.length;i+=5){
+        if(!live)break
+        await Promise.all(ids.slice(i,i+5).map(async id=>{
+          identityLoadingRef.current.add(id)
+          try{
+            const {data,error}=await supabase.rpc('hax_social_public_profile',{p_user_id:id})
+            if(!error&&data&&typeof data==='object'&&!Array.isArray(data)){
+              const row=data as PublicIdentityV250
+              if(live)setPublicIdentities(old=>({...old,[id]:{avatar_image:typeof row.avatar_image==='string'?row.avatar_image:'',display_name:typeof row.display_name==='string'?row.display_name:undefined,username:typeof row.username==='string'?row.username:undefined}}))
+              identityLoadedRef.current.add(id)
+            }
+          }catch{/* Se a foto não estiver disponível, preserva a inicial. */}
+          finally{identityLoadingRef.current.delete(id)}
+        }))
+      }
+    })()
+    return()=>{live=false}
+  },[visibleIdentityIds])
+  const photoFor=(id:string)=>id===userId&&currentAvatar?currentAvatar:publicIdentities[id]?.avatar_image
+  const identityFor=(id:string,fallback:string):ShareIdentityV250=>({name:publicIdentities[id]?.display_name||fallback,username:id===userId?currentUsername||publicIdentities[id]?.username:publicIdentities[id]?.username,avatar:photoFor(id)})
   useEffect(()=>{if(refreshNonce>0)void load()},[refreshNonce,load])
   useEffect(()=>{if(!userId)return
     try{const raw=window.sessionStorage.getItem(`hax-v231-draft:${userId}`);if(raw){const saved=JSON.parse(raw) as {text?:unknown;group?:unknown;character?:unknown};if(typeof saved.text==='string')setPostText(saved.text.slice(0,3000));if(typeof saved.group==='string')setPostGroup(saved.group);if(typeof saved.character==='string')setPostCharacter(saved.character)}}catch{/* Sessão privada pode bloquear armazenamento. */}
@@ -274,13 +319,18 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
     else fail(await supabase.from('hax_v231_likes').insert({post_id:post.id,user_id:userId}))
   },'Interação atualizada.')
   const vote=async(id:string,index:number)=>perform(async()=>{fail(await supabase.from('hax_v231_votes').upsert({post_id:id,user_id:userId,option_index:index},{onConflict:'post_id,user_id'}))},'Seu voto foi registrado.')
-  const sharePost=async(post:Post,mode:'quote'|'repost')=>{
-    if(post.group_id){setError('Conteúdos de grupos não podem ser republicados.');return}
-    const content=mode==='quote'?window.prompt('Comente a publicação original (até 3000 caracteres):',''):''
-    if(content===null)return
-    const safeText=mode==='repost'?'Republicou uma publicação.':content.trim()
-    if(!safeText){setError('Escreva um comentário antes de citar.');return}
-    await perform(async()=>{fail(await supabase.from('hax_v231_posts').insert({author_id:userId,group_id:null,display_name:profileName||'Aventureiro',content:safeText.slice(0,3000),quoted_post_id:post.id,share_mode:mode}))},mode==='repost'?'Publicação republicada.':'Publicação citada.')
+  const sharePost=async(post:Post,mode:'quote'|'repost',message:string)=>{
+    if(post.group_id)throw new Error('Conteúdos de grupos não podem ser republicados.')
+    if(busy)throw new Error('Aguarde a operação atual terminar.')
+    const content=message.trim()||(mode==='repost'?'Republicou uma publicação.':'')
+    if(!content)throw new Error('Escreva um comentário antes de citar.')
+    setBusy(true);setError('');setNotice('')
+    try{
+      fail(await supabase.from('hax_v231_posts').insert({author_id:userId,group_id:null,display_name:profileName||'Aventureiro',content:content.slice(0,3000),quoted_post_id:post.id,share_mode:mode}))
+      await load()
+      setNotice(mode==='repost'?'Publicação republicada.':'Publicação citada.')
+    }catch(reason){setError(errorMessage(reason));throw reason}
+    finally{setBusy(false)}
   }
   const savePost=async(post:Post)=>perform(async()=>{
     if(saved.some(s=>s.post_id===post.id))fail(await supabase.from('hax_v231_saved').delete().eq('user_id',userId).eq('post_id',post.id))
@@ -341,7 +391,7 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
   if(schemaMissing)return <div className="hb-v231-install"><strong>✦ Recursos adicionais indisponíveis</strong><p>Algumas ferramentas da comunidade ainda precisam ser habilitadas.</p><button type="button" onClick={()=>void load()}>Tentar novamente</button></div>
   const filteredNotifications=notifications.filter(n=>noticeFilter==='all'||(noticeFilter==='other'?!['follow','like','comment'].includes(n.kind):n.kind===noticeFilter))
   const selected=groupById(selectedGroup)
-  const renderPosts=(list:Post[])=>list.length?<div className="hb-v231-post-list">{list.map(post=><PostCard key={post.id} post={post} uid={userId} groups={groups} likes={likes} comments={comments} polls={polls} votes={votes} bookmarked={saved.some(s=>s.post_id===post.id)} busy={busy} onLike={like} onVote={vote} onSave={savePost} onComment={comment} onRemoveComment={removeComment} onEdit={editPost} onDelete={removePost} onPin={pinPost} onReport={(type,id)=>setReportTarget({type,id})} onMute={mutePostAuthor} canModerate={!!(post.group_id&&groups.find(g=>g.id===post.group_id)?.owner_id===userId)||!!(post.group_id&&members.some(m=>m.group_id===post.group_id&&m.user_id===userId&&m.role==='moderator'&&m.status==='active'))} onViewProfile={onViewProfile} originalPost={posts.find(p=>p.id===post.quoted_post_id)||(post.quoted_post_id?quotedPosts[post.quoted_post_id]:undefined)} legacyOriginal={post.legacy_quoted_post_id?legacyQuotedPosts[post.legacy_quoted_post_id]:undefined} onShare={sharePost}/>)}</div>:<div className="hb-v231-empty">Nenhuma publicação encontrada para esta seleção.</div>
+  const renderPosts=(list:Post[])=>list.length?<div className="hb-v231-post-list">{list.map(post=><PostCard key={post.id} post={post} uid={userId} groups={groups} likes={likes} comments={comments} polls={polls} votes={votes} bookmarked={saved.some(s=>s.post_id===post.id)} busy={busy} onLike={like} onVote={vote} onSave={savePost} onComment={comment} onRemoveComment={removeComment} onEdit={editPost} onDelete={removePost} onPin={pinPost} onReport={(type,id)=>setReportTarget({type,id})} onMute={mutePostAuthor} canModerate={!!(post.group_id&&groups.find(g=>g.id===post.group_id)?.owner_id===userId)||!!(post.group_id&&members.some(m=>m.group_id===post.group_id&&m.user_id===userId&&m.role==='moderator'&&m.status==='active'))} onViewProfile={onViewProfile} originalPost={posts.find(p=>p.id===post.quoted_post_id)||(post.quoted_post_id?quotedPosts[post.quoted_post_id]:undefined)} legacyOriginal={post.legacy_quoted_post_id?legacyQuotedPosts[post.legacy_quoted_post_id]:undefined} onShare={(target,mode)=>setShareTarget({post:target,mode})} authorAvatar={photoFor(post.author_id)} authorUsername={post.author_id===userId?currentUsername||publicIdentities[post.author_id]?.username:publicIdentities[post.author_id]?.username} originalIdentity={post.quoted_post_id?identityFor((posts.find(p=>p.id===post.quoted_post_id)||quotedPosts[post.quoted_post_id])?.author_id||'',(posts.find(p=>p.id===post.quoted_post_id)||quotedPosts[post.quoted_post_id])?.display_name||'Autor original'):undefined} legacyOriginalIdentity={post.legacy_quoted_post_id?identityFor(legacyQuotedPosts[post.legacy_quoted_post_id]?.author_id||'','Autor original'):undefined}/>)}</div>:<div className="hb-v231-empty">Nenhuma publicação encontrada para esta seleção.</div>
   // Uma só linha do tempo: preserva as operações originais de cada tipo de publicação.
   // O backend continua responsável por controlar a visibilidade de posts e grupos privados.
   const timeline=(()=>{
@@ -407,6 +457,14 @@ export default function SocialV231Suite({page,userId,profileName,onNavigate,onVi
       </div>
     </section>}
     {page==='moderation'&&<section className="hb-v231-section"><div className="hb-v231-heading"><div><small>⊘ SEGURANÇA E PRIVACIDADE</small><h3>Preferências sociais</h3><p>Configure a visibilidade das suas atividades e os alertas da comunidade.</p></div></div><div className="hb-v231-preferences"><label className="hb-v231-check"><input type="checkbox" disabled={busy} checked={prefs.notifications_enabled} onChange={e=>void updatePrefs({notifications_enabled:e.target.checked})}/> Receber notificações sobre interações</label><label className="hb-v231-check"><input type="checkbox" disabled={busy} checked={prefs.activity_public} onChange={e=>void updatePrefs({activity_public:e.target.checked})}/> Permitir que visitantes vejam minha atividade pública</label><div className="hb-v245-preferences-grid">{(['allow_quotes','allow_messages','allow_mentions','alerts_follow','alerts_like','alerts_comment','alerts_other'] as const).map(key=><label className="hb-v231-check" key={key}><input type="checkbox" checked={v245Privacy[key]} disabled={busy} onChange={e=>void updateV245Privacy({[key]:e.target.checked})}/>{({allow_quotes:'Permitir que citem ou republiquem meus posts públicos',allow_messages:'Receber novas mensagens privadas de amigos',allow_mentions:'Permitir menções futuras a este perfil',alerts_follow:'Notificar novos seguidores',alerts_like:'Notificar curtidas',alerts_comment:'Notificar comentários',alerts_other:'Notificar outras interações'})[key]}</label>)}</div><p>Para bloquear uma conta, utilize o menu do perfil. Para silenciar autores, use o menu das publicações. As denúncias enviadas por aqui são analisadas exclusivamente pelos administradores.</p></div></section>}
+    {shareTarget&&<SocialShareComposerV250
+      key={`${shareTarget.post.id}:${shareTarget.mode}`}
+      mode={shareTarget.mode}
+      author={{name:profileName||'Você',username:currentUsername,avatar:photoFor(userId)}}
+      original={{...identityFor(shareTarget.post.author_id,shareTarget.post.character_name||shareTarget.post.display_name||'Aventureiro'),content:shareTarget.post.content}}
+      onClose={()=>setShareTarget(null)}
+      onSubmit={message=>sharePost(shareTarget.post,shareTarget.mode,message)}
+    />}
     {reportTarget&&<div className="hb-v231-report-backdrop" role="presentation" onClick={e=>{if(e.target===e.currentTarget)setReportTarget(null)}}><form role="dialog" aria-modal="true" aria-label="Denunciar conteúdo" className="hb-v231-report-dialog hb-v231-form" onSubmit={e=>void report(e)}><h3>⚑ Enviar denúncia</h3><p>A denúncia será analisada pela administração do HäxBag.</p><label>Motivo<select value={reportReason} onChange={e=>setReportReason(e.target.value)}><option>Conteúdo inadequado</option><option>Assédio ou ameaças</option><option>Spam</option><option>Imitação de identidade</option><option>Violação de privacidade</option><option>Outro motivo</option></select></label><label>Informações adicionais (opcional)<textarea value={reportDetail} maxLength={1200} rows={3} onChange={e=>setReportDetail(e.target.value)}/></label><div className="hb-v231-inline-actions"><button type="button" onClick={()=>setReportTarget(null)}>Cancelar</button><button disabled={busy} type="submit">Enviar denúncia</button></div></form></div>}
   </div>
 }

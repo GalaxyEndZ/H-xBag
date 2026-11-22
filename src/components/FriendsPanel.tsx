@@ -16,6 +16,7 @@ import SocialReferralPanel from './SocialReferralPanel'
 import SocialPostComments, { useSocialCommentCounts } from './SocialPostComments'
 import SocialV231Suite, { type SocialV231Page } from './SocialV231Suite'
 import SocialPostActionsV249 from './SocialPostActionsV249'
+import SocialShareComposerV250 from './SocialShareComposerV250'
 import SiteAdministrationV234 from './SiteAdministrationV234'
 import SocialExpansionV245 from './SocialExpansionV245'
 import { useSocialV245Chat } from './useSocialV245Chat'
@@ -180,6 +181,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [pinnedLegacyIds,setPinnedLegacyIds] = useState<Set<string>>(() => new Set())
   const [mutedLegacyIds,setMutedLegacyIds] = useState<Set<string>>(() => new Set())
   const [shareNonce,setShareNonce] = useState(0)
+  const [legacyShare,setLegacyShare] = useState<{post:Post;mode:'repost'|'quote'}|null>(null)
   const [editingLegacyId,setEditingLegacyId] = useState<string|null>(null)
   const [editingLegacyContent,setEditingLegacyContent] = useState('')
   const [legacyReportPost,setLegacyReportPost] = useState<Post|null>(null)
@@ -345,18 +347,17 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       setNotice(pinned?'Publicação fixada.':'Publicação desafixada.')
     }catch(failure){setError(errorMessageV231(failure))}finally{setBusy('')}
   }
-  async function shareLegacyPost(post:Post,mode:'repost'|'quote'){
-    if(post.visibility!=='public'){setError('Somente publicações públicas podem ser compartilhadas.');return}
-    const content=mode==='quote'?window.prompt('Adicione seu comentário à publicação (até 3000 caracteres):',''):'Republicou uma publicação.'
-    if(content===null)return
-    if(!content.trim()){setError('Escreva um comentário antes de citar.');return}
+  async function shareLegacyPost(post:Post,mode:'repost'|'quote',message:string){
+    if(post.visibility!=='public')throw new Error('Somente publicações públicas podem ser compartilhadas.')
+    const content=message.trim() || (mode==='repost'?'Republicou uma publicação.':'')
+    if(!content)throw new Error('Escreva um comentário antes de citar.')
     setBusy(`share:${post.post_id}`);setError('')
     try{
-      const {error:failure}=await supabase.from('hax_v231_posts').insert({author_id:userId,group_id:null,display_name:profileIdentity?.name||'Aventureiro',content:content.trim().slice(0,3000),legacy_quoted_post_id:post.post_id,share_mode:mode})
+      const {error:failure}=await supabase.from('hax_v231_posts').insert({author_id:userId,group_id:null,display_name:profileIdentity?.name||'Aventureiro',content:content.slice(0,3000),legacy_quoted_post_id:post.post_id,share_mode:mode})
       if(failure)throw new Error(failure.message)
       setShareNonce(value=>value+1)
       setNotice(mode==='quote'?'Publicação citada no feed.':'Publicação republicada no feed.')
-    }catch(failure){setError(errorMessageV231(failure))}finally{setBusy('')}
+    }catch(failure){setError(errorMessageV231(failure));throw failure}finally{setBusy('')}
   }
   async function muteLegacyAuthor(post:Post){
     const updated=[...new Set([...mutedLegacyIds,post.author_id])]
@@ -779,7 +780,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       liked={post.liked} likeCount={Number(post.like_count)} onLike={()=>void like(post)}
       comments={<SocialPostComments postId={post.post_id} count={commentCounts[post.post_id]} onCountChange={updateCommentCount} onOpenProfile={person=>person.id===userId?onViewOwnProfile?.():setProfile({id:person.id,display_name:person.display_name,username:person.username})}/>}
       saved={savedLegacyIds.has(post.post_id)} onSave={()=>void toggleLegacySave(post)}
-      canShare={post.visibility==='public'} onRepost={()=>void shareLegacyPost(post,'repost')} onQuote={()=>void shareLegacyPost(post,'quote')}
+      canShare={post.visibility==='public'} onRepost={()=>setLegacyShare({post,mode:'repost'})} onQuote={()=>setLegacyShare({post,mode:'quote'})}
       canCopy={!!post.content.trim()} onCopy={()=>void copyPost(post)} copied={copiedPostId===post.post_id}
       canEdit={post.author_id===userId} onEdit={()=>{setEditingLegacyId(post.post_id);setEditingLegacyContent(post.content)}}
       canPin={post.author_id===userId} pinned={pinnedLegacyIds.has(post.post_id)} onPin={()=>void pinLegacyPost(post)}
@@ -857,7 +858,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         </form>
         <div className="hb-social-feed-header hb-v214-feed-heading"><div><span className="hb-social-overline">LINHA DO TEMPO</span><h3>Publicações da comunidade</h3><small className="hb-v214-feed-caption">Histórias, personagens, enquetes e fotos em uma só linha do tempo.</small></div><div className="hb-social-segments" role="group" aria-label="Filtrar publicações">{([['all','Comunidade'],['following','Seguindo'],['friends','Amigos'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} aria-pressed={feedScope===key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
         <div className="hb-v163-feed-tools hb-v214-feed-tools"><label className="hb-v163-feed-search"><span>⌕</span><input type="search" placeholder="Buscar nas publicações carregadas…" aria-label="Buscar no feed" value={feedSearch} onChange={e=>setFeedSearch(e.target.value)} /></label><label className="hb-v163-photo-filter"><input type="checkbox" checked={onlyPhotos} onChange={e=>setOnlyPhotos(e.target.checked)} />▧ Com fotos</label><label className="hb-v163-post-order">Ordem <select value={feedOrder} onChange={e=>setFeedOrder(e.target.value as 'recent'|'oldest'|'popular')}><option value="recent">Mais recentes</option><option value="popular">Mais interações</option><option value="oldest">Mais antigas</option></select></label><button type="button" className={`hb-v214-reading-toggle ${readingMode?'is-on':''}`} aria-pressed={readingMode} title={readingMode?'Voltar ao layout normal':'Ampliar a área de leitura'} onClick={()=>setReadingMode(value=>!value)}><span aria-hidden="true">{readingMode?'◧':'▤'}</span> {readingMode?'Visão normal':'Modo leitura'}</button></div>
-        <SocialV231Suite page="feed" userId={userId} profileName={profileIdentity?.name}
+        <SocialV231Suite page="feed" userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username}
           onNavigate={next=>setTab(next)}
           onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}
           legacyPosts={feedLoaded?visiblePosts.filter(post=>!mutedLegacyIds.has(post.author_id)).map(post=>({...post,pinned:pinnedLegacyIds.has(post.post_id),engagement:Math.max(0,Number(post.like_count)||0)+Math.max(0,commentCounts[post.post_id]||0)})):[]} renderLegacyPost={id=>{const post=visiblePosts.find(item=>item.post_id===id&&!mutedLegacyIds.has(item.author_id));return post?renderLegacyFeedPost(post):null}}
@@ -877,12 +878,12 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       <div className="hb-v160-people-tools"><label>Buscar nesta lista<input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Nome ou @usuário" /></label><label>Ordenar<select value={peopleOrder} onChange={e=>setPeopleOrder(e.target.value as 'az'|'za')}><option value="az">Nome: A → Z</option><option value="za">Nome: Z → A</option></select></label></div><div className="hb-social-people hb-v160-people-grid">{filteredPeople.map(person=>peopleCard(person,tab))}</div>{!filteredPeople.length&&!loading&&<div className="hb-social-empty hb-v160-empty"><strong>Nenhum resultado.</strong><p>{filter?'Tente outro termo de busca.':tab==='blocked'?'Você não bloqueou ninguém.':'Explore outros perfis para ampliar sua rede.'}</p>{tab!=='blocked'&&<button type="button" onClick={()=>setTab('discover')}>Descobrir jogadores</button>}</div>}</section>}
 
     {tab==='discover'&&<section className="hb-social-list-pane hb-v214-discover"><div className="hb-social-pane-top"><div><span className="hb-social-overline">NOVAS CONEXÕES</span><h3>Descobrir aventureiros</h3><p>Busque por nome ou @usuário. Não são exibidas pessoas com quem você tenha bloqueio.</p></div></div><label className="hb-social-search-label hb-v160-discover-search"><span>Pesquisar jogadores</span><span className="hb-v160-search-input"><span aria-hidden="true">⌕</span><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Nome ou @usuário — ao menos 2 caracteres" autoComplete="off" /></span></label>
-      <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div><SocialV231Suite page="discover" userId={userId} profileName={profileIdentity?.name} onNavigate={next=>setTab(next)}/>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
+      <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div><SocialV231Suite page="discover" userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username} onNavigate={next=>setTab(next)}/>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}
 
     {tab==='administration'&&(canSeeAdministration
       ? <SiteAdministrationV234 userId={userId} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}} />
       : <section className="hb-social-empty" role="alert"><h3>Área restrita</h3><p>O Painel Administrativo é exclusivo dos administradores globais do HäxBag.</p><button type="button" onClick={()=>setTab('feed')}>Voltar ao Social</button></section>)}
-    {(['communities','saved','events','notifications','activity','moderation'] as SocialV231Page[]).includes(tab as SocialV231Page)&&<SocialV231Suite page={tab as SocialV231Page} userId={userId} profileName={profileIdentity?.name} onNavigate={next=>setTab(next)} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}/>}
+    {(['communities','saved','events','notifications','activity','moderation'] as SocialV231Page[]).includes(tab as SocialV231Page)&&<SocialV231Suite page={tab as SocialV231Page} userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username} onNavigate={next=>setTab(next)} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}/>}
     {(['showcase','tablefinder','trends','insights','security','characternews'] as Tab[]).includes(tab)&&<SocialExpansionV245 page={tab as 'showcase'|'tablefinder'|'trends'|'insights'|'security'|'characternews'} userId={userId} onViewProfile={id=>id===userId?onViewOwnProfile?.():setProfile({id,display_name:'Aventureiro'})} onNavigate={next=>setTab(next)}/>}
 
     {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat hb-v201-chat ${selectedChat?'has-active-chat':''}`} aria-label="Mensagens privadas">
@@ -984,6 +985,14 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
 
       </div>
     </div>
+    {legacyShare&&<SocialShareComposerV250
+      key={`${legacyShare.post.post_id}:${legacyShare.mode}`}
+      mode={legacyShare.mode}
+      author={{name:profileIdentity?.name||'Você',username:profileIdentity?.username,avatar:profileIdentity?.avatar}}
+      original={{name:nameOf(legacyShare.post),username:legacyShare.post.username,avatar:avatars[legacyShare.post.author_id]||(legacyShare.post.author_id===userId?profileIdentity?.avatar:undefined),content:legacyShare.post.content}}
+      onClose={()=>setLegacyShare(null)}
+      onSubmit={message=>shareLegacyPost(legacyShare.post,legacyShare.mode,message)}
+    />}
     {imageViewer&&<div className="hb-v162-lightbox hb-v163-lightbox" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setImageViewer(null)}}><div role="dialog" aria-modal="true" aria-label="Visualizar foto da publicação"><button type="button" className="hb-v162-close-lightbox" onClick={()=>setImageViewer(null)} aria-label="Fechar imagem ampliada">×</button><img src={imageViewer.urls[imageViewer.index]} alt={`Foto ${imageViewer.index+1} de ${imageViewer.urls.length}, publicação de ${imageViewer.author}`} /><div className="hb-v163-viewer-controls">{imageViewer.urls.length>1&&<button type="button" onClick={()=>setImageViewer(view=>view?{...view,index:(view.index-1+view.urls.length)%view.urls.length}:null)} aria-label="Foto anterior">←</button>}<span>{imageViewer.author} · {imageViewer.index+1} / {imageViewer.urls.length}</span>{imageViewer.urls.length>1&&<button type="button" onClick={()=>setImageViewer(view=>view?{...view,index:(view.index+1)%view.urls.length}:null)} aria-label="Próxima foto">→</button>}</div></div></div>}
     {legacyReportPost&&<div className="hb-v231-report-backdrop" role="presentation" onClick={event=>{if(event.target===event.currentTarget)setLegacyReportPost(null)}}><form role="dialog" aria-modal="true" aria-label="Denunciar publicação" className="hb-v231-report-dialog hb-v231-form" onSubmit={e=>void reportLegacy(e)}><h3>⚑ Denunciar publicação</h3><label>Motivo<select value={legacyReportReason} onChange={e=>setLegacyReportReason(e.target.value)}><option>Conteúdo inadequado</option><option>Assédio ou ameaças</option><option>Spam</option><option>Imitação de identidade</option><option>Violação de privacidade</option><option>Outro motivo</option></select></label><label>Detalhes<textarea rows={3} maxLength={1200} value={legacyReportDetails} onChange={e=>setLegacyReportDetails(e.target.value)}/></label><div className="hb-v231-inline-actions"><button type="button" onClick={()=>setLegacyReportPost(null)}>Cancelar</button><button type="submit" disabled={!!busy}>Enviar denúncia</button></div></form></div>}
     {profile&&<PublicAdventurerProfile person={profile} onClose={()=>setProfile(null)} onFriendUpdate={()=>{void refresh();void loadFeed(null,false,feedScope)}} onMessage={person=>{
