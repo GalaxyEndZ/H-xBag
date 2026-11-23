@@ -136,3 +136,11 @@
 .hb-v231-notice-wrap .hb-v244-follow-profile:hover{text-decoration:underline}
 .hb-v231-notice-wrap .hb-v244-follow-profile:focus-visible{outline:2px solid var(--v231-accent);outline-offset:3px;border-radius:3px}
 @media(max-width:800px){.hb-v231-notice-wrap>article{flex-wrap:wrap}}
+
+/* Identidades clicáveis na moderação das comunidades (V257). */
+.hb-v231-member-request .hb-v257-member-person{flex:1 1 180px;min-width:0;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.hb-v231-member-request .hb-v257-member-profile{display:inline;border:0;background:none;color:var(--v231-accent);font:inherit;font-weight:700;text-align:left;cursor:pointer;padding:3px 0;max-width:100%;overflow-wrap:anywhere}
+.hb-v231-member-request .hb-v257-member-profile:hover{text-decoration:underline;text-underline-offset:3px}
+.hb-v231-member-request .hb-v257-member-profile:focus-visible{outline:2px solid var(--v231-accent);outline-offset:3px;border-radius:3px}
+.hb-v231-member-request .hb-v257-member-profile:disabled{opacity:.65;cursor:default}
+.hb-v231-member-request .hb-v257-member-person small{opacity:.73;font-size:.76rem;overflow-wrap:anywhere}
