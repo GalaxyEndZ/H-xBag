@@ -57,6 +57,9 @@ import './DesktopSidebarV300.css'
 import './DesktopExperienceV301.css'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
+import PresenceControlsV302 from './components/PresenceControlsV302'
+import { usePresenceV302 } from './components/usePresenceV302'
+import type { VoiceRoomV302 } from './components/voiceTypesV302'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
 import KitEditor from './components/KitEditor'
@@ -71,6 +74,7 @@ const HaxTable = lazy(() => import('./components/HaxTable'))
 const DiceTower = lazy(() => import('./components/DiceTower'))
 const MinigamesHub = lazy(() => import('./components/MinigamesHub'))
 const CommunicationHubV284 = lazy(() => import('./components/CommunicationHubV284'))
+const VoiceDockV302 = lazy(() => import('./components/VoiceDockV302'))
 const MasterChest = lazy(() => import('./components/MasterChest'))
 const CampaignMissions = lazy(() => import('./components/CampaignMissions'))
 const InvestigationBoard = lazy(() => import('./components/InvestigationBoard'))
@@ -2210,6 +2214,13 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<HaxPage>(initialHaxLocation.current.page)
+  // V302: a conexão WebRTC não pertence à página Comunicação.
+  const [activeVoiceRoomV302, setActiveVoiceRoomV302] = useState<VoiceRoomV302|null>(null)
+  const presenceActivityV302 = activeVoiceRoomV302 ? 'Em chamada' :
+    activePage==='communication' ? 'Na Comunicação' : activePage==='profile' ? 'No Social' :
+    activePage==='minigames' ? 'No Arcade' : 'No RPG'
+  const presenceV302=usePresenceV302(session?.user.id ?? null,presenceActivityV302)
+
   const kitRosterIds = useMemo(()=>characters.map(character=>character.id).sort().join(','),[characters])
   useEffect(()=>{
     let alive=true
@@ -5432,6 +5443,11 @@ async function handleCurrencyConversion() {
 }
 
   async function handleSignOut() {
+    // Evita deixar uma presença online antiga depois da saída voluntária.
+    if (session?.user.id) {
+      try { await supabase.from('hax_v302_presence').delete().eq('user_id',session.user.id) }
+      catch { /* SQL V302 ausente ou conexão indisponível: presença expira pelo TTL */ }
+    }
     const { error: signOutError } = await supabase.auth.signOut()
 
     if (signOutError) {
@@ -11824,6 +11840,7 @@ counterAttackDT
               onReset={resetDesktopLayout}
             />}
             {desktopClient && <DesktopUpdateCenter />}
+            <PresenceControlsV302 settings={presenceV302.settings} connected={presenceV302.connected} onChange={presenceV302.updateSettings} />
             <span className="online-dot" />
             Conectado
           <div className="hb-v172-floating-actions hb-v178-notifications-bell" aria-label="Acesso rápido às notificações">
@@ -11854,7 +11871,7 @@ counterAttackDT
 
         <div className={`page-content page-${activePage}`} id="inicio-conteudo" tabIndex={-1}>
           {activePage === 'minigames' && <DeferredModule><MinigamesHub userId={session.user.id} /></DeferredModule>}
-          {activePage === 'communication' && <DeferredModule><CommunicationHubV284 userId={session.user.id} displayName={String(displayName)} username={accountUsername} onOpenDirectMessages={()=>openSocialTab('messages')} /></DeferredModule>}
+          {activePage === 'communication' && <DeferredModule><CommunicationHubV284 userId={session.user.id} displayName={String(displayName)} username={accountUsername} onOpenDirectMessages={()=>openSocialTab('messages')} activeVoice={activeVoiceRoomV302} onJoinVoice={setActiveVoiceRoomV302} onlinePresence={presenceV302.online} /></DeferredModule>}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <DeferredModule><MasterChest
               key={selectedCampaignId}
@@ -13953,6 +13970,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
             <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <SocialRuntimeGuard><DeferredModule><FriendsPanel
               active={profileSection === 'friends'}
+              onlinePresence={presenceV302.online}
               isSiteAdmin={isSiteAdmin}
               selectedTab={socialNavigationTab}
               onSelectTab={setSocialNavigationTab}
@@ -13969,8 +13987,8 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
               }}
             /></DeferredModule></SocialRuntimeGuard>}</div>
           </div>
-          {previewMyPublicProfile && session && <DeferredModule><PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/></DeferredModule>}
-          {commentAuthorProfile && session && <DeferredModule><PublicAdventurerProfile person={commentAuthorProfile} isSelf={commentAuthorProfile.id===session.user.id} onClose={()=>setCommentAuthorProfile(null)}/></DeferredModule>}
+          {previewMyPublicProfile && session && <DeferredModule><PublicAdventurerProfile onlinePresence={presenceV302.online} isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/></DeferredModule>}
+          {commentAuthorProfile && session && <DeferredModule><PublicAdventurerProfile onlinePresence={presenceV302.online} person={commentAuthorProfile} isSelf={commentAuthorProfile.id===session.user.id} onClose={()=>setCommentAuthorProfile(null)}/></DeferredModule>}
           </div>}
           {activePage === 'overview' && (
   <section className="inventory-section overview-page-panel hb-overview">
@@ -19663,6 +19681,7 @@ style={{cursor:'pointer'}}>
             )}
           </div>
         </main>
+        {activeVoiceRoomV302 && <Suspense fallback={null}><VoiceDockV302 key={activeVoiceRoomV302.id} room={activeVoiceRoomV302} userId={session.user.id} label={String(displayName)} activeSpace={presenceActivityV302} onLeave={()=>setActiveVoiceRoomV302(null)} /></Suspense>}
         <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
           {activePage === 'communication' ? <>
             <button type="button" className="active" aria-current="page" onClick={openCommunicationSpace}><span aria-hidden="true">✉</span><small>Conversas</small></button>

@@ -68,6 +68,8 @@ export default function VoiceCallV288({room,userId,label,compact,onLeave}:Props)
   const [remoteScreens,setRemoteScreens] = useState<Record<string,MediaStream>>({})
   const [focusedScreen,setFocusedScreen] = useState<string|null>(null)
   const [screenError,setScreenError] = useState('')
+  const pipWindowRef=useRef<Window|null>(null)
+  const pipVideoRef=useRef<HTMLVideoElement|null>(null)
   const screenStreamRef=useRef<MediaStream|null>(null)
   const videoSendersRef=useRef<Map<string,RTCRtpSender>>(new Map())
   const clientIdRef=useRef('')
@@ -320,13 +322,50 @@ export default function VoiceCallV288({room,userId,label,compact,onLeave}:Props)
   const selectedScreen=screens.find(s=>s.id===focusedScreen)||screens[0]
   const selfPresent=participants.some(p=>p.sessionId===clientIdRef.current)
 
+  // Document Picture-in-Picture mantém a transmissão sobre outras janelas do Windows,
+  // quando disponível no Chromium/Electron. O WebRTC continua nesta página.
+  const openNativePip=async()=>{
+    type PiPApi={requestWindow:(opts:{width:number;height:number})=>Promise<Window>}
+    const api=(window as Window & {documentPictureInPicture?:PiPApi}).documentPictureInPicture
+    if(!api){setScreenError('A janela nativa sempre visível não está disponível nesta versão do Electron. Você ainda pode usar o painel flutuante do HäxBag.');return}
+    try{
+      if(pipWindowRef.current&&!pipWindowRef.current.closed){pipWindowRef.current.focus();return}
+      const pip=await api.requestWindow({width:580,height:390})
+      pipWindowRef.current=pip
+      const style=pip.document.createElement('style')
+      style.textContent='*{box-sizing:border-box}body{margin:0;background:#101820;color:#f5eee2;font:13px system-ui;display:flex;flex-direction:column;height:100vh}header{padding:10px 14px;display:flex;gap:9px;align-items:center;background:#1d282e;border-bottom:1px solid #36444b}header b{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}video{display:block;flex:1;width:100%;height:calc(100vh - 46px);object-fit:contain;background:#05070a}small{padding:20px;text-align:center;color:#bfc6c8}button{background:#2c3539;color:#fff;border:1px solid #5a6769;border-radius:7px;padding:5px 10px;cursor:pointer}'
+      pip.document.head.appendChild(style)
+      const header=pip.document.createElement('header')
+      const title=pip.document.createElement('b')
+      title.textContent=`HäxBag · ${room.name}`
+      const close=pip.document.createElement('button');close.textContent='Fechar janela';close.onclick=()=>pip.close()
+      header.append(title,close);pip.document.body.appendChild(header)
+      const video=pip.document.createElement('video');video.autoplay=true;video.playsInline=true;video.muted=true
+      pip.document.body.appendChild(video);pipVideoRef.current=video
+      pip.addEventListener('pagehide',()=>{if(pipWindowRef.current===pip){pipWindowRef.current=null;pipVideoRef.current=null}},{once:true})
+      video.srcObject=selectedScreen?.stream||null
+      if(selectedScreen?.stream)void video.play().catch(()=>{})
+      else {const hint=pip.document.createElement('small');hint.textContent='Aguardando alguém compartilhar a tela nesta chamada.';pip.document.body.appendChild(hint)}
+    }catch(err){setScreenError(err instanceof Error?`Não foi possível abrir a janela: ${err.message}`:'Não foi possível abrir a janela de transmissão.')}
+  }
+  useEffect(()=>{
+    const video=pipVideoRef.current
+    if(!video)return
+    video.srcObject=selectedScreen?.stream||null
+    if(selectedScreen?.stream)void video.play().catch(()=>{})
+    const hint=video.parentElement?.querySelector('small')
+    if(hint)hint.remove()
+  },[selectedScreen?.id,selectedScreen?.stream])
+  useEffect(()=>()=>{try{pipWindowRef.current?.close()}catch{/* janela já fechada */}},[])
+
+
   return <section className={`hb-voice-v288 hb-voice-v290${compact?' hb-voice-v288--compact':''}${screens.length?' has-screen':''}`} aria-label={`Chamada de áudio ${room.name}`}>
     <header className="hb-voice-header-v288 hb-voice-top-v290">
       <div className="hb-voice-header-title-v288">
         <span className="hb-voice-header-icon-v288" aria-hidden="true">♫</span>
         <div><small>{room.serverName} <span aria-hidden="true">/</span> SALA DE VOZ</small><h2>{room.name}</h2><p>{status==='ready'?'Converse e compartilhe com quem está na sala':status==='connecting'?'Conectando ao microfone…':'Conexão indisponível'}</p></div>
       </div>
-      <div className="hb-voice-top-status-v290"><span className="hb-voice-count-v290">◉ {participants.length} {participants.length===1?'participante':'participantes'}</span><span className={`hb-voice-status-v288 hb-voice-status-v288--${status}`}>{status==='ready'?'● Conectado':status==='connecting'?'◌ Conectando':'● Falha'}</span></div>
+      <div className="hb-voice-top-status-v290"><button type="button" className="hb-v302-native-pip-button" title="Abrir transmissão em uma janela sempre visível, quando disponível" onClick={()=>void openNativePip()}>▣ Janela</button><span className="hb-voice-count-v290">◉ {participants.length} {participants.length===1?'participante':'participantes'}</span><span className={`hb-voice-status-v288 hb-voice-status-v288--${status}`}>{status==='ready'?'● Conectado':status==='connecting'?'◌ Conectando':'● Falha'}</span></div>
     </header>
     {problem&&<div className="hb-voice-warning-v288" role="alert">{problem}</div>}
     {screenError&&<div className="hb-voice-warning-v288" role="alert">{screenError}<button type="button" onClick={()=>setScreenError('')} aria-label="Dispensar aviso de transmissão">×</button></div>}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../supabase'
+import type { OnlinePresenceMapV302 } from './usePresenceV302'
 import './PublicProfileBase.styles.css'
 import './ProfileSocialV165.css'
 import './PublicProfileV230.css'
@@ -55,6 +56,7 @@ type Props = {
   onFriendUpdate?: () => void
   onMessage?: (person: AdventurerRef) => void
   isSelf?: boolean
+  onlinePresence?: OnlinePresenceMapV302
 }
 
 type SocialRelationship = { following:boolean; follows_me:boolean; friends:boolean; blocked_by_me:boolean; blocked_me:boolean }
@@ -76,7 +78,7 @@ const followTextColor = (accent: string | undefined): string => {
   return luminance > 0.179 ? '#000000' : '#ffffff'
 }
 
-export default function PublicAdventurerProfile({ person, onClose, campaigns = [], onFriendUpdate, onMessage, isSelf = false }: Props) {
+export default function PublicAdventurerProfile({ person, onClose, campaigns = [], onFriendUpdate, onMessage, isSelf = false, onlinePresence = {} }: Props) {
   const [selectedPerson, setSelectedPerson] = useState<AdventurerRef>(person)
   const [profileHistory, setProfileHistory] = useState<AdventurerRef[]>([])
   const viewingSelf = isSelf && selectedPerson.id === person.id
@@ -247,6 +249,7 @@ export default function PublicAdventurerProfile({ person, onClose, campaigns = [
               <span className="hb-public-eyebrow">PERFIL NA COMUNIDADE</span>
               <h2 id="hb-public-profile-name">{view.display_name || selectedPerson.display_name}</h2>
               <span className="hb-public-handle">@{view.username || selectedPerson.username || 'aventureiro'}</span>
+              {onlinePresence[selectedPerson.id]&&<span className={`hb-v302-public-presence is-${onlinePresence[selectedPerson.id].status}`}><i aria-hidden="true"/>{onlinePresence[selectedPerson.id].status==='busy'?'Ocupado':'Disponível'}{onlinePresence[selectedPerson.id].activity?` · ${onlinePresence[selectedPerson.id].activity}`:''}</span>}
               {view.status && allow('show_status') && <span className={`hb-public-status ${/indisponível|offline/i.test(view.status)?'is-offline':''}`}><i aria-hidden="true"/>{view.status}</span>}
               {allow('show_bio') && view.bio?.trim() && <p className="hb-v230-bio-preview">{view.bio.trim()}</p>}
             </div>

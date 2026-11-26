@@ -119,7 +119,6 @@ export default function DesktopUpdateCenter() {
           {hasUpdate
             ? <button type="button" className="hb-update-mini-primary" disabled={busy} onClick={() => void install()}>Reiniciar e instalar</button>
             : <button type="button" disabled={!status?.enabled || isBusy} onClick={() => void check()}>{isBusy ? 'Verificando…' : 'Verificar agora'}</button>}
-          {status?.releaseUrl && <a href={status.releaseUrl} target="_blank" rel="noopener noreferrer">Histórico</a>}
         </div>
       </div>
     </section>}

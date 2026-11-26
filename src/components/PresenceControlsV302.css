@@ -1,0 +1,21 @@
+.app-shell .hb-v302-presence-control{position:relative;flex:0 0 auto;z-index:1900}
+.app-shell .hb-v302-presence-trigger{display:flex;align-items:center;gap:7px;padding:7px 9px;background:transparent;border:1px solid var(--season-line,#364247);border-radius:9px;color:var(--season-text,#f0f0ed);font:600 11px system-ui;cursor:pointer}
+.app-shell .hb-v302-presence-dot{display:inline-block;flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:#778087}
+.app-shell .hb-v302-presence-dot.is-available{background:#65cfa1;box-shadow:0 0 7px #65cfa155}
+.app-shell .hb-v302-presence-dot.is-busy{background:#d98969}
+.app-shell .hb-v302-presence-dot.is-invisible{background:#778087}
+.app-shell .hb-v302-presence-menu{position:absolute;right:0;top:calc(100% + 9px);display:grid;gap:3px;width:min(280px,calc(100vw - 20px));padding:9px;background:var(--season-surface,#151c23);color:var(--season-text,#f0f0ed);border:1px solid var(--season-line,#364247);border-radius:13px;box-shadow:0 20px 35px #0009;z-index:1901}
+.app-shell .hb-v302-presence-menu-head{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 9px;border-bottom:1px solid var(--season-line,#364247);font-size:12px}
+.app-shell .hb-v302-presence-menu button{display:flex;align-items:center;gap:8px;text-align:left;border:0;background:transparent;border-radius:7px;padding:9px;color:inherit;font:600 12px system-ui;cursor:pointer}
+.app-shell .hb-v302-presence-menu button:hover,.app-shell .hb-v302-presence-menu button[aria-pressed=true]{background:color-mix(in srgb,var(--season-primary,#d9bd8b) 10%,transparent)}
+.app-shell .hb-v302-presence-menu button span:last-child:not(:first-child){margin-left:auto}
+.app-shell .hb-v302-presence-share{padding:10px 8px 5px;display:flex;gap:8px;align-items:center;font-size:12px}
+.app-shell .hb-v302-presence-menu small{padding:2px 8px 6px;color:var(--season-muted,#9eabb0);font-size:10px;line-height:1.5}
+.app-shell .hb-v302-presence-menu .hb-v302-presence-warning{color:#e7b484}
+.app-shell .hb-comm-member-avatar.hb-v302-online{box-shadow:0 0 0 2px #4acc99}
+.app-shell .hb-comm-member-avatar.hb-v302-busy{box-shadow:0 0 0 2px #e09e6c}
+@media(max-width:750px){.app-shell .hb-v302-presence-trigger>span:last-child{display:none}.app-shell .hb-v302-presence-trigger{padding:10px}}
+
+.hb-v302-public-presence{display:inline-flex;align-items:center;gap:7px;margin-top:5px;font:600 11px system-ui;color:var(--season-muted,#bcc4c6)}
+.hb-v302-public-presence i{width:8px;height:8px;background:#68cba3;border-radius:50%;box-shadow:0 0 8px #68cba344}
+.hb-v302-public-presence.is-busy i{background:#dd9a73;box-shadow:0 0 8px #dd9a7344}

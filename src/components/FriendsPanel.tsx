@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../supabase'
 import type { HaxSocialTab } from '../siteNavigation'
+import type { OnlinePresenceMapV302 } from './usePresenceV302'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
 import './FriendsPanel.styles.css'
 import SocialReferralPanel from './SocialReferralPanel'
@@ -55,6 +56,7 @@ type Props = {
   onSelectTab?: (tab: SocialTab) => void
   onViewOwnProfile?: () => void
   onEditOwnProfile?: () => void
+  onlinePresence?: OnlinePresenceMapV302
   profileIdentity?: {
     name: string
     username?: string
@@ -99,7 +101,7 @@ const pageInfo:Record<SocialTab,{kicker:string;title:string;description:string;i
   administration:{kicker:'ACESSO RESTRITO',title:'Painel Administrativo',description:'Denúncias, usuários, equipe e histórico de moderação do HäxBag.',icon:'♜'},
 }
 
-export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, isSiteAdmin = false, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity }: Props) {
+export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, isSiteAdmin = false, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity, onlinePresence = {} }: Props) {
   const [internalTab,setInternalTab] = useState<Tab>('feed')
   const [focusedPostId,setFocusedPostId] = useState('')
   const [focusRequest,setFocusRequest] = useState(0)
@@ -751,7 +753,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     return <article className="hb-social-person" key={person.person_id}>
       <button className="hb-social-person-name" type="button" onClick={()=>blocked?undefined:viewPerson(person)} disabled={blocked}>
         {avatarFor(person.person_id,nameOf(person))}
-        <span><strong>{nameOf(person)}</strong><small>@{person.username||'aventureiro'} · {blocked?'Bloqueado':person.is_friend?'Amigos':person.follows_me?'Segue você':person.following?'Você segue':'Aventureiro'}</small></span>
+        <span><strong>{nameOf(person)}</strong><small>@{person.username||'aventureiro'} · {blocked?'Bloqueado':person.is_friend?'Amigos':person.follows_me?'Segue você':person.following?'Você segue':'Aventureiro'}{!blocked&&onlinePresence[person.person_id] ? ` · ${onlinePresence[person.person_id].status==='busy'?'Ocupado':'Disponível'}${onlinePresence[person.person_id].activity?` · ${onlinePresence[person.person_id].activity}`:''}` : ''}</small></span>
       </button>
       <div className="hb-social-person-actions">
         {!blocked&&<button type="button" onClick={()=>viewPerson(person)}>Ver perfil</button>}
@@ -1003,7 +1005,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     />}
     {imageViewer&&<div className="hb-v162-lightbox hb-v163-lightbox" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setImageViewer(null)}}><div role="dialog" aria-modal="true" aria-label="Visualizar foto da publicação"><button type="button" className="hb-v162-close-lightbox" onClick={()=>setImageViewer(null)} aria-label="Fechar imagem ampliada">×</button><img src={imageViewer.urls[imageViewer.index]} alt={`Foto ${imageViewer.index+1} de ${imageViewer.urls.length}, publicação de ${imageViewer.author}`} /><div className="hb-v163-viewer-controls">{imageViewer.urls.length>1&&<button type="button" onClick={()=>setImageViewer(view=>view?{...view,index:(view.index-1+view.urls.length)%view.urls.length}:null)} aria-label="Foto anterior">←</button>}<span>{imageViewer.author} · {imageViewer.index+1} / {imageViewer.urls.length}</span>{imageViewer.urls.length>1&&<button type="button" onClick={()=>setImageViewer(view=>view?{...view,index:(view.index+1)%view.urls.length}:null)} aria-label="Próxima foto">→</button>}</div></div></div>}
     {legacyReportPost&&<div className="hb-v231-report-backdrop" role="presentation" onClick={event=>{if(event.target===event.currentTarget)setLegacyReportPost(null)}}><form role="dialog" aria-modal="true" aria-label="Denunciar publicação" className="hb-v231-report-dialog hb-v231-form" onSubmit={e=>void reportLegacy(e)}><h3>⚑ Denunciar publicação</h3><label>Motivo<select value={legacyReportReason} onChange={e=>setLegacyReportReason(e.target.value)}><option>Conteúdo inadequado</option><option>Assédio ou ameaças</option><option>Spam</option><option>Imitação de identidade</option><option>Violação de privacidade</option><option>Outro motivo</option></select></label><label>Detalhes<textarea rows={3} maxLength={1200} value={legacyReportDetails} onChange={e=>setLegacyReportDetails(e.target.value)}/></label><div className="hb-v231-inline-actions"><button type="button" onClick={()=>setLegacyReportPost(null)}>Cancelar</button><button type="submit" disabled={!!busy}>Enviar denúncia</button></div></form></div>}
-    {profile&&<PublicAdventurerProfile person={profile} onClose={()=>setProfile(null)} onFriendUpdate={()=>{void refresh();void loadFeed(null,false,feedScope)}} onMessage={person=>{
+    {profile&&<PublicAdventurerProfile person={profile} onlinePresence={onlinePresence} onClose={()=>setProfile(null)} onFriendUpdate={()=>{void refresh();void loadFeed(null,false,feedScope)}} onMessage={person=>{
       setProfile(null)
       const current=conversations.find(c=>c.partner_id===person.id)||{partner_id:person.id,display_name:person.display_name,username:person.username||'',last_message:null,last_at:null,unread_count:0,can_message:true}
       openChat(current)

@@ -1,0 +1,25 @@
+/* V302: a mídia WebRTC permanece viva independentemente da rota atual. */
+.app-shell .hb-v302-call-dock{position:fixed;right:20px;bottom:20px;z-index:2400;display:flex;flex-direction:column;width:min(490px,calc(100vw - 16px));max-height:calc(100dvh - 20px);border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 25%,var(--season-line,#354148));border-radius:15px;box-shadow:0 20px 70px #000b;background:var(--season-surface,#141c24);overflow:hidden;color:var(--season-text,#f6f2ea)}
+.app-shell .hb-v302-dock-top{display:flex;align-items:center;gap:9px;flex:0 0 auto;padding:7px 10px;min-height:43px;border-bottom:1px solid var(--season-line,#354148);background:var(--season-surface-alt,#202830);cursor:move;user-select:none;touch-action:none}
+.app-shell .hb-v302-dock-top>strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-shell .hb-v302-dock-top>small{font-size:10px;color:var(--season-muted,#acb2b9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-shell .hb-v302-dock-top>span:first-child{color:#6ac9a3}
+.app-shell .hb-v302-dock-top .hb-v302-dock-grip{margin-left:auto;color:var(--season-muted,#b3b5bd)}
+.app-shell .hb-v302-dock-top button,.app-shell .hb-v302-dock-min-actions button{flex:0 0 auto;cursor:pointer;border:1px solid var(--season-line,#354148);border-radius:7px;background:transparent;color:inherit;padding:5px 7px;font-size:11px}
+.app-shell .hb-v302-dock-top button:hover,.app-shell .hb-v302-dock-min-actions button:hover{border-color:var(--season-primary,#d9bd8b)}
+.app-shell .hb-v302-dock-media{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.app-shell .hb-v302-call-dock .hb-voice-v290.hb-voice-v288--compact{position:relative!important;inset:auto!important;display:flex!important;width:100%;max-height:min(75dvh,620px);box-shadow:none;border:0;border-radius:0;min-height:150px}
+.app-shell .hb-v302-call-dock .hb-voice-v290.hb-voice-v288--compact .hb-voice-main-v290{padding:9px;gap:10px}
+.app-shell .hb-v302-call-dock .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-v290{min-height:100px}
+.app-shell .hb-v302-call-dock .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-v290 p{display:none}
+.app-shell .hb-v302-call-dock .hb-voice-v290.hb-voice-v288--compact .hb-voice-screen-card-v290 video{max-height:210px}
+.app-shell .hb-v302-call-dock .hb-voice-header-v288{padding:8px 10px}
+.app-shell .hb-v302-call-dock .hb-voice-top-v290 .hb-voice-status-v288{font-size:9px}
+.app-shell .hb-v302-call-dock .hb-v302-dock-loading{padding:24px;text-align:center;color:var(--season-muted,#aeb2ba)}
+.app-shell .hb-v302-call-dock.is-minimized{width:min(290px,calc(100vw - 16px))}
+.app-shell .hb-v302-call-dock.is-minimized .hb-v302-dock-media{position:absolute;visibility:hidden;pointer-events:none;height:0;overflow:hidden}
+.app-shell .hb-v302-dock-min-actions{display:flex;gap:7px;padding:8px}
+.app-shell .hb-v302-dock-min-actions button{flex:1}
+.app-shell .hb-v302-call-dock .hb-v302-native-pip-button{flex:0 0 auto;padding:5px 9px;border:1px solid var(--season-line,#364247);border-radius:8px;color:var(--season-primary,#d9bd8b);background:transparent;cursor:pointer;font:600 10px system-ui}
+.app-shell .hb-v302-call-dock .hb-v302-native-pip-button:hover{border-color:var(--season-primary,#d9bd8b)}
+@media(max-width:550px){.app-shell .hb-v302-call-dock{bottom:8px;right:8px;width:calc(100vw - 16px)}.app-shell .hb-v302-dock-top>small{display:none}}
