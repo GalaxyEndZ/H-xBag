@@ -6,7 +6,7 @@
 export const HAX_PAGES = [
   'overview', 'player-table', 'sheets', 'campaigns', 'customization',
   'shops', 'master-shield', 'master-chest', 'missions', 'investigation',
-  'bestiary', 'enemies', 'profile', 'conditions', 'dice-tower', 'minigames', 'communication',
+  'bestiary', 'encyclopedia', 'enemies', 'profile', 'conditions', 'dice-tower', 'minigames', 'communication',
 ] as const
 export type HaxPage = typeof HAX_PAGES[number]
 

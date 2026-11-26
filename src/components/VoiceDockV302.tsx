@@ -4,7 +4,7 @@ import './VoiceDockV302.css'
 
 // A instância WebRTC pertence ao dock global, não ao canal selecionado.
 const VoiceCallV288=lazy(()=>import('./VoiceCallV288'))
-type Props={room:VoiceRoomV302;userId:string;label:string;activeSpace:string;onLeave:()=>void}
+type Props={room:VoiceRoomV302;userId:string;label:string;avatarUrl?:string;activeSpace:string;onLeave:()=>void}
 type Position={x:number;y:number}
 function readPin(){try{return localStorage.getItem('haxbag:v302:voice-pin')!=='false'}catch{return true}}
 function readPosition():Position|null{
@@ -12,7 +12,7 @@ function readPosition():Position|null{
     return data&&Number.isFinite(data.x)&&Number.isFinite(data.y)?data:null
   }catch{return null}
 }
-export default function VoiceDockV302({room,userId,label,activeSpace,onLeave}:Props){
+export default function VoiceDockV302({room,userId,label,avatarUrl,activeSpace,onLeave}:Props){
   const root=useRef<HTMLElement>(null)
   const drag=useRef<{id:number;startX:number;startY:number;left:number;top:number}|null>(null)
   const [pinned,setPinned]=useState(readPin)
@@ -58,7 +58,7 @@ export default function VoiceDockV302({room,userId,label,activeSpace,onLeave}:Pr
     {/* O áudio e a negociação continuam montados mesmo quando a janela é minimizada. */}
     <div className="hb-v302-dock-media" aria-hidden={minimized}>
       <Suspense fallback={<div className="hb-v302-dock-loading">Preparando chamada…</div>}>
-        <VoiceCallV288 room={room} userId={userId} label={label} compact onLeave={onLeave}/>
+        <VoiceCallV288 room={room} userId={userId} label={label} avatarUrl={avatarUrl} compact onLeave={onLeave}/>
       </Suspense>
     </div>
     {minimized&&<div className="hb-v302-dock-min-actions"><button type="button" onClick={()=>setMinimized(false)}>Mostrar chamada</button><button type="button" onClick={onLeave}>Sair</button></div>}

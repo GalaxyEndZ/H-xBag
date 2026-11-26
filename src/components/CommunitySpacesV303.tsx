@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../supabase'
+import PollsV304 from './PollsV304'
 import './V303Features.css'
 
 type Space={id:string;group_id:string;name:string;description:string;kind:'discussion'|'announcements'|'resources';sort_order:number}
@@ -58,6 +59,7 @@ export default function CommunitySpacesV303({groupId,groupName,userId,canModerat
    <div className="hb-v303-space-content">{selected&&<><header><div><small>{labels[selected.kind]}</small><h4>{selected.name}</h4><p>{selected.description||'Compartilhe conteúdo com os participantes desta comunidade.'}</p></div>{canModerate&&<button type="button" className="is-danger" onClick={deleteSpace} disabled={busy}>Excluir espaço</button>}</header>
     {canPost&&<form className="hb-v303-space-composer" onSubmit={send}><textarea value={composer} maxLength={2500} rows={3} onChange={e=>setComposer(e.target.value)} placeholder={selected.kind==='resources'?'Compartilhe um link ou material útil…':'Escreva uma publicação para este espaço…'} aria-label="Nova publicação"/><div><small>{composer.length}/2500</small><button disabled={busy||!composer.trim()}>Publicar</button></div></form>}
     {!canPost&&<p className="hb-v303-muted">Somente donos e moderadores podem publicar avisos.</p>}
+    <details className="hb-v304-wrap hb-v304-compact"><summary>📊 Enquetes da comunidade</summary><PollsV304 contextType="space" contextId={selected.id} userId={userId} allowCreate={Boolean(canPost)}/></details>
     <div className="hb-v303-entry-list">{entries.map(entry=><article key={entry.id}><div className="hb-v303-entry-meta"><span>{entry.author_id===userId?'Você':(nameFor?.(entry.author_id)||'Membro da comunidade')}</span><time>{new Date(entry.created_at).toLocaleString('pt-BR')}</time></div><p>{entry.body}</p>{(entry.author_id===userId||canModerate)&&<button type="button" onClick={()=>remove(entry)} disabled={busy}>Excluir</button>}</article>)}{!entries.length&&<p className="hb-v303-muted">Nenhuma publicação neste espaço ainda.</p>}</div>
    </>}</div>
   </div>:<p className="hb-v303-muted">Ainda não há espaços internos. {canModerate?'Crie o primeiro espaço para organizar esta comunidade.':'O dono ou um moderador poderá criar espaços.'}</p>}

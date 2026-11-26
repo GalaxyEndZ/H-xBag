@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 import { ARCADE_GAMES, type ArcadeGameId } from './ArcadeChallengeCatalog'
 import PongGame from './PongGame'
+import TournamentsV304 from './TournamentsV304'
 import { SnakeGame, BreakoutGame, AsteroidsGame, FlappyGame, ArenaGame } from './ArcadeCanvasGames'
 import { Game2048, MinesweeperGame, MemoryGame } from './ArcadePuzzleGames'
 import RuneFallGame from './RuneFallGame'
@@ -194,6 +195,8 @@ export default function MinigamesHub({ userId }: { userId: string }) {
       })}</div>
       <p className="hb-arcade-daily-info">O catálogo tem 60 missões predefinidas, com seis dificuldades: Fácil, Médio, Difícil, Raro, Lendário e Pesadelo. São apenas 3 missões diárias de jogos diferentes. Prêmio único de 1 a 20 moedas, somente ao completar as três.</p>
     </section>
+
+    <TournamentsV304 userId={userId}/>
 
     <section className="hb-arcade-library" aria-label="Biblioteca de minigames"><div className="hb-arcade-daily-top"><div><span className="hb-arcade-eyebrow">SUA COLEÇÃO DE JOGOS</span><h2>Escolha um minigame</h2></div><small>Selecione um jogo para abrir a arena e o ranking.</small></div><div className="hb-arcade-games-grid">{ARCADE_GAMES.map(item => <button type="button" key={item.id} className={`hb-arcade-game-choice ${selectedGame===item.id?'is-selected':''}`} onClick={()=>selectGame(item.id, true)} aria-pressed={selectedGame===item.id}><span aria-hidden="true">{item.icon}</span><strong>{item.title}</strong><small>{item.description}</small></button>)}</div></section>
 

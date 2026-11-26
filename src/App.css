@@ -16805,3 +16805,6 @@ button:disabled { opacity: .58; }
   background: color-mix(in srgb, #72b998 18%, transparent);
 }
 .inventory-item-card .inventory-equip-button:disabled { opacity: .55 !important; cursor: wait; transform: none; }
+
+/* V304 — A foto de perfil deve preencher o avatar de navegação. */
+.app-shell .hb-v304-account-photo{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit;}

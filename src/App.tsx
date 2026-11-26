@@ -74,6 +74,7 @@ const HaxTable = lazy(() => import('./components/HaxTable'))
 const DiceTower = lazy(() => import('./components/DiceTower'))
 const MinigamesHub = lazy(() => import('./components/MinigamesHub'))
 const CommunicationHubV284 = lazy(() => import('./components/CommunicationHubV284'))
+const EncyclopediaV304 = lazy(() => import('./components/EncyclopediaV304'))
 const VoiceDockV302 = lazy(() => import('./components/VoiceDockV302'))
 const MasterChest = lazy(() => import('./components/MasterChest'))
 const CampaignMissions = lazy(() => import('./components/CampaignMissions'))
@@ -11393,6 +11394,7 @@ counterAttackDT
     {id:'investigation',label:'Mesa de Investigação',symbol:'🧵',description:'Quadro de pistas, teorias e conexões',campaign:true},
     {id:'shops',label:'Lojas',symbol:'▤',description:'Comércio da campanha',campaign:true},
     {id:'bestiary',label:'Bestiário',symbol:'♞',description:'Criaturas e registros',campaign:true},
+    {id:'encyclopedia',label:'Enciclopédia',symbol:'📖',description:'Conhecimento e registros da campanha',campaign:true},
     {id:'customization',label:'Customização',symbol:'✦',description:'Temas e identidade da campanha',campaign:true},
     {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
     {id:'profile',label:'Social',symbol:'✦',description:'Feed, perfis, seguidores, amizades e mensagens'},
@@ -11663,6 +11665,9 @@ counterAttackDT
             <button type="button" className={`nav-link ${activePage === 'bestiary' ? 'active' : ''}`} onClick={() => setActivePage('bestiary')} disabled={!selectedCampaignId} aria-current={activePage === 'bestiary' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♞</span><span className="hb-sidebar-nav-name">Bestiário</span><span className="nav-count">{creatures.length}</span>
             </button>
+            <button type="button" className={`nav-link ${activePage === 'encyclopedia' ? 'active' : ''}`} onClick={() => setActivePage('encyclopedia')} disabled={!selectedCampaignId} aria-current={activePage === 'encyclopedia' ? 'page' : undefined}>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">📖</span><span className="hb-sidebar-nav-name">Enciclopédia</span>
+            </button>
             <button type="button" className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }} aria-current={activePage === 'campaigns' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">⚑</span><span className="hb-sidebar-nav-name">Campanhas</span><span className="nav-count">{campaigns.length}</span>
             </button>
@@ -11711,7 +11716,7 @@ counterAttackDT
             </div>
           </details>}
           <button type="button" className="profile hb-sidebar-profile hb-profile-shortcut" onClick={() => openSocialSection('overview')} title="Abrir meu perfil">
-            <div className="avatar">{accountAvatar || displayName.charAt(0).toUpperCase()}</div>
+            <div className="avatar">{profilePhotoUrls.avatar ? <img className="hb-v304-account-photo" src={profilePhotoUrls.avatar} alt="" style={{objectPosition:`center ${profilePhotoUrls.avatarPosition}%`}} referrerPolicy="no-referrer"/> : (accountAvatar || displayName.charAt(0).toUpperCase())}</div>
             <div className="profile-info"><strong>{displayName}</strong><small>{session.user.email}</small></div>
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
           </button>
@@ -11816,7 +11821,7 @@ counterAttackDT
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : activePage === 'communication' ? 'Comunicação' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Jogos e desafios', communication: 'Servidores e canais', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', encyclopedia: 'Enciclopédia', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Jogos e desafios', communication: 'Servidores e canais', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -11871,7 +11876,8 @@ counterAttackDT
 
         <div className={`page-content page-${activePage}`} id="inicio-conteudo" tabIndex={-1}>
           {activePage === 'minigames' && <DeferredModule><MinigamesHub userId={session.user.id} /></DeferredModule>}
-          {activePage === 'communication' && <DeferredModule><CommunicationHubV284 userId={session.user.id} displayName={String(displayName)} username={accountUsername} onOpenDirectMessages={()=>openSocialTab('messages')} activeVoice={activeVoiceRoomV302} onJoinVoice={setActiveVoiceRoomV302} onlinePresence={presenceV302.online} /></DeferredModule>}
+          {activePage === 'encyclopedia' && selectedCampaignId && <DeferredModule><EncyclopediaV304 campaignId={selectedCampaignId} userId={session.user.id} canManage={isMaster} /></DeferredModule>}
+          {activePage === 'communication' && <DeferredModule><CommunicationHubV284 avatarUrl={profilePhotoUrls.avatar} avatarPosition={profilePhotoUrls.avatarPosition} userId={session.user.id} displayName={String(displayName)} username={accountUsername} onOpenDirectMessages={()=>openSocialTab('messages')} activeVoice={activeVoiceRoomV302} onJoinVoice={setActiveVoiceRoomV302} onlinePresence={presenceV302.online} /></DeferredModule>}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <DeferredModule><MasterChest
               key={selectedCampaignId}
@@ -19681,7 +19687,7 @@ style={{cursor:'pointer'}}>
             )}
           </div>
         </main>
-        {activeVoiceRoomV302 && <Suspense fallback={null}><VoiceDockV302 key={activeVoiceRoomV302.id} room={activeVoiceRoomV302} userId={session.user.id} label={String(displayName)} activeSpace={presenceActivityV302} onLeave={()=>setActiveVoiceRoomV302(null)} /></Suspense>}
+        {activeVoiceRoomV302 && <Suspense fallback={null}><VoiceDockV302 key={activeVoiceRoomV302.id} room={activeVoiceRoomV302} userId={session.user.id} label={String(displayName)} avatarUrl={profilePhotoUrls.avatar} activeSpace={presenceActivityV302} onLeave={()=>setActiveVoiceRoomV302(null)} /></Suspense>}
         <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
           {activePage === 'communication' ? <>
             <button type="button" className="active" aria-current="page" onClick={openCommunicationSpace}><span aria-hidden="true">✉</span><small>Conversas</small></button>

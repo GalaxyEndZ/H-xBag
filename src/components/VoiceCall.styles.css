@@ -163,3 +163,5 @@
 .app-shell .hb-voice-v290 .hb-voice-welcome-v290,
 .app-shell .hb-voice-v290 .hb-voice-broadcast-v290,
 .app-shell .hb-voice-v290 .hb-voice-roster-caption-v290{flex-shrink:0}
+
+.app-shell .hb-voice-avatar-v288 .hb-v304-account-photo{width:100%;height:100%;object-fit:cover;border-radius:inherit;}

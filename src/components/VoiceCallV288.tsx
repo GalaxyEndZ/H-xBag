@@ -12,7 +12,7 @@ type VoiceSignal = {
 type VoiceParticipant = Presence & { sessionId: string; connected: boolean }
 
 type Props = {
-  room: Room; userId: string; label: string; compact: boolean;
+  room: Room; userId: string; label: string; avatarUrl?:string; compact: boolean;
   onLeave: () => void;
 }
 
@@ -54,10 +54,11 @@ function SharedDisplay({stream,owner,local=false}:{stream:MediaStream|null;owner
   </div>
 }
 
-export default function VoiceCallV288({room,userId,label,compact,onLeave}:Props) {
+export default function VoiceCallV288({room,userId,label,avatarUrl,compact,onLeave}:Props) {
   const [status,setStatus] = useState<'connecting'|'ready'|'error'>('connecting')
   const [problem,setProblem] = useState('')
   const [participants,setParticipants] = useState<VoiceParticipant[]>([])
+  const [peerAvatarsV304,setPeerAvatarsV304] = useState<Record<string,string>>({})
   const [muted,setMuted] = useState(false)
   const [deafened,setDeafened] = useState(false)
   const [volume,setVolume] = useState(85)
@@ -316,6 +317,15 @@ export default function VoiceCallV288({room,userId,label,compact,onLeave}:Props)
       if(!denied)setScreenError(error instanceof Error?`Não foi possível iniciar a transmissão: ${error.message}`:'Não foi possível iniciar a transmissão de tela.')
     }finally{capturePendingRef.current=false;if(mountedRef.current)setStartingShare(false)}
   }
+  useEffect(()=>{
+    const ids=Array.from(new Set(participants.filter(p=>p.userId!==userId).map(p=>p.userId))).slice(0,8)
+    if(!ids.length)return
+    let active=true
+    void supabase.from('hax_profile_showcase').select('user_id,avatar_image').in('user_id',ids).then(({data,error})=>{
+      if(active&&!error)setPeerAvatarsV304(Object.fromEntries((data||[]).filter(p=>p.avatar_image).map(p=>[p.user_id,p.avatar_image])))
+    })
+    return()=>{active=false}
+  },[participants.map(p=>p.userId).join(','),userId])
   const remoteShares=participants.filter(p=>p.sharing&&p.sessionId!==clientIdRef.current)
   const screens=[...(sharing&&screenStream?[{id:clientIdRef.current,label,stream:screenStream,local:true}]:[]),
     ...remoteShares.map(p=>({id:p.sessionId,label:p.label,stream:remoteScreens[p.sessionId]||null,local:false}))]
@@ -380,7 +390,7 @@ export default function VoiceCallV288({room,userId,label,compact,onLeave}:Props)
         <div className="hb-voice-participants-v288 hb-voice-people-v290" aria-label="Participantes da chamada">
           {participants.length===0&&<div className="hb-voice-empty-v288">{status==='ready'?'Você está na sala. Convide seus amigos para conversar.':'Preparando a chamada…'}</div>}
           {participants.map(p=><div className={`hb-voice-participant-v288 hb-voice-person-v290${p.connected||p.sessionId===clientIdRef.current?' is-connected':''}`} key={p.sessionId}>
-            <div className="hb-voice-avatar-v288">{p.label.slice(0,1).toUpperCase()}</div><div className="hb-voice-person-details-v290"><strong>{p.label}{p.sessionId===clientIdRef.current?' (você)':''}</strong><small>{p.muted?'Microfone desligado':p.sessionId===clientIdRef.current?'Você está na chamada':p.connected?'Áudio conectado':'Conectando áudio…'}</small></div><span className="hb-voice-person-icons-v290">{p.sharing&&<span title="Transmitindo tela">▣</span>}<span title={p.muted?'Microfone desligado':'Microfone ligado'}>{p.muted?'⊘':'♫'}</span></span>
+            <div className="hb-voice-avatar-v288">{(p.userId===userId?avatarUrl:peerAvatarsV304[p.userId]) ? <img src={p.userId===userId?avatarUrl:peerAvatarsV304[p.userId]} alt="" loading="lazy" className="hb-v304-account-photo"/> : p.label.slice(0,1).toUpperCase()}</div><div className="hb-voice-person-details-v290"><strong>{p.label}{p.sessionId===clientIdRef.current?' (você)':''}</strong><small>{p.muted?'Microfone desligado':p.sessionId===clientIdRef.current?'Você está na chamada':p.connected?'Áudio conectado':'Conectando áudio…'}</small></div><span className="hb-voice-person-icons-v290">{p.sharing&&<span title="Transmitindo tela">▣</span>}<span title={p.muted?'Microfone desligado':'Microfone ligado'}>{p.muted?'⊘':'♫'}</span></span>
           </div>)}
         </div>
       </main>
