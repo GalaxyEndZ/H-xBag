@@ -1,0 +1,32 @@
+/* HäxBag V297 — estilos agrupados sem alterar a ordem original. */
+
+/* ===== SocialV248Unified.css (arquivo original) ===== */
+/* HäxBag · linha do tempo única (publicações tradicionais e especiais). */
+.hb-social-v231-feed .hb-v231-unified-section{display:grid;gap:15px;min-width:0}
+.hb-v231-feed-refresh{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.79rem;opacity:.85}
+.hb-v231-feed-refresh button{border:1px solid var(--season-line,rgba(170,170,170,.26));border-radius:10px;padding:7px 12px;background:var(--season-surface,rgba(100,100,100,.12));color:inherit;cursor:pointer}
+.hb-v248-unified-feed{display:flex;flex-direction:column;gap:17px;min-width:0}
+.hb-v248-feed-entry{min-width:0}
+.hb-v248-feed-entry.is-special .hb-v231-post-list{display:contents}
+.hb-v248-feed-entry.is-special .hb-v231-post{margin:0}
+.hb-v248-feed-entry.is-classic>.hb-social-post{margin:0}
+@media(max-width:600px){.hb-v231-feed-refresh{align-items:flex-start}.hb-v231-feed-refresh button{width:100%}}
+
+/* ===== SocialV280CommunityComments.css (arquivo original) ===== */
+/* V280 — Autoria real e edição de comentários das Comunidades. */
+.hb-social-v231 .hb-v280-comment {min-width:0;}
+.hb-social-v231 .hb-v280-comment-header {display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.hb-social-v231 .hb-v280-comment-identity {display:flex;align-items:baseline;gap:6px 9px;flex-wrap:wrap;min-width:0;}
+.hb-social-v231 .hb-v280-comment-attribution {font-size:12px;display:inline-flex;align-items:baseline;gap:4px;color:var(--season-muted,#aeb3c0);min-width:0;overflow-wrap:anywhere;}
+.hb-social-v231 .hb-v280-comment-handle {background:transparent;border:0;padding:1px 2px;border-radius:4px;color:var(--season-primary,#dba76e);font:inherit;font-weight:800;cursor:pointer;overflow-wrap:anywhere;}
+.hb-social-v231 .hb-v280-comment-handle:disabled {cursor:default;opacity:1;}
+.hb-social-v231 .hb-v280-comment-time {display:flex;flex-wrap:wrap;align-items:center;gap:3px;opacity:.78;font-size:11px;}
+.hb-social-v231 .hb-v280-comment-editor {margin:10px 0;display:grid;gap:8px;}
+.hb-social-v231 .hb-v280-comment-editor>label {font-size:12px;font-weight:750;}
+.hb-social-v231 .hb-v280-comment-editor textarea {width:100%;min-width:0;resize:vertical;box-sizing:border-box;}
+.hb-social-v231 .hb-v280-comment-editor-footer {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.hb-social-v231 .hb-v280-comment-editor-footer small {font-size:11px;color:var(--season-muted,#aeb3c0);}
+.hb-social-v231 .hb-v280-comment-actions {gap:6px;}
+.hb-social-v231 .hb-v280-comment-actions button {font-size:12px;}
+.hb-social-v231 .hb-v280-comment-editor button[type='submit'] {color:var(--season-primary,#dba76e);border-color:var(--season-primary,#dba76e);}
+@media(max-width:600px){.hb-social-v231 .hb-v280-comment-editor-footer {align-items:stretch;flex-direction:column;}.hb-social-v231 .hb-v280-comment-actions{flex-wrap:wrap;}}

@@ -1,12 +1,7 @@
 import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from '../desktopPublicLinks'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../supabase'
-import './CommunicationHubV284.css'
-import './CommunicationHubV285.css'
-import './CommunicationHubV287.css'
-import './CommunicationHubV288.css'
-import './CommunicationHubV289.css'
-import './CommunicationHubV295.css'
+import './CommunicationHub.styles.css'
 // O WebRTC só é baixado quando alguém entra numa chamada (não ao abrir Comunicação).
 const VoiceCallV288 = lazy(() => import('./VoiceCallV288'))
 

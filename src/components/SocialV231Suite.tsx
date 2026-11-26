@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { supabase } from '../supabase'
 import './SocialV231Suite.css'
 import './SocialExpansionV245.css'
-import './SocialV248Unified.css'
-import './SocialV280CommunityComments.css'
+import './SocialSuiteExtras.styles.css'
 import SocialPostActionsV249 from './SocialPostActionsV249'
 import SocialShareComposerV250, { type ShareIdentityV250 } from './SocialShareComposerV250'
 

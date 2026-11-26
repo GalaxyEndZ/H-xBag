@@ -2,8 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { getCriticalBonus, rollCriticalBonus, parseWeaponDice, CRITICAL_ATTRIBUTE_LABEL, type CriticalFormClass, type CriticalAttribute } from '../combatCriticalRules'
 import { BREATHING_TIER_LABEL, parseDamageExpression, rollDamageExpression, type BreathingKind, type BreathingTier } from '../damageRollRulesV274'
 import { FORM_PROFILES, FORM_KIND_LABEL, FORM_ATTRIBUTE_LABEL, CARPA_KINDS, formAllowedAttributes, formDamageFormula, formDefaultAttribute, formDamageBonus, type FormDelivery, type FormAttribute } from '../breathingFormRulesV282'
-import '../CombatDamageV274.css'
-import '../CombatDamageV282.css'
+import '../CombatDamage.styles.css'
 
 type DamageMode='pure'|'breathing'
 type DamagePart={title:string;formula:string;total:number;detail:string}

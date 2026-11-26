@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
-import './VoiceCallV288.css'
-import './VoiceCallV290.css'
+import './VoiceCall.styles.css'
 
 type Room = { id: string; serverId: string; name: string; serverName: string }
 type Presence = { userId: string; label: string; muted: boolean; deafened: boolean; sharing?: boolean; joinedAt: string }

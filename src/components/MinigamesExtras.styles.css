@@ -1,0 +1,304 @@
+/* HäxBag V297 — estilos agrupados sem alterar a ordem original. */
+
+/* ===== ArcadeBoardVisualsV207.css (arquivo original) ===== */
+/* HäxBag V207 — Identidade dos tabuleiros Snake, 2048 e Campo Minado.
+   Escopado nos três jogos: não afeta Arena, Asteroids, rankings ou sistemas RPG. */
+.hb-arcade-v190 .hb-v207-game {
+  --hb-board-gold:var(--season-primary,#d9bd8b);
+  --hb-board-text:var(--season-text,#f8f5ef);
+  --hb-board-muted:var(--arcade-muted,#aeb4bf);
+  width:100%;
+  max-width:1100px;
+  gap:16px;
+}
+.hb-arcade-v190 .hb-v207-game .hb-v207-scorebar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px 24px;
+  width:100%;
+  padding:clamp(13px,1.6vw,19px) clamp(14px,2vw,22px);
+  border:1px solid color-mix(in srgb,var(--hb-board-gold) 20%,var(--arcade-border,#ffffff22));
+  border-radius:18px;
+  background:linear-gradient(118deg,color-mix(in srgb,var(--hb-board-gold) 9%,var(--season-surface,#211e28)),color-mix(in srgb,var(--season-bg,#121923) 87%,var(--season-surface-alt,#25212d)));
+  box-shadow:inset 0 1px rgba(255,255,255,.055),0 12px 30px rgba(0,0,0,.12);
+}
+.hb-arcade-v190 .hb-v207-score-primary {display:flex;align-items:center;gap:13px;min-width:0}
+.hb-arcade-v190 .hb-v207-score-icon {
+  display:grid;place-items:center;
+  width:53px;height:53px;flex:0 0 53px;
+  border:1px solid color-mix(in srgb,var(--hb-board-gold) 33%,transparent);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--hb-board-gold) 13%,var(--season-surface-alt,#25212d));
+  font-size:25px;
+  box-shadow:inset 0 1px rgba(255,255,255,.085);
+}
+.hb-arcade-v190 .hb-v207-score-primary>div {display:grid;gap:3px}
+.hb-arcade-v190 .hb-v207-scorebar small {
+  display:block;
+  color:var(--hb-board-muted);
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.115em;
+  line-height:1.3;
+}
+.hb-arcade-v190 .hb-v207-score-primary strong {
+  display:flex;align-items:baseline;gap:7px;
+  color:var(--hb-board-text);
+  font-size:clamp(23px,3vw,32px);
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;
+}
+.hb-arcade-v190 .hb-v207-score-primary em {color:var(--hb-board-muted);font-size:11px;font-weight:750;font-style:normal;letter-spacing:0}
+.hb-arcade-v190 .hb-v207-score-stats {display:flex;align-items:stretch;flex-wrap:wrap;gap:7px}
+.hb-arcade-v190 .hb-v207-score-stats>div {
+  display:grid;align-content:center;gap:5px;
+  min-width:100px;
+  min-height:58px;
+  padding:9px 13px;
+  border:1px solid color-mix(in srgb,var(--season-line,#ffffff22) 68%,transparent);
+  border-radius:12px;
+  background:color-mix(in srgb,var(--season-bg,#121923) 74%,transparent);
+}
+.hb-arcade-v190 .hb-v207-score-stats strong {font-size:17px;line-height:1.1;font-weight:850;color:var(--hb-board-text);font-variant-numeric:tabular-nums}
+.hb-arcade-v190 .hb-v207-board-frame {
+  display:grid;justify-items:center;gap:13px;
+  width:100%;
+  max-width:760px;
+  padding:clamp(12px,2vw,22px);
+  border:1px solid color-mix(in srgb,var(--hb-board-gold) 23%,#ffffff19);
+  border-radius:24px;
+  background:
+    radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--hb-board-gold) 10%,transparent),transparent 61%),
+    linear-gradient(150deg,#101d27,#0b121d 70%);
+  box-shadow:0 20px 55px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.07);
+}
+.hb-arcade-v190 .hb-v207-board-heading,.hb-arcade-v190 .hb-v207-board-foot {
+  width:100%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px 16px;
+  color:#d9e5e3;
+  line-height:1.4;
+}
+.hb-arcade-v190 .hb-v207-board-heading {font-size:11px;font-weight:900;letter-spacing:.11em}
+.hb-arcade-v190 .hb-v207-board-heading>span {display:inline-flex;align-items:center;gap:8px}
+.hb-arcade-v190 .hb-v207-board-heading i {display:block;width:7px;height:7px;border-radius:50%;background:var(--hb-board-gold);box-shadow:0 0 12px var(--hb-board-gold)}
+.hb-arcade-v190 .hb-v207-board-heading small {font-size:9px;letter-spacing:.07em;color:#99abb9;font-weight:700}
+.hb-arcade-v190 .hb-v207-board-foot {font-size:9px;font-weight:750;letter-spacing:.08em;color:#90a5b3}
+
+/* Snake — tabuleiro quadriculado de floresta com corpo iluminado. */
+.hb-arcade-v190 .hb-v207-snake-frame {--hb-board-gold:#8adbb1}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board {
+  width:min(100%,610px);max-width:610px;
+  gap:clamp(1px,.24vw,3px);
+  padding:clamp(7px,1.35vw,13px);
+  border:1px solid #345c57;
+  border-radius:19px;
+  background:linear-gradient(145deg,#172e32,#102126 70%);
+  box-shadow:inset 0 0 0 5px #0c1c22,0 0 0 1px rgba(132,227,186,.12),0 15px 30px rgba(0,0,0,.22);
+  overflow:hidden;
+}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell {
+  position:relative;
+  min-width:0;min-height:0;
+  border-radius:25%;
+  background:rgba(116,169,155,.068);
+  box-shadow:inset 0 1px rgba(255,255,255,.018);
+}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell:nth-child(40n + 1),
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell:nth-child(40n + 3){background:rgba(124,190,153,.10)}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell.body {
+  background:linear-gradient(145deg,#a0e6bb,#399a80 85%);
+  border:1px solid rgba(178,252,208,.33);
+  box-shadow:inset 0 2px rgba(255,255,255,.33),inset -2px -3px rgba(0,72,51,.16),0 0 8px rgba(79,217,156,.17);
+}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell.head {
+  z-index:2;
+  opacity:1;
+  background:linear-gradient(135deg,#d7f5b4,#81d89f 65%,#45ab82);
+  border:1px solid rgba(237,255,211,.75);
+  box-shadow:inset 0 2px rgba(255,255,255,.5),0 0 14px rgba(164,255,176,.64);
+}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell.head::after {
+  content:"";
+  position:absolute;inset:0;
+  background:radial-gradient(circle,#163d38 0 19%,transparent 24%) 68% 24%/35% 35% no-repeat,
+             radial-gradient(circle,#163d38 0 19%,transparent 24%) 68% 76%/35% 35% no-repeat;
+}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.head[data-facing="up"]::after{transform:rotate(-90deg)}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.head[data-facing="down"]::after{transform:rotate(90deg)}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.head[data-facing="left"]::after{transform:rotate(180deg)}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell.fruit {
+  opacity:1;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff0d6,#ff8a82 37%,#e34865 76%);
+  box-shadow:inset -2px -3px rgba(130,14,47,.21),0 0 0 2px rgba(247,93,118,.17),0 0 15px rgba(255,104,121,.62);
+  animation:hb-v207-fruit-glow 1.7s ease-in-out infinite;
+}
+.hb-arcade-v190 .hb-v207-snake .hb-snake-board>.hb-v207-snake-cell.fruit::after {
+  content:"";position:absolute;top:-10%;left:44%;width:34%;height:25%;border-radius:100% 10% 100% 10%;background:#8de5a3;transform:rotate(-22deg);
+}
+@keyframes hb-v207-fruit-glow {50%{filter:brightness(1.2);box-shadow:0 0 20px rgba(255,104,121,.75)}}
+
+/* 2048 — contraste por valor da peça, acabamento de vidro e pop de fusão. */
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-board {
+  width:min(100%,590px);max-width:590px;
+  gap:clamp(6px,1.25vw,12px);
+  padding:clamp(9px,1.6vw,15px);
+  border:1px solid #4d566b;
+  border-radius:20px;
+  background:linear-gradient(150deg,#252c3b,#191f30);
+  box-shadow:inset 0 2px 12px rgba(0,0,0,.29),0 15px 28px rgba(0,0,0,.21);
+}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile {
+  --hb-v207-tile-bg:#242d3e;--hb-v207-tile-fg:#fff;
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.035);
+  border-radius:clamp(9px,1.5vw,15px);
+  background:var(--hb-v207-tile-bg);
+  color:var(--hb-v207-tile-fg);
+  font-size:clamp(15px,3.2vw,32px);
+  font-weight:900;
+  letter-spacing:-.04em;
+  line-height:1;
+  text-shadow:0 1px 1px rgba(0,0,0,.17);
+  font-variant-numeric:tabular-nums;
+  box-shadow:inset 0 1px rgba(255,255,255,.13),0 2px 7px rgba(0,0,0,.10);
+}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile.has-value {animation:hb-v207-2048-pop .18s ease-out both}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile.has-value::before {
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(155deg,rgba(255,255,255,.22),transparent 45%,rgba(0,0,0,.075));
+}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="2"]{--hb-v207-tile-bg:#d0d8ca;--hb-v207-tile-fg:#283d3b}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="4"]{--hb-v207-tile-bg:#9cbfb9;--hb-v207-tile-fg:#163b38}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="8"]{--hb-v207-tile-bg:#5caba5;--hb-v207-tile-fg:#102d31}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="16"]{--hb-v207-tile-bg:#678fba}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="32"]{--hb-v207-tile-bg:#897bb7}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="64"]{--hb-v207-tile-bg:#b478a4}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="128"]{--hb-v207-tile-bg:#d0956d}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="256"]{--hb-v207-tile-bg:#b78e4a}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="512"]{--hb-v207-tile-bg:#cbb06d;--hb-v207-tile-fg:#27251d}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="1024"]{--hb-v207-tile-bg:#dcc67b;--hb-v207-tile-fg:#282417}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-value="2048"]{--hb-v207-tile-bg:var(--season-primary,#d9bd8b);--hb-v207-tile-fg:var(--season-on-primary,#191a20)}
+.hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-high-tile="true"]{box-shadow:0 0 20px color-mix(in srgb,var(--season-primary,#d9bd8b) 24%,transparent),inset 0 1px rgba(255,255,255,.31);font-size:clamp(12px,2.65vw,26px)}
+@keyframes hb-v207-2048-pop {from{transform:scale(.9);filter:brightness(1.2)}to{transform:scale(1);filter:none}}
+
+/* Campo Minado — numerais legíveis e estados de células inequívocos. */
+.hb-arcade-v190 .hb-v207-mines-panel {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:11px 16px;width:100%;max-width:760px;
+  padding:12px 16px;border:1px solid var(--arcade-border,#ffffff28);border-radius:15px;
+  background:color-mix(in srgb,var(--season-surface-alt,#252836) 82%,transparent);
+}
+.hb-arcade-v190 .hb-v207-mines-status {display:grid;gap:8px;flex:1 1 240px;max-width:350px}
+.hb-arcade-v190 .hb-v207-mines-status>span {display:flex;justify-content:space-between;gap:10px;font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--hb-board-muted)}
+.hb-arcade-v190 .hb-v207-mines-status b {font-size:11px;color:var(--hb-board-text);font-variant-numeric:tabular-nums}
+.hb-arcade-v190 .hb-v207-mines-progress {width:100%;height:6px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.11)}
+.hb-arcade-v190 .hb-v207-mines-progress span {display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#66a999,#aad5a8);transition:width .18s ease}
+.hb-arcade-v190 .hb-v207-mine-modes {display:flex;gap:5px;padding:5px;border:1px solid var(--arcade-border,#ffffff24);border-radius:12px;background:color-mix(in srgb,var(--season-bg,#111923) 70%,transparent)}
+.hb-arcade-v190 .hb-v207-mine-modes button {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:37px;min-width:104px;padding:8px 12px;background:transparent;color:var(--hb-board-muted);border:1px solid transparent;border-radius:9px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+.hb-arcade-v190 .hb-v207-mine-modes button.is-active {color:var(--hb-board-text);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 16%,var(--season-surface-alt,#28222b));border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 42%,transparent);box-shadow:0 3px 11px rgba(0,0,0,.16)}
+.hb-arcade-v190 .hb-v207-mine-modes button:disabled{opacity:.5;cursor:not-allowed}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board {
+  width:min(100%,590px);max-width:590px;
+  padding:clamp(7px,1.6vw,14px);gap:clamp(2px,.46vw,5px);
+  border:1px solid #405969;border-radius:19px;
+  background:linear-gradient(145deg,#1c2d3b,#11212c);
+  box-shadow:inset 0 2px 12px rgba(0,0,0,.25),0 13px 27px rgba(0,0,0,.17);
+}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button {
+  min-width:0;min-height:0;
+  border:1px solid rgba(192,228,244,.13);
+  border-radius:clamp(4px,.9vw,9px);
+  background:linear-gradient(150deg,#405d6b,#263e4f);
+  color:#f3f7ff;
+  font-size:clamp(12px,2.5vw,23px);
+  font-weight:900;
+  font-variant-numeric:tabular-nums;
+  box-shadow:inset 0 2px rgba(255,255,255,.1),0 2px 4px rgba(0,0,0,.15);
+  transition:background .12s,border-color .12s,filter .12s;
+}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button:not(.opened):not(:disabled):hover{border-color:#91d9cf;background:linear-gradient(145deg,#517988,#32576b);filter:brightness(1.06)}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened {border-color:rgba(255,255,255,.045);background:#182633;box-shadow:inset 0 2px rgba(0,0,0,.14)}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="1"]{color:#8fc7ff}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="2"]{color:#91ddb4}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="3"]{color:#ffaf8b}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="4"]{color:#d0b6ff}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="5"]{color:#ff9cc3}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="6"]{color:#9be1e4}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="7"]{color:#f9da83}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened[data-adjacent="8"]{color:#f6f0df}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.flagged:not(.opened){background:linear-gradient(140deg,#635267,#44354f);border-color:rgba(255,188,167,.29);font-size:clamp(11px,2vw,20px)}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button.opened.mine {background:linear-gradient(145deg,#8f4652,#542834);border:1px solid #ee9291}
+.hb-arcade-v190 .hb-v207-mines .hb-mine-board button:focus-visible{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:1px;z-index:1}
+.hb-arcade-v190 .hb-v207-mine-message {
+  margin:0;width:100%;max-width:760px;padding:10px 14px;border-radius:12px;
+  border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 16%,var(--arcade-border,#ffffff1f));
+  background:color-mix(in srgb,var(--season-primary,#d9bd8b) 6%,var(--season-surface,#24202b));
+  font-size:12px;line-height:1.5;color:var(--hb-board-muted);text-align:center;
+}
+
+/* Controles e ação final dos três jogos. */
+.hb-arcade-v190 .hb-v207-controls {display:grid;justify-items:center;gap:11px;width:100%;max-width:760px;padding:8px 0 0}
+.hb-arcade-v190 .hb-v207-controls p{margin:0;text-align:center;color:var(--hb-board-muted);font-size:11px;line-height:1.65}
+.hb-arcade-v190 .hb-v207-controls kbd{display:inline-block;padding:2px 6px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 9%,var(--season-surface-alt,#282531));border:1px solid var(--arcade-border,#ffffff25);border-radius:5px;color:var(--hb-board-text);font-size:10px;font-family:inherit;font-weight:850}
+.hb-arcade-v190 .hb-v207-controls .hb-v207-direction-pad {display:grid;grid-template-columns:repeat(3,50px);grid-template-rows:repeat(2,45px);gap:6px;touch-action:manipulation}
+.hb-arcade-v190 .hb-v207-direction-pad button {min-width:0;min-height:0;padding:0;border-radius:11px;font-size:22px;font-weight:750;color:var(--hb-board-text);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 9%,var(--season-surface-alt,#272631));border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 22%,var(--arcade-border,#ffffff20));box-shadow:inset 0 1px rgba(255,255,255,.055),0 3px 10px rgba(0,0,0,.14)}
+.hb-arcade-v190 .hb-v207-direction-pad button[data-dir="up"]{grid-row:1;grid-column:2}
+.hb-arcade-v190 .hb-v207-direction-pad button[data-dir="left"]{grid-row:2;grid-column:1}
+.hb-arcade-v190 .hb-v207-direction-pad button[data-dir="down"]{grid-row:2;grid-column:2}
+.hb-arcade-v190 .hb-v207-direction-pad button[data-dir="right"]{grid-row:2;grid-column:3}
+.hb-arcade-v190 .hb-v207-direction-pad button:not(:disabled):hover {border-color:var(--season-primary,#d9bd8b);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 20%,var(--season-surface-alt,#272631))}
+.hb-arcade-v190 .hb-v207-direction-pad button:not(:disabled):active{transform:translateY(1px) scale(.97)}
+.hb-arcade-v190 .hb-v207-game .hb-v207-end-button {width:min(100%,440px);max-width:100%;min-height:43px;padding:10px 15px;font-size:11px;letter-spacing:.02em;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 14%,var(--season-surface,#24202b));color:var(--hb-board-text);border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 50%,transparent);border-radius:12px}
+.hb-arcade-v190 .hb-v207-game .hb-v207-end-button:not(:disabled):hover {background:color-mix(in srgb,var(--season-primary,#d9bd8b) 24%,var(--season-surface,#24202b))}
+@media(max-width:680px){
+  .hb-arcade-v190 .hb-v207-game{gap:13px}
+  .hb-arcade-v190 .hb-v207-game .hb-v207-scorebar{gap:13px;padding:13px}
+  .hb-arcade-v190 .hb-v207-score-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  .hb-arcade-v190 .hb-v207-2048 .hb-v207-score-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hb-arcade-v190 .hb-v207-score-stats>div{min-width:0;min-height:48px;padding:8px 9px}
+  .hb-arcade-v190 .hb-v207-score-stats strong{font-size:15px}
+  .hb-arcade-v190 .hb-v207-board-frame{padding:11px;gap:9px;border-radius:17px}
+  .hb-arcade-v190 .hb-v207-board-heading{font-size:10px}
+  .hb-arcade-v190 .hb-v207-board-heading small,.hb-arcade-v190 .hb-v207-board-foot{font-size:8px;letter-spacing:.035em}
+  .hb-arcade-v190 .hb-v207-mines-panel{padding:11px 12px}
+  .hb-arcade-v190 .hb-v207-mines-status{max-width:none}
+  .hb-arcade-v190 .hb-v207-mine-modes{width:100%}
+  .hb-arcade-v190 .hb-v207-mine-modes button{flex:1;min-width:0}
+  .hb-arcade-v190 .hb-v207-2048 .hb-2048-tile {font-size:clamp(13px,5vw,24px)}
+  .hb-arcade-v190 .hb-v207-2048 .hb-2048-tile[data-high-tile="true"]{font-size:clamp(11px,3.9vw,19px)}
+  .hb-arcade-v190 .hb-v207-mines .hb-mine-board button{font-size:clamp(10px,3.6vw,19px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .hb-arcade-v190 .hb-v207-snake .hb-snake-board>.fruit,
+  .hb-arcade-v190 .hb-v207-2048 .hb-2048-tile.has-value{animation:none}
+  .hb-arcade-v190 .hb-v207-direction-pad button,.hb-arcade-v190 .hb-v207-mines-progress span{transition:none}
+}
+
+/* ===== ArcadeMemoryV208.css (arquivo original) ===== */
+/* V208: identidade rúnica e progresso claro sem alterar a jogabilidade. */
+.hb-arcade .hb-v208-memory{width:100%;max-width:980px;--mem-border:color-mix(in srgb,var(--season-primary,#d9bd8b) 26%,var(--season-line,#ffffff1e))}
+.hb-v208-memory-hud{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;width:100%;padding:17px 20px;border:1px solid var(--mem-border);border-radius:17px;background:linear-gradient(115deg,color-mix(in srgb,var(--season-primary,#d9bd8b) 10%,var(--season-surface,#221f29)),var(--season-surface-alt,#2b2630))}
+.hb-v208-memory-main{display:flex;align-items:center;gap:13px}.hb-v208-memory-icon{display:grid;place-items:center;width:55px;height:55px;border:1px solid var(--mem-border);border-radius:15px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent);font-size:29px}
+.hb-v208-memory-main>div{display:grid;gap:4px}.hb-v208-memory-main small,.hb-v208-memory-stats small{font-size:10px;letter-spacing:.1em;font-weight:800;color:var(--season-muted,#bcb7c4)}.hb-v208-memory-main strong{font-size:clamp(20px,3vw,27px);font-weight:900;color:var(--season-primary,#d9bd8b)}.hb-v208-memory-main strong em{font-size:12px;font-style:normal;color:var(--season-muted,#bcb7c4)}
+.hb-v208-memory-stats{display:flex;align-items:stretch;gap:8px}.hb-v208-memory-stats>div{min-width:75px;display:grid;gap:6px;text-align:center;padding:10px 12px;border:1px solid var(--mem-border);border-radius:12px;background:#0002}.hb-v208-memory-stats strong{font-size:17px;font-weight:850;font-variant-numeric:tabular-nums}
+.hb-v208-memory-frame{width:min(100%,780px);padding:16px;display:grid;gap:14px;border:1px solid var(--mem-border);border-radius:20px;background:radial-gradient(ellipse at top center,color-mix(in srgb,var(--season-primary,#d9bd8b) 13%,transparent),transparent 65%),var(--season-surface,#25212b);box-shadow:0 14px 38px #0004}
+.hb-v208-memory-heading,.hb-v208-memory-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:10px;letter-spacing:.1em;font-weight:850;color:var(--season-primary,#d9bd8b)}.hb-v208-memory-heading i{width:7px;height:7px;display:inline-block;border-radius:50%;background:var(--season-primary,#d9bd8b);box-shadow:0 0 10px var(--season-primary,#d9bd8b)}.hb-v208-memory-heading small,.hb-v208-memory-bottom{font-size:9px;color:var(--season-muted,#bcb7c4)}
+.hb-v208-memory-progress{height:7px;border-radius:99px;background:#0005;overflow:hidden}.hb-v208-memory-progress>span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--season-secondary,#91afa0),var(--season-primary,#d9bd8b));transition:width .26s}
+.hb-v208-memory-board{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(7px,1.5vw,13px)!important;max-width:690px!important;width:100%!important;margin:0 auto!important;perspective:1000px}
+.hb-v208-memory-board .hb-v208-memory-card{position:relative;aspect-ratio:1/1!important;min-height:0!important;padding:0!important;display:block!important;background:transparent!important;border:0!important;box-shadow:none!important;cursor:pointer;border-radius:13px!important;overflow:visible!important;transition:transform .18s}
+.hb-v208-memory-board .hb-v208-memory-card:disabled{cursor:default}.hb-v208-memory-board .hb-v208-memory-card:not(:disabled):hover{transform:translateY(-2px)}.hb-v208-memory-board .hb-v208-memory-card:focus-visible{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:4px}
+.hb-v208-memory-card-inner{position:absolute;inset:0;display:block;transform-style:preserve-3d;transition:transform .38s ease}
+.hb-v208-memory-card.revealed .hb-v208-memory-card-inner{transform:rotateY(180deg)}
+.hb-v208-memory-card-back,.hb-v208-memory-card-front{position:absolute;inset:0;display:grid;place-items:center;backface-visibility:hidden;border-radius:13px;font-size:clamp(20px,4vw,40px);box-shadow:inset 0 1px #ffffff1d,0 5px 12px #0004}
+.hb-v208-memory-card-back{color:var(--season-primary,#d9bd8b);border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 36%,#ffffff1c);background:radial-gradient(circle at 48% 32%,color-mix(in srgb,var(--season-primary,#d9bd8b) 18%,transparent),transparent 65%),linear-gradient(150deg,var(--season-surface-alt,#332c35),var(--season-bg,#15151b))}
+.hb-v208-memory-card-front{transform:rotateY(180deg);border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 50%,transparent);color:var(--season-primary,#d9bd8b);background:radial-gradient(circle at center,color-mix(in srgb,var(--season-primary,#d9bd8b) 28%,transparent),transparent 65%),var(--season-surface-alt,#332c35)}
+.hb-v208-memory-card.matched .hb-v208-memory-card-front{border-color:#91ccad;box-shadow:inset 0 0 22px #85d5a01b,0 0 12px #85d5a012;color:#b8efc8}
+.hb-v208-memory-notice{width:100%;max-width:780px;min-height:39px;margin:0!important;padding:11px 15px;border:1px solid var(--mem-border);border-radius:12px;text-align:center;font-size:12px;color:var(--season-muted,#bcb7c4);background:color-mix(in srgb,var(--season-primary,#d9bd8b) 5%,var(--season-surface,#26232d))}
+.hb-v208-snake-progress{width:100%;display:flex;flex-direction:column;gap:6px;padding:4px 2px 8px}.hb-v208-snake-progress>span{color:var(--season-primary,#d9bd8b);font-weight:850;font-size:10px;letter-spacing:.08em}.hb-v208-snake-progress>div{height:8px;background:#0004;overflow:hidden;border-radius:99px}.hb-v208-snake-progress>div>i{display:block;height:100%;background:linear-gradient(90deg,var(--season-secondary,#94b1a1),var(--season-primary,#d9bd8b));border-radius:inherit;transition:width .2s}.hb-v208-snake-progress>small{font-size:9px;color:var(--season-muted,#bcb7c4)}
+@media(max-width:680px){.hb-v208-memory-hud{padding:11px}.hb-v208-memory-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}.hb-v208-memory-stats>div{min-width:0;padding:7px 3px}.hb-v208-memory-stats strong{font-size:14px}.hb-v208-memory-stats small{font-size:8px}.hb-v208-memory-frame{padding:10px;gap:9px}.hb-v208-memory-board .hb-v208-memory-card{border-radius:10px!important}.hb-v208-memory-card-back,.hb-v208-memory-card-front{border-radius:10px}}
+@media(prefers-reduced-motion:reduce){.hb-v208-memory-card-inner{transition:none!important}.hb-v208-memory-board .hb-v208-memory-card:not(:disabled):hover{transform:none}.hb-v208-memory-progress>span{transition:none!important}}

@@ -1,0 +1,165 @@
+/* HäxBag V297 — estilos agrupados sem alterar a ordem original. */
+
+/* ===== VoiceCallV288.css (arquivo original) ===== */
+/* V288 — Chamada de áudio WebRTC persistente. */
+.app-shell .hb-voice-v288{--hv-highlight:var(--hc-gold,var(--season-primary,#d9bd8b));--hv-bg:var(--hc-card,var(--season-surface,#111923));--hv-edge:var(--hc-edge,#3c4550);position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:0;min-width:0;min-height:0;overflow:auto;background:radial-gradient(ellipse at 45% 0%,color-mix(in srgb,var(--hv-highlight) 8%,transparent),transparent 58%),var(--hv-bg);color:var(--hc-text,#fafafa)}
+.app-shell .hb-voice-header-v288{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:22px 28px;border-bottom:1px solid var(--hv-edge)}
+.app-shell .hb-voice-header-title-v288{display:flex;align-items:center;gap:15px;min-width:0}
+.app-shell .hb-voice-header-icon-v288{width:54px;height:54px;border-radius:16px;flex:0 0 54px;display:grid;place-items:center;background:color-mix(in srgb,var(--hv-highlight) 14%,transparent);border:1px solid var(--hv-edge);color:var(--hv-highlight);font-size:31px}
+.app-shell .hb-voice-header-title-v288 small{color:var(--hv-highlight);font-size:10px;letter-spacing:.14em;font-weight:850}
+.app-shell .hb-voice-header-title-v288 h2{font:800 21px/1.3 Manrope,system-ui,sans-serif;margin:3px 0;color:var(--hc-text)}
+.app-shell .hb-voice-header-title-v288 p{margin:0;color:var(--hc-muted);font-size:12px}
+.app-shell .hb-voice-status-v288{font-size:11px;padding:9px 12px;border-radius:99px;color:#83d7ad;border:1px solid #72ca9766;background:#376c4b21;white-space:nowrap;font-weight:750}
+.app-shell .hb-voice-status-v288--connecting{color:var(--hv-highlight);border-color:var(--hv-edge);background:transparent}
+.app-shell .hb-voice-status-v288--error{color:#ffa8b1;border-color:#c4596477;background:#852e3722}
+.app-shell .hb-voice-warning-v288{margin:14px 24px 0;padding:12px;border-radius:11px;background:#84323b22;border:1px solid #dd808868;color:#ffb1ba;font-size:12px;line-height:1.6}
+.app-shell .hb-voice-participants-v288{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,240px));gap:14px;align-content:start;padding:28px;flex:1;min-height:0;overflow:auto}
+.app-shell .hb-voice-participant-v288{border:1px solid var(--hv-edge);border-radius:17px;padding:19px 15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:160px;max-width:300px;text-align:center;background:linear-gradient(155deg,color-mix(in srgb,var(--hc-panel,#252a33) 90%,transparent),color-mix(in srgb,var(--hv-bg) 95%,transparent));position:relative}
+.app-shell .hb-voice-participant-v288.is-connected{border-color:color-mix(in srgb,#8ddcb2 45%,var(--hv-edge))}
+.app-shell .hb-voice-avatar-v288{width:64px;height:64px;border-radius:22px;display:grid;place-items:center;font-size:26px;font-weight:800;color:var(--hv-highlight);background:color-mix(in srgb,var(--hv-highlight) 15%,var(--hv-bg));border:1px solid var(--hv-edge)}
+.app-shell .hb-voice-participant-v288>div:nth-child(2){display:grid;gap:5px;min-width:0}
+.app-shell .hb-voice-participant-v288 strong{font-size:13px;overflow-wrap:anywhere}
+.app-shell .hb-voice-participant-v288 small{font-size:11px;color:var(--hc-muted)}
+.app-shell .hb-voice-participant-v288>span:last-child{position:absolute;right:12px;top:11px;font-size:15px;color:var(--hv-highlight)}
+.app-shell .hb-voice-empty-v288{grid-column:1/-1;color:var(--hc-muted);font-size:13px;padding:28px;text-align:center;border:1px dashed var(--hv-edge);border-radius:15px}
+.app-shell .hb-voice-activate-v288{align-self:center;border:1px solid var(--hv-edge);border-radius:10px;padding:10px 16px;color:var(--hv-highlight);background:var(--hv-bg)}
+.app-shell .hb-voice-controls-v288{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:18px 22px;border-top:1px solid var(--hv-edge);background:color-mix(in srgb,var(--hc-panel,#20262d) 68%,var(--hv-bg))}
+.app-shell .hb-voice-controls-v288 button{padding:11px 15px;font-size:12px;font-weight:750;border-radius:11px;border:1px solid var(--hv-edge);background:color-mix(in srgb,var(--hc-panel,#252d33) 90%,var(--hv-bg));color:var(--hc-text);min-height:43px}
+.app-shell .hb-voice-controls-v288 button:hover{border-color:var(--hv-highlight)}
+.app-shell .hb-voice-controls-v288 .is-off{color:#ffb1bc;border-color:#b4636d77}
+.app-shell .hb-voice-volume-v288{display:flex;align-items:center;gap:8px;color:var(--hc-muted);font-size:11px;padding:4px 6px}
+.app-shell .hb-voice-volume-v288 input{accent-color:var(--hv-highlight);width:82px}
+.app-shell .hb-voice-controls-v288 .hb-voice-leave-v288{color:#fff;border-color:#b04458;background:#993648}
+.app-shell .hb-voice-v288--compact{position:fixed;inset:auto 20px 20px auto;z-index:200;width:min(505px,calc(100vw - 32px));max-height:min(78dvh,560px);border:1px solid var(--hv-edge);box-shadow:0 26px 75px #0009;border-radius:17px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-v288{padding:13px 17px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-icon-v288{width:39px;height:39px;flex-basis:39px;border-radius:11px;font-size:23px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-title-v288 h2{font-size:16px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-title-v288 p{font-size:10px}
+.app-shell .hb-voice-v288--compact .hb-voice-participants-v288{padding:12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;max-height:150px}
+.app-shell .hb-voice-v288--compact .hb-voice-participant-v288{min-height:95px;padding:11px;gap:5px}
+.app-shell .hb-voice-v288--compact .hb-voice-avatar-v288{width:34px;height:34px;border-radius:11px;font-size:15px}
+.app-shell .hb-voice-v288--compact .hb-voice-controls-v288{padding:11px;gap:8px}
+.app-shell .hb-voice-v288--compact .hb-voice-controls-v288 button{font-size:10px;min-height:37px;padding:8px 11px}
+.app-shell .hb-voice-v288--compact .hb-voice-volume-v288{display:none}
+@media(max-width:720px){.app-shell .hb-voice-header-v288{padding:16px 13px}.app-shell .hb-voice-header-title-v288 h2{font-size:17px}.app-shell .hb-voice-status-v288{font-size:10px;padding:6px}.app-shell .hb-voice-participants-v288{padding:14px;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.app-shell .hb-voice-participant-v288{min-height:132px;padding:10px}.app-shell .hb-voice-controls-v288{padding:10px}.app-shell .hb-voice-v288--compact{right:8px;bottom:8px;width:calc(100vw - 16px);max-height:55dvh}.app-shell .hb-voice-v288--compact .hb-voice-participants-v288{max-height:95px}.app-shell .hb-voice-v288--compact .hb-voice-header-title-v288 small{display:none}}
+@media(max-width:370px){.app-shell .hb-voice-controls-v288 button{min-width:0;flex:1}.app-shell .hb-voice-volume-v288{width:100%;justify-content:center}}
+
+/* ===== VoiceCallV290.css (arquivo original) ===== */
+/* HäxBag V290 — sala de voz redesenhada e transmissão de tela WebRTC. */
+.app-shell .hb-voice-v290{--hv-highlight:var(--hc-gold,var(--season-primary,#d9bd8b));--hv-bg:var(--hc-card,var(--season-surface,#111923));--hv-edge:var(--hc-edge,#36414c);background:radial-gradient(ellipse at 14% -10%,color-mix(in srgb,var(--hv-highlight) 9%,transparent),transparent 52%),#111820;overflow:hidden}
+.app-shell .hb-voice-top-v290{padding:18px 26px;min-height:89px;background:linear-gradient(90deg,#17212b,#12191f);flex-shrink:0}
+.app-shell .hb-voice-top-v290 .hb-voice-header-icon-v288{border-radius:17px;background:color-mix(in srgb,var(--hv-highlight) 14%,#19222b);font-size:30px}
+.app-shell .hb-voice-top-v290 .hb-voice-header-title-v288 h2{font-size:23px;margin:2px 0 3px}
+.app-shell .hb-voice-top-v290 .hb-voice-header-title-v288 small{font-size:10px;letter-spacing:.14em}
+.app-shell .hb-voice-top-v290 .hb-voice-header-title-v288 p{font-size:12px}
+.app-shell .hb-voice-top-status-v290{display:flex;gap:12px;align-items:center}
+.app-shell .hb-voice-count-v290{font-size:11px;color:var(--hc-muted,#a9b1bd);white-space:nowrap}
+.app-shell .hb-voice-workspace-v290{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,265px);gap:0;flex:1;min-height:0;min-width:0;overflow:auto}
+.app-shell .hb-voice-main-v290{min-height:0;min-width:0;overflow:auto;padding:32px clamp(18px,3vw,52px) 30px;display:flex;flex-direction:column;align-items:stretch;gap:28px}
+.app-shell .hb-voice-welcome-v290{width:100%;min-height:270px;border:1px solid color-mix(in srgb,var(--hv-highlight) 19%,var(--hv-edge));border-radius:23px;background:radial-gradient(ellipse at 52% 0%,color-mix(in srgb,var(--hv-highlight) 11%,transparent),transparent 55%),linear-gradient(155deg,#19242d,#11191f);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 26px;gap:11px;box-shadow:0 17px 38px #0002}
+.app-shell .hb-voice-welcome-art-v290{display:grid;place-items:center;position:relative;margin:0 0 5px;width:78px;height:78px;border-radius:25px;background:linear-gradient(155deg,color-mix(in srgb,var(--hv-highlight) 27%,#141b23),#151b22);border:1px solid color-mix(in srgb,var(--hv-highlight) 40%,#3b4855);box-shadow:0 0 0 8px #d9bd8b08,0 18px 35px #0003;color:var(--hv-highlight)}
+.app-shell .hb-voice-welcome-art-v290 span{font-size:38px;line-height:1}
+.app-shell .hb-voice-welcome-kicker-v290{color:var(--hv-highlight);font-weight:800;letter-spacing:.18em;font-size:10px}
+.app-shell .hb-voice-welcome-v290 h3{color:var(--hc-text,#f8f8fb);margin:0;font:850 clamp(27px,3vw,38px)/1.2 Manrope,system-ui,sans-serif;letter-spacing:-.04em}
+.app-shell .hb-voice-welcome-v290 p{max-width:600px;font-size:13px;line-height:1.7;margin:0;color:var(--hc-muted,#aeb8c4)}
+.app-shell .hb-voice-welcome-metrics-v290{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin-top:7px}
+.app-shell .hb-voice-welcome-metrics-v290 span{padding:7px 10px;border-radius:100px;background:#25313c;border:1px solid #3a4550;color:#cdd6dc;font-size:11px}
+.app-shell .hb-voice-start-shortcut-v290{margin-top:9px;border-radius:11px;border:1px solid color-mix(in srgb,var(--hv-highlight) 50%,transparent);background:color-mix(in srgb,var(--hv-highlight) 19%,#1d2930);color:var(--hv-highlight);font-size:12px;font-weight:800;padding:10px 19px}
+.app-shell .hb-voice-roster-caption-v290{display:flex;justify-content:space-between;align-items:end;gap:12px;border-bottom:1px solid var(--hv-edge);padding-bottom:12px}
+.app-shell .hb-voice-roster-caption-v290>div{display:grid;gap:5px}
+.app-shell .hb-voice-roster-caption-v290 span{font-size:10px;letter-spacing:.17em;font-weight:800;color:var(--hv-highlight)}
+.app-shell .hb-voice-roster-caption-v290 strong{font-size:17px;color:var(--hc-text)}
+.app-shell .hb-voice-roster-caption-v290 small{font-size:11px;color:var(--hc-muted)}
+.app-shell .hb-voice-people-v290{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-content:start;flex:initial;overflow:visible;min-height:0;padding:0}
+.app-shell .hb-voice-person-v290{max-width:none;min-height:115px;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:14px;text-align:left;border-radius:17px;padding:16px 15px;background:linear-gradient(145deg,#212c36,#172029);box-shadow:0 8px 20px #0002}
+.app-shell .hb-voice-person-v290 .hb-voice-avatar-v288{width:54px;height:54px;flex:0 0 54px;border-radius:18px;font-size:21px}
+.app-shell .hb-voice-person-details-v290{display:grid;gap:6px;min-width:0;max-width:calc(100% - 92px)}
+.app-shell .hb-voice-person-details-v290 strong{font-size:13px;line-height:1.3;color:var(--hc-text);overflow-wrap:anywhere}
+.app-shell .hb-voice-person-details-v290 small{font-size:11px;line-height:1.4}
+.app-shell .hb-voice-person-icons-v290{position:absolute;right:10px;top:10px;display:flex;gap:6px;font-size:12px;color:var(--hv-highlight)}
+.app-shell .hb-voice-person-icons-v290 span{padding:2px 4px;border-radius:5px;background:#293440}
+.app-shell .hb-voice-aside-v290{display:flex;flex-direction:column;align-self:stretch;gap:14px;border-left:1px solid var(--hv-edge);background:linear-gradient(160deg,#172029,#141c24);padding:27px 18px;min-width:0}
+.app-shell .hb-voice-aside-heading-v290{display:grid;gap:8px;padding:3px 3px 17px;border-bottom:1px solid var(--hv-edge)}
+.app-shell .hb-voice-aside-heading-v290 span{color:var(--hv-highlight);font-size:10px;letter-spacing:.15em;font-weight:850}
+.app-shell .hb-voice-aside-heading-v290 strong{font-size:20px;color:var(--hc-text);overflow-wrap:anywhere}
+.app-shell .hb-voice-aside-heading-v290 small{color:var(--hc-muted);font-size:12px}
+.app-shell .hb-voice-aside-stat-v290{border:1px solid var(--hv-edge);border-radius:13px;background:#1c2833;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:5px}
+.app-shell .hb-voice-aside-stat-v290 span{font-size:11px;color:var(--hc-muted)}
+.app-shell .hb-voice-aside-stat-v290 strong{font-size:19px;color:var(--hv-highlight)}
+.app-shell .hb-voice-aside-note-v290{padding:15px;border-radius:14px;border:1px solid color-mix(in srgb,var(--hv-highlight) 25%,var(--hv-edge));background:color-mix(in srgb,var(--hv-highlight) 7%,#18232b)}
+.app-shell .hb-voice-aside-note-v290 strong{font-size:12px;color:var(--hv-highlight)}
+.app-shell .hb-voice-aside-note-v290 p{font-size:11px;color:var(--hc-muted);line-height:1.7;margin:9px 0 0}
+.app-shell .hb-voice-aside-note-v290--subtle{background:transparent;border-color:var(--hv-edge)}
+.app-shell .hb-voice-aside-note-v290--subtle strong{color:var(--hc-text)}
+.app-shell .hb-voice-footer-v290{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px;flex-shrink:0;background:#101920;border-top:1px solid var(--hv-edge)}
+.app-shell .hb-voice-controls-copy-v290{display:flex;align-items:center;gap:10px;min-width:140px}
+.app-shell .hb-voice-controls-indicator-v290{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#83d7a7;box-shadow:0 0 0 4px #83d7a719}
+.app-shell .hb-voice-controls-copy-v290>div{display:grid;gap:4px}
+.app-shell .hb-voice-controls-copy-v290 strong{font-size:12px;color:var(--hc-text)}
+.app-shell .hb-voice-controls-copy-v290 small{font-size:10px;color:var(--hc-muted)}
+.app-shell .hb-voice-controls-actions-v290{display:flex;flex-wrap:wrap;gap:9px;align-items:center;justify-content:flex-end}
+.app-shell .hb-voice-footer-v290 .hb-voice-controls-actions-v290 button{padding:11px 14px;font-size:11px;font-weight:800;white-space:nowrap}
+.app-shell .hb-voice-footer-v290 .hb-voice-share-button-v290{color:#e8c790;border-color:#ad885a7b;background:#a7835027}
+.app-shell .hb-voice-footer-v290 .hb-voice-share-button-v290.is-sharing{color:#ffe2e6;border-color:#c46c7177;background:#8e3d492b}
+.app-shell .hb-voice-footer-v290 button:disabled{opacity:.45;cursor:not-allowed}
+.app-shell .hb-voice-screen-card-v290{border:1px solid #45515a;border-radius:20px;overflow:hidden;background:#05090c;min-height:235px;position:relative;display:flex;flex-direction:column;box-shadow:0 17px 35px #0005}
+.app-shell .hb-voice-screen-toolbar-v290{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 14px;background:#182128;border-bottom:1px solid #3b4650}
+.app-shell .hb-voice-screen-toolbar-v290 span{font-size:12px;font-weight:800;color:#f0eff0;display:flex;gap:9px;align-items:center}
+.app-shell .hb-voice-screen-toolbar-v290 i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e57773;box-shadow:0 0 0 3px #e5777330}
+.app-shell .hb-voice-screen-toolbar-v290 button{border:1px solid #39454e;border-radius:8px;padding:7px 10px;color:#dce1e3;background:#263039;font-size:11px}
+.app-shell .hb-voice-screen-card-v290 video{display:block;object-fit:contain;background:#05090c;width:100%;max-height:min(61vh,700px);aspect-ratio:16/9;min-height:210px}
+.app-shell .hb-voice-screen-wait-v290{min-height:260px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;color:#d6dce0;padding:25px;text-align:center}
+.app-shell .hb-voice-screen-wait-v290>span{font-size:43px;color:var(--hv-highlight)}
+.app-shell .hb-voice-screen-wait-v290 strong{font-size:16px}
+.app-shell .hb-voice-screen-wait-v290 small{font-size:11px;color:var(--hc-muted)}
+.app-shell .hb-voice-screen-card-v290:fullscreen{background:#020408;border:none;border-radius:0}
+.app-shell .hb-voice-screen-card-v290:fullscreen video{max-height:calc(100vh - 50px);height:calc(100vh - 50px);width:100%;min-height:0}
+.app-shell .hb-voice-broadcast-v290{display:grid;gap:15px}
+.app-shell .hb-voice-section-title-v290{display:grid;gap:5px}
+.app-shell .hb-voice-section-title-v290>span{font-size:10px;font-weight:850;letter-spacing:.15em;color:#ff9995}
+.app-shell .hb-voice-section-title-v290 strong{font-size:23px;color:var(--hc-text)}
+.app-shell .hb-voice-section-title-v290 small{font-size:11px;color:var(--hc-muted)}
+.app-shell .hb-voice-screen-tabs-v290{display:flex;gap:8px;flex-wrap:wrap}
+.app-shell .hb-voice-screen-tabs-v290 button{border:1px solid var(--hv-edge);border-radius:10px;background:#24303a;padding:9px 13px;color:#dce2e5;font-size:11px}
+.app-shell .hb-voice-screen-tabs-v290 button.active{border-color:var(--hv-highlight);color:var(--hv-highlight);background:color-mix(in srgb,var(--hv-highlight) 15%,#202b33)}
+.app-shell .hb-voice-v290 .hb-voice-warning-v288{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:10px 22px 0}
+.app-shell .hb-voice-v290 .hb-voice-warning-v288 button{background:transparent;border:none;color:inherit;font-size:17px}
+@media(max-width:1100px){.app-shell .hb-voice-workspace-v290{grid-template-columns:1fr}.app-shell .hb-voice-aside-v290{display:none}.app-shell .hb-voice-footer-v290{flex-wrap:wrap}.app-shell .hb-voice-controls-copy-v290{flex:1}.app-shell .hb-voice-controls-actions-v290{justify-content:center}}
+@media(max-width:720px){.app-shell .hb-voice-top-v290{padding:13px 14px;min-height:69px}.app-shell .hb-voice-top-v290 .hb-voice-header-title-v288 h2{font-size:18px}.app-shell .hb-voice-top-v290 .hb-voice-header-icon-v288{width:43px;height:43px;flex-basis:43px;font-size:23px}.app-shell .hb-voice-count-v290{display:none}.app-shell .hb-voice-main-v290{padding:15px;gap:19px}.app-shell .hb-voice-welcome-v290{padding:20px 16px;min-height:235px}.app-shell .hb-voice-welcome-v290 h3{font-size:26px}.app-shell .hb-voice-welcome-art-v290{width:62px;height:62px;border-radius:18px}.app-shell .hb-voice-welcome-art-v290 span{font-size:28px}.app-shell .hb-voice-people-v290{grid-template-columns:1fr}.app-shell .hb-voice-person-v290{min-height:80px}.app-shell .hb-voice-footer-v290{padding:12px;gap:11px}.app-shell .hb-voice-controls-copy-v290{display:none}.app-shell .hb-voice-controls-actions-v290{width:100%;justify-content:center}.app-shell .hb-voice-footer-v290 .hb-voice-controls-actions-v290 button{flex:1;min-width:125px}.app-shell .hb-voice-screen-card-v290 video{min-height:160px}.app-shell .hb-voice-screen-wait-v290{min-height:180px}}
+/* A chamada compacta mantém os controles e a transmissão utilizáveis ao navegar. */
+.app-shell .hb-voice-v290.hb-voice-v288--compact{width:min(560px,calc(100vw - 30px));max-height:min(82dvh,650px)}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-workspace-v290{display:block;overflow:auto}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-main-v290{padding:12px;gap:15px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-aside-v290{display:none}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-v290{min-height:155px;padding:16px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-art-v290{display:none}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-v290 h3{font-size:20px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-v290 p{font-size:11px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-metrics-v290{display:none}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-welcome-kicker-v290{font-size:9px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-roster-caption-v290{display:none}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-people-v290{display:flex;flex-wrap:wrap;max-height:105px;overflow:auto;padding:0}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-person-v290{flex:1;min-width:130px;min-height:75px;padding:9px;gap:8px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-person-v290 .hb-voice-avatar-v288{width:35px;height:35px;flex-basis:35px;font-size:15px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-person-details-v290 strong{font-size:11px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-person-details-v290 small{font-size:9px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-footer-v290{padding:10px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-controls-copy-v290{display:none}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-controls-actions-v290{gap:6px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-controls-actions-v290 button{flex:1;min-width:110px;padding:8px 10px;font-size:10px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-section-title-v290 strong{font-size:16px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-screen-card-v290 video{max-height:240px;min-height:120px}
+.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-screen-wait-v290{min-height:140px}
+@media(max-width:480px){.app-shell .hb-voice-v290.hb-voice-v288--compact{right:7px;bottom:7px;width:calc(100vw - 14px);max-height:72dvh}.app-shell .hb-voice-v290 .hb-voice-top-v290 .hb-voice-status-v288{font-size:9px;padding:6px 7px}.app-shell .hb-voice-footer-v290 .hb-voice-controls-actions-v290 button{min-width:0;flex:1 1 calc(50% - 8px)}.app-shell .hb-voice-v290 .hb-voice-volume-v288{width:100%;justify-content:center}.app-shell .hb-voice-v290.hb-voice-v288--compact .hb-voice-volume-v288{display:none}}
+@media(max-width:520px){
+ .app-shell .hb-voice-v290:not(.hb-voice-v288--compact) .hb-voice-welcome-v290{min-height:0;height:auto;padding:24px 14px;gap:10px}
+ .app-shell .hb-voice-v290:not(.hb-voice-v288--compact) .hb-voice-welcome-art-v290{display:none}
+ .app-shell .hb-voice-v290:not(.hb-voice-v288--compact) .hb-voice-welcome-metrics-v290{gap:6px;margin:7px 0 0}
+ .app-shell .hb-voice-v290:not(.hb-voice-v288--compact) .hb-voice-welcome-metrics-v290 span{font-size:10px;padding:6px 8px}
+ .app-shell .hb-voice-v290:not(.hb-voice-v288--compact) .hb-voice-start-shortcut-v290{margin-top:9px;max-width:100%;padding:11px 12px}
+ .app-shell .hb-voice-v290:not(.hb-voice-v288--compact) .hb-voice-roster-caption-v290{align-items:start;flex-direction:column;gap:5px}
+}
+/* Evita que o flexbox comprima o conteúdo da sala em telas baixas. */
+.app-shell .hb-voice-v290 .hb-voice-welcome-v290,
+.app-shell .hb-voice-v290 .hb-voice-broadcast-v290,
+.app-shell .hb-voice-v290 .hb-voice-roster-caption-v290{flex-shrink:0}

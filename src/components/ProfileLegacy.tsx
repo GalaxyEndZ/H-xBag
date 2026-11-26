@@ -3,8 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
 import { profileFrameNames, profileThemePalette, type ProfileAppearance } from '../profileTheme'
-import './ProfileLegacy.css'
-import './ProfileLegacyV230.css'
+import './ProfileLegacy.styles.css'
 import './ProfileRedesignV233.css'
 
 type PrivacyKey = 'show_bio'|'show_characters'|'show_campaigns'|'show_badges'|'show_journal'|'show_status'|'show_identity_card'
