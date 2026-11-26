@@ -6,10 +6,10 @@ const os = require('node:os')
 const path = require('node:path')
 const { EventEmitter } = require('node:events')
 const Module = require('node:module')
-// Testa a lógica real sem Electron nem rede: somente a API de diálogo é simulada.
+// Testes sem Electron nem rede; nenhuma caixa de diálogo deve ser criada.
 const originalLoad = Module._load
 Module._load = function (request, parent, isMain) {
-  if (request === 'electron') return { dialog: { showMessageBox: async () => ({ response: 1 }) } }
+  if (request === 'electron') throw new Error('O atualizador silencioso não deve abrir diálogos Electron')
   return originalLoad.call(this, request, parent, isMain)
 }
 const { startAutoUpdates, getDisableReason, cleanError } = require('../desktop/auto-update.cjs')
@@ -68,12 +68,16 @@ test('baixa automaticamente, anuncia progresso e permite instalar', async () => 
       t.updater.emit('update-downloaded', { version: '0.299.0' })
     }
     const manager = startAutoUpdates(t.config)
+    assert.equal(t.updater.autoDownload, true)
+    assert.equal(t.updater.autoInstallOnAppQuit, true)
     const phases = []
     const unsubscribe = manager.subscribe(state => phases.push(state.phase))
     await manager.check()
     assert.deepEqual(phases.slice(0, 4), ['checking', 'available', 'downloading', 'ready'])
     assert.equal(manager.getStatus().percent, 100)
     assert.equal(manager.getStatus().availableVersion, '0.299.0')
+    assert.match(manager.getStatus().message, /ao encerrar/i)
+    assert.equal(t.updater.installs || 0, 0, 'não deve forçar reinício após download')
     assert.equal(manager.install(), true)
     assert.equal(t.updater.installs, 1)
     unsubscribe()

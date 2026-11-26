@@ -6,7 +6,6 @@
  */
 const fs = require('node:fs')
 const path = require('node:path')
-const { dialog } = require('electron')
 
 const CHECK_AFTER_START_MS = 10_000
 const CHECK_EVERY_MS = 60 * 60 * 1000
@@ -50,7 +49,6 @@ function startAutoUpdates({ app, getWindow, updaterFactory, clock = () => Date.n
   const listeners = new Set()
   let updater = null
   let checking = false
-  let promptOpen = false
   let closed = false
   let timer = null
   let startup = null
@@ -161,29 +159,13 @@ function startAutoUpdates({ app, getWindow, updaterFactory, clock = () => Date.n
     setState({ phase: 'error', message: problem.message, errorCode: problem.code })
     log(`Erro (${problem.code}): ${problem.message}`)
   })
-  updater.on('update-downloaded', async info => {
+  updater.on('update-downloaded', info => {
     if (closed) return
     const next = String(info?.version || state.availableVersion || '')
-    setState({ phase: 'ready', message: `Versão ${next} pronta. Reinicie o HäxBag para instalar.`, availableVersion: next, percent: 100 })
-    log(`Download concluído: ${next}`)
-    if (promptOpen) return
-    promptOpen = true
-    try {
-      const options = {
-        type: 'info', title: 'Atualização do HäxBag disponível',
-        message: `A versão ${next} já foi baixada.`,
-        detail: 'Reinicie agora para atualizar ou continue sua sessão. Se escolher Depois, a atualização será aplicada ao fechar o programa normalmente.',
-        buttons: ['Reiniciar e instalar', 'Depois'], defaultId: 1, cancelId: 1, noLink: true,
-      }
-      const window = getWindow()
-      const answer = window && !window.isDestroyed()
-        ? await dialog.showMessageBox(window, options)
-        : await dialog.showMessageBox(options)
-      if (answer.response === 0 && !closed) install()
-    } catch (error) {
-      const problem = cleanError(error)
-      log(`Não foi possível abrir aviso: ${problem.message}`)
-    } finally { promptOpen = false }
+    setState({ phase: 'ready', message: `Versão ${next} baixada. Será instalada ao encerrar o HäxBag normalmente.`, availableVersion: next, percent: 100 })
+    log(`Download concluído: ${next}. Instalação silenciosa agendada para a saída do aplicativo.`)
+    // Sem caixa de diálogo e sem reinício forçado: autoInstallOnAppQuit realiza
+    // a instalação quando o usuário decidir encerrar o programa.
   })
 
   startup = setTimeout(() => { void check() }, CHECK_AFTER_START_MS)

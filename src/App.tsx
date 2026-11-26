@@ -11455,7 +11455,6 @@ counterAttackDT
   return (
     <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${desktopClient ? ` hb-desktop-v295 hb-desktop-v299 hb-desktop-v300${desktopSidebarCompact ? ' hb-desktop-sidebar-compact' : ''}` : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
-      <DesktopUpdateCenter />
       {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
@@ -11736,6 +11735,7 @@ counterAttackDT
               <span aria-hidden="true">{activeVisualStyle.symbol}</span>
               <strong>{activeVisualStyle.label}</strong>
             </span>}
+            {desktopClient && <DesktopUpdateCenter />}
             <span className="online-dot" />
             Conectado
           <div className="hb-v172-floating-actions hb-v178-notifications-bell" aria-label="Acesso rápido às notificações">
