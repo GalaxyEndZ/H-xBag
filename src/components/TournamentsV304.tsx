@@ -128,7 +128,7 @@ export default function TournamentsV304({ userId }: { userId: string }) {
               <div>
                 <div className="hb-v304-tournament-badges">
                   <span className={`hb-v304-tournament-status${future ? ' is-future' : ended ? ' is-ended' : ' is-live'}`}>{stateLabel}</span>
-                  <span className="hb-v304-tournament-game">{game?.label || chosen.game_id}</span>
+                  <span className="hb-v304-tournament-game">{game?.title || chosen.game_id}</span>
                 </div>
                 <h4>{chosen.title}</h4>
                 <p className="hb-v304-muted">{chosen.season_key}</p>
