@@ -1,0 +1,50 @@
+/* V305.1 — lançador global. Popup via portal para não ser cortado pela rail. */
+@media (min-width: 801px) {
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v301 .hb-sidebar-v20 .hb-v3051-launcher-slot {
+    grid-column: 1!important; grid-row: 1!important;
+    display: grid; place-items: center; height: 76px; width: 66px; min-width: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--season-line, #36424a) 68%, transparent);
+    border-right: 1px solid color-mix(in srgb, var(--season-line, #36424a) 68%, transparent);
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v301 .hb-v3051-launcher-button {
+    display:grid;place-items:center;width:47px;height:47px;padding:6px!important;
+    border:1px solid color-mix(in srgb,var(--season-line,#36424a) 80%,transparent)!important;
+    border-radius:15px;background:color-mix(in srgb,var(--season-surface,#172127) 85%,#090f14)!important;
+    box-shadow:0 6px 18px #0004;color:inherit;cursor:pointer;
+    transition:background .15s,border-color .15s,transform .15s;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v301 .hb-v3051-launcher-button:hover,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v301 .hb-v3051-launcher-button.is-open {
+    transform:translateY(-1px);border-color:var(--season-primary,#d9bd8b)!important;
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,var(--season-surface,#172127))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v301 .hb-v3051-launcher-button img {
+    width:30px;height:30px;object-fit:contain;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v301 .hb-v3051-launcher-button:focus-visible {outline:2px solid var(--season-primary,#d9bd8b);outline-offset:3px}
+}
+.hb-v3051-launcher-menu {
+  position:fixed;z-index:2147483000;width:min(264px,calc(100vw - 24px));
+  display:grid;gap:5px;padding:10px;
+  border:1px solid color-mix(in srgb,var(--hb-v3051-accent,#d9bd8b) 32%,#34444f);
+  border-radius:17px;background:linear-gradient(160deg,#18232d,#0d151d 82%);
+  box-shadow:0 22px 60px #000b, inset 0 1px 0 #ffffff0b;color:#f1f3f3;
+  font-family:inherit;
+}
+.hb-v3051-launcher-heading {display:grid;gap:3px;padding:11px 12px 13px;margin-bottom:3px;border-bottom:1px solid #ffffff14}
+.hb-v3051-launcher-heading strong {font-size:16px;letter-spacing:-.025em}
+.hb-v3051-launcher-heading small {font-size:11px;color:#9baab6}
+.hb-v3051-launcher-menu button {
+  width:100%;min-height:53px;display:flex;align-items:center;gap:11px;text-align:left;
+  padding:8px 10px;border-radius:11px;background:transparent;border:1px solid transparent;
+  color:#e2e7e8;font:inherit;cursor:pointer;
+}
+.hb-v3051-launcher-menu button:hover,.hb-v3051-launcher-menu button:focus-visible {background:#ffffff0c;outline:none;border-color:#ffffff19}
+.hb-v3051-launcher-menu button.is-active {background:color-mix(in srgb,var(--hb-v3051-accent,#d9bd8b) 12%,transparent);border-color:color-mix(in srgb,var(--hb-v3051-accent,#d9bd8b) 29%,transparent)}
+.hb-v3051-launcher-icon {width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:10px;background:#ffffff09;color:var(--hb-v3051-accent,#d9bd8b);font-size:20px}
+.hb-v3051-launcher-copy {flex:1;min-width:0;display:grid;gap:3px}
+.hb-v3051-launcher-copy strong {font-size:12px}
+.hb-v3051-launcher-copy small {font-size:10px;color:#9aa8b3}
+.hb-v3051-launcher-current {color:var(--hb-v3051-accent,#d9bd8b);font-weight:900;font-size:15px}
+.hb-v3051-launcher-footer {border-top:1px solid #ffffff12;margin-top:6px;padding:11px 10px 4px;color:#91a0ad;font-size:10px}
+@media (prefers-reduced-motion:reduce) {.hb-v3051-launcher-button {transition:none!important}}

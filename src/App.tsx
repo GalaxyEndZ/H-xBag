@@ -55,8 +55,10 @@ import './DesktopShellV295.css'
 import './DesktopRedesignV299.css'
 import './DesktopSidebarV300.css'
 import './DesktopExperienceV301.css'
+import './DesktopLayoutV3051.css'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
+import DesktopSpaceLauncherV3051 from './components/DesktopSpaceLauncherV3051'
 import PresenceControlsV302 from './components/PresenceControlsV302'
 import { usePresenceV302 } from './components/usePresenceV302'
 import type { VoiceRoomV302 } from './components/voiceTypesV302'
@@ -11539,28 +11541,23 @@ counterAttackDT
   if (twoFactorGate.userId === session.user.id && twoFactorGate.status === 'required' && twoFactorGate.factorId) return <SocialV245MfaPrompt factorId={twoFactorGate.factorId} onVerified={retryTwoFactorGate}/>
 
 
+  const desktopRailOnly = desktopSidebarCompact || activePage === 'communication' || activePage === 'minigames'
+
   return (
-    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${desktopClient ? ` hb-desktop-v295 hb-desktop-v299 hb-desktop-v300 hb-desktop-v301${desktopSidebarCompact ? ' hb-desktop-sidebar-compact' : ''}${desktopDensity === 'compact' ? ' hb-v301-density-compact' : ''}${desktopFocus ? ' hb-v301-focus' : ''}` : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--hb-v301-sidebar-width': `${desktopNavWidth}px`, '--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
+    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${desktopClient ? ` hb-desktop-v295 hb-desktop-v299 hb-desktop-v300 hb-desktop-v301${desktopRailOnly ? ' hb-desktop-sidebar-compact' : ''}${desktopDensity === 'compact' ? ' hb-v301-density-compact' : ''}${desktopFocus ? ' hb-v301-focus' : ''}` : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--hb-v301-sidebar-width': `${desktopNavWidth}px`, '--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
         {desktopClient ? (
-          <details className="hb-discord-launcher-v305">
-            <summary className="brand hb-sidebar-brand hb-sidebar-brand-launcher" aria-label="Abrir áreas do HäxBag" title="Abrir áreas do HäxBag">
-              <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
-            </summary>
-            <div className="hb-discord-launcher-panel-v305" role="menu" aria-label="Áreas do HäxBag">
-              <div className="hb-discord-launcher-head-v305">
-                <strong>HäxBag</strong>
-                <small>Escolha um espaço</small>
-              </div>
-              <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={event => { openSocialSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir Social" aria-label="Abrir Social"><span aria-hidden="true">✦</span><span>Social</span></button>
-              <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={event => { openRpgSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir RPG" aria-label="Abrir RPG"><span aria-hidden="true">⚔</span><span>RPG</span></button>
-              <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={event => { openMinigamesSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir Minigames" aria-label="Abrir Minigames"><span aria-hidden="true">◉</span><span>Minigames</span></button>
-              <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={event => { openCommunicationSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir Comunicação" aria-label="Abrir Comunicação"><span aria-hidden="true">✉</span><span>Comunicação</span></button>
-            </div>
-          </details>
+          <DesktopSpaceLauncherV3051
+            active={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'}
+            accent={displayPalette.primary}
+            onSocial={openSocialSpace}
+            onRpg={openRpgSpace}
+            onMinigames={openMinigamesSpace}
+            onCommunication={openCommunicationSpace}
+          />
         ) : (
           <>
             <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
@@ -11740,7 +11737,7 @@ counterAttackDT
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
           </button>
         </div>
-        {desktopClient && !desktopSidebarCompact && <div className="hb-v301-nav-resizer" role="separator" aria-label="Ajustar largura da navegação" aria-orientation="vertical" aria-valuemin={254} aria-valuemax={336} aria-valuenow={desktopNavWidth} tabIndex={0}
+        {desktopClient && !desktopRailOnly && <div className="hb-v301-nav-resizer" role="separator" aria-label="Ajustar largura da navegação" aria-orientation="vertical" aria-valuemin={254} aria-valuemax={336} aria-valuenow={desktopNavWidth} tabIndex={0}
           onPointerDown={event => desktopNavResize(event,'start')}
           onPointerMove={event => desktopNavResize(event,'move')}
           onPointerUp={event => desktopNavResize(event,'end')}
@@ -11828,7 +11825,7 @@ counterAttackDT
             aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" title="Menu do HäxBag">
             <span aria-hidden="true">☰</span><span>Menu</span>
           </button>
-          {desktopClient && <button type="button" className="hb-desktop-sidebar-toggle" onClick={toggleDesktopSidebar}
+          {desktopClient && activePage !== 'communication' && activePage !== 'minigames' && <button type="button" className="hb-desktop-sidebar-toggle" onClick={toggleDesktopSidebar}
             aria-label={desktopSidebarCompact ? 'Expandir navegação lateral' : 'Recolher navegação lateral'}
             title={desktopSidebarCompact ? 'Expandir menu lateral' : 'Recolher menu lateral'}
             aria-expanded={!desktopSidebarCompact} aria-controls="hb-sidebar-menu">
@@ -11859,8 +11856,9 @@ counterAttackDT
               onDensityChange={changeDesktopDensity}
               focus={desktopFocus}
               onFocusChange={setDesktopFocus}
-              compact={desktopSidebarCompact}
+              compact={desktopRailOnly}
               onSidebarToggle={toggleDesktopSidebar}
+              showNavigationToggle={activePage !== 'communication' && activePage !== 'minigames'}
               onReset={resetDesktopLayout}
             />}
             {desktopClient && <DesktopUpdateCenter />}

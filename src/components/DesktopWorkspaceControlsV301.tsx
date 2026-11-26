@@ -7,11 +7,12 @@ type Props = {
   onFocusChange: (enabled: boolean) => void
   compact: boolean
   onSidebarToggle: () => void
+  showNavigationToggle?: boolean
   onReset: () => void
 }
 
 /** Painel leve e local ao Electron. Não lê contas, credenciais nem estado de RPG. */
-export default function DesktopWorkspaceControls({density,onDensityChange,focus,onFocusChange,compact,onSidebarToggle,onReset}:Props) {
+export default function DesktopWorkspaceControls({density,onDensityChange,focus,onFocusChange,compact,onSidebarToggle,onReset,showNavigationToggle=true}:Props) {
   const [open,setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -39,8 +40,8 @@ export default function DesktopWorkspaceControls({density,onDensityChange,focus,
     {open && <section id="hb-v301-workspace-panel" className="hb-v301-layout-panel" aria-label="Preferências do espaço de trabalho">
       <div className="hb-v301-layout-panel-head"><span className="hb-v301-layout-emblem">◫</span><div><strong>Seu espaço de trabalho</strong><small>Organize o HäxBag do seu jeito</small></div><button type="button" aria-label="Fechar ajustes de layout" onClick={()=>setOpen(false)}>×</button></div>
       <div className="hb-v301-layout-panel-body">
-        <label className="hb-v301-layout-label">Navegação</label>
-        <button type="button" className="hb-v301-layout-line" onClick={onSidebarToggle}><span><strong>{compact ? 'Mostrar navegação' : 'Recolher navegação'}</strong><small>Alternar entre trilha de ícones e painel completo</small></span><kbd>Ctrl + \</kbd></button>
+        {showNavigationToggle && <><label className="hb-v301-layout-label">Navegação</label>
+        <button type="button" className="hb-v301-layout-line" onClick={onSidebarToggle}><span><strong>{compact ? 'Mostrar navegação' : 'Recolher navegação'}</strong><small>Alternar entre trilha de ícones e painel completo</small></span><kbd>Ctrl + \</kbd></button></>}
         <label className="hb-v301-layout-label">Densidade</label>
         <div className="hb-v301-density-choice" role="group" aria-label="Densidade da interface">
           <button type="button" aria-pressed={density==='comfortable'} className={density==='comfortable'?'is-active':''} onClick={()=>onDensityChange('comfortable')}><span>▣</span> Confortável</button>
