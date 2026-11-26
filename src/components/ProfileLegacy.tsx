@@ -2,6 +2,7 @@ import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from '../desktopPublicLinks
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
+import AchievementsV303 from './AchievementsV303'
 import { profileFrameNames, profileThemePalette, type ProfileAppearance } from '../profileTheme'
 import './ProfileLegacy.styles.css'
 import './ProfileRedesignV233.css'
@@ -426,6 +427,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
         })}</div>
         <div className="hpl-referral-card hpl-referral-v167"><div className="hpl-referral-symbol" aria-hidden="true">✧</div><div><span className="hpl-overline">SEU PROGRAMA DE INDICAÇÕES</span><h3>Embaixador {referralCount>0?`· Nível ${referralCount}`:''}</h3><p>{referralCount>0?`Chamou ${referralCount} ${referralCount===1?'pessoa':'pessoas'} para o HäxBag`:'Convide alguém novo para conquistar sua insígnia Embaixador.'}</p><small>Convites pessoais e de campanha válidos contam para o mesmo nível. Cadastros repetidos da mesma conexão não aumentam o contador.</small></div><div className="hpl-referral-actions"><button type="button" className="hpl-primary" onClick={()=>setInviteDialogOpen(true)}>✧ Chamar amigos</button></div></div>
         <p className="hpl-v137-badge-help">As insígnias recebidas aparecem automaticamente na vitrine e no perfil público, caso a opção “Insígnias” esteja visível nas suas configurações de privacidade.</p>
+        <AchievementsV303 userId={userId}/>
       </section>
       {isSiteAdmin&&<section className="hpl-panel hpl-v137-admin-panel">
         <div className="hpl-panel-heading"><span className="hpl-overline">ADMINISTRAÇÃO DO SITE · ACESSO RESTRITO</span><h3>Conceder insígnias oficiais</h3><p>Escolha uma insígnia do catálogo oficial e conceda-a a qualquer conta, inclusive a sua. A Primordial continua automática durante a beta, mas você também pode atribuí-la manualmente.</p></div>
