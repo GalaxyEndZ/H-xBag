@@ -15,6 +15,7 @@ import GenericProgressionEditor from './components/GenericProgressionEditor'
 import GenericSystemInfo from './components/GenericSystemInfo'
 import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from './desktopPublicLinks'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import Auth from './Auth'
@@ -39,7 +40,8 @@ import './CombatActionsV277.css'
 import './CombatActionsV278.css'
 import './CombatActionsV279.css'
 import CombatDamageRollerV274 from './components/CombatDamageRollerV274'
-import { BREATHING_TIER_LABEL, type BreathingTier } from './damageRollRulesV274'
+import { BREATHING_TIER_LABEL, type BreathingTier, type BreathingKind } from './damageRollRulesV274'
+import { formAttackBonus, formAllowedAttributes, formDefaultAttribute, FORM_ATTRIBUTE_LABEL, type FormAttribute, type FormDelivery } from './breathingFormRulesV282'
 
 
 
@@ -78,6 +80,7 @@ import { MAX_KISATSUTAI_SKILL_BONUS, capKisatsutaiSkillBonus, storedKisatsutaiSk
 const HaxTable = lazy(() => import('./components/HaxTable'))
 const DiceTower = lazy(() => import('./components/DiceTower'))
 const MinigamesHub = lazy(() => import('./components/MinigamesHub'))
+const CommunicationHubV284 = lazy(() => import('./components/CommunicationHubV284'))
 const MasterChest = lazy(() => import('./components/MasterChest'))
 const CampaignMissions = lazy(() => import('./components/CampaignMissions'))
 const InvestigationBoard = lazy(() => import('./components/InvestigationBoard'))
@@ -2105,12 +2108,15 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   // Guarda apenas o último teste ofensivo: mudar a DT reavalia o acerto sem lançar dados de novo.
   const [lastCombatTestKey, setLastCombatTestKey] = useState('')
   const [lastAttackTest, setLastAttackTest] = useState<{
-    kind: string; die: number; total: number; threshold: number; breakdown: string
+    kind: string; die: number; total: number; threshold: number; breakdown: string; criticalAttribute: FormAttribute
   } | null>(null)
   const combatResultIsAction = /^(Ataque|Tiro:|Disparo:|Teste de Perícia|Teste sem perícia|Ação Complexa)/.test(combatActionResult)
   // Seleção única para a classificação da forma: painel Dano e crítico dos ataques.
   const [attackDamageMode, setAttackDamageMode] = useState<'pure' | 'breathing'>('pure')
   const [attackBreathingTier, setAttackBreathingTier] = useState<BreathingTier>('raposa')
+  const [attackFormKind, setAttackFormKind] = useState<BreathingKind>('ofensiva')
+  const [attackFormDelivery, setAttackFormDelivery] = useState<FormDelivery>('direct')
+  const [attackFormAttribute, setAttackFormAttribute] = useState<FormAttribute>('strength')
   // V276: a rolagem de dano só aparece quando o botão Dano é acionado.
   const [damageSectionOpen, setDamageSectionOpen] = useState<{ character: boolean; enemy: boolean }>({ character: false, enemy: false })
   const revealDamageSection = (forEnemy: boolean) => {
@@ -2131,10 +2137,17 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   useEffect(() => {
     setAttackDamageMode('pure')
     setAttackBreathingTier('raposa')
+    setAttackFormKind('ofensiva')
+    setAttackFormDelivery('direct')
+    setAttackFormAttribute('strength')
     setDamageSectionOpen({ character: false, enemy: false })
     setLastCombatTestKey('')
     setLastAttackTest(null)
   }, [selectedCharacterId, selectedEnemyId])
+  useEffect(() => {
+    setLastCombatTestKey('')
+    setLastAttackTest(null)
+  }, [attackDamageMode, attackBreathingTier, attackFormKind, attackFormDelivery, attackFormAttribute])
   const [combatActionResultSequence, setCombatActionResultSequence] = useState(0)
   const setCombatActionResult = (result: string) => {
     setCombatActionResultState(result)
@@ -2221,10 +2234,10 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     return ()=>{alive=false;clearInterval(interval)}
   },[selectedCampaignId,isMaster,activePage,kitRosterIds])
 
-  const lastRpgPage = useRef<Exclude<typeof activePage,'profile'|'minigames'>>('overview')
+  const lastRpgPage = useRef<Exclude<typeof activePage,'profile'|'minigames'|'communication'>>('overview')
   const [socialNavigationTab,setSocialNavigationTab] = useState<HaxSocialTab>(initialHaxLocation.current.tab)
   useEffect(() => {
-    if (activePage !== 'profile' && activePage !== 'minigames') lastRpgPage.current = activePage
+    if (activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication') lastRpgPage.current = activePage
   }, [activePage])
   useEffect(() => {
     if (activePage === 'profile' && profileSection === 'friends') setSocialOpened(true)
@@ -5578,9 +5591,9 @@ async function handleCurrencyConversion() {
         )
       }
 
-      const link = `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(token)}`
+      const link = publicHaxbagLink({ invite: token })
       setCampaignInviteLink(link)
-      setNotice('Convite criado! Indicações de novas contas confirmadas, elegíveis e com conexão distinta podem aumentar sua insígnia Embaixador.')
+      setNotice(link ? 'Convite criado! Indicações de novas contas confirmadas, elegíveis e com conexão distinta podem aumentar sua insígnia Embaixador.' : `Convite criado, mas sem link compartilhável. ${DESKTOP_PUBLIC_URL_HELP}`)
     } catch (inviteError) {
       const message = inviteError instanceof Error
         ? inviteError.message
@@ -7953,6 +7966,11 @@ async function sendItemToCharacter() {
     setSidebarMobileOpen(false)
     window.scrollTo({top:0,behavior:'instant'})
   }
+  const openCommunicationSpace = () => {
+    setActivePage('communication')
+    setSidebarMobileOpen(false)
+    window.scrollTo({top:0,behavior:'instant'})
+  }
   const openMinigamesSpace = () => {
     setActivePage('minigames')
     setSidebarMobileOpen(false)
@@ -8878,6 +8896,7 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                       form: criticalFormClass,
                       weaponFormula: equippedWeaponDamage === '—' ? '' : equippedWeaponDamage,
                       corvoStrength: criticalProfile.corvoStrength,
+                      attribute: lastAttackTest?.criticalAttribute ?? (attackDamageMode === 'breathing' ? attackFormAttribute : 'strength'),
                     })
                     const displayedAttackTest = lastAttackTest && lastCombatTestKey === lastAttackTest.kind ? lastAttackTest : null
                     const liveAttackDt = attackTargetDt.trim() === '' ? null : Number(attackTargetDt)
@@ -8930,9 +8949,15 @@ const performCombatRoll = (
   const target = dodgeDt !== undefined && dodgeDt.trim() !== '' ? Number(dodgeDt) : null
   const validTarget = target !== null && Number.isFinite(target) && target >= 0
 
+const specialFormAttribute = attackDamageMode === 'breathing' && formAllowedAttributes(attackBreathingTier, attackFormKind, attackFormDelivery).includes(attackFormAttribute)
+  ? attackFormAttribute : formDefaultAttribute(attackBreathingTier, attackFormKind, attackFormDelivery)
+const specialAttributeValue = specialFormAttribute === 'strength' ? strength : specialFormAttribute === 'agility' ? agility : specialFormAttribute === 'intellect' ? intellect : breathing
+const specialFormAttackBonus = kind === 'Ataque especial' && attackDamageMode === 'breathing'
+  ? formAttackBonus(attackBreathingTier, attackFormKind, specialFormAttribute) : 0
 const attribute =
   kind === 'Ataque bruto' ? strength :
   kind === 'Ataque ágil' || kind === 'Esquiva' ? agility :
+  kind === 'Ataque especial' && attackDamageMode === 'breathing' ? specialAttributeValue :
   kind === 'Ataque especial' ? breathing :
   kind === 'Tiro' ? intellect :
   kind === 'Disparo' ? agility :
@@ -8949,19 +8974,19 @@ const attribute =
   const preparationBonus = forEnemy ? 0 : primaryKeys.reduce((sum,key) => sum + pendingComplexBonus(complexPreparations,key),0)
   const bonus = baseBonus + preparationBonus
 
-  const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
+  const diceKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? (attackDamageMode === 'breathing' ? specialFormAttribute === 'intellect' ? 'intelligence' : specialFormAttribute : 'breathing') : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
   const diceGroup = (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
   const diceBonus = conditionModifier(conditionRules.dice, 'status', diceKey) + conditionModifier(conditionRules.dice, 'combat_points', diceGroup)
   const diceCount = (kind === 'Tiro' ? 1 + Math.floor(intellect) : kind === 'Disparo' ? 1 + Math.floor(agility) : 1 + Math.floor(attribute)) + diceBonus
-  const usesAgility = kind === 'Ataque ágil' || kind === 'Disparo' || kind === 'Esquiva'
+  const usesAgility = kind === 'Ataque ágil' || kind === 'Disparo' || kind === 'Esquiva' || (kind === 'Ataque especial' && attackDamageMode === 'breathing' && specialFormAttribute === 'agility')
 
   const roll = rollAttributeDice(diceCount, usesAgility)
 
   const dice = roll.rolls
   const highest = roll.result
-  const conditionAttributeKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? 'breathing' : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
+  const conditionAttributeKey = kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Esquiva' ? 'agility' : kind === 'Ataque especial' ? (attackDamageMode === 'breathing' ? specialFormAttribute === 'intellect' ? 'intelligence' : specialFormAttribute : 'breathing') : kind === 'Tiro' ? 'intelligence' : kind === 'Disparo' ? 'agility' : 'defense'
   const conditionCombatKey = (kind.startsWith('Ataque') || kind === 'Tiro' || kind === 'Disparo') ? 'attack' : kind === 'Bloqueio' ? 'block' : 'dodge'
-  const attributeBase = kind === 'Ataque bruto' ? strength : kind === 'Ataque ágil' || kind === 'Esquiva' || kind === 'Disparo' ? agility : kind === 'Ataque especial' ? breathing : kind === 'Tiro' ? intellect : defense
+  const attributeBase = kind === 'Ataque bruto' ? strength : kind === 'Ataque ágil' || kind === 'Esquiva' || kind === 'Disparo' ? agility : kind === 'Ataque especial' && attackDamageMode === 'breathing' ? specialAttributeValue : kind === 'Ataque especial' ? breathing : kind === 'Tiro' ? intellect : defense
   const conditionBonus = kind === 'Bloqueio' ? 0 : applyConditionModifier(attributeBase, conditionModifiers, 'status', conditionAttributeKey) - attributeBase
   const combatConditionBonus = applyConditionModifier(baseBonus, conditionModifiers, 'combat_points', conditionCombatKey) - baseBonus
   const total = highest + bonus + conditionBonus + combatConditionBonus
@@ -9022,8 +9047,8 @@ const attribute =
       (kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate'
 
     const criticalType = classifyCriticalD20(highest, criticalValue)
-    const forceBonus = criticalProfile.corvoStrength && kind === 'Ataque bruto' ? 5 : 0
-    const attackTotal = total + forceBonus
+    const forceBonus = criticalProfile.corvoStrength && (kind === 'Ataque bruto' || (kind === 'Ataque especial' && attackDamageMode === 'breathing' && specialFormAttribute === 'strength')) ? 5 : 0
+    const attackTotal = total + forceBonus + specialFormAttackBonus
     const targetNumber = attackTargetDt.trim() === '' ? null : Number(attackTargetDt)
     const hasAttackDt = targetNumber !== null && Number.isFinite(targetNumber) && targetNumber >= 0
     const attackHits = criticalType === 'failure' ? false
@@ -9036,6 +9061,7 @@ const attribute =
           form: criticalFormClass,
           weaponFormula: equippedWeaponDamage === '—' ? '' : equippedWeaponDamage,
           corvoStrength: criticalProfile.corvoStrength,
+          attribute: kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Disparo' ? 'agility' : kind === 'Tiro' ? 'intellect' : specialFormAttribute,
         }) : null
     const criticalMessage = criticalType === 'failure'
       ? 'Falha crítica: 1 natural no d20. O ataque falha e o alvo ganha uma reação grátis (conforme o sistema).'
@@ -9044,9 +9070,9 @@ const attribute =
           (isKisatsutaiSystem
             ? attackDamageMode === 'breathing' && attackBreathingTier === 'corvo'
               ? ' Forma Corvo: bônus específico de crítico ainda não definido. Role o dano na seção Dano.'
-              : criticalDamage?.formula
-                ? ` Bônus de crítico previsto: ${criticalDamage.formula}. Role-o uma única vez na seção Dano.`
-                : ' Equipe uma arma com dados de dano (ex.: 1d8) para o bônus de crítico.'
+              : criticalDamage
+                ? ` Crítico de atributo: ${criticalDamage.formula ?? 'sem dado extra de arma'}${criticalDamage.conditions.length ? '; condições sob controle do mestre' : ''}${criticalDamage.movementPrReduction ? `; −${criticalDamage.movementPrReduction}% de PR em movimentos` : ''}. Role uma única vez na seção Dano.`
+                : ' Efeito crítico disponível na seção Dano.'
             : '') +
           (criticalProfile.tigreStrength ? ' Força Sobre-Humana: o mestre pode aplicar Sangrando, Vulnerável ou Atordoado.' : '')
         : criticalType === 'critical' && attackHits === null
@@ -9062,10 +9088,11 @@ const attribute =
     ].filter(Boolean).join(' · ')
     setLastAttackTest({
       kind, die: highest, total: attackTotal, threshold: criticalValue,
-      breakdown: `${kind}: ${diceDescription} + ${bonusName} (${bonus})${forceBonus ? ' + Guerreiro Insuperável (+5 FOR)' : ''}`,
+      criticalAttribute: kind === 'Ataque bruto' ? 'strength' : kind === 'Ataque ágil' || kind === 'Disparo' ? 'agility' : kind === 'Tiro' ? 'intellect' : kind === 'Ataque especial' ? (attackDamageMode === 'breathing' ? specialFormAttribute : 'breathing') : 'strength',
+      breakdown: `${kind}: ${diceDescription} + ${bonusName} (${bonus})${forceBonus ? ' + Guerreiro Insuperável (+5 FOR)' : ''}${specialFormAttackBonus ? ` + bônus da Forma (+${specialFormAttackBonus})` : ''}`,
     })
     setCombatActionResult(
-      `${kind}: ${diceDescription} + ${bonusName} (${bonus})${forceBonus ? ' + Guerreiro Insuperável (+5 FOR)' : ''} = ${attackTotal}. ${criticalMessage} Dano extra equipado: ${totalExtraDamage}.${otherFlowBonuses ? ` ${otherFlowBonuses}.` : ''}`
+      `${kind}: ${diceDescription} + ${bonusName} (${bonus})${forceBonus ? ' + Guerreiro Insuperável (+5 FOR)' : ''}${specialFormAttackBonus ? ` + bônus da Forma (+${specialFormAttackBonus})` : ''} = ${attackTotal}. ${criticalMessage} Dano extra equipado: ${totalExtraDamage}.${otherFlowBonuses ? ` ${otherFlowBonuses}.` : ''}`
     )
   }
 
@@ -10301,8 +10328,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
       {criticalProfile.activeAgilityFlows.length ? criticalProfile.activeAgilityFlows.map(tier => <span key={tier}>✦ {tier === 'tigre' ? 'Precisão e Agilidade' : tier === 'dragao' ? 'Veloz e Furioso' : 'Velocidade da Luz'} · −1</span>) : <span>Sem redução por Fluxos de AGI</span>}
       {criticalProfile.corvoStrength && <span>✦ Guerreiro Insuperável · dobra dados adicionais</span>}
     </div>
-    <div className="hb-critical-example"><span>Bônus de crítico conforme a seleção em Dano:</span><strong>{attackDamageMode === 'breathing' && attackBreathingTier === 'corvo' ? 'Não definido para Corvo' : criticalDamagePreview.formula ?? 'Arma sem dados definidos'}</strong><small>{attackDamageMode === 'pure' ? CRITICAL_FORM_LABELS.none : `Forma ${BREATHING_TIER_LABEL[attackBreathingTier]}`}</small></div>
-    <p className="hb-critical-hint">Sem forma: +1dX · Raposa: +2dX · Tigre: +4dX · Dragão: +6dX. O Fluxo Corvo de FOR dobra os dados adicionais; a DT do alvo determina se houve acerto. A classificação da forma é escolhida na seção Dano e usada automaticamente nos ataques. <strong>Esquiva não tem crítico.</strong></p>
+    <div className="hb-critical-example"><span>Bônus de crítico conforme a seleção em Dano:</span><strong>{attackDamageMode === 'breathing' && attackBreathingTier === 'corvo' ? 'Não definido para Corvo' : criticalDamagePreview.formula ?? (criticalDamagePreview.conditions.length ? 'Crítico de condição' : criticalDamagePreview.movementPrReduction ? `−${criticalDamagePreview.movementPrReduction}% PR em movimento` : 'Sem bônus de dado')}</strong><small>{attackDamageMode === 'pure' ? CRITICAL_FORM_LABELS.none : `Forma ${BREATHING_TIER_LABEL[attackBreathingTier]}`}</small></div>
+    <p className="hb-critical-hint">O efeito crítico depende do atributo usado (FOR, AGI, INT ou RES), além da classe da forma. O Fluxo Corvo de FOR altera os dados críticos de FOR. A DT determina se houve acerto. Condições são decididas pelo mestre. <strong>Esquiva não tem crítico.</strong></p>
   </div> : <div className="hb-combat-config-grid">{field('combat.critical','Margem base do crítico (d20)')}</div>}
   <div className="hb-combat-config-grid">
     {field('combat.armor', 'Armadura')}
@@ -10623,7 +10650,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                             </div>
                             <div className="hb-actiondeck-mode-v279" aria-live="polite">
                               <span className="hb-actiondeck-field-title-v279">FORMA SELECIONADA</span>
-                              <strong>{attackDamageMode === 'pure' ? 'Dano puro' : `Respiração ${BREATHING_TIER_LABEL[attackBreathingTier]}`}</strong>
+                              <strong>{attackDamageMode === 'pure' ? 'Dano puro' : `Respiração ${BREATHING_TIER_LABEL[attackBreathingTier]} · ${FORM_ATTRIBUTE_LABEL[attackFormAttribute]}`}</strong>
                               <span className="hb-actiondeck-mode-note-v279">{attackDamageMode === 'pure' ? 'Sem gasto de PR' : 'Custo de PR definido na seção Dano'}</span>
                               <button type="button" className="hb-actiondeck-mode-link-v279" onClick={() => revealDamageSection(forEnemy)}>Configurar em Dano <span aria-hidden="true">↗</span></button>
                             </div>
@@ -10659,8 +10686,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 </button>
                                 <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Ataque especial' ? 'true' : undefined} onClick={() => performCombatRoll('Ataque especial')}>
                                   <span className="combat-action-icon">✦</span>
-                                  <span className="hb-actiondeck-attack-tag-v279">{sheetResourceAbbreviation} · HABILIDADE</span><strong>Ataque Especial</strong>
-                                  <small>{Math.floor(1 + breathing) <= 0 ? `${2 - Math.floor(1 + breathing)}D20 (desvantagem)` : `${Math.floor(1 + breathing)}D20`} + Habilidade ({ability})</small>
+                                  <span className="hb-actiondeck-attack-tag-v279">{attackDamageMode === 'breathing' ? FORM_ATTRIBUTE_LABEL[attackFormAttribute] : sheetResourceAbbreviation} · HABILIDADE</span><strong>Ataque Especial</strong>
+                                  <small>{attackDamageMode === 'breathing' ? `Forma ${BREATHING_TIER_LABEL[attackBreathingTier]} · ${FORM_ATTRIBUTE_LABEL[attackFormAttribute]}${formAttackBonus(attackBreathingTier,attackFormKind,attackFormAttribute) ? ` (+${formAttackBonus(attackBreathingTier,attackFormKind,attackFormAttribute)} acerto)` : ''}` : `${Math.floor(1 + breathing) <= 0 ? `${2 - Math.floor(1 + breathing)}D20 (desvantagem)` : `${Math.floor(1 + breathing)}D20`} + Habilidade (${ability})`}</small>
                                 </button>
                                 {isKisatsutaiSystem && <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Tiro' ? 'true' : undefined} onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">◎</span><span className="hb-actiondeck-attack-tag-v279">INT · HABILIDADE</span><strong>Tiro</strong><small>{Math.max(1, 1 + Math.floor(intellect))}D20 + Habilidade ({ability})</small></button>}
                                 {isKisatsutaiSystem && <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Disparo' ? 'true' : undefined} onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">➤</span><span className="hb-actiondeck-attack-tag-v279">AGI · HABILIDADE</span><strong>Disparo</strong><small>{Math.max(1, 1 + Math.floor(agility))}D20 + Habilidade ({ability})</small></button>}
@@ -11122,7 +11149,16 @@ const dt = counterAttackDT
                             kitBonus={kitExtraDamage}
                             dragonStrength={isKisatsutaiSystem && criticalProfile.dragaoStrength}
                             corvoStrength={isKisatsutaiSystem && criticalProfile.corvoStrength}
+                            tigreStrength={isKisatsutaiSystem && criticalProfile.tigreStrength}
                             criticalThreshold={criticalValue}
+                            confirmedCritical={isKisatsutaiSystem && liveAttackStatus === 'critical'}
+                            testedAttribute={isKisatsutaiSystem && displayedAttackTest ? displayedAttackTest.criticalAttribute : null}
+                            kind={attackFormKind}
+                            onKindChange={setAttackFormKind}
+                            delivery={attackFormDelivery}
+                            onDeliveryChange={setAttackFormDelivery}
+                            attribute={attackFormAttribute}
+                            onAttributeChange={setAttackFormAttribute}
                             mode={attackDamageMode}
                             onModeChange={setAttackDamageMode}
                             tier={attackBreathingTier}
@@ -11130,6 +11166,11 @@ const dt = counterAttackDT
                             currentPR={Math.max(0, Number(read('status.current.pr', derived[2][1])) || 0)}
                             resourceLabel={sheetResourceAbbreviation}
                             canSpendPR={renderCanEdit && isKisatsutaiSystem}
+                            isMaster={Boolean(isMaster)}
+                            onOpenConditions={isMaster ? () => {
+                              const destination=document.getElementById(forEnemy ? 'inimigo-condicoes' : 'ficha-condicoes')
+                              destination?.scrollIntoView({behavior:'smooth',block:'start'})
+                            } : undefined}
                             onSpendPR={async cost => {
                               if (!renderCanEdit || !isKisatsutaiSystem || !Number.isSafeInteger(cost) || cost <= 0) return false
                               const current = Number(read('status.current.pr', derived[2][1]))
@@ -11259,6 +11300,7 @@ counterAttackDT
     {id:'campaigns',label:'Campanhas',symbol:'⚑',description:'Gerenciar e escolher campanhas'},
     {id:'profile',label:'Social',symbol:'✦',description:'Feed, perfis, seguidores, amizades e mensagens'},
     {id:'minigames',label:'Minigames',symbol:'◉',description:'Dez jogos, rankings globais e três desafios diários'},
+    {id:'communication',label:'Comunicação',symbol:'✉',description:'Servidores, canais, conversas, convites e mensagens'},
   ]
   const quickCommands: HaxQuickCommand[] = quickPages
     .filter(item => (!item.master || isMaster) && (!item.campaign || Boolean(selectedCampaignId)))
@@ -11266,6 +11308,7 @@ counterAttackDT
       id:`page:${item.id}`, label:item.label, description:item.description, symbol:item.symbol, section:'Páginas',
       action:() => {
         if (item.id === 'profile') openSocialSpace()
+        else if (item.id === 'communication') openCommunicationSpace()
         else {
           setActivePage(item.id)
           if (item.id === 'sheets') setSheetCharacterView(false)
@@ -11398,9 +11441,9 @@ counterAttackDT
 
 
   return (
-    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
+    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
-      {activePage !== 'profile' && activePage !== 'minigames' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
+      {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
         <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
@@ -11415,11 +11458,12 @@ counterAttackDT
 
         <div className="hb-v159-space-switch" role="group" aria-label="Escolher espaço do HäxBag">
           <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace}><span aria-hidden="true">✦</span> Social</button>
-          <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames'} onClick={openRpgSpace}><span aria-hidden="true">⚔</span> RPG</button>
+          <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={openRpgSpace}><span aria-hidden="true">⚔</span> RPG</button>
           <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={openMinigamesSpace}><span aria-hidden="true">◉</span> Minigames</button>
+          <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={openCommunicationSpace}><span aria-hidden="true">✉</span> Comunicação</button>
         </div>
 
-        {activePage !== 'profile' && activePage !== 'minigames' && <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
+        {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
           <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
           <span className="hb-sidebar-style-text">
             <small>ESTILO DA TEMPORADA</small>
@@ -11434,7 +11478,7 @@ counterAttackDT
             title="Buscar e navegar pelo HäxBag (Ctrl ou ⌘ + K)" aria-keyshortcuts="Control+K Meta+K">
             <span aria-hidden="true">⌕</span><span>Buscar no HäxBag</span><kbd>Ctrl K</kbd>
           </button>
-          {activePage !== 'profile' && activePage !== 'minigames' && <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
+          {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <button type="button" className="hb-quick-notes-launcher" onClick={() => openQuick('notes')}
             aria-label="Abrir notas privadas da sessão" title="Notas privadas da sessão">✎</button>}
         </div>
         <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal" onClick={event => { if ((event.target as HTMLElement).closest('button.nav-link')) setSidebarMobileOpen(false) }}>
@@ -11459,6 +11503,12 @@ counterAttackDT
               ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
+          </> : activePage === 'communication' ? <>
+            <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNICAÇÃO</span>
+              <button type="button" className="nav-link active" aria-current="page" onClick={()=>document.getElementById('hb-communication')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">✉</span><span className="hb-sidebar-nav-name">Servidores e canais</span></button>
+              <button type="button" className="nav-link" onClick={()=>openSocialTab('messages')}><span className="hb-sidebar-nav-icon" aria-hidden="true">✉</span><span className="hb-sidebar-nav-name">Mensagens privadas</span></button>
+              <button type="button" className="nav-link" onClick={()=>openSocialTab('communities')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♧</span><span className="hb-sidebar-nav-name">Comunidades do Social</span></button>
+            </div>
           </> : activePage === 'minigames' ? <>
             <div className="hb-sidebar-nav-group hb-arcade-side-menu">
               <span className="hb-sidebar-group-title">ARCADE</span>
@@ -11541,7 +11591,7 @@ counterAttackDT
         </nav>
 
         <div className="sidebar-bottom hb-sidebar-footer">
-          {activePage !== 'profile' && activePage !== 'minigames' && <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
+          {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
             <summary className="hb-sidebar-invite-summary">
               <span className="hb-sidebar-invite-glyph" aria-hidden="true">✉</span>
               <span className="hb-sidebar-invite-summary-copy"><strong>Convites e equipe</strong><small>{isMaster && selectedCampaignId ? 'Reúna seus jogadores' : 'Sua próxima aventura'}</small></span>
@@ -11649,9 +11699,9 @@ counterAttackDT
           </button>
           <div className="breadcrumb hb-topbar-trail">
             <span>HäxBag</span><span className="crumb-slash">/</span>
-            <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
+            <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : activePage === 'communication' ? 'Comunicação' : selectedCampaign?.name ?? 'Suas campanhas'}</span>
             <span className="crumb-slash">/</span>
-            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Jogos e desafios', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
+            <strong>{({ overview: 'Visão geral', 'master-shield': 'Escudo do mestre', 'master-chest': 'Baú do Mestre', missions: 'Missões', investigation: 'Mesa de Investigação', sheets: 'Fichas', enemies: 'Inimigos', shops: 'Lojas', bestiary: 'Bestiário', campaigns: 'Campanhas', customization: 'Customização', 'player-table': 'Mesa dos jogadores', 'dice-tower': 'Torre de Dados', minigames: 'Jogos e desafios', communication: 'Servidores e canais', profile: profileSection === 'friends' ? 'Comunidade' : 'Meu perfil', conditions: 'Condições' } as Record<string, string>)[activePage]}</strong>
           </div>
 
           <div className="topbar-right">
@@ -11661,7 +11711,7 @@ counterAttackDT
               aria-label="Buscar páginas, personagens e campanhas (Ctrl K)" title="Busca global (Ctrl K)">
               <span aria-hidden="true">⌕</span><span>Busca global</span><kbd>Ctrl K</kbd>
             </button>
-            {activePage !== 'profile' && activePage !== 'minigames' && <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
+            {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <span className="hb-topbar-style-badge" title={`Identidade visual: ${activeVisualStyle.label}`}>
               <span aria-hidden="true">{activeVisualStyle.symbol}</span>
               <strong>{activeVisualStyle.label}</strong>
             </span>}
@@ -11695,6 +11745,7 @@ counterAttackDT
 
         <div className={`page-content page-${activePage}`} id="inicio-conteudo" tabIndex={-1}>
           {activePage === 'minigames' && <DeferredModule><MinigamesHub userId={session.user.id} /></DeferredModule>}
+          {activePage === 'communication' && <DeferredModule><CommunicationHubV284 userId={session.user.id} displayName={String(displayName)} username={accountUsername} onOpenDirectMessages={()=>openSocialTab('messages')} /></DeferredModule>}
           {activePage === 'master-chest' && isMaster && selectedCampaignId && (
             <DeferredModule><MasterChest
               key={selectedCampaignId}
@@ -13933,7 +13984,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
   </section>
 )}
 
-          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
+          {activePage !== 'player-table' && activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && activePage !== 'master-chest' && activePage !== 'customization' && activePage !== 'conditions' && (
           <section className="welcome-row">
 
 
@@ -19504,7 +19555,13 @@ style={{cursor:'pointer'}}>
           </div>
         </main>
         <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
-          {activePage === 'minigames' ? <>
+          {activePage === 'communication' ? <>
+            <button type="button" className="active" aria-current="page" onClick={openCommunicationSpace}><span aria-hidden="true">✉</span><small>Conversas</small></button>
+            <button type="button" onClick={()=>openSocialTab('messages')}><span aria-hidden="true">✉</span><small>Diretas</small></button>
+            <button type="button" onClick={openSocialSpace}><span aria-hidden="true">✦</span><small>Social</small></button>
+            <button type="button" onClick={openRpgSpace}><span aria-hidden="true">⚔</span><small>RPG</small></button>
+            <button type="button" aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" onClick={()=>setSidebarMobileOpen(true)}><span aria-hidden="true">☰</span><small>Menu</small></button>
+          </> : activePage === 'minigames' ? <>
             <button type="button" className="active" aria-current="page" onClick={() => document.getElementById('hb-arcade-heading')?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">◉</span><small>Jogos</small></button>
             <button type="button" onClick={() => (document.getElementById('hb-arcade-ranking-title') || document.getElementById('hb-pong-ranking-title'))?.scrollIntoView({behavior:'smooth',block:'start'})}><span aria-hidden="true">🏆</span><small>Ranking</small></button>
             <button type="button" onClick={openSocialSpace}><span aria-hidden="true">✦</span><small>Social</small></button>

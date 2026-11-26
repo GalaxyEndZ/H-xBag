@@ -1,0 +1,1 @@
+{"extends":"./tsconfig.app.json","compilerOptions":{"tsBuildInfoFile":"./node_modules/.tmp/tsconfig.voice.v288.tsbuildinfo","incremental":false},"include":["src/components/CommunicationHubV284.tsx","src/components/VoiceCallV288.tsx"]}

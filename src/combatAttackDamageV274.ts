@@ -1,5 +1,5 @@
 /** V274: rolagem de dano FÍSICO de ataque. Nunca altera PV/PS do próprio personagem. */
-import { parseWeaponDice, rollCriticalBonus, type CriticalFormClass } from './combatCriticalRules'
+import { parseWeaponDice, rollCriticalBonus, type CriticalFormClass, type CriticalAttribute } from './combatCriticalRules'
 
 export type PhysicalAttackDamageInput = {
   baseFormula: string
@@ -9,6 +9,7 @@ export type PhysicalAttackDamageInput = {
   corvoStrength: boolean
   confirmedCritical: boolean
   criticalForm: CriticalFormClass
+  criticalAttribute?: CriticalAttribute
 }
 export type PhysicalAttackDamageResult = { total: number; details: string[] }
 
@@ -34,10 +35,11 @@ export function rollPhysicalAttackDamage(
   if (kit) { total += kit; details.push(`Kit: +${kit}`) }
   if (input.corvoStrength) { total += 10; details.push('Guerreiro Insuperável (acerto): +10') }
   if (input.confirmedCritical && weapon) {
-    const critical = rollCriticalBonus({ form: input.criticalForm, weaponFormula: input.weaponFormula, corvoStrength: input.corvoStrength }, die)
+    const critical = rollCriticalBonus({ form: input.criticalForm, weaponFormula: input.weaponFormula, corvoStrength: input.corvoStrength, attribute:input.criticalAttribute ?? 'strength' }, die)
     if (critical.total !== null) {
       total += critical.total
       details.push(`Crítico confirmado: ${critical.formula} [${critical.rolls.join(', ')}] = +${critical.total}`)
+      for(const condition of critical.conditions)details.push(`Condição ${condition.nature} grau ${condition.grade} por ${condition.rounds} rodadas — aplicar manualmente`)
     }
   }
   return { total, details }

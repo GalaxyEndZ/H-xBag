@@ -1,0 +1,42 @@
+/* V288 — Chamada de áudio WebRTC persistente. */
+.app-shell .hb-voice-v288{--hv-highlight:var(--hc-gold,var(--season-primary,#d9bd8b));--hv-bg:var(--hc-card,var(--season-surface,#111923));--hv-edge:var(--hc-edge,#3c4550);position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:0;min-width:0;min-height:0;overflow:auto;background:radial-gradient(ellipse at 45% 0%,color-mix(in srgb,var(--hv-highlight) 8%,transparent),transparent 58%),var(--hv-bg);color:var(--hc-text,#fafafa)}
+.app-shell .hb-voice-header-v288{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:22px 28px;border-bottom:1px solid var(--hv-edge)}
+.app-shell .hb-voice-header-title-v288{display:flex;align-items:center;gap:15px;min-width:0}
+.app-shell .hb-voice-header-icon-v288{width:54px;height:54px;border-radius:16px;flex:0 0 54px;display:grid;place-items:center;background:color-mix(in srgb,var(--hv-highlight) 14%,transparent);border:1px solid var(--hv-edge);color:var(--hv-highlight);font-size:31px}
+.app-shell .hb-voice-header-title-v288 small{color:var(--hv-highlight);font-size:10px;letter-spacing:.14em;font-weight:850}
+.app-shell .hb-voice-header-title-v288 h2{font:800 21px/1.3 Manrope,system-ui,sans-serif;margin:3px 0;color:var(--hc-text)}
+.app-shell .hb-voice-header-title-v288 p{margin:0;color:var(--hc-muted);font-size:12px}
+.app-shell .hb-voice-status-v288{font-size:11px;padding:9px 12px;border-radius:99px;color:#83d7ad;border:1px solid #72ca9766;background:#376c4b21;white-space:nowrap;font-weight:750}
+.app-shell .hb-voice-status-v288--connecting{color:var(--hv-highlight);border-color:var(--hv-edge);background:transparent}
+.app-shell .hb-voice-status-v288--error{color:#ffa8b1;border-color:#c4596477;background:#852e3722}
+.app-shell .hb-voice-warning-v288{margin:14px 24px 0;padding:12px;border-radius:11px;background:#84323b22;border:1px solid #dd808868;color:#ffb1ba;font-size:12px;line-height:1.6}
+.app-shell .hb-voice-participants-v288{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,240px));gap:14px;align-content:start;padding:28px;flex:1;min-height:0;overflow:auto}
+.app-shell .hb-voice-participant-v288{border:1px solid var(--hv-edge);border-radius:17px;padding:19px 15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:160px;max-width:300px;text-align:center;background:linear-gradient(155deg,color-mix(in srgb,var(--hc-panel,#252a33) 90%,transparent),color-mix(in srgb,var(--hv-bg) 95%,transparent));position:relative}
+.app-shell .hb-voice-participant-v288.is-connected{border-color:color-mix(in srgb,#8ddcb2 45%,var(--hv-edge))}
+.app-shell .hb-voice-avatar-v288{width:64px;height:64px;border-radius:22px;display:grid;place-items:center;font-size:26px;font-weight:800;color:var(--hv-highlight);background:color-mix(in srgb,var(--hv-highlight) 15%,var(--hv-bg));border:1px solid var(--hv-edge)}
+.app-shell .hb-voice-participant-v288>div:nth-child(2){display:grid;gap:5px;min-width:0}
+.app-shell .hb-voice-participant-v288 strong{font-size:13px;overflow-wrap:anywhere}
+.app-shell .hb-voice-participant-v288 small{font-size:11px;color:var(--hc-muted)}
+.app-shell .hb-voice-participant-v288>span:last-child{position:absolute;right:12px;top:11px;font-size:15px;color:var(--hv-highlight)}
+.app-shell .hb-voice-empty-v288{grid-column:1/-1;color:var(--hc-muted);font-size:13px;padding:28px;text-align:center;border:1px dashed var(--hv-edge);border-radius:15px}
+.app-shell .hb-voice-activate-v288{align-self:center;border:1px solid var(--hv-edge);border-radius:10px;padding:10px 16px;color:var(--hv-highlight);background:var(--hv-bg)}
+.app-shell .hb-voice-controls-v288{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:18px 22px;border-top:1px solid var(--hv-edge);background:color-mix(in srgb,var(--hc-panel,#20262d) 68%,var(--hv-bg))}
+.app-shell .hb-voice-controls-v288 button{padding:11px 15px;font-size:12px;font-weight:750;border-radius:11px;border:1px solid var(--hv-edge);background:color-mix(in srgb,var(--hc-panel,#252d33) 90%,var(--hv-bg));color:var(--hc-text);min-height:43px}
+.app-shell .hb-voice-controls-v288 button:hover{border-color:var(--hv-highlight)}
+.app-shell .hb-voice-controls-v288 .is-off{color:#ffb1bc;border-color:#b4636d77}
+.app-shell .hb-voice-volume-v288{display:flex;align-items:center;gap:8px;color:var(--hc-muted);font-size:11px;padding:4px 6px}
+.app-shell .hb-voice-volume-v288 input{accent-color:var(--hv-highlight);width:82px}
+.app-shell .hb-voice-controls-v288 .hb-voice-leave-v288{color:#fff;border-color:#b04458;background:#993648}
+.app-shell .hb-voice-v288--compact{position:fixed;inset:auto 20px 20px auto;z-index:200;width:min(505px,calc(100vw - 32px));max-height:min(78dvh,560px);border:1px solid var(--hv-edge);box-shadow:0 26px 75px #0009;border-radius:17px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-v288{padding:13px 17px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-icon-v288{width:39px;height:39px;flex-basis:39px;border-radius:11px;font-size:23px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-title-v288 h2{font-size:16px}
+.app-shell .hb-voice-v288--compact .hb-voice-header-title-v288 p{font-size:10px}
+.app-shell .hb-voice-v288--compact .hb-voice-participants-v288{padding:12px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px;max-height:150px}
+.app-shell .hb-voice-v288--compact .hb-voice-participant-v288{min-height:95px;padding:11px;gap:5px}
+.app-shell .hb-voice-v288--compact .hb-voice-avatar-v288{width:34px;height:34px;border-radius:11px;font-size:15px}
+.app-shell .hb-voice-v288--compact .hb-voice-controls-v288{padding:11px;gap:8px}
+.app-shell .hb-voice-v288--compact .hb-voice-controls-v288 button{font-size:10px;min-height:37px;padding:8px 11px}
+.app-shell .hb-voice-v288--compact .hb-voice-volume-v288{display:none}
+@media(max-width:720px){.app-shell .hb-voice-header-v288{padding:16px 13px}.app-shell .hb-voice-header-title-v288 h2{font-size:17px}.app-shell .hb-voice-status-v288{font-size:10px;padding:6px}.app-shell .hb-voice-participants-v288{padding:14px;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.app-shell .hb-voice-participant-v288{min-height:132px;padding:10px}.app-shell .hb-voice-controls-v288{padding:10px}.app-shell .hb-voice-v288--compact{right:8px;bottom:8px;width:calc(100vw - 16px);max-height:55dvh}.app-shell .hb-voice-v288--compact .hb-voice-participants-v288{max-height:95px}.app-shell .hb-voice-v288--compact .hb-voice-header-title-v288 small{display:none}}
+@media(max-width:370px){.app-shell .hb-voice-controls-v288 button{min-width:0;flex:1}.app-shell .hb-voice-volume-v288{width:100%;justify-content:center}}

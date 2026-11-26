@@ -1,3 +1,4 @@
+import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from '../desktopPublicLinks'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import './SocialReferralPanel.css'
@@ -23,10 +24,10 @@ export default function SocialReferralPanel({active}:{active:boolean}) {
     setError('')
   },[])
   useEffect(()=>{if(active)void refresh()},[active,refresh])
-  const toUrl = (value:string) => `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(value)}`
+  const toUrl = (value:string) => publicHaxbagLink({ ref: value })
   const url = token ? toUrl(token) : ''
   async function ensureLink() {
-    if(token)return toUrl(token)
+    if(token){const link=toUrl(token);if(!link)setError(DESKTOP_PUBLIC_URL_HELP);return link}
     setBusy(true)
     setError('')
     const {data,error:failure} = await supabase.rpc('hax_referral_my_link')
@@ -34,7 +35,7 @@ export default function SocialReferralPanel({active}:{active:boolean}) {
     if(failure || !data){setError('Não foi possível gerar o link. Tente novamente ou contate a administração.');return ''}
     const nextToken=String(data)
     setToken(nextToken)
-    return toUrl(nextToken)
+    const link=toUrl(nextToken);if(!link)setError(DESKTOP_PUBLIC_URL_HELP);return link
   }
   async function copyLink() {
     setMessage('')

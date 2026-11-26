@@ -1,0 +1,84 @@
+name: Publicar HäxBag Desktop (Windows)
+
+# Este workflow fica no REPOSITÓRIO DO CÓDIGO-FONTE.
+# As releases são enviadas para GalaxyEndZ/H-xBagReleases (repositório público separado).
+on:
+  push:
+    tags:
+      - 'v*'
+
+# O GITHUB_TOKEN só recebe acesso de leitura ao código-fonte.
+# Para publicar no repositório separado, use HAXBAG_RELEASE_TOKEN, escopo restrito.
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      HAXBAG_RELEASE_REPOSITORY: GalaxyEndZ/H-xBagReleases
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Conferir versão da release
+        shell: pwsh
+        run: node desktop/verify-release-version.cjs
+        env:
+          HAXBAG_TAG: ${{ github.ref_name }}
+
+      - name: Verificar configuração antes da compilação
+        shell: pwsh
+        env:
+          RELEASE_TOKEN: ${{ secrets.HAXBAG_RELEASE_TOKEN }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:RELEASE_TOKEN)) { throw 'Falta o secret HAXBAG_RELEASE_TOKEN no repositorio do CODIGO (token com Contents: Read and write em GalaxyEndZ/H-xBagReleases).' }
+          if ([string]::IsNullOrWhiteSpace($env:SUPABASE_URL)) { throw 'Falta o secret VITE_SUPABASE_URL no repositorio do CODIGO.' }
+          if ([string]::IsNullOrWhiteSpace($env:SUPABASE_KEY)) { throw 'Falta o secret VITE_SUPABASE_PUBLISHABLE_KEY no repositorio do CODIGO.' }
+          if ($env:SUPABASE_URL -notmatch '^https://') { throw 'VITE_SUPABASE_URL deve ser HTTPS.' }
+          Write-Host 'Destino da release: GalaxyEndZ/H-xBagReleases'
+
+      - name: Instalar dependências
+        # O lockfile original ainda não contém todas as dependências Electron.
+        run: npm install --no-audit --no-fund
+
+      - name: Compilar interface React
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_HAXBAG_PUBLIC_URL: ${{ vars.VITE_HAXBAG_PUBLIC_URL }}
+          VITE_HAXBAG_VOICE_ICE_URL: ${{ vars.VITE_HAXBAG_VOICE_ICE_URL }}
+
+      - name: Gerar e publicar instalador NSIS no repositorio de releases
+        shell: pwsh
+        run: npx electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.HAXBAG_RELEASE_TOKEN }}
+
+      - name: Conferir instalador e metadados
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist-desktop/latest.yml)) { throw 'latest.yml ausente; sem ele o auto-updater nao funciona.' }
+          if (!(Get-ChildItem dist-desktop -Filter 'HaxBag-Setup-*.exe')) { throw 'Instalador NSIS ausente.' }
+
+      - name: Tornar release publica apos gerar os artefatos
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.HAXBAG_RELEASE_TOKEN }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          gh release edit $tag --draft=false --repo $env:HAXBAG_RELEASE_REPOSITORY

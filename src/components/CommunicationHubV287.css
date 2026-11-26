@@ -1,0 +1,239 @@
+/* HäxBag V287 — Comunicação · redesign do espaço de conversas.
+ * Não modifica regras, dados, tabelas, armazenamento ou permissões do Supabase.
+ * Regras isoladas a page-communication e ao componente, sem interferir nas demais áreas. */
+.app-shell .page-content.page-communication{
+  width:100%;max-width:none;min-width:0;margin:0;
+  padding:clamp(12px,1.6vw,25px) clamp(12px,1.5vw,30px) 24px;
+}
+.app-shell .hb-communication-v287{
+  width:100%;max-width:none;margin:0;
+  --hc-card:color-mix(in srgb,var(--season-surface,#121b22) 78%,#111a20);
+  --hc-panel:color-mix(in srgb,var(--season-surface-alt,#202a32) 72%,#19232b);
+  --hc-bg:color-mix(in srgb,var(--season-bg,#0a1015) 89%,#0b151b);
+  --hc-edge:color-mix(in srgb,var(--season-primary,#d9bd8b) 13%,#39424a);
+  --hc-strong-line:color-mix(in srgb,var(--season-primary,#d9bd8b) 29%,#39424a);
+  --hc-gold:var(--season-primary,#d9bd8b);
+  --hc-text:var(--season-text,#f1f2ef);
+  --hc-muted:var(--season-muted,#adb6bf);
+  --hc-dim:color-mix(in srgb,var(--hc-muted) 75%,var(--hc-text));
+}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285{
+  min-height:116px;margin:0 0 12px;padding:18px clamp(18px,2vw,29px);
+  gap:20px;border-radius:18px;
+  background:radial-gradient(ellipse at 90% 0%,color-mix(in srgb,var(--hc-gold) 12%,transparent),transparent 55%),linear-gradient(108deg,var(--hc-panel),var(--hc-bg));
+}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285:after{right:20%;top:-68px;font-size:206px;opacity:.025}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285 h1{font:800 clamp(28px,2.4vw,38px)/1.1 Manrope,system-ui,sans-serif;letter-spacing:-.045em}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285 p{font-size:13px;margin-top:6px;max-width:560px;line-height:1.5}
+.app-shell .hb-communication-v287 .hb-comm-eyebrow{font-size:10px;letter-spacing:.14em}
+.app-shell .hb-communication-v287 .hb-comm-hero-right{gap:10px}
+.app-shell .hb-communication-v287 .hb-comm-overview{gap:20px}
+.app-shell .hb-communication-v287 .hb-comm-overview>div{min-width:69px}
+.app-shell .hb-communication-v287 .hb-comm-overview strong{font-size:25px}
+.app-shell .hb-communication-v287 .hb-comm-overview small{font-size:10px}
+.app-shell .hb-communication-v287 .hb-comm-hero-actions{gap:9px}
+.app-shell .hb-communication-v287 .hb-comm-hero-actions :is(.hb-comm-primary,.hb-comm-subtle){font-size:12px;min-height:40px;padding:9px 16px;border-radius:10px}
+/* Contexto persistente: o caminho do servidor/canal nunca concorre com a conversa. */
+.app-shell .hb-comm-context-v287{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;min-width:0;
+  min-height:62px;margin:0 0 10px;padding:8px 14px;
+  border:1px solid var(--hc-edge);border-radius:14px;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--hc-gold) 5%,var(--hc-panel)),var(--hc-bg));
+}
+.app-shell .hb-comm-context-location-v287{display:flex;align-items:center;gap:13px;min-width:0}
+.app-shell .hb-comm-context-symbol-v287{
+  width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;
+  font-size:22px;border-radius:12px;background:color-mix(in srgb,var(--hc-gold) 11%,var(--hc-panel));border:1px solid var(--hc-strong-line);
+}
+.app-shell .hb-comm-context-copy-v287{display:grid;gap:5px;min-width:0}
+.app-shell .hb-comm-context-copy-v287 small{font-size:9px;font-weight:800;letter-spacing:.16em;color:var(--hc-gold)}
+.app-shell .hb-comm-context-copy-v287 strong{font-size:14px;line-height:1.3;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:var(--hc-text)}
+.app-shell .hb-comm-context-copy-v287 strong>span{padding:0 8px;color:var(--hc-dim);font-weight:400}
+.app-shell .hb-comm-context-copy-v287 em{font-style:normal;color:var(--hc-muted);font-weight:600}
+.app-shell .hb-comm-context-mobile-label-v287{display:none}
+.app-shell .hb-comm-context-actions-v287{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.app-shell .hb-comm-context-actions-v287 button{
+  display:flex;align-items:center;justify-content:center;gap:7px;min-height:36px;
+  padding:7px 14px;color:var(--hc-text);background:color-mix(in srgb,var(--hc-panel) 80%,var(--hc-bg));
+  border:1px solid var(--hc-edge);border-radius:9px;font-weight:750;font-size:12px;
+}
+.app-shell .hb-comm-context-actions-v287 button:hover{border-color:var(--hc-gold);background:color-mix(in srgb,var(--hc-gold) 11%,var(--hc-panel))}
+.app-shell .hb-comm-context-actions-v287 button span{color:var(--hc-gold);font-size:16px}
+/* Área central: corrige o espaço excessivamente estreito mostrado no print. */
+.app-shell .hb-comm-shell-v287,
+.app-shell .hb-comm-shell-v287:not(:has(.hb-comm-members)){
+  width:100%;height:clamp(540px,calc(100dvh - 255px),1000px);min-height:540px;max-height:1000px;
+  display:grid;grid-template-columns:82px minmax(245px,295px) minmax(0,1fr);
+  border:1px solid var(--hc-strong-line);border-radius:16px;background:var(--hc-card);
+  box-shadow:0 22px 60px rgba(0,0,0,.17),inset 0 1px rgba(255,255,255,.03);
+}
+@media(min-width:1540px){
+  .app-shell .hb-comm-shell-v287:has(.hb-comm-members){grid-template-columns:82px minmax(245px,295px) minmax(0,1fr) minmax(224px,270px)}
+}
+.app-shell .hb-comm-shell-v287 .hb-comm-servers{padding:18px 12px;gap:14px;background:linear-gradient(180deg,var(--hc-bg),color-mix(in srgb,var(--hc-bg) 82%,#020608))}
+.app-shell .hb-comm-shell-v287 .hb-comm-rail-label{font-size:9px;letter-spacing:.12em}
+.app-shell .hb-comm-shell-v287 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm){
+  width:54px;height:54px;min-height:54px;flex-basis:54px;border-radius:17px;
+  font-size:24px;border:1px solid var(--hc-edge);
+}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-icon:is(.active,:hover){border-radius:14px;border-color:var(--hc-gold);background:color-mix(in srgb,var(--hc-gold) 17%,var(--hc-panel));box-shadow:0 5px 24px color-mix(in srgb,var(--hc-gold) 7%,transparent)}
+.app-shell .hb-comm-shell-v287 .hb-comm-rail-active{left:-14px;top:10px;bottom:10px;width:4px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channels{background:linear-gradient(145deg,color-mix(in srgb,var(--hc-panel) 84%,var(--hc-bg)),var(--hc-card))}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-heading{min-height:82px;padding:18px 17px}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-heading h2{font-size:18px;max-width:none;line-height:1.35}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-heading small{font-size:10px}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-heading-icon{width:38px;height:38px;flex-basis:38px;font-size:20px;border-radius:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-description{font-size:12px;line-height:1.55;padding:13px 17px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-tools-v285{gap:8px;padding:15px 13px 6px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-search-v285{min-height:42px;padding:0 13px;border-radius:10px}
+.app-shell .hb-comm-shell-v287 :is(.hb-comm-channel-search-v285,.hb-comm-member-search-v285) input{font-size:13px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-unread-v285{min-height:37px;font-size:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-heading{margin:23px 13px 9px;font-size:10px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-heading button{font-size:23px;width:28px;height:28px;display:grid;place-items:center;border-radius:8px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-heading button:hover{background:color-mix(in srgb,var(--hc-gold) 12%,var(--hc-panel))}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel{min-height:46px;padding:11px 14px;margin:3px 11px;gap:12px;font-size:14px;border-radius:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel>span:first-child{font-size:20px}
+.app-shell .hb-comm-shell-v287 .hb-comm-sidebar-action{min-height:41px;font-size:12px;margin:0 12px;padding:11px 12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-self{min-height:79px;padding:13px 16px}
+.app-shell .hb-comm-shell-v287 .hb-comm-self .hb-comm-avatar{width:43px;height:43px;font-size:16px}
+.app-shell .hb-comm-shell-v287 .hb-comm-self strong{font-size:13px}
+.app-shell .hb-comm-shell-v287 .hb-comm-self small{font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-main{background:radial-gradient(ellipse at 100% -10%,color-mix(in srgb,var(--hc-gold) 4%,transparent),transparent 53%),var(--hc-card)}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-head-v285{min-height:82px;padding:16px clamp(17px,1.6vw,28px);gap:15px}
+.app-shell .hb-comm-shell-v287 .hb-comm-hash{width:46px;height:46px;flex-basis:46px;border-radius:13px;font-size:25px}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-name-v285 strong{font-size:19px;line-height:1.2}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-title small{font-size:12px;max-width:600px}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-controls{gap:7px}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-controls button{min-height:38px;padding:8px 11px;font-size:15px}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-controls button span{font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-tools-v285{min-height:54px;padding:9px clamp(17px,1.6vw,28px)}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-crumb-v285{font-size:12px;gap:9px}
+.app-shell .hb-comm-chat-total-v287{display:inline-flex;margin-left:12px;padding-left:12px;border-left:1px solid var(--hc-edge);white-space:nowrap;font-size:11px;color:var(--hc-dim)}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-tools-v285 .hb-comm-searchbar{min-height:38px;flex-basis:330px}
+.app-shell .hb-comm-shell-v287 .hb-comm-searchbar input{font-size:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-scroll{padding:10px clamp(20px,2.5vw,42px) 34px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome{padding:30px 11px 33px;margin:0 0 14px;border-bottom:1px solid var(--hc-edge);max-width:950px}
+.app-shell .hb-comm-shell-v287 .hb-comm-welcome-icon{width:66px;height:66px;border-radius:18px;font-size:33px;border:1px solid var(--hc-strong-line)}
+.app-shell .hb-comm-welcome-eyebrow-v287{display:block;font-size:10px;letter-spacing:.18em;font-weight:800;color:var(--hc-gold);margin:20px 0 0}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome h2{font-size:clamp(24px,2.1vw,32px);margin:6px 0 9px;letter-spacing:-.035em}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome p{font-size:14px;max-width:660px;line-height:1.7}
+.app-shell .hb-comm-welcome-cta-v287{display:inline-flex;align-items:center;min-height:41px;padding:10px 17px;margin-top:20px;border:1px solid var(--hc-strong-line);border-radius:10px;background:color-mix(in srgb,var(--hc-gold) 10%,var(--hc-panel));color:var(--hc-text);font-size:13px;font-weight:760}
+.app-shell .hb-comm-welcome-cta-v287:hover{background:color-mix(in srgb,var(--hc-gold) 19%,var(--hc-panel));border-color:var(--hc-gold)}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-empty{padding:20px 12px;font-size:13px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message{max-width:1100px;padding:14px 13px;gap:15px;border-radius:13px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message--compact-v285{padding-top:7px;padding-bottom:7px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-avatar{width:45px;height:45px;border-radius:14px;font-size:17px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-meta{margin-bottom:7px;gap:7px 12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-meta strong{font-size:14px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-meta>small{font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-meta time{font-size:10px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-content{font-size:14px;line-height:1.72}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-actions{gap:14px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-actions button{font-size:11px;padding:5px 0}
+.app-shell .hb-comm-shell-v287 .hb-comm-reply-preview{font-size:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-reactions :is(button,summary){font-size:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-date-divider-v285{margin:26px 0 14px;font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-wrap{padding:14px clamp(17px,1.7vw,29px) 12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer{padding:8px 9px;gap:12px;border-radius:14px}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer textarea{font-size:14px;line-height:1.55;min-height:41px;padding:9px 6px}
+.app-shell .hb-comm-shell-v287 :is(.hb-comm-composer-attach,.hb-comm-send){width:41px;height:41px;flex-basis:41px;font-size:20px;border-radius:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-send:not(:disabled):hover{filter:brightness(1.08);box-shadow:0 5px 16px color-mix(in srgb,var(--hc-gold) 15%,transparent)}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-foot-v285 small{font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-foot-v285 strong{font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-members{padding:24px 15px}
+.app-shell .hb-comm-shell-v287 .hb-comm-members-title{font-size:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-member-group{margin-top:25px}
+.app-shell .hb-comm-shell-v287 .hb-comm-member{padding:7px 6px;margin:0 0 8px;gap:11px}
+.app-shell .hb-comm-shell-v287 .hb-comm-member-avatar{width:41px;height:41px}
+.app-shell .hb-comm-shell-v287 .hb-comm-member strong{font-size:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-member small{font-size:11px}
+.app-shell .hb-communication-v287 .hb-comm-footer{padding:0 5px;margin-top:11px;font-size:11px}
+.app-shell .hb-communication-v287 .hb-comm-footer button{font-size:11px}
+/* Modais: espaço suficiente para nomes e configurações. */
+.app-shell .hb-communication-v287 .hb-comm-modal{width:min(100%,560px);padding:27px;border-radius:18px}
+.app-shell .hb-communication-v287 .hb-comm-modal>header h2{font-size:24px}
+.app-shell .hb-communication-v287 .hb-comm-modal :is(label,input:not([type=checkbox]),textarea){font-size:13px}
+.app-shell .hb-communication-v287 .hb-comm-modal p{font-size:13px}
+/* Adaptações: nenhuma barra lateral força o chat a ficar ilegível. */
+@media(max-width:1539px){
+  .app-shell .hb-comm-shell-v287:has(.hb-comm-members){grid-template-columns:76px minmax(230px,270px) minmax(0,1fr)}
+  .app-shell .hb-comm-shell-v287 .hb-comm-members{display:block;position:absolute;right:0;top:0;bottom:0;z-index:8;width:min(285px,calc(100% - 76px));box-shadow:-18px 0 34px #0008;border-left:1px solid var(--hc-edge)}
+  .app-shell .hb-comm-shell-v287 .hb-comm-members-shade-v285{display:block;position:absolute;inset:0;z-index:7;border:0;background:#02050870}
+}
+@media(max-width:1200px){
+  .app-shell .hb-comm-shell-v287,.app-shell .hb-comm-shell-v287:not(:has(.hb-comm-members)),.app-shell .hb-comm-shell-v287:has(.hb-comm-members){grid-template-columns:68px minmax(213px,249px) minmax(0,1fr)}
+  .app-shell .hb-comm-shell-v287 .hb-comm-servers{padding:14px 7px}
+  .app-shell .hb-comm-shell-v287 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm){width:49px;height:49px;min-height:49px;flex-basis:49px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-rail-active{left:-10px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-controls button span{display:none}
+  .app-shell .hb-comm-chat-total-v287{display:none}
+}
+@media(max-width:850px){
+  .app-shell .page-content.page-communication{padding:12px 12px 18px}
+  .app-shell .hb-communication-v287 .hb-comm-hero-v285{min-height:0;padding:17px 19px;flex-direction:column;align-items:stretch;gap:12px}
+  .app-shell .hb-communication-v287 .hb-comm-hero-right{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .app-shell .hb-communication-v287 .hb-comm-overview{gap:13px}
+  .app-shell .hb-communication-v287 .hb-comm-overview strong{font-size:19px}
+  .app-shell .hb-communication-v287 .hb-comm-overview small{font-size:9px}
+  .app-shell .hb-comm-shell-v287,.app-shell .hb-comm-shell-v287:not(:has(.hb-comm-members)),.app-shell .hb-comm-shell-v287:has(.hb-comm-members){height:clamp(510px,calc(100dvh - 300px),900px);min-height:510px}
+  .app-shell .hb-comm-context-v287{padding:8px 12px}
+  .app-shell .hb-comm-context-actions-v287 button{font-size:11px;padding:8px 10px}
+  .app-shell .hb-comm-context-symbol-v287{width:36px;height:36px;flex-basis:36px}
+}
+@media(max-width:700px){
+  .app-shell .hb-comm-shell-v287,.app-shell .hb-comm-shell-v287:not(:has(.hb-comm-members)),.app-shell .hb-comm-shell-v287:has(.hb-comm-members){grid-template-columns:56px minmax(0,1fr);height:calc(100dvh - 345px);min-height:460px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-servers{padding:10px 5px;gap:10px}
+  .app-shell .hb-comm-shell-v287 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm){width:44px;height:44px;min-height:44px;flex-basis:44px;font-size:20px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-rail-active{left:-7px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-channels{left:56px;width:min(285px,calc(100% - 56px))}
+  .app-shell .hb-comm-shell-v287 .hb-comm-mobile-shade-v285{inset:0 0 0 56px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-main{grid-column:2;grid-row:1}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-head-v285{min-height:64px;padding:9px 12px;gap:8px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-name-v285 strong{font-size:16px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-hash{width:34px;height:34px;flex-basis:34px;border-radius:10px;font-size:21px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-title small{font-size:10px;max-width:180px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-controls button{min-height:32px;padding:4px 7px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-message-scroll{padding:7px 12px 20px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome{padding:21px 2px 24px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome h2{font-size:23px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome p{font-size:12px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-message{padding:10px 6px;gap:10px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-message-avatar{width:36px;height:36px;border-radius:10px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-message-content{font-size:13px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-composer-wrap{padding:10px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-composer textarea{font-size:13px;min-height:33px}
+  .app-shell .hb-comm-shell-v287 :is(.hb-comm-composer-attach,.hb-comm-send){width:36px;height:36px;flex-basis:36px}
+  .app-shell .hb-comm-context-copy-v287 strong{font-size:12px}
+  .app-shell .hb-comm-context-actions-v287 button{min-height:32px}
+  .app-shell .hb-comm-context-actions-v287 button:nth-child(3){display:none}
+  .app-shell .hb-comm-shell-v287 .hb-comm-members{width:min(290px,calc(100% - 56px))}
+}
+@media(max-width:470px){
+  .app-shell .page-content.page-communication{padding:10px 8px 18px}
+  .app-shell .hb-communication-v287 .hb-comm-hero-v285{padding:15px}
+  .app-shell .hb-communication-v287 .hb-comm-hero-v285 h1{font-size:28px}
+  .app-shell .hb-communication-v287 .hb-comm-hero-v285 p{font-size:11px}
+  .app-shell .hb-communication-v287 .hb-comm-hero-right{display:grid;justify-items:stretch}
+  .app-shell .hb-communication-v287 .hb-comm-overview{justify-content:space-between}
+  .app-shell .hb-communication-v287 .hb-comm-hero-actions>button{flex:1}
+  .app-shell .hb-comm-context-v287{padding:7px 9px;gap:7px}
+  .app-shell .hb-comm-context-location-v287{gap:8px}
+  .app-shell .hb-comm-context-symbol-v287{width:32px;height:32px;flex-basis:32px;font-size:17px}
+  .app-shell .hb-comm-context-copy-v287 strong{font-size:12px;max-width:175px}
+  .app-shell .hb-comm-context-copy-v287 .hb-comm-context-eyebrow-v287,.app-shell .hb-comm-context-copy-v287 .hb-comm-context-server-v287,.app-shell .hb-comm-context-copy-v287 .hb-comm-context-separator-v287{display:none}
+  .app-shell .hb-comm-context-mobile-label-v287{display:block;font-size:9px;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;color:var(--hc-gold)}
+  .app-shell .hb-comm-context-actions-v287 button{padding:6px 8px;font-size:0;gap:0}
+  .app-shell .hb-comm-context-actions-v287 button span{font-size:17px}
+  .app-shell .hb-comm-shell-v287,.app-shell .hb-comm-shell-v287:not(:has(.hb-comm-members)),.app-shell .hb-comm-shell-v287:has(.hb-comm-members){grid-template-columns:48px minmax(0,1fr);height:calc(100dvh - 390px);min-height:420px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-channels{left:48px;width:min(270px,calc(100% - 48px))}
+  .app-shell .hb-comm-shell-v287 .hb-comm-mobile-shade-v285{inset:0 0 0 48px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-servers{padding:10px 4px}
+  .app-shell .hb-comm-shell-v287 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm){width:38px;height:38px;min-height:38px;flex-basis:38px;font-size:18px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-hash{display:none}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-name-v285 strong{font-size:14px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-chat-tools-v285{padding:7px 10px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-composer-foot-v285 small{font-size:9px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-composer-foot-v285 small span{padding:0 1px}
+  .app-shell .hb-comm-shell-v287 .hb-comm-members{width:min(260px,calc(100% - 48px))}
+}
+@media(prefers-reduced-motion:reduce){.app-shell .hb-communication-v287 button{transition:none!important}}

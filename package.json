@@ -1,18 +1,24 @@
 {
   "name": "haxbag",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.294.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "desktop:dev": "node desktop/dev.cjs",
+    "desktop:installer": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish never",
+    "desktop:portable": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win portable --x64 --publish never",
+    "desktop:unpacked": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win --dir --x64 --publish never",
+    "desktop:release": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish always"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
@@ -21,6 +27,50 @@
     "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.89.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.5"
+    "vite": "^8.3.5",
+    "electron": "45.5.0",
+    "electron-builder": "^26.18.1"
+  },
+  "productName": "HäxBag",
+  "main": "desktop/main.cjs",
+  "description": "HäxBag — campanhas, RPG, social e comunicação para Windows",
+  "build": {
+    "appId": "app.haxbag.desktop",
+    "productName": "HäxBag",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "dist/**/*",
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/screen-picker.html",
+      "desktop/screen-picker.css",
+      "desktop/screen-picker.js",
+      "desktop/screen-picker-preload.cjs",
+      "build/haxbag.ico",
+      "package.json",
+      "desktop/auto-update.cjs"
+    ],
+    "win": {
+      "icon": "build/haxbag.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "HaxBag-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "HaxBag-Portable-${version}-${arch}.${ext}"
+    }
   }
 }

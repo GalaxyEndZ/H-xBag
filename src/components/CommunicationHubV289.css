@@ -1,0 +1,83 @@
+/* HäxBag V289 — Comunicação · acabamento de interface + legibilidade.
+   Isolado da aba Comunicação. Usa as variáveis dos temas e não altera a base. */
+.app-shell .hb-communication-v287{
+  --hc-glow:color-mix(in srgb,var(--hc-gold) 14%,transparent);
+  --hc-raised:color-mix(in srgb,var(--hc-panel) 82%,var(--hc-card));
+  --hc-hairline:color-mix(in srgb,var(--hc-text) 7%,var(--hc-edge));
+}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285{
+  border-radius:18px;min-height:102px;padding:18px clamp(18px,2.1vw,34px);
+  background:radial-gradient(ellipse at 94% 0%,var(--hc-glow),transparent 58%),linear-gradient(135deg,var(--hc-panel),var(--hc-bg));
+}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285 h1{font-weight:850;letter-spacing:-.045em}
+.app-shell .hb-communication-v287 .hb-comm-hero-v285 p{color:var(--hc-muted);line-height:1.65}
+.app-shell .hb-comm-context-v287{border-color:var(--hc-hairline);background:var(--hc-raised);border-radius:13px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--hc-text) 4%,transparent)}
+.app-shell .hb-comm-shell-v287,.app-shell .hb-comm-shell-v287:not(:has(.hb-comm-members)){
+  border-color:var(--hc-hairline);box-shadow:0 22px 70px #0004;isolation:isolate
+}
+.app-shell .hb-comm-shell-v287 .hb-comm-servers{background:linear-gradient(180deg,var(--hc-bg),color-mix(in srgb,var(--hc-bg) 90%,#000))}
+.app-shell .hb-comm-shell-v287 .hb-comm-server-icon.active{
+  border-color:var(--hc-gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--hc-gold) 11%,transparent)
+}
+.app-shell .hb-comm-shell-v287 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm):focus-visible,
+.app-shell .hb-comm-shell-v287 .hb-comm-channel:focus-visible{outline:2px solid var(--hc-gold);outline-offset:2px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channels{background:linear-gradient(165deg,var(--hc-panel),var(--hc-card) 100%);border-right:1px solid var(--hc-hairline)}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-heading{display:flex;align-items:center;justify-content:space-between;gap:7px;line-height:1.3}
+.app-shell .hb-comm-channel-count-v289{display:inline-grid;place-items:center;min-width:22px;height:19px;padding:0 5px;margin-left:5px;background:color-mix(in srgb,var(--hc-gold) 9%,var(--hc-bg));border:1px solid var(--hc-hairline);border-radius:5px;color:var(--hc-muted);font-weight:800;letter-spacing:0;font-size:10px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel{min-width:0;transition:background .14s,border-color .14s,color .14s;position:relative}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel:not(.active):hover{background:color-mix(in srgb,var(--hc-gold) 7%,var(--hc-panel));color:var(--hc-text)}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel.active{background:color-mix(in srgb,var(--hc-gold) 12%,var(--hc-panel));box-shadow:inset 3px 0 var(--hc-gold);border-color:color-mix(in srgb,var(--hc-gold) 28%,var(--hc-edge))}
+.app-shell .hb-comm-shell-v287 .hb-comm-voice-channel-v288.in-call{box-shadow:inset 3px 0 #69c998}
+.app-shell .hb-comm-shell-v287 .hb-comm-self{border-top:1px solid var(--hc-hairline);background:color-mix(in srgb,var(--hc-bg) 62%,var(--hc-panel))}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-head-v285{border-bottom:1px solid var(--hc-hairline);background:linear-gradient(105deg,var(--hc-raised),var(--hc-card));}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-name-v285 strong{letter-spacing:-.025em}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-tools-v285{border-bottom:1px solid var(--hc-hairline);background:color-mix(in srgb,var(--hc-card) 83%,var(--hc-bg))}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-controls button.selected{border-color:var(--hc-strong-line);background:color-mix(in srgb,var(--hc-gold) 12%,var(--hc-panel));color:var(--hc-text)}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-scroll{scrollbar-width:thin;scrollbar-color:var(--hc-edge) transparent;overscroll-behavior:contain}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome{max-width:none;border-bottom:1px solid var(--hc-hairline)}
+/* Uma conversa ativa não precisa repetir o grande bloco de boas-vindas. */
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289{padding:12px 10px 15px;margin:0 0 9px;display:flex;flex-wrap:wrap;align-items:center;gap:7px 13px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 .hb-comm-welcome-icon{width:42px;height:42px;flex:0 0 42px;font-size:21px;border-radius:12px}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 .hb-comm-welcome-eyebrow-v287{display:none}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 h2{font-size:16px;margin:0;color:var(--hc-text);letter-spacing:0}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 p{margin:0;flex-basis:100%;font-size:11px;line-height:1.5}
+.app-shell .hb-comm-shell-v287 .hb-comm-message{border:1px solid transparent;transition:background .16s,border-color .16s;margin:1px 0}
+.app-shell .hb-comm-shell-v287 .hb-comm-message:hover{border-color:var(--hc-hairline);background:color-mix(in srgb,var(--hc-gold) 3%,var(--hc-panel))}
+.app-shell .hb-comm-shell-v287 .hb-comm-message--own{border-left:2px solid color-mix(in srgb,var(--hc-gold) 36%,transparent)}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-meta strong{font-weight:850}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-content{overflow-wrap:anywhere;white-space:pre-wrap;letter-spacing:.005em}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-actions{flex-wrap:wrap;row-gap:2px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-actions button{border-radius:6px;padding:5px 6px;margin-left:-6px}
+.app-shell .hb-comm-shell-v287 .hb-comm-message-actions button:hover{background:color-mix(in srgb,var(--hc-gold) 9%,var(--hc-panel));color:var(--hc-text)}
+.app-shell .hb-comm-shell-v287 .hb-comm-reactions :is(button,summary){min-height:27px}
+.app-shell .hb-comm-shell-v287 .hb-comm-date-divider-v285{position:sticky;top:0;z-index:2;pointer-events:none}
+.app-shell .hb-comm-shell-v287 .hb-comm-date-divider-v285>span{border:1px solid var(--hc-edge);box-shadow:0 5px 16px #0005;background:color-mix(in srgb,var(--hc-panel) 90%,var(--hc-bg));backdrop-filter:blur(8px)}
+.app-shell .hb-comm-loading-messages-v289{margin:15px 12px;display:flex;align-items:center;gap:12px;padding:16px 18px;border:1px solid var(--hc-edge);border-radius:13px;color:var(--hc-muted);background:var(--hc-panel);font-size:13px}
+.app-shell .hb-comm-loading-dot-v289{width:12px;height:12px;border-radius:50%;border:2px solid var(--hc-edge);border-top-color:var(--hc-gold);animation:hb-comm-spin-v289 .9s linear infinite}
+@keyframes hb-comm-spin-v289{to{transform:rotate(360deg)}}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-wrap{border-top:1px solid var(--hc-hairline);background:linear-gradient(0deg,var(--hc-panel),var(--hc-card))}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer{border:1px solid var(--hc-edge);box-shadow:0 6px 24px #0002;transition:border-color .18s,box-shadow .18s}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer:focus-within{border-color:var(--hc-gold);box-shadow:0 0 0 3px var(--hc-glow)}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer textarea{resize:vertical;max-height:170px;min-width:0}
+.app-shell .hb-comm-shell-v287 .hb-comm-send:not(:disabled){background:var(--hc-gold);color:var(--season-on-primary,#111)!important}
+.app-shell .hb-communication-v287 .hb-comm-modal{border-color:var(--hc-strong-line);box-shadow:0 36px 100px #000b}
+.app-shell .hb-communication-v287 .hb-comm-modal>header{border-bottom:1px solid var(--hc-hairline);padding-bottom:16px}
+.app-shell .hb-communication-v287 .hb-comm-footer{align-items:center;line-height:1.7}
+.app-shell .hb-communication-v287 .hb-comm-footer kbd{border:1px solid var(--hc-edge);border-radius:5px;padding:2px 5px;margin:0 2px;font:700 10px/1.5 inherit;color:var(--hc-muted);background:var(--hc-panel)}
+/* O painel de chamada recebe tratamento visual consistente. */
+.app-shell .hb-communication-v287 .hb-voice-v288:not(.hb-voice-v288--compact){background:radial-gradient(circle at 50% 8%,var(--hc-glow),transparent 42%),var(--hc-card)}
+.app-shell .hb-communication-v287 .hb-voice-participant-v288{box-shadow:0 14px 35px #0002}
+.app-shell .hb-communication-v287 .hb-voice-participant-v288.is-connected{box-shadow:0 0 0 1px #5fb78a33,0 14px 35px #0002}
+.app-shell .hb-communication-v287 .hb-comm-voice-stage-art-v288{box-shadow:0 0 0 12px color-mix(in srgb,var(--hc-gold) 5%,transparent),0 24px 60px #0005}
+@media(max-width:850px){
+ .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289{padding:10px 8px 12px}
+ .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 h2{font-size:14px}
+ .app-shell .hb-comm-shell-v287 .hb-comm-message-actions button{padding:7px 6px}
+}
+@media(max-width:470px){
+ .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 .hb-comm-welcome-icon{width:32px;height:32px;flex-basis:32px;font-size:17px}
+ .app-shell .hb-comm-shell-v287 .hb-comm-channel-welcome--has-messages-v289 p{font-size:10px}
+ .app-shell .hb-comm-shell-v287 .hb-comm-message-content{font-size:13px}
+ .app-shell .hb-communication-v287 .hb-comm-footer kbd{display:none}
+}
+@media(prefers-reduced-motion:reduce){.app-shell .hb-comm-loading-dot-v289{animation:none}.app-shell .hb-comm-shell-v287 .hb-comm-message{transition:none}}

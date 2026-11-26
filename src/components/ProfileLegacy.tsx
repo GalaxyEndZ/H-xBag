@@ -1,3 +1,4 @@
+import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from '../desktopPublicLinks'
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { supabase } from '../supabase'
 import PublicAdventurerProfile, { type AdventurerRef } from './PublicAdventurerProfile'
@@ -156,9 +157,9 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     })
     return()=>{cancelled=true}
   },[userId])
-  const personalReferralUrl=referralToken?`${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(referralToken)}`:''
+  const personalReferralUrl=referralToken ? publicHaxbagLink({ ref: referralToken }) : ''
   async function ensureReferralLink(){
-    if(referralToken)return personalReferralUrl
+    if(referralToken){if(!personalReferralUrl)setError(DESKTOP_PUBLIC_URL_HELP);return personalReferralUrl}
     setReferralBusy(true)
     const {data,error:failure}=await supabase.rpc('hax_referral_my_link')
     setReferralBusy(false)
@@ -166,7 +167,7 @@ export default function ProfileLegacy({userId,displayName,username,characters,ca
     const token=String(data||'')
     if(!token){setError('Não foi possível criar o link de convite.');return ''}
     setReferralToken(token)
-    return `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(token)}`
+    const link = publicHaxbagLink({ ref: token });if(!link)setError(DESKTOP_PUBLIC_URL_HELP);return link
   }
   async function copyReferralLink(){
     const url=await ensureReferralLink()
