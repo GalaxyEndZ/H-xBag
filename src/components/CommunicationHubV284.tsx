@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 import './CommunicationHub.styles.css'
 import './CommunicationDesktopRedesignV299.css'
 import './CommunicationLayoutV300.css'
+import './CommunicationExperienceV301.css'
 // O WebRTC só é baixado quando alguém entra numa chamada (não ao abrir Comunicação).
 const VoiceCallV288 = lazy(() => import('./VoiceCallV288'))
 
@@ -109,6 +110,46 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
   const [nearBottom,setNearBottom]=useState(true)
   const [showPinned,setShowPinned]=useState(false)
   const [showMembers,setShowMembers]=useState(false)
+  const desktopExperience = typeof window !== 'undefined' && Boolean((window as Window & {haxbagDesktop?: {enabled?:boolean}}).haxbagDesktop?.enabled)
+  const [channelPanelWidth,setChannelPanelWidth] = useState(() => {
+    try { return Math.max(202,Math.min(360,Number(window.localStorage.getItem('haxbag:v301:channels-width'))||248)) }
+    catch { return 248 }
+  })
+  const [channelsCollapsed,setChannelsCollapsed] = useState(() => {
+    try { return window.localStorage.getItem('haxbag:v301:channels-collapsed') === 'yes' }
+    catch { return false }
+  })
+  const channelShellRef=useRef<HTMLDivElement>(null)
+  const channelDragRef=useRef<{id:number;x:number;width:number}|null>(null)
+  useEffect(() => {
+    const onReset = () => {
+      setChannelPanelWidth(248);setChannelsCollapsed(false)
+      try {window.localStorage.removeItem('haxbag:v301:channels-width');window.localStorage.removeItem('haxbag:v301:channels-collapsed')}catch{/* sem armazenamento */}
+    }
+    window.addEventListener('haxbag:v301:reset-layout',onReset)
+    return () => window.removeEventListener('haxbag:v301:reset-layout',onReset)
+  },[])
+  useEffect(() => {
+    try { window.localStorage.setItem('haxbag:v301:channels-collapsed',channelsCollapsed?'yes':'no') }
+    catch { /* sem armazenamento */ }
+  },[channelsCollapsed])
+  const toggleChannelsCollapsed = () => setChannelsCollapsed(value => !value)
+  const resizeChannels = (event:React.PointerEvent<HTMLDivElement>,phase:'start'|'move'|'end') => {
+    if (phase==='start') {
+      if (event.button!==0) return
+      channelDragRef.current={id:event.pointerId,x:event.clientX,width:channelPanelWidth}
+      event.currentTarget.setPointerCapture(event.pointerId);event.preventDefault();return
+    }
+    const drag=channelDragRef.current
+    if (!drag||drag.id!==event.pointerId) return
+    const next=Math.max(202,Math.min(360,drag.width+event.clientX-drag.x))
+    if (phase==='move') channelShellRef.current?.style.setProperty('--hb-v301-channel-width',`${next}px`)
+    else {
+      channelDragRef.current=null;setChannelPanelWidth(next)
+      try {window.localStorage.setItem('haxbag:v301:channels-width',String(next))}catch{/* sem armazenamento */}
+      if (event.currentTarget.hasPointerCapture(event.pointerId))event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
   const [mobileSidebar,setMobileSidebar]=useState(false)
   const [loading,setLoading]=useState(true)
   const [loadedMessagesChannelId,setLoadedMessagesChannelId]=useState('')
@@ -532,7 +573,7 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
         {server && isStaff && <button type="button" onClick={() => openModal('invite')} title="Convidar participantes"><span aria-hidden="true">✧</span> Convidar</button>}
       </div>
     </nav>
-    <div className={`hb-comm-shell hb-comm-shell-v285 hb-comm-shell-v287${mobileSidebar?' hb-comm-shell--show-nav':''}${showMembers?' hb-comm-shell--show-members':''}`}>
+    <div ref={channelShellRef} style={{'--hb-v301-channel-width':`${channelPanelWidth}px`} as React.CSSProperties} className={`hb-comm-shell hb-comm-shell-v285 hb-comm-shell-v287${desktopExperience?' hb-comm-v301':''}${desktopExperience&&channelsCollapsed?' hb-v301-channels-collapsed':''}${mobileSidebar?' hb-comm-shell--show-nav':''}${showMembers?' hb-comm-shell--show-members':''}`}>
       <aside className="hb-comm-servers" aria-label="Seus servidores">
         <span className="hb-comm-rail-label">SERVIDORES</span>
         {servers.map(s=><button key={s.id} className={`hb-comm-server-icon${serverId===s.id?' active':''}`} type="button" aria-label={`Servidor ${s.name}`} title={s.name} aria-pressed={serverId===s.id} onClick={()=>{setServerId(s.id);setMobileSidebar(true)}}><span>{s.icon||s.name[0]}</span>{serverId===s.id&&<i aria-hidden="true" className="hb-comm-rail-active"/>}</button>)}
@@ -542,7 +583,7 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
         <button className="hb-comm-server-dm" type="button" title="Mensagens privadas" onClick={onOpenDirectMessages}>✉</button>
       </aside>
       <aside id="hb-comm-channel-sidebar" className="hb-comm-channels" aria-label="Canais do servidor">
-        <div className="hb-comm-server-heading"><div><small>ESPAÇO ATUAL</small><h2>{server?.name||'Comunicação'}</h2></div>{server&&<span className="hb-comm-server-heading-icon" aria-hidden="true">{server.icon||'✦'}</span>}</div>
+        <div className="hb-comm-server-heading"><div><small>ESPAÇO ATUAL</small><h2>{server?.name||'Comunicação'}</h2></div>{server&&<span className="hb-comm-server-heading-icon" aria-hidden="true">{server.icon||'✦'}</span>}{desktopExperience&&<button type="button" className="hb-v301-channel-collapse" title="Recolher lista de canais" aria-label="Recolher lista de canais" onClick={toggleChannelsCollapsed}>«</button>}</div>
         {server?<>
           <div className="hb-comm-server-description">{server.description||'Converse e organize suas aventuras com seu grupo.'}</div>
           <div className="hb-comm-channel-tools-v285">
@@ -564,6 +605,14 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
         </>:<div className="hb-comm-sidebar-empty">Selecione um servidor ou crie o primeiro.</div>}
         <div className="hb-comm-self"><span className="hb-comm-avatar">{displayName.slice(0,1).toUpperCase()}</span><span><strong>{displayName}</strong><small>@{username||'aventureiro'}</small></span><span className="hb-comm-self-status" title="Conectado"/></div>
       </aside>
+      {desktopExperience&&!channelsCollapsed&&<div className="hb-v301-channel-resizer" role="separator" aria-label="Ajustar largura dos canais" aria-orientation="vertical" aria-valuemin={202} aria-valuemax={360} aria-valuenow={channelPanelWidth} tabIndex={0} title="Arraste para redimensionar · Setas para ajustar · Clique duplo para restaurar"
+        onPointerDown={event=>resizeChannels(event,'start')}
+        onPointerMove={event=>resizeChannels(event,'move')}
+        onPointerUp={event=>resizeChannels(event,'end')}
+        onPointerCancel={event=>resizeChannels(event,'end')}
+        onDoubleClick={()=>{setChannelPanelWidth(248);try{window.localStorage.setItem('haxbag:v301:channels-width','248')}catch{/* sem armazenamento */}}}
+        onKeyDown={event=>{if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();const next=Math.max(202,Math.min(360,channelPanelWidth+(event.key==='ArrowRight'?16:-16)));setChannelPanelWidth(next);try{window.localStorage.setItem('haxbag:v301:channels-width',String(next))}catch{/* sem armazenamento */}}}} />}
+      {desktopExperience&&channelsCollapsed&&<button type="button" className="hb-v301-channel-reopen" onClick={toggleChannelsCollapsed} title="Mostrar canais" aria-label="Mostrar lista de canais">☰ <span>Canais</span></button>}
       {mobileSidebar&&<button type="button" className="hb-comm-mobile-shade-v285" aria-label="Fechar lista de canais" onClick={()=>setMobileSidebar(false)}/>}
       <main className="hb-comm-main">
         {server&&channel?<>

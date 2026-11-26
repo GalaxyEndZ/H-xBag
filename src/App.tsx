@@ -54,6 +54,8 @@ import './DeferredModule.css'
 import './DesktopShellV295.css'
 import './DesktopRedesignV299.css'
 import './DesktopSidebarV300.css'
+import './DesktopExperienceV301.css'
+import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
@@ -2332,11 +2334,59 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     } catch { return 'auto' }
   })
   const desktopClient = typeof window !== 'undefined' && Boolean((window as Window & { haxbagDesktop?: { enabled?: boolean } }).haxbagDesktop?.enabled)
-  const desktopSidebarCompact = desktopSidebarMode === 'compact' || (desktopSidebarMode === 'auto' && activePage === 'communication')
+  // V301: Preferências locais de ergonomia. Não são dados de conta nem de campanha.
+  const [desktopNavWidth, setDesktopNavWidth] = useState(() => {
+    try { return Math.min(336, Math.max(254, Number(window.localStorage.getItem('haxbag-desktop-nav-width-v301')) || 286)) }
+    catch { return 286 }
+  })
+  const [desktopDensity, setDesktopDensity] = useState<'comfortable' | 'compact'>(() => {
+    try { return window.localStorage.getItem('haxbag-desktop-density-v301') === 'compact' ? 'compact' : 'comfortable' }
+    catch { return 'comfortable' }
+  })
+  const [desktopFocus, setDesktopFocus] = useState(false)
+  const desktopNavDragRef = useRef<{ id: number; x: number; width: number } | null>(null)
+  const desktopSidebarCompact = desktopFocus || desktopSidebarMode === 'compact' || (desktopSidebarMode === 'auto' && activePage === 'communication')
   const toggleDesktopSidebar = () => {
     const next = desktopSidebarCompact ? 'expanded' : 'compact'
+    if (desktopFocus) setDesktopFocus(false)
     setDesktopSidebarMode(next)
     try { window.localStorage.setItem('haxbag-desktop-sidebar-v300', next) } catch { /* armazenamento indisponível */ }
+  }
+  const changeDesktopDensity = (value: 'comfortable' | 'compact') => {
+    setDesktopDensity(value)
+    try { window.localStorage.setItem('haxbag-desktop-density-v301', value) } catch { /* sem armazenamento */ }
+  }
+  const resetDesktopLayout = () => {
+    setDesktopFocus(false)
+    setDesktopSidebarMode('auto')
+    setDesktopDensity('comfortable')
+    setDesktopNavWidth(286)
+    try {
+      for (const key of ['haxbag-desktop-sidebar-v300','haxbag-desktop-density-v301','haxbag-desktop-nav-width-v301'])
+        window.localStorage.removeItem(key)
+    } catch { /* sem armazenamento */ }
+    // O painel de canais recebe o mesmo comando para restaurar sua largura.
+    window.dispatchEvent(new Event('haxbag:v301:reset-layout'))
+  }
+  const desktopNavResize = (event: React.PointerEvent<HTMLDivElement>, phase: 'start' | 'move' | 'end') => {
+    if (phase === 'start') {
+      if (event.button !== 0) return
+      desktopNavDragRef.current = { id: event.pointerId, x: event.clientX, width: desktopNavWidth }
+      event.currentTarget.setPointerCapture(event.pointerId)
+      event.preventDefault()
+      return
+    }
+    const drag = desktopNavDragRef.current
+    if (!drag || drag.id !== event.pointerId) return
+    const next = Math.max(254, Math.min(336, drag.width + event.clientX - drag.x))
+    if (phase === 'move') {
+      event.currentTarget.closest<HTMLElement>('.app-shell')?.style.setProperty('--hb-v301-sidebar-width', `${next}px`)
+    } else {
+      desktopNavDragRef.current = null
+      setDesktopNavWidth(next)
+      try { window.localStorage.setItem('haxbag-desktop-nav-width-v301', String(next)) } catch { /* sem armazenamento */ }
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    }
   }
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
   useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
@@ -7993,6 +8043,25 @@ async function sendItemToCharacter() {
     setSidebarMobileOpen(false)
     window.scrollTo({top:0,behavior:'instant'})
   }
+  // Atalhos da versão desktop, sem capturar teclas durante a escrita ou diálogos.
+  useEffect(() => {
+    if (!desktopClient) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat) return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]'))) return
+      if (event.ctrlKey && !event.altKey && !event.shiftKey && event.code === 'Backslash') {
+        event.preventDefault()
+        toggleDesktopSidebar()
+        return
+      }
+      if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+      const navigate = ({ Digit1: openSocialSpace, Digit2: openRpgSpace, Digit3: openMinigamesSpace, Digit4: openCommunicationSpace } as Record<string, () => void>)[event.code]
+      if (navigate) { event.preventDefault(); navigate() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
   const openSocialSection = (section:'overview'|'journey'|'studio'|'legacy'|'friends'|'account') => {
     if (activePage !== 'profile') openProfilePage()
     switchProfileSection(section)
@@ -11453,7 +11522,7 @@ counterAttackDT
 
 
   return (
-    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${desktopClient ? ` hb-desktop-v295 hb-desktop-v299 hb-desktop-v300${desktopSidebarCompact ? ' hb-desktop-sidebar-compact' : ''}` : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
+    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${desktopClient ? ` hb-desktop-v295 hb-desktop-v299 hb-desktop-v300 hb-desktop-v301${desktopSidebarCompact ? ' hb-desktop-sidebar-compact' : ''}${desktopDensity === 'compact' ? ' hb-v301-density-compact' : ''}${desktopFocus ? ' hb-v301-focus' : ''}` : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--hb-v301-sidebar-width': `${desktopNavWidth}px`, '--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
@@ -11475,6 +11544,7 @@ counterAttackDT
           <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={openCommunicationSpace} title="Abrir Comunicação" aria-label="Abrir Comunicação"><span aria-hidden="true">✉</span> Comunicação</button>
         </div>
 
+        <div className="hb-v301-section-panel">
         {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
           <span className="hb-sidebar-style-emblem" aria-hidden="true">{activeVisualStyle.symbol}</span>
           <span className="hb-sidebar-style-text">
@@ -11601,6 +11671,7 @@ counterAttackDT
           </div>
           </>}
         </nav>
+        </div>
 
         <div className="sidebar-bottom hb-sidebar-footer">
           {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <details className="invite-card hb-sidebar-invite hb-sidebar-invite-details">
@@ -11629,6 +11700,14 @@ counterAttackDT
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
           </button>
         </div>
+        {desktopClient && !desktopSidebarCompact && <div className="hb-v301-nav-resizer" role="separator" aria-label="Ajustar largura da navegação" aria-orientation="vertical" aria-valuemin={254} aria-valuemax={336} aria-valuenow={desktopNavWidth} tabIndex={0}
+          onPointerDown={event => desktopNavResize(event,'start')}
+          onPointerMove={event => desktopNavResize(event,'move')}
+          onPointerUp={event => desktopNavResize(event,'end')}
+          onPointerCancel={event => desktopNavResize(event,'end')}
+          onDoubleClick={() => { setDesktopNavWidth(286); try { window.localStorage.setItem('haxbag-desktop-nav-width-v301','286') } catch { /* sem armazenamento */ } }}
+          onKeyDown={event => { if(event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const value=Math.max(254,Math.min(336,desktopNavWidth+(event.key === 'ArrowRight'?16:-16))); setDesktopNavWidth(value);try{window.localStorage.setItem('haxbag-desktop-nav-width-v301',String(value))}catch{/* sem armazenamento */} } }}
+          title="Arraste para redimensionar · Setas para ajustar · Clique duplo para restaurar" />}
       </aside>
 
       {quickOpen && (
@@ -11735,6 +11814,15 @@ counterAttackDT
               <span aria-hidden="true">{activeVisualStyle.symbol}</span>
               <strong>{activeVisualStyle.label}</strong>
             </span>}
+            {desktopClient && <DesktopWorkspaceControls
+              density={desktopDensity}
+              onDensityChange={changeDesktopDensity}
+              focus={desktopFocus}
+              onFocusChange={setDesktopFocus}
+              compact={desktopSidebarCompact}
+              onSidebarToggle={toggleDesktopSidebar}
+              onReset={resetDesktopLayout}
+            />}
             {desktopClient && <DesktopUpdateCenter />}
             <span className="online-dot" />
             Conectado

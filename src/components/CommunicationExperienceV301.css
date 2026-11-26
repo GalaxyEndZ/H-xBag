@@ -1,0 +1,146 @@
+/* V301 / Comunicação desktop — controles já existentes, nova hierarquia. */
+@media(min-width:801px){
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .page-content.page-communication{
+    padding:10px 12px 12px!important;
+    height:calc(100dvh - 56px);
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v287{
+    display:flex;flex-direction:column;
+    flex:1;min-height:0;min-width:0;padding-bottom:0!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285{
+    flex:0 0 auto;min-height:68px!important;height:auto!important;
+    padding:11px 16px!important;margin-bottom:9px!important;
+    border-radius:12px!important;
+    border:1px solid color-mix(in srgb,var(--hc-edge) 78%,transparent)!important;
+    background:linear-gradient(120deg,color-mix(in srgb,var(--hc-card) 92%,var(--hc-bg)),var(--hc-bg))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285 h1{font-size:23px!important;letter-spacing:-.045em!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285 .hb-comm-eyebrow{font-size:9px!important;letter-spacing:.13em!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285 p{font-size:11px!important;line-height:1.3!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285::after{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-right .hb-comm-overview{gap:8px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-context-v287{
+    flex:0 0 auto;margin-bottom:9px!important;min-height:40px!important;
+    padding:5px 12px!important;border-radius:10px!important;
+    border:1px solid color-mix(in srgb,var(--hc-edge) 65%,transparent)!important;
+    background:color-mix(in srgb,var(--hc-panel) 72%,var(--hc-bg))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-context-actions-v287 button{font-size:11px!important;padding:5px 9px!important;border-radius:8px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287:not(:has(.hb-comm-members)),
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287:has(.hb-comm-members){
+    flex:1 1 auto!important;min-height:350px!important;
+    height:auto!important;max-height:none!important;min-width:0!important;
+    grid-template-columns:56px var(--hb-v301-channel-width,248px) minmax(0,1fr)!important;
+    gap:0!important;overflow:hidden!important;border-radius:12px!important;
+    border:1px solid color-mix(in srgb,var(--hc-edge) 75%,transparent)!important;
+    box-shadow:0 10px 36px #00000018!important;
+    position:relative!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287.hb-v301-channels-collapsed,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287.hb-v301-channels-collapsed:not(:has(.hb-comm-members)),
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287.hb-v301-channels-collapsed:has(.hb-comm-members){
+    grid-template-columns:56px minmax(0,1fr)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287.hb-v301-channels-collapsed .hb-comm-channels{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287.hb-v301-channels-collapsed .hb-comm-main{grid-column:2!important;min-width:0!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-channels{
+    display:flex!important;flex-direction:column!important;min-width:0!important;
+    grid-column:2!important;grid-row:1!important;
+    border-right:1px solid color-mix(in srgb,var(--hc-edge) 70%,transparent)!important;
+    background:color-mix(in srgb,var(--hc-panel) 80%,var(--hc-bg))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-servers{
+    grid-column:1!important;grid-row:1!important;
+    padding:11px 5px!important;gap:9px!important;
+    background:color-mix(in srgb,var(--hc-bg) 95%,#0a0d12)!important;
+    border-right:1px solid color-mix(in srgb,var(--hc-edge) 50%,transparent)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-rail-label{font-size:7px!important;letter-spacing:0!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-main{
+    min-width:0!important;grid-column:3!important;grid-row:1!important;
+    background:color-mix(in srgb,var(--hc-bg) 81%,var(--hc-card))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-server-heading{
+    min-height:68px!important;position:relative!important;padding:12px 39px 11px 12px!important;
+    border-bottom:1px solid color-mix(in srgb,var(--hc-edge) 70%,transparent)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-server-heading h2{font-size:16px!important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-server-heading-icon{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-collapse{
+    position:absolute;top:20px;right:8px;width:26px;height:28px;display:grid;place-items:center;
+    border:1px solid transparent;border-radius:7px;background:transparent;
+    color:var(--hc-muted);font-size:20px;line-height:1;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-collapse:hover{border-color:var(--hc-edge);background:color-mix(in srgb,var(--hc-gold) 10%,transparent);color:var(--hc-gold)}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-resizer{
+    position:absolute;top:0;bottom:0;
+    left:calc(56px + var(--hb-v301-channel-width,248px) - 5px);
+    width:10px;z-index:18;touch-action:none;cursor:col-resize;
+    background:transparent;outline-offset:-2px;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-resizer::after{
+    content:"";position:absolute;left:4px;top:15%;bottom:15%;width:2px;
+    border-radius:2px;background:transparent;transition:background .15s;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-resizer:is(:hover,:focus-visible,:active)::after{background:var(--hc-gold)}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-reopen{
+    position:absolute;z-index:4;top:12px;left:67px;
+    padding:6px 9px;border:1px solid var(--hc-edge);border-radius:8px;
+    background:var(--hc-panel);color:var(--hc-text);font-size:11px;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-reopen:hover{color:var(--hc-gold)}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channels-collapsed .hb-comm-chat-head,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channels-collapsed .hb-comm-voice-stage-head-v288{padding-left:116px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-chat-head-v285{min-height:64px!important;padding:9px 16px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-chat-tools-v285{min-height:42px!important;padding:5px 13px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-message-scroll{padding:15px clamp(15px,2vw,34px) 22px!important;overscroll-behavior:contain;scrollbar-width:thin}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-composer-wrap{padding:10px clamp(13px,2vw,28px) 8px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-composer{min-height:49px!important;border-radius:11px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-composer textarea{max-height:140px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-members{
+    display:block!important;position:absolute!important;z-index:24!important;
+    inset:0 0 0 auto!important;width:min(270px,calc(100% - 90px))!important;
+    border-left:1px solid var(--hc-edge)!important;box-shadow:-18px 0 44px #0009!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287 .hb-comm-members-shade-v285{
+    display:block!important;position:absolute!important;inset:0!important;z-index:20!important;
+    background:#0007!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301.hb-v301-focus .hb-comm-hero-v285{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301.hb-v301-focus .hb-comm-context-v287{margin-bottom:9px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301.hb-v301-density-compact .hb-comm-channel{min-height:35px!important;margin:1px 7px!important;padding:5px 8px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301.hb-v301-density-compact .hb-comm-message-scroll{padding-top:7px!important;padding-bottom:7px!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301.hb-v301-density-compact .hb-comm-message{padding:5px 7px!important}
+}
+@media(min-width:801px) and (max-width:1110px){
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285 .hb-comm-overview{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-v285 p{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-chat-tools-v285 .hb-comm-chat-crumb-v285{display:none!important}
+}
+@media(min-width:801px) and (max-width:970px){
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-hero-actions .hb-comm-subtle{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287:not(:has(.hb-comm-members)){
+    grid-template-columns:52px minmax(202px,var(--hb-v301-channel-width,248px)) minmax(0,1fr)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-resizer{left:calc(52px + var(--hb-v301-channel-width,248px) - 5px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-v301-channel-resizer::after{transition:none}
+}
+
+@media(max-width:800px){
+  .hb-comm-v301 .hb-v301-channel-resizer,.hb-comm-v301 .hb-v301-channel-reopen,.hb-comm-v301 .hb-v301-channel-collapse{display:none!important}
+}
+
+/* Janelas baixas continuam navegáveis: o chat pode rolar em vez de cortar ações. */
+@media (min-width:801px) and (max-height:635px){
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .page-content.page-communication{overflow-y:auto!important}
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-comm-shell-v287{flex:0 0 355px!important;min-height:355px!important}
+}
