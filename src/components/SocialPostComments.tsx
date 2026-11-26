@@ -14,7 +14,11 @@ type Comment = {
   like_count: number
   liked: boolean
   parent_comment_id?: string | null
+  character_id?:string|null
+  character_name?:string|null
+  character_emoji?:string|null
 }
+type PostIdentityV261 = {id:string;name:string;emoji:string|null;access_kind:string}
 type CountRow = { post_id: string; comment_count: number }
 type Attachment = { file: File; preview: string }
 const BUCKET = 'hax-social-comments'
@@ -57,6 +61,8 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
   const [open, setOpen] = useState(false)
   const [comments, setComments] = useState<Comment[]>([])
   const [draft, setDraft] = useState('')
+  const [postIdentities,setPostIdentities]=useState<PostIdentityV261[]>([])
+  const [commentCharacter,setCommentCharacter]=useState('')
   const [replyTo, setReplyTo] = useState<{ parentId: string; name: string; username: string } | null>(null)
   const [photo, setPhoto] = useState<Attachment | null>(null)
   const photoRef = useRef<Attachment | null>(null)
@@ -123,6 +129,15 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
     }
   }, [open, comments])
 
+  useEffect(()=>{
+    if(!open)return
+    let active=true
+    void supabase.rpc('hax_v256_post_identities').then(({data,error})=>{
+      if(active){setPostIdentities(error?[]:(data||[]) as PostIdentityV261[]);if(error)setCommentCharacter('')}
+    })
+    return()=>{active=false}
+  },[open])
+
   useEffect(() => {
     if (!viewer) return
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setViewer(null) }
@@ -132,12 +147,18 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
 
   async function load(before: string | null = null) {
     setLoading(true); setError('')
-    const { data, error: failure } = await supabase.rpc('hax_social_list_comments', {
+    const { data, error: failure } = await supabase.rpc('hax_v261_list_legacy_comments', {
       p_post: postId, p_before: before, p_limit: 15,
     })
-    if (failure) setError(`Não foi possível carregar os comentários: ${failure.message}`)
+    let received=data
+    let loadError=failure
+    if(failure && /PGRST202|42883|schema cache|Could not find/i.test(`${failure.code||''} ${failure.message}`)){
+      const fallback=await supabase.rpc('hax_social_list_comments',{p_post:postId,p_before:before,p_limit:15})
+      received=fallback.data;loadError=fallback.error
+    }
+    if (loadError) setError(`Não foi possível carregar os comentários: ${loadError.message}`)
     else {
-      const rows = (data || []) as Comment[]
+      const rows = (received || []) as Comment[]
       setComments(current => before ? [...current, ...rows.filter(row => !current.some(item => item.comment_id === row.comment_id))] : rows)
       setHasMore(rows.length === 15)
     }
@@ -173,10 +194,14 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
         if (uploadError) throw new Error(`Erro ao enviar a foto: ${uploadError.message}`)
         uploaded = filePath
       }
-      const { error: failure } = await supabase.rpc('hax_social_add_media_reply_v184', {
-        p_post: postId, p_content: draft.trim(), p_image_path: uploaded, p_parent: replyTo?.parentId ?? null,
-      })
-      if (failure) throw new Error(failure.message)
+      const params={p_post:postId,p_content:draft.trim(),p_image_path:uploaded,p_parent:replyTo?.parentId??null,p_character:commentCharacter||null}
+      const {error:failure}=await supabase.rpc('hax_v261_add_legacy_reply',params)
+      if(failure){
+        if(!commentCharacter && /PGRST202|42883|schema cache|Could not find/i.test(`${failure.code||''} ${failure.message}`)){
+          const fallback=await supabase.rpc('hax_social_add_media_reply_v184',{p_post:postId,p_content:draft.trim(),p_image_path:uploaded,p_parent:replyTo?.parentId??null})
+          if(fallback.error)throw new Error(fallback.error.message)
+        }else throw new Error(failure.message)
+      }
       uploaded = null // pertence ao comentário salvo
       removeAttachment()
       setDraft('')
@@ -255,10 +280,10 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
 
   function renderComment(comment: Comment, isReply = false) {
     return <article className={`hb-v181-comment hb-v182-comment hb-v184-comment ${isReply ? 'hb-v184-is-reply' : ''}`} key={comment.comment_id}>
-      {onOpenProfile ? <button type="button" className="hb-v183-comment-profile-trigger hb-v181-comment-avatar" onClick={() => openProfile(comment)} aria-label={`Abrir o perfil de ${comment.display_name || 'Aventureiro'}`}><span aria-hidden="true">{(comment.display_name || 'A').slice(0, 1).toUpperCase()}</span>{avatars[comment.author_id] && <img src={avatars[comment.author_id]} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }}/>}</button> : <span className="hb-v181-comment-avatar" aria-hidden="true">{(comment.display_name || 'A').slice(0, 1).toUpperCase()}{avatars[comment.author_id] && <img src={avatars[comment.author_id]} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }}/>}</span>}
+      {onOpenProfile ? <button type="button" className="hb-v183-comment-profile-trigger hb-v181-comment-avatar" onClick={() => openProfile(comment)} aria-label={`Abrir o perfil de ${comment.display_name || 'Aventureiro'}`}><span aria-hidden="true">{comment.character_emoji||(comment.character_name||comment.display_name||'A').slice(0, 1).toUpperCase()}</span>{!comment.character_name&&avatars[comment.author_id] && <img src={avatars[comment.author_id]} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }}/>}</button> : <span className="hb-v181-comment-avatar" aria-hidden="true">{comment.character_emoji||(comment.character_name||comment.display_name||'A').slice(0, 1).toUpperCase()}{!comment.character_name&&avatars[comment.author_id] && <img src={avatars[comment.author_id]} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none' }}/>}</span>}
       <div className="hb-v182-comment-main">
         <div className="hb-v181-comment-content">
-          <div className="hb-v181-comment-meta">{onOpenProfile ? <button type="button" className="hb-v183-comment-author" onClick={() => openProfile(comment)}><strong>{comment.display_name || 'Aventureiro'}</strong>{comment.username && <small>@{comment.username}</small>}</button> : <><strong>{comment.display_name || 'Aventureiro'}</strong>{comment.username && <small className="hb-v184-mention">@{comment.username}</small>}</>}<time dateTime={comment.created_at} title={new Date(comment.created_at).toLocaleString('pt-BR')}>{new Date(comment.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</time></div>
+          <div className="hb-v181-comment-meta">{onOpenProfile ? <button type="button" className="hb-v183-comment-author" onClick={() => openProfile(comment)}><strong>{comment.character_name||comment.display_name||'Aventureiro'}</strong>{comment.character_name&&<small>Personagem de </small>}{comment.username&&<small>@{comment.username}</small>}</button> : <><strong>{comment.character_name||comment.display_name||'Aventureiro'}</strong>{comment.character_name&&<small>Personagem de </small>}{comment.username&&<small className="hb-v184-mention">@{comment.username}</small>}</>}<time dateTime={comment.created_at} title={new Date(comment.created_at).toLocaleString('pt-BR')}>{new Date(comment.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</time></div>
           {comment.parent_comment_id && !loadedIds.has(comment.parent_comment_id) && <small className="hb-v184-reply-context">↳ Resposta a um comentário anterior</small>}
           {comment.content && <p>{commentText(comment.content)}</p>}
           {comment.image_path && (imageUrls[comment.image_path]
@@ -294,6 +319,12 @@ export default function SocialPostComments({ postId, count, onCountChange, onOpe
       {hasMore && <button type="button" className="hb-v181-comments-more" disabled={loading || busy} onClick={() => void load(comments[comments.length - 1]?.created_at || null)}>{loading ? 'Carregando…' : 'Ver comentários anteriores'}</button>}
       {error && <p className="hb-v181-comments-error" role="alert">{error}</p>}
       <form onSubmit={event => void submit(event)} className="hb-v181-comments-form hb-v182-comments-form">
+        <label className="hb-v261-identity-label">Responder como
+          <select aria-label="Identidade do comentário" value={commentCharacter} onChange={event=>setCommentCharacter(event.target.value)}>
+            <option value="">Minha conta</option>
+            {postIdentities.map(identity=><option value={identity.id} key={identity.id}>{identity.emoji||'✦'} {identity.name}</option>)}
+          </select>
+        </label>
         <label htmlFor={`hb-comment-${postId}`}><span aria-hidden="true">✎</span> {replyTo ? 'Sua resposta' : 'Deixe seu comentário'}</label>
         {replyTo && <div className="hb-v184-reply-banner" role="status"><span>↳ Respondendo a <strong>{replyTo.username ? `@${replyTo.username}` : replyTo.name}</strong></span><button type="button" onClick={() => setReplyTo(null)} aria-label="Cancelar resposta">✕ Cancelar</button></div>}
         <div className="hb-v182-compose-box">

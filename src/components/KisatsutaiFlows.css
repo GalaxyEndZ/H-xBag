@@ -1,0 +1,142 @@
+/* V269 — Árvore de Fluxos legível, com quatro etapas conectadas e painel de detalhes. */
+.hb-flows{min-width:0;display:grid;gap:14px;container-type:inline-size;color:var(--season-text,#f2edf8)}
+.hb-flows *{box-sizing:border-box}
+.hb-flows-eyebrow{color:var(--season-primary,#d9bd8b);font-size:10px;letter-spacing:.11em;text-transform:uppercase;font-weight:800;line-height:1.5}
+.hb-flows-header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:19px 22px;border:1px solid var(--season-line,rgba(255,255,255,.13));border-radius:18px;background:radial-gradient(ellipse at 92% 0%,var(--season-glow,rgba(200,150,255,.10)),transparent 64%),linear-gradient(125deg,var(--season-surface-alt,#211b2b),var(--season-surface,#14101c))}
+.hb-flow-hero{display:flex;align-items:center;gap:17px;min-width:0}
+.hb-flow-hero-mark{display:grid;place-items:center;flex:none;width:52px;height:52px;border-radius:16px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 45%,transparent);background:var(--season-glow,rgba(200,150,255,.11));color:var(--season-primary,#d9bd8b);font-size:27px}
+.hb-flows-header h3{margin:2px 0 5px;font-size:23px;line-height:1.17;letter-spacing:-.025em}
+.hb-flows-header p{margin:0;color:var(--season-muted,#b8adca);font-size:12px;line-height:1.5;max-width:550px}
+.hb-flow-progress{display:grid;justify-items:end;gap:4px;flex:none}
+.hb-flow-progress strong{font-size:27px;line-height:1;color:var(--season-primary,#d9bd8b);font-variant-numeric:tabular-nums}
+.hb-flow-progress strong span{font-size:16px;font-weight:500;color:var(--season-muted,#a5a2ae)}
+.hb-flow-progress small{font-size:11px;color:var(--season-muted,#b8adca)}
+.hb-flow-progress-track{width:130px;height:5px;margin-top:3px;overflow:hidden;border-radius:30px;background:var(--season-line,rgba(255,255,255,.13))}
+.hb-flow-progress-track span{display:block;height:100%;background:var(--season-primary,#d9bd8b);border-radius:inherit}
+/* O resumo da jornada não é outra árvore: é navegação rápida pelos quatro patamares. */
+.hb-flow-path-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.hb-flow-stage-pill{display:flex;align-items:center;gap:10px;min-width:0;padding:11px 12px;border-radius:13px;background:var(--season-surface-alt,#211b2b);border:1px solid var(--season-line,rgba(255,255,255,.13));color:var(--season-text,#f2edf8);text-align:left;cursor:pointer}
+.hb-flow-stage-pill.is-chosen{border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 48%,transparent)}
+.hb-flow-stage-pill.is-current{box-shadow:inset 0 0 0 1px var(--season-primary,#d9bd8b)}
+.hb-flow-stage-pill.is-locked{opacity:.65}
+.hb-flow-pill-number{flex:none;font-size:10px;color:var(--season-muted,#b8adca);font-weight:700}
+.hb-flow-pill-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:10px;background:var(--season-glow,rgba(220,170,255,.13));color:var(--season-primary,#d9bd8b);font-size:18px}
+.hb-flow-pill-label{min-width:0;display:grid;gap:2px}
+.hb-flow-pill-label strong{font-size:12px;line-height:1.1}
+.hb-flow-pill-label small{font-size:10px;color:var(--season-muted,#b8adca);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-flow-workspace{display:grid;gap:13px;min-width:0}
+/* Árvores desktop: quatro colunas de graduação, cinco alternativas de atributo. */
+.hb-flow-tree-viewport{min-width:0;overflow:hidden;border-radius:20px;border:1px solid var(--season-line,rgba(255,255,255,.16));background:radial-gradient(ellipse at 45% 0%,var(--season-glow,rgba(218,179,255,.08)),transparent 55%),repeating-linear-gradient(90deg,transparent 0,transparent 59px,rgba(255,255,255,.012) 60px),var(--season-surface,#14101d);container-type:inline-size}
+.hb-flow-map{position:relative;isolation:isolate;min-width:0;width:100%;}
+.hb-flow-map-caption{position:absolute;top:13px;left:50%;transform:translateX(-50%);white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:9px;color:var(--season-primary,#d9bd8b);font-size:10px;font-weight:800;letter-spacing:.16em}
+.hb-flow-map-caption>span{font-size:18px}.hb-flow-map-caption small{font-size:10px;letter-spacing:0;font-weight:500;color:var(--season-muted,#b8adca)}
+.hb-flow-connections{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.hb-flow-track{fill:none;stroke:var(--season-primary,#d9bd8b);stroke-width:2;opacity:.25;stroke-dasharray:5 9}
+.hb-flow-track-dot{fill:var(--season-primary,#d9bd8b);opacity:.55}
+.hb-flow-branch-chosen-glow{fill:none;stroke:var(--season-primary,#d9bd8b);opacity:.18;stroke-width:16;stroke-linecap:round}
+.hb-flow-branch-chosen{fill:none;stroke:var(--season-primary,#d9bd8b);opacity:.92;stroke-width:3.5;stroke-linecap:round}
+.hb-flow-branch-preview{fill:none;stroke:var(--season-primary,#d9bd8b);opacity:.55;stroke-width:2.5;stroke-dasharray:5 7;stroke-linecap:round}
+.hb-flow-tier-heading{position:absolute;top:53px;transform:translateX(-50%);width:22%;display:grid;justify-items:center;gap:2px;text-align:center;z-index:1}
+.hb-flow-tier-heading.is-locked{opacity:.62}
+.hb-flow-tier-emblem{display:grid;place-items:center;width:30px;height:30px;border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 45%,transparent);border-radius:50%;background:var(--season-surface-alt,#211b2b);color:var(--season-primary,#d9bd8b);font-size:19px;margin-bottom:2px}
+.hb-flow-tier-overline{font-size:9px;letter-spacing:.12em;font-weight:700;color:var(--season-muted,#b8adca)}
+.hb-flow-tier-heading strong{font-size:15px;line-height:1.2}
+.hb-flow-tier-heading small{font-size:10px;color:var(--season-muted,#b8adca)}
+.hb-flow-tier-status{margin-top:3px;font-size:10px;color:var(--season-primary,#d9bd8b);font-weight:750}
+.hb-flow-node{position:absolute;width:18.2%;height:96px;transform:translate(-50%,-50%);padding:12px;display:flex;align-items:center;gap:11px;text-align:left;cursor:pointer;color:var(--season-text,#f2edf8);background:linear-gradient(140deg,var(--season-surface-alt,#211b2b),var(--season-surface,#15111d));border:1px solid var(--season-line,rgba(255,255,255,.16));border-radius:15px;box-shadow:0 10px 22px rgba(0,0,0,.12);z-index:1}
+/* V270: os botoes globais ganham transform:translateY(1px) no :active.
+   Nos nos absolutos isso remove o translate(-50%,-50%) que os centraliza,
+   deslocando o card para a direita e para baixo quando pressionado.
+   Preserve a geometria e use somente borda/brilho como feedback. */
+.hb-flows .hb-flow-node,
+.hb-flows .hb-flow-node:active:not(:disabled){
+ transform:translate(-50%,-50%);
+ transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,opacity .16s ease,filter .16s ease;
+}
+.hb-flow-node-icon{display:grid;place-items:center;flex:none;width:37px;height:37px;border-radius:12px;font-size:22px;line-height:1;background:var(--season-glow,rgba(220,170,255,.1));color:var(--season-primary,#d9bd8b);border:1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 17%,transparent)}
+.hb-flow-node-content{display:grid;gap:4px;min-width:0;flex:1}
+.hb-flow-node-meta{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:10px;font-weight:750;letter-spacing:.06em;color:var(--season-primary,#d9bd8b)}
+.hb-flow-node-meta span:last-child{letter-spacing:0;color:var(--season-muted,#b8adca);font-size:10px;font-weight:500;white-space:nowrap}
+.hb-flow-node-content strong{display:block;font-size:12.5px;line-height:1.3;overflow-wrap:normal;hyphens:auto;font-weight:800}
+.hb-flow-node-status{font-size:10px;color:var(--season-muted,#b8adca);line-height:1.1}
+.hb-flow-node-corner{position:absolute;top:5px;right:8px;color:var(--season-primary,#d9bd8b);font-size:10px}
+.hb-flow-node.is-available{border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 35%,transparent)}
+.hb-flow-node.is-unavailable{opacity:.69;filter:saturate(.65)}
+.hb-flow-node.is-chosen{background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary,#d9bd8b) 14%,var(--season-surface-alt,#211b2b)),var(--season-surface,#14101d));border-color:var(--season-primary,#d9bd8b);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary,#d9bd8b) 25%,transparent),0 8px 24px var(--season-glow,rgba(200,160,255,.16));opacity:1;filter:none}
+.hb-flow-node.is-chosen .hb-flow-node-status{color:var(--season-primary,#d9bd8b);font-weight:800}
+.hb-flow-node.is-focused{z-index:3;outline:2px solid var(--season-primary,#d9bd8b);outline-offset:3px}
+.hb-flow-node.is-focused:not(.is-chosen){border-color:var(--season-primary,#d9bd8b)}
+.hb-flow-node:hover{box-shadow:0 0 0 1px color-mix(in srgb,var(--season-primary,#d9bd8b) 38%,transparent),0 10px 28px rgba(0,0,0,.2)}
+.hb-flow-node:focus-visible,.hb-flow-stage-pill:focus-visible,.hb-flow-learn:focus-visible,.hb-flow-remove:focus-visible{outline:2px solid var(--season-primary,#d9bd8b);outline-offset:4px}
+/* Inspetor horizontal para não desperdiçar largura, legível mesmo com descrição longa. */
+.hb-flow-inspector{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);gap:20px;padding:20px 22px;border:1px solid var(--season-line,rgba(255,255,255,.14));border-radius:18px;background:linear-gradient(135deg,var(--season-surface-alt,#211b2b),var(--season-surface,#15101f));min-width:0}
+.hb-flow-inspector-main,.hb-flow-inspector-meta{display:flex;flex-direction:column;gap:12px;min-width:0}
+.hb-flow-inspector-meta{border-left:1px solid var(--season-line,rgba(255,255,255,.13));padding-left:20px}
+.hb-flow-inspector-top{display:flex;gap:12px;align-items:center;min-width:0}
+.hb-flow-inspector-emblem{display:grid;place-items:center;flex:none;width:46px;height:46px;border-radius:14px;background:var(--season-glow,rgba(205,160,255,.11));color:var(--season-primary,#d9bd8b);font-size:24px;border:1px solid var(--season-line,rgba(255,255,255,.14))}
+.hb-flow-inspector-top h4{font-size:19px;line-height:1.22;margin:2px 0 0;overflow-wrap:anywhere}
+.hb-flow-inspector-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.hb-flow-tag{padding:5px 9px;border-radius:8px;border:1px solid var(--season-line,rgba(255,255,255,.14));font-size:11px;color:var(--season-muted,#b8adca)}
+.hb-flow-tag.is-learned{color:var(--season-primary,#d9bd8b);border-color:var(--season-primary,#d9bd8b)}
+.hb-flow-inspector-description{font-size:13px;line-height:1.72;margin:0;white-space:pre-line}
+.hb-flow-inspector-rule,.hb-flow-inspector-requirement{display:grid;gap:5px}
+.hb-flow-inspector-rule>span,.hb-flow-inspector-requirement>span{font-size:10px;letter-spacing:.08em;font-weight:850;text-transform:uppercase;color:var(--season-primary,#d9bd8b)}
+.hb-flow-inspector-rule p{font-size:12px;line-height:1.6;color:var(--season-muted,#b8adca);margin:0}
+.hb-flow-inspector-requirement{padding-top:11px;border-top:1px solid var(--season-line,rgba(255,255,255,.12))}
+.hb-flow-inspector-requirement strong{font-size:12px;line-height:1.45}
+.hb-flow-inspector-requirement small{font-size:11px;color:var(--season-muted,#b8adca);line-height:1.5}
+.hb-flow-inspector-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.hb-flow-learned-confirmation{font-size:12px;font-weight:750;color:var(--season-primary,#d9bd8b)}
+.hb-flow-learn,.hb-flow-remove{border-radius:10px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;align-self:flex-start}
+.hb-flow-learn{border:1px solid var(--season-primary,#d9bd8b);background:var(--season-primary,#d9bd8b);color:var(--season-surface,#17131e)}
+.hb-flow-remove{border:1px solid var(--season-line,rgba(255,255,255,.16));background:transparent;color:var(--season-muted,#b8adca)}
+.hb-flow-learn:disabled,.hb-flow-remove:disabled{opacity:.42;cursor:not-allowed}
+.hb-flow-tree-footer{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:0 3px;color:var(--season-muted,#b8adca);font-size:11px;line-height:1.55}
+.hb-flow-tree-footer>span{display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.hb-flow-tree-footer p{margin:0;flex:1 1 360px}
+.hb-flow-tree-footer strong{color:var(--season-text,#f2edf8)}
+.hb-flow-legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;border:1px solid var(--season-line,rgba(255,255,255,.14));background:var(--season-surface-alt,#211b2b)}
+.hb-flow-legend-dot.is-learned{background:var(--season-primary,#d9bd8b);border-color:var(--season-primary,#d9bd8b)}
+.hb-flow-legend-dot.is-available{border-color:var(--season-primary,#d9bd8b)}
+.hb-flow-legend-dot.is-locked{opacity:.43}
+/* Em espaços menores, os nós fluem por graduação; nunca há rolagem horizontal. */
+@container (max-width:1010px){
+ .hb-flow-map{height:auto!important;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:17px;align-items:stretch}
+ .hb-flow-map-caption{position:relative;top:auto;left:auto;transform:none;grid-column:1/-1;justify-content:center;margin:0 0 6px;white-space:normal;text-align:center;flex-wrap:wrap}
+ .hb-flow-connections{display:none}
+ .hb-flow-tier-heading{position:relative;top:auto;left:auto!important;transform:none;width:auto;grid-column:1/-1;justify-items:start;grid-template-columns:32px auto 1fr;grid-template-rows:auto auto;gap:0 9px;text-align:left;padding:9px 0 6px;margin:12px 0 1px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.13))}
+ .hb-flow-tier-emblem{grid-column:1;grid-row:1/3;margin:0;align-self:center}
+ .hb-flow-tier-overline{grid-column:2;font-size:9px;align-self:end}
+ .hb-flow-tier-heading strong{grid-column:2;grid-row:2;font-size:15px}
+ .hb-flow-tier-heading small{grid-column:3;grid-row:1;align-self:end;justify-self:end}
+ .hb-flow-tier-status{grid-column:3;grid-row:2;align-self:start;justify-self:end;margin:0}
+ .hb-flow-node{position:relative;top:auto!important;left:auto!important;transform:none;width:100%;height:auto;min-height:94px}
+ /* Na grade compacta os nos nao sao absolutos: neutraliza tambem :active. */
+ .hb-flows .hb-flow-node,
+ .hb-flows .hb-flow-node:active:not(:disabled){transform:none}
+}
+@container (max-width:680px){
+ .hb-flow-inspector{grid-template-columns:1fr;padding:17px;gap:16px}
+ .hb-flow-inspector-meta{border-left:0;border-top:1px solid var(--season-line,rgba(255,255,255,.13));padding:15px 0 0}
+ .hb-flow-path-stages{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .hb-flows-header{padding:17px;gap:15px;flex-wrap:wrap}
+ .hb-flow-progress{width:100%;display:flex;align-items:center;gap:12px;justify-content:flex-start}
+ .hb-flow-progress-track{margin-left:auto;max-width:130px}
+}
+@container (max-width:480px){
+ .hb-flow-map{grid-template-columns:minmax(0,1fr);gap:9px;padding:13px}
+ .hb-flow-node{min-height:77px}
+ .hb-flow-node-content strong{font-size:13px}
+ .hb-flow-tier-heading{margin-top:11px}
+ .hb-flow-path-stages{gap:7px}
+ .hb-flow-stage-pill{padding:9px 8px;gap:6px}
+ .hb-flow-pill-number{display:none}
+ .hb-flow-hero-mark{width:40px;height:40px;font-size:22px}
+ .hb-flows-header h3{font-size:20px}
+ .hb-flow-map-caption small{display:none}
+}
+@media(prefers-reduced-motion:no-preference){
+ .hb-flow-node,.hb-flow-stage-pill{transition:border-color .16s ease,box-shadow .16s ease,opacity .16s ease,background .16s ease}
+ .hb-flow-progress-track span{transition:width .2s ease}
+}
+@media(prefers-reduced-motion:reduce){.hb-flow-node,.hb-flow-stage-pill,.hb-flow-progress-track span{transition:none}}

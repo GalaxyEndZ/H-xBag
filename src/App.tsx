@@ -1,6 +1,7 @@
 import { SocialV245AppealForm } from './components/SocialExpansionV245'
 import { useSocialV245MfaGate, SocialV245MfaPrompt } from './components/SocialV245MfaGate'
 import FloatingChat from './components/FloatingChat'
+import SocialRuntimeGuard from './components/SocialRuntimeGuard'
 import { readHaxLocation, haxLocationUrl, haxShouldPush, type HaxLocation, type HaxPage, type HaxSocialTab } from './siteNavigation'
 import './components/ProfileSocialV164.css'
 import './components/ProfileSocialV165.css'
@@ -29,6 +30,16 @@ import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSUTAI_ONI_CLASSES } from './systems/kisatsutai/extendedData'
+import KisatsutaiFlows from './components/KisatsutaiFlows'
+import { flowIsActive, normalizeFlowSelections, type FlowAttribute, type FlowTier } from './systems/kisatsutai/flowRules'
+import { calculateCriticalProfile, classifyCriticalD20, getCriticalBonus, CRITICAL_FORM_LABELS, type CriticalFormClass } from './combatCriticalRules'
+import './CombatCriticalV272.css'
+import './CombatDamageToggleV276.css'
+import './CombatActionsV277.css'
+import './CombatActionsV278.css'
+import './CombatActionsV279.css'
+import CombatDamageRollerV274 from './components/CombatDamageRollerV274'
+import { BREATHING_TIER_LABEL, type BreathingTier } from './damageRollRulesV274'
 
 
 
@@ -228,7 +239,7 @@ function SheetStatusSigil({ kind }: { kind: 'pv' | 'ps' | 'pr' | 'blood' }) {
 }
 
 /** Navegação acessível e contextual, compartilhada entre fichas de jogadores e inimigos. */
-function SheetSectionNav({ sections, label }: { sections: Array<[string, string, string]>; label: string }) {
+function SheetSectionNav({ sections, label, onSelect }: { sections: Array<[string, string, string]>; label: string; onSelect?: (id: string) => boolean }) {
   const ids = sections.map(([, , id]) => id).join('|')
   const [activeId, setActiveId] = useState(sections[0]?.[2] || '')
   useEffect(() => {
@@ -261,6 +272,10 @@ function SheetSectionNav({ sections, label }: { sections: Array<[string, string,
     }
   }, [ids])
   const goTo = (id: string) => {
+    if (onSelect?.(id)) {
+      setActiveId(id)
+      return
+    }
     const element = document.getElementById(id)
     if (!element) return
     setActiveId(id)
@@ -2087,6 +2102,39 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const [statusAdjustments, setStatusAdjustments] = useState<Record<string, string>>({ pv: '+10', ps: '+10', pr: '+10' })
   const [breathingTestResult, setBreathingTestResult] = useState<{ rolls: number[]; best: number; total: number; dt: number; success: boolean; recovery: number; applied: number; group: string } | null>(null)
   const [combatActionResult, setCombatActionResultState] = useState<string>('')
+  // Guarda apenas o último teste ofensivo: mudar a DT reavalia o acerto sem lançar dados de novo.
+  const [lastCombatTestKey, setLastCombatTestKey] = useState('')
+  const [lastAttackTest, setLastAttackTest] = useState<{
+    kind: string; die: number; total: number; threshold: number; breakdown: string
+  } | null>(null)
+  const combatResultIsAction = /^(Ataque|Tiro:|Disparo:|Teste de Perícia|Teste sem perícia|Ação Complexa)/.test(combatActionResult)
+  // Seleção única para a classificação da forma: painel Dano e crítico dos ataques.
+  const [attackDamageMode, setAttackDamageMode] = useState<'pure' | 'breathing'>('pure')
+  const [attackBreathingTier, setAttackBreathingTier] = useState<BreathingTier>('raposa')
+  // V276: a rolagem de dano só aparece quando o botão Dano é acionado.
+  const [damageSectionOpen, setDamageSectionOpen] = useState<{ character: boolean; enemy: boolean }>({ character: false, enemy: false })
+  const revealDamageSection = (forEnemy: boolean) => {
+    const kind = forEnemy ? 'enemy' : 'character'
+    const id = forEnemy ? 'inimigo-dano' : 'ficha-dano'
+    setDamageSectionOpen(previous => ({ ...previous, [kind]: true }))
+    window.requestAnimationFrame(() => {
+      const section = document.getElementById(id)
+      if (!section) return
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+    })
+  }
+  const criticalFormClass: CriticalFormClass = attackDamageMode === 'breathing' && attackBreathingTier !== 'corvo'
+    ? attackBreathingTier : 'none'
+  const [initiativeSituationalBonus, setInitiativeSituationalBonus] = useState('0')
+  const [attackTargetDt, setAttackTargetDt] = useState('')
+  useEffect(() => {
+    setAttackDamageMode('pure')
+    setAttackBreathingTier('raposa')
+    setDamageSectionOpen({ character: false, enemy: false })
+    setLastCombatTestKey('')
+    setLastAttackTest(null)
+  }, [selectedCharacterId, selectedEnemyId])
   const [combatActionResultSequence, setCombatActionResultSequence] = useState(0)
   const setCombatActionResult = (result: string) => {
     setCombatActionResultState(result)
@@ -2098,7 +2146,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   useEffect(() => {
     if (!combatActionResult) return
     const frame = window.requestAnimationFrame(() => {
-      const results = Array.from(document.querySelectorAll<HTMLElement>('.combat-action-result'))
+      const results = Array.from(document.querySelectorAll<HTMLElement>(combatResultIsAction ? '.combat-actions-test-feedback-v278' : '.combat-action-result'))
       const visibleResult = results.find(element =>
         element.getClientRects().length > 0 &&
         window.getComputedStyle(element).visibility !== 'hidden'
@@ -2108,7 +2156,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
       visibleResult.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [combatActionResultSequence, combatActionResult])
+  }, [combatActionResultSequence, combatActionResult, combatResultIsAction])
   const [selectedSkillTest, setSelectedSkillTest] = useState<string>('')
   const [skillTestOpen, setSkillTestOpen] = useState(false)
   const [restActionsOpen, setRestActionsOpen] = useState(false)
@@ -2125,6 +2173,10 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     setComplexSkill('')
     setComplexMainSkill('')
     setComplexResult('')
+    setAttackDamageMode('pure')
+    setAttackBreathingTier('raposa')
+    setAttackTargetDt('')
+    setInitiativeSituationalBonus('0')
   }, [selectedCharacterId, selectedSeasonId])
   const [selectedSkillAttribute, setSelectedSkillAttribute] = useState<string>('strength')
   const [blockDamageReduction, setBlockDamageReduction] = useState<number | null>(null)
@@ -4176,14 +4228,14 @@ function readEnemySheet(path: string, fallback: any = 0) {
     ) ?? fallback
 }
 
-async function saveEnemySheet(automatic = false) {
+async function saveEnemySheet(automatic = false): Promise<boolean> {
   const campaignId = selectedCampaignId
   const enemyId = selectedEnemyId
   const ownerKey = `${campaignId}:${enemyId}`
   if (
     !isMaster || !campaignId || !enemyId || enemySheetSavingRef.current ||
     enemySheetLoadedForRef.current !== ownerKey
-  ) return
+  ) return false
 
   const originalDraft = enemySheetDraftRef.current
   let sheetData: Record<string, unknown>
@@ -4196,7 +4248,7 @@ async function saveEnemySheet(automatic = false) {
   } catch (err) {
     setError(`Não foi possível ler a ficha: ${err instanceof Error ? err.message : String(err)}`)
     setEnemyAutoSaveStatus('error')
-    return
+    return false
   }
 
   enemySheetSavingRef.current = true
@@ -4231,6 +4283,7 @@ async function saveEnemySheet(automatic = false) {
       enemyFailedAutoSaveDraftRef.current = null
       if (!automatic) setNotice('Ficha do inimigo salva com sucesso!')
     }
+    return true
   } catch (err) {
     if (enemySheetLoadedForRef.current === ownerKey) {
       const message = err instanceof Error ? err.message : String(err)
@@ -4239,6 +4292,7 @@ async function saveEnemySheet(automatic = false) {
       // Evita uma sequência de tentativas sem limite enquanto o servidor falha.
       enemyFailedAutoSaveDraftRef.current = originalDraft
     }
+    return false
   } finally {
     enemySheetSavingRef.current = false
     setEnemySheetSaving(false)
@@ -6437,8 +6491,8 @@ async function saveCharacterCybernetics(
   }
 }
 
-  async function saveCharacterConditions(draftOverride?: Record<string, unknown>) {
-    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return
+  async function saveCharacterConditions(draftOverride?: Record<string, unknown>): Promise<boolean> {
+    if (!selectedCharacterId || !selectedSeasonId || !canEditSelectedSheet) return false
 
     let parsed: Record<string, unknown>
     try {
@@ -6449,7 +6503,7 @@ async function saveCharacterCybernetics(
       parsed = value as Record<string, unknown>
     } catch (e) {
       setError(e instanceof Error ? e.message : 'JSON inválido.')
-      return
+      return false
     }
 
     const status = parsed.status && typeof parsed.status === 'object' && !Array.isArray(parsed.status)
@@ -6463,11 +6517,11 @@ async function saveCharacterCybernetics(
     const values = rawValues.map(value => value === null || value === undefined || String(value).trim() === '' ? NaN : Number(value))
     if (values.some(value => !Number.isFinite(value))) {
       setError(`PV, PS e ${resourceAbbreviation} precisam ter valores numéricos válidos antes de salvar.`)
-      return
+      return false
     }
     if (values.some(value => value < 0)) {
       setError(`PV, PS e ${resourceAbbreviation} não podem ser negativos.`)
-      return
+      return false
     }
 
     setSheetSaving(true)
@@ -6531,8 +6585,10 @@ async function saveCharacterCybernetics(
         },
       }, null, 2))
       setNotice(`PV, PS e ${resourceAbbreviation} atualizados com sucesso!`)
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao salvar as condições.')
+      return false
     } finally {
       setSheetSaving(false)
     }
@@ -7613,14 +7669,60 @@ async function sendItemToCharacter() {
       return calculateSheetAttribute(read, 'agility',
         systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'agility') : 0)
     }
-    const agilityDifference = agility(b) - agility(a)
-    if (agilityDifference !== 0) return agilityDifference
     const alwaysReady = (entry: MasterShieldInitiativeEntry) => {
       const flows = String(entry.sheetData.flows?.details ?? '').toLocaleLowerCase('pt-BR')
-      return flows.includes('raposa') && flows.includes('sempre pronto')
+      return (entry.sheetData.flows?.selections?.raposa === 'agility' && !['civil','zaidan'].includes(String(entry.sheetData.progression?.rankId ?? '').toLowerCase())) || (flows.includes('raposa') && flows.includes('sempre pronto'))
     }
     if (alwaysReady(a) !== alwaysReady(b)) return alwaysReady(a) ? -1 : 1
+    const agilityDifference = agility(b) - agility(a)
+    if (agilityDifference !== 0) return agilityDifference
     return a.name.localeCompare(b.name, 'pt-BR') || a.kind.localeCompare(b.kind)
+  })
+
+  // Turnos adicionais são derivados das fichas; o valor salvo continua sendo apenas a iniciativa principal.
+  // Até 3 ações podem ocorrer em cada turno; cada turno adicional entra na ordem com metade da iniciativa.
+  type MasterShieldTurnEntry = MasterShieldInitiativeEntry & { turnSlot: number }
+  const masterShieldTurnKey = (entry: MasterShieldTurnEntry) =>
+    `${entry.kind}:${entry.id}${entry.turnSlot > 0 ? `:extra:${entry.turnSlot}` : ''}`
+  const masterShieldTurnEntries: MasterShieldTurnEntry[] = masterShieldInitiativeEntries.flatMap(entry => {
+    const primary: MasterShieldTurnEntry = { ...entry, turnSlot: 0 }
+    if (!isKisatsutaiSystem || entry.initiative === null) return [primary]
+    const data = entry.sheetData
+    const read = (path: string, fallback: any = 0) => path.split('.')
+      .reduce((current: any, key: string) => current && typeof current === 'object'
+        ? current[key] : undefined, data as any) ?? fallback
+    const tier = String(data.family?.tier ?? '5')
+    const agility = Math.floor(calculateSheetAttribute(read, 'agility',
+      systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'agility') : 0))
+    const movement = 1 + Math.floor(Math.max(0, agility) / 2)
+    const group = getSystemRank(String(data.progression?.rankId ?? 'zaidan'))?.group ?? ''
+    const extraFromFlow = flowIsActive(normalizeFlowSelections(data.flows?.selections),
+      group, 'dragao', 'agility') ? 1 : 0
+    const extra = Math.ceil(Math.max(0, agility) / 2) + extraFromFlow
+    const turns = Math.min(5, Math.ceil((1 + movement + extra) / 3))
+    return [primary, ...Array.from({ length: Math.max(0, turns - 1) }, (_, index) => ({
+      ...entry, turnSlot: index + 1, initiative: entry.initiative! / 2,
+    }))]
+  }).sort((a, b) => {
+    if (a.initiative === null && b.initiative !== null) return 1
+    if (b.initiative === null && a.initiative !== null) return -1
+    if (a.initiative !== null && b.initiative !== null && a.initiative !== b.initiative)
+      return b.initiative - a.initiative
+    const alwaysReady = (entry: MasterShieldTurnEntry) =>
+      isKisatsutaiSystem && flowIsActive(normalizeFlowSelections(entry.sheetData.flows?.selections),
+        getSystemRank(String(entry.sheetData.progression?.rankId ?? 'zaidan'))?.group ?? '', 'raposa', 'agility')
+    if (alwaysReady(a) !== alwaysReady(b)) return alwaysReady(a) ? -1 : 1
+    const agility = (entry: MasterShieldTurnEntry) => {
+      const data = entry.sheetData
+      const read = (path: string, fallback: any = 0) => path.split('.')
+        .reduce((current: any, key: string) => current && typeof current === 'object'
+          ? current[key] : undefined, data as any) ?? fallback
+      return calculateSheetAttribute(read, 'agility',
+        systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(String(data.family?.tier ?? '5'), 'agility') : 0)
+    }
+    const diff = agility(b) - agility(a)
+    if (diff !== 0) return diff
+    return a.turnSlot - b.turnSlot || a.name.localeCompare(b.name, 'pt-BR')
   })
 
   const masterShieldCombatParticipants = masterShieldInitiativeEntries.map(entry => {
@@ -7651,9 +7753,9 @@ async function sendItemToCharacter() {
       kitResourceBonuses:kitResourceBonusesForCharacter(entry.id),
     }) }
   })
-  const masterShieldReadyTurns = masterShieldInitiativeEntries.filter(entry => entry.initiative !== null)
+  const masterShieldReadyTurns = masterShieldTurnEntries.filter(entry => entry.initiative !== null)
   const activeShieldDesk = masterShieldDesk.key === shieldDeskKey ? masterShieldDesk : EMPTY_MASTER_SHIELD_DESK
-  const activeShieldTurnIndex = masterShieldReadyTurns.findIndex(entry => `${entry.kind}:${entry.id}` === activeShieldDesk.turn)
+  const activeShieldTurnIndex = masterShieldReadyTurns.findIndex(entry => masterShieldTurnKey(entry) === activeShieldDesk.turn)
   const activeShieldTurn = activeShieldTurnIndex >= 0 ? masterShieldReadyTurns[activeShieldTurnIndex] : null
   function advanceMasterShieldTurn(direction: 1 | -1) {
     if (!masterShieldReadyTurns.length || !shieldDeskKey) return
@@ -7665,7 +7767,7 @@ async function sendItemToCharacter() {
       ? nextIndex === 0 : nextIndex === masterShieldReadyTurns.length - 1)
     const nextRound = crossedBoundary
       ? Math.max(1, activeShieldDesk.round + direction) : activeShieldDesk.round
-    updateMasterShieldDesk({ round: nextRound, turn: `${masterShieldReadyTurns[nextIndex].kind}:${masterShieldReadyTurns[nextIndex].id}` })
+    updateMasterShieldDesk({ round: nextRound, turn: masterShieldTurnKey(masterShieldReadyTurns[nextIndex]) })
   }
   const normalizeShieldSearch = (value: string) => value.normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
@@ -7736,10 +7838,13 @@ async function sendItemToCharacter() {
     const armorDexterity = calculateSheetDefenses(equipped, {
       dexterity, combat: 0, resistance: 0, mental: 0,
     }).armorDexterity
-    const die = Math.floor(Math.random() * 20) + 1
-    const total = die + armorDexterity
+    const tier = String(data.family?.tier ?? '5')
+    const agility = calculateSheetAttribute(read, 'agility',
+      systemFeatures.usesFamilyTiers ? getSystemAttributeBonus(tier, 'agility') : 0)
+    const result = rollSheetAttributeDice(1 + Math.floor(agility))
+    const total = result.result + armorDexterity
     void updateEnemyPartySeason(enemy.id, masterShieldSeasonId, { initiative: total },
-      `Iniciativa de ${enemy.name}: d20 (${die}) + Destreza de Armadura (${armorDexterity}) = ${total}.`)
+      `Iniciativa de ${enemy.name}: ${result.description} + Destreza de armadura (${armorDexterity}) = ${total}.`)
   }
 
 
@@ -8230,21 +8335,14 @@ useEffect(() => {
     )
   }
 
-  // Maior Agilidade efetiva primeiro.
-  const agilityDifference =
-    getAgility(bData) - getAgility(aData)
-
-  if (agilityDifference !== 0) {
-    return agilityDifference
-  }
-
+  // Em empate de resultado, Sempre Pronto tem prioridade até sobre Agilidade superior.
   // Raposa — Sempre Pronto tem preferência.
   const hasAlwaysReady = (data: any) => {
     const flows = String(data?.flows?.details ?? '').toLowerCase()
 
     return (
-      flows.includes('raposa') &&
-      flows.includes('sempre pronto')
+      (data?.flows?.selections?.raposa === 'agility' && !['civil','zaidan'].includes(String(data?.progression?.rankId ?? '').toLowerCase())) ||
+      (flows.includes('raposa') && flows.includes('sempre pronto'))
     )
   }
 
@@ -8253,6 +8351,10 @@ useEffect(() => {
 
   if (aHasPriority && !bHasPriority) return -1
   if (!aHasPriority && bHasPriority) return 1
+
+  // Persistindo o empate, maior Agilidade primeiro.
+  const agilityDifference = getAgility(bData) - getAgility(aData)
+  if (agilityDifference !== 0) return agilityDifference
 
   // Empate total: ordem alfabética.
   return a.name.localeCompare(b.name)
@@ -8446,13 +8548,12 @@ useEffect(() => {
       }
       setNotice(armorId ? 'Armadura equipada.' : 'Armadura removida.')
     }
-    const persistRenderConditions = async (next: Record<string, any>) => {
+    const persistRenderConditions = async (next: Record<string, any>): Promise<boolean> => {
       if (forEnemy) {
         updateRenderDraft(JSON.stringify(next, null, 2))
-        await saveEnemySheet()
-      } else {
-        await saveCharacterConditions(next)
+        return await saveEnemySheet()
       }
+      return await saveCharacterConditions(next)
     }
     const persistRenderInitiative = async (total: number) => {
       if (forEnemy) {
@@ -8572,9 +8673,21 @@ useEffect(() => {
                         attribute,
                         usesFamilyTiers ? getSystemAttributeBonus(familyTierKey, attribute) : 0,
                       )
+                    // Fluxos de Atributo: escolhas estruturadas e cumulativas, sem sobrescrever anotações legadas.
+                    const flowRankGroup = findSystemRank(rankIdForStatus)?.group || ''
+                    const flowSelections = normalizeFlowSelections(read('flows.selections', {}))
+                    const hasFlow = (tier: FlowTier, attribute: FlowAttribute) =>
+                      isKisatsutaiSystem && flowIsActive(flowSelections, flowRankGroup, tier, attribute)
+                    const flowValues: Record<FlowAttribute, number> = {
+                      strength: effectiveAttribute('attributes.strength', 'strength'),
+                      agility: effectiveAttribute('attributes.agility', 'agility'),
+                      defense: effectiveAttribute('attributes.defense', 'defense'),
+                      breathing: effectiveAttribute('attributes.breathing', 'breathing'),
+                      intellect: effectiveAttribute('attributes.intellect', 'intellect'),
+                    }
                     const agility = Math.floor(effectiveAttribute('attributes.agility', 'agility'))
                     const movementActions = Math.max(0, applyConditionModifier(1 + Math.floor(agility / 2), conditionModifiers, 'actions', 'movement'))
-                    const extraActions = Math.max(0, applyConditionModifier(agility % 2, conditionModifiers, 'actions', 'extra'))
+                    const extraActions = Math.max(0, applyConditionModifier(Math.ceil(Math.max(0, agility) / 2) + (hasFlow('dragao','agility') ? 1 : 0), conditionModifiers, 'actions', 'extra'))
                     // Kits equipados concedem somente os bônus explícitos, sem alterar pontos salvos.
                     const equippedMainKitBonus = (key:'vigor'|'mental'|'combat'|'dexterity'|'resistance'|'ability') => {
                       const names={vigor:'Vigor',mental:'Mental',combat:'Combate',dexterity:'Destreza',resistance:'Resistência',ability:'Habilidade'}
@@ -8694,9 +8807,9 @@ useEffect(() => {
                       forEnemy || !renderSubjectId ? 0 : equippedKitFeatureBonuses(
                         renderInventoryItems.filter(item=>item.character_id===renderSubjectId && item.quantity>0),key)
                     const kitExtraDamage = equippedKitBonus('extra_damage')
-                    const kitArmorClass = equippedKitBonus('armor_class')
+                    const kitCounterAttackBonus = equippedKitBonus('armor_class')
                     const kitConstitution = equippedKitBonus('constitution')
-                    const kitComplexActionCount = Math.min(COMPLEX_MAIN_SKILLS.length,MAX_COMPLEX_ACTIONS_PER_SCENE + Math.floor(equippedKitBonus('complex_actions')))
+                    const kitComplexActionCount = Math.min(COMPLEX_MAIN_SKILLS.length,MAX_COMPLEX_ACTIONS_PER_SCENE + Math.floor(equippedKitBonus('complex_actions')) + (hasFlow('tigre','intellect') ? 1 : 0) + (hasFlow('dragao','intellect') ? 1 : 0))
                     const kitInitiativeDice = Math.min(19,Math.floor(equippedKitBonus('initiative_dice')))
                     // Modificadores das perícias principais se aplicam aos valores em uso;
                     // os pontos salvos na ficha permanecem intactos.
@@ -8708,7 +8821,7 @@ useEffect(() => {
                     const ability = mainSkill('ability')
                     const defense = effectiveAttribute('attributes.defense', 'defense')
                     const activeCombatConditions = forEnemy ? enemyConditionModifiers : conditionModifiers
-                    const reactions = Math.max(0, applyConditionModifier(defense + 1, activeCombatConditions, 'combat_stats', 'reactions'))
+                    const reactions = Math.max(0, applyConditionModifier(defense + 1 + (hasFlow('dragao','defense') ? 1 : 0), activeCombatConditions, 'combat_stats', 'reactions'))
                     const combat = mainSkill('combat')
                     const resistance = mainSkill('resistance')
                     const strength = effectiveAttribute('attributes.strength', 'strength')
@@ -8752,10 +8865,36 @@ const hierarchyGroup = findSystemRank(rankIdForStatus)?.group || ''
                     } = characterDefenses
                     const baseDamage = activeSystem?.data?.damageByGroup?.[hierarchyGroup] ?? '—'
                     const sheetCriticalBase = Number(read('combat.critical', 20))
-                    const criticalValue = Math.max(1, Math.min(20, applyConditionModifier(
-                      Number.isFinite(sheetCriticalBase) && sheetCriticalBase > 0 ? Math.floor(sheetCriticalBase) : 20,
-                      activeCombatConditions, 'combat_stats', 'critical')))
-                    const rollD20 = () => Math.floor(Math.random() * 20) + 1
+                    const safeCriticalBase = Number.isFinite(sheetCriticalBase) && sheetCriticalBase > 0
+                      ? Math.min(20, Math.max(2, Math.floor(sheetCriticalBase))) : 20
+                    const criticalProfile = calculateCriticalProfile({
+                      base: safeCriticalBase,
+                      conditioned: applyConditionModifier(safeCriticalBase, activeCombatConditions, 'combat_stats', 'critical'),
+                      selections: isKisatsutaiSystem ? flowSelections : {},
+                      group: isKisatsutaiSystem ? flowRankGroup : '',
+                    })
+                    const criticalValue = criticalProfile.threshold
+                    const criticalDamagePreview = getCriticalBonus({
+                      form: criticalFormClass,
+                      weaponFormula: equippedWeaponDamage === '—' ? '' : equippedWeaponDamage,
+                      corvoStrength: criticalProfile.corvoStrength,
+                    })
+                    const displayedAttackTest = lastAttackTest && lastCombatTestKey === lastAttackTest.kind ? lastAttackTest : null
+                    const liveAttackDt = attackTargetDt.trim() === '' ? null : Number(attackTargetDt)
+                    const liveAttackDtValid = liveAttackDt !== null && Number.isFinite(liveAttackDt) && liveAttackDt >= 0
+                    const liveAttackCritical = displayedAttackTest ? classifyCriticalD20(displayedAttackTest.die, displayedAttackTest.threshold) : null
+                    const liveAttackStatus = !displayedAttackTest ? 'idle'
+                      : liveAttackCritical === 'failure' ? 'failure'
+                      : displayedAttackTest.die === 20 ? 'critical'
+                      : !liveAttackDtValid ? 'pending'
+                      : displayedAttackTest.total <= liveAttackDt ? 'miss'
+                      : liveAttackCritical === 'critical' ? 'critical' : 'hit'
+                    const liveAttackStatusLabel = {
+                      idle: 'Aguardando teste', pending: 'Aguardando DT',
+                      hit: 'Acerto confirmado', critical: 'Crítico confirmado',
+                      miss: 'Não acertou', failure: 'Falha crítica',
+                    }[liveAttackStatus]
+
 
 const rollAttributeDice = (diceCount: number, usesAgility = false) => {
   const roll = rollSheetAttributeDice(diceCount, renderOverloaded && usesAgility)
@@ -8772,6 +8911,8 @@ const performCombatRoll = (
   kind: 'Ataque bruto' | 'Ataque ágil' | 'Ataque especial' | 'Tiro' | 'Disparo' | 'Bloqueio' | 'Esquiva',
   dodgeDt?: string
 ) => {
+  setLastCombatTestKey(kind)
+  setLastAttackTest(null)
   const blockedAction = kind === 'Esquiva' ? 'dodge' : kind === 'Bloqueio' ? 'block' : (kind.startsWith('Ataque') || kind==='Tiro' || kind==='Disparo') ? 'attack' : ''
   const limitedByCondition = conditionRules.restrictions.includes('all_actions') ||
     (blockedAction === 'attack' && conditionRules.restrictions.includes('no_attacks')) ||
@@ -8831,16 +8972,18 @@ const attribute =
   const conditionTotal = conditionBonus + combatConditionBonus
   const diceDescription = `${diceDescriptionBase}${conditionTotal ? ` + Condições (${conditionTotal > 0 ? '+' : ''}${conditionTotal})` : ''}`
   if (kind === 'Bloqueio') {
-    const critical = highest >= criticalValue
-    const success = validTarget && total > target
-    const reduction = !validTarget ? null : critical ? 1 : success ? 0.5 : 0.25
+    const criticalType = classifyCriticalD20(highest, criticalValue)
+    const critical = criticalType === 'critical'
+    const success = critical || (criticalType !== 'failure' && validTarget && total > target)
+    const fortress = criticalProfile.corvoDefense
+    const reduction = !validTarget ? null : critical ? 1 : success ? (fortress ? 1 : 0.5) : (fortress ? 0.5 : 0.25)
     const outcome = !validTarget
-      ? 'Informe a DT do inimigo para determinar o resultado do bloqueio.'
+      ? `${critical ? `Crítico (${highest} no d20). ` : ''}Informe a DT do inimigo para determinar a redução de dano.`
       : critical
-        ? `Crítico contra DT ${target}: nega 100% do dano.`
+        ? `Crítico contra DT ${target}: nega 100% do dano.${fortress ? ' Fortaleza Intocável: ganha um Contra-Ataque (mestre confirma).' : ''}`
         : success
-          ? `Sucesso contra DT ${target}: nega 50% do dano.`
-          : `Falha contra DT ${target}: nega 25% do dano.`
+          ? `Sucesso contra DT ${target}: nega ${fortress ? '100%' : '50%'} do dano.`
+          : `${criticalType === 'failure' ? 'Falha crítica' : 'Falha'} contra DT ${target}: nega ${fortress ? '50%' : '25%'} do dano.`
 
     setBlockIncomingDamage('')
     setBlockDamageReduction(reduction)
@@ -8858,15 +9001,16 @@ const attribute =
       Number.isFinite(target) &&
       target >= 0
 
+    // No sistema Kisatsutai, Esquiva NÃO possui acerto crítico.
+    const naturalFailure = highest === 1
+    const success = !naturalFailure && validTarget && total > target!
     const outcome = validTarget
-      ? total > target!
-        ? `Sucesso contra DT ${target}: nega 100% do dano.`
-        : `Falha contra DT ${target}: não evita o dano.`
+      ? success
+        ? `Sucesso contra DT ${target}: evita 100% do dano. Pela regra de Esquiva, ganha +1 dado na próxima ação/reação (controle manual).`
+        : `${naturalFailure ? 'Falha crítica (1 natural)' : 'Falha'} contra DT ${target}: não evita o dano.`
       : 'Informe a DT do inimigo no campo ao lado do botão Esquiva.'
 
-    setBlockDamageReduction(
-  validTarget && total > target! ? 1 : 0
-)
+    setBlockDamageReduction(validTarget && success ? 1 : 0)
 
     setCombatActionResult(
       `Esquiva: ${diceDescription} + Destreza de armadura (${bonus}) = ${total}. ${outcome}`
@@ -8877,8 +9021,51 @@ const attribute =
     const bonusName =
       (kind === 'Ataque especial' || kind==='Tiro' || kind==='Disparo') ? 'Habilidade' : 'Combate'
 
+    const criticalType = classifyCriticalD20(highest, criticalValue)
+    const forceBonus = criticalProfile.corvoStrength && kind === 'Ataque bruto' ? 5 : 0
+    const attackTotal = total + forceBonus
+    const targetNumber = attackTargetDt.trim() === '' ? null : Number(attackTargetDt)
+    const hasAttackDt = targetNumber !== null && Number.isFinite(targetNumber) && targetNumber >= 0
+    const attackHits = criticalType === 'failure' ? false
+      : highest === 20 ? true
+      : hasAttackDt ? attackTotal > targetNumber : null
+    const confirmedCritical = criticalType === 'critical' && attackHits === true
+    const criticalDamage = confirmedCritical && isKisatsutaiSystem &&
+      !(attackDamageMode === 'breathing' && attackBreathingTier === 'corvo')
+      ? getCriticalBonus({
+          form: criticalFormClass,
+          weaponFormula: equippedWeaponDamage === '—' ? '' : equippedWeaponDamage,
+          corvoStrength: criticalProfile.corvoStrength,
+        }) : null
+    const criticalMessage = criticalType === 'failure'
+      ? 'Falha crítica: 1 natural no d20. O ataque falha e o alvo ganha uma reação grátis (conforme o sistema).'
+      : confirmedCritical
+        ? `ACERTO CRÍTICO (${highest} no d20, margem ${criticalValue}+).${highest === 20 ? ' 20 natural: acerto garantido.' : ` Acerto confirmado contra DT ${targetNumber}.`}` +
+          (isKisatsutaiSystem
+            ? attackDamageMode === 'breathing' && attackBreathingTier === 'corvo'
+              ? ' Forma Corvo: bônus específico de crítico ainda não definido. Role o dano na seção Dano.'
+              : criticalDamage?.formula
+                ? ` Bônus de crítico previsto: ${criticalDamage.formula}. Role-o uma única vez na seção Dano.`
+                : ' Equipe uma arma com dados de dano (ex.: 1d8) para o bônus de crítico.'
+            : '') +
+          (criticalProfile.tigreStrength ? ' Força Sobre-Humana: o mestre pode aplicar Sangrando, Vulnerável ou Atordoado.' : '')
+        : criticalType === 'critical' && attackHits === null
+          ? `MARGEM CRÍTICA (${highest} no d20; precisa de DT para confirmar o acerto). Nenhum dano adicional foi rolado ainda.`
+          : attackHits === false
+            ? `Ataque não acertou a DT ${targetNumber}. ${criticalType === 'critical' ? 'A margem crítica não garante o acerto sem 20 natural.' : ''}`
+            : attackHits === true
+              ? `Acerto normal contra DT ${targetNumber}. Margem crítica ${criticalValue}+. Nenhum dado crítico extra.`
+              : `Resultado pendente: informe a DT do alvo para confirmar o acerto. Margem de crítico ${criticalValue}+.`
+    const otherFlowBonuses = [
+      criticalProfile.corvoStrength ? 'Guerreiro Insuperável: +10 no dano se acertar' : '',
+      criticalProfile.dragaoStrength ? `Ímpeto Certeiro: +2dX Base e ignora 5 de Armadura` : '',
+    ].filter(Boolean).join(' · ')
+    setLastAttackTest({
+      kind, die: highest, total: attackTotal, threshold: criticalValue,
+      breakdown: `${kind}: ${diceDescription} + ${bonusName} (${bonus})${forceBonus ? ' + Guerreiro Insuperável (+5 FOR)' : ''}`,
+    })
     setCombatActionResult(
-      `${kind}: ${diceDescription} + ${bonusName} (${bonus}) = ${total}. Dano extra equipado: ${totalExtraDamage}.`
+      `${kind}: ${diceDescription} + ${bonusName} (${bonus})${forceBonus ? ' + Guerreiro Insuperável (+5 FOR)' : ''} = ${attackTotal}. ${criticalMessage} Dano extra equipado: ${totalExtraDamage}.${otherFlowBonuses ? ` ${otherFlowBonuses}.` : ''}`
     )
   }
 
@@ -10070,26 +10257,82 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 {!isKisatsutaiSystem && field('identity.path','Caminho','text')}{field('identity.breathing',sheetResourceName,'text')}{area('identity.appearance','Aparência')}{area('identity.beliefs','Crenças')}{area('identity.lore','História / lore')}</>)}
                       {panel('2. Status', <>{derived.map(([label,value,hint])=><div key={label} style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small style={{color:'var(--season-muted, #b9b4c2)'}}>{label.toUpperCase()}</small><div style={{fontSize:26,fontWeight:800}}>{value}</div><small style={{color:'var(--season-muted, #b9b4c2)'}}>{hint}</small></div>)}</>)}
 
-                      {panel('3. Combate', <><div className="sheet-editor-combat-content"><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Dano base · {hierarchyGroup}</strong><div style={{fontSize:24,fontWeight:800}}>{baseDamage}</div><small>Definido automaticamente pela hierarquia.</small></div><div style={{padding:12,marginBottom:12,borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><strong>Arma equipada</strong>{equippedWeapon ? <><div style={{fontSize:18,fontWeight:800}}>{equippedWeapon.name}</div><small>Dano extra: {totalExtraDamage} · Carga: {String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg</small></> : <p>Nenhuma arma equipada. Equipe uma arma pelo Inventário.</p>}</div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, #211c31)'}}><small>DANO EXTRA (ARMA + KITS)</small><div style={{fontSize:20,fontWeight:800}}>{totalExtraDamage}</div><small>Arma equipada e bônus dos kits em uso.</small></div>{field('combat.armor','Armadura')}<div className="equipment-rules-preview"><small>CA com kits equipados</small><strong>{Math.max(0,Number(read('combat.armor',0))||0)+kitArmorClass}</strong>{kitArmorClass>0&&<small>Inclui +{kitArmorClass} de kit, sem alterar o valor salvo.</small>}</div>{field('combat.mentalArmor','Armadura Mental')}{field('combat.essence','Essência')}{field('combat.critical','Crítico')}<div className="sheet-movement-card" style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}>
-  <small>DESLOCAMENTO</small>
-<div className="sheet-movement-values">
-  <strong>
-    {equippedArmor && equippedArmor.metadata?.armorClass !== 'leve' && (
-      <small className="armor-dexterity-value">
-        {Math.max(1, Math.floor(
-          (movementActions * dexterity) /
-          (equippedArmor.metadata?.armorClass === 'media' ? 2 : 4)
-        ))}
-      </small>
-    )}
-    {Math.max(1, movementActions * dexterity)}
-  </strong>
-</div>
-  <small>Ações de Movimento × Destreza</small>
-</div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES DE MOVIMENTO</small><div style={{fontSize:24,fontWeight:800}}>{movementActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>AÇÕES EXTRAS</small><div style={{fontSize:24,fontWeight:800}}>{extraActions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>REAÇÕES</small><div style={{fontSize:24,fontWeight:800}}>{reactions}</div></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONTRA-ATAQUE</small><div style={{fontSize:24,fontWeight:800}}>{combat + armorDexterity}</div>
-<small>Combate + Destreza de Armadura</small></div><div style={{padding:12,border:'1px solid var(--season-line, var(--season-surface-alt, #211c31))',borderRadius:10,background:'var(--season-surface-alt, var(--season-surface-alt, #211c31))'}}><small>CONSTITUIÇÃO (COM KITS)</small><div style={{fontSize:24,fontWeight:800}}>{resistance+vigor+kitConstitution}</div><small>Resistência + Vigor{kitConstitution?` + kits (+${kitConstitution})`: ''}</small></div></div>{area('combat.actions','Observações de ações e regras de combate')}</div></>)}
+                      {panel('3. Combate', <div className="hb-combat-editor">
+  <div className="hb-combat-editor-hero">
+    <div className="hb-combat-editor-intro">
+      <span className="hb-combat-editor-kicker">⚔ PREPARAÇÃO DE COMBATE</span>
+      <h3>Arsenal e atributos de combate</h3>
+      <p>Consulte os valores atuais, configure a margem crítica e prepare suas ações. Bônus dos equipamentos e dos Fluxos são aplicados sem sobrescrever os dados salvos.</p>
+    </div>
+    <div className="hb-combat-editor-weapon" aria-label="Arma equipada">
+      <span className="hb-combat-mini-label">ARMA EQUIPADA</span>
+      <strong>{equippedWeapon ? equippedWeapon.name : 'Nenhuma arma equipada'}</strong>
+      <small>{equippedWeapon
+        ? `Dano: ${equippedWeaponDamage} · Peso: ${String(equippedWeapon.metadata?.weaponWeight ?? equippedWeapon.weight)} kg`
+        : 'Equipe uma arma no Inventário para calcular os dados extras de crítico.'}</small>
+    </div>
+  </div>
+  <div className="hb-combat-editor-section-head">
+    <div><span>01 · POTÊNCIA</span><h4>Dano e equipamento</h4></div>
+    <p>Valores calculados a partir da hierarquia, arma e kits.</p>
+  </div>
+  <div className="hb-combat-stat-grid">
+    <div className="hb-combat-stat hb-combat-stat--primary"><span>Dano base</span><strong>{baseDamage}</strong><small>{hierarchyGroup || 'Hierarquia atual'}</small></div>
+    <div className="hb-combat-stat"><span>Dano extra</span><strong>{totalExtraDamage}</strong><small>Arma equipada + kits</small></div>
+    <div className="hb-combat-stat"><span>Contra-Ataque · DT</span><strong>{counterAttackDT}</strong><small>Combate + Destreza de armadura{kitCounterAttackBonus > 0 ? ` · kit +${kitCounterAttackBonus}` : ''}</small></div>
+    <div className="hb-combat-stat"><span>Constituição</span><strong>{resistance + vigor + kitConstitution}</strong><small>Resistência + Vigor{kitConstitution ? ` · kit +${kitConstitution}` : ''}</small></div>
+  </div>
+  <div className="hb-combat-editor-section-head"><div><span>02 · CONTROLE</span><h4>Críticos e defesa</h4></div><p>Configurações e efeitos automáticos.</p></div>
+  {isKisatsutaiSystem ? <div className="hb-critical-panel" aria-label="Configuração de crítico">
+    <div className="hb-critical-heading"><div><small>ACERTOS CRÍTICOS</small><strong>Margem efetiva no d20</strong></div><span className="hb-critical-pill">{criticalValue}+</span></div>
+    <div className="hb-critical-fields">
+      <label>Margem base
+        <input type="number" min={2} max={20} step={1} value={String(criticalProfile.base)}
+          disabled={!renderCanEdit}
+          onChange={event => {
+            if (!event.target.value.trim()) return
+            const value = Number(event.target.value)
+            if (Number.isFinite(value)) write('combat.critical', Math.max(2, Math.min(20, Math.floor(value))))
+          }} />
+      </label>
+      <div className="hb-critical-breakdown">Valor base <b>{criticalProfile.base}+</b><span aria-hidden="true"> → </span> condições <b>{criticalProfile.afterConditions}+</b><span aria-hidden="true"> → </span> redução de Fluxos de AGI <b>−{criticalProfile.agilityBonuses}</b><br/>Um 1 natural é falha crítica. A margem base não é substituída pelo valor calculado.</div>
+    </div>
+    <div className="hb-critical-flow-chips">
+      {criticalProfile.activeAgilityFlows.length ? criticalProfile.activeAgilityFlows.map(tier => <span key={tier}>✦ {tier === 'tigre' ? 'Precisão e Agilidade' : tier === 'dragao' ? 'Veloz e Furioso' : 'Velocidade da Luz'} · −1</span>) : <span>Sem redução por Fluxos de AGI</span>}
+      {criticalProfile.corvoStrength && <span>✦ Guerreiro Insuperável · dobra dados adicionais</span>}
+    </div>
+    <div className="hb-critical-example"><span>Bônus de crítico conforme a seleção em Dano:</span><strong>{attackDamageMode === 'breathing' && attackBreathingTier === 'corvo' ? 'Não definido para Corvo' : criticalDamagePreview.formula ?? 'Arma sem dados definidos'}</strong><small>{attackDamageMode === 'pure' ? CRITICAL_FORM_LABELS.none : `Forma ${BREATHING_TIER_LABEL[attackBreathingTier]}`}</small></div>
+    <p className="hb-critical-hint">Sem forma: +1dX · Raposa: +2dX · Tigre: +4dX · Dragão: +6dX. O Fluxo Corvo de FOR dobra os dados adicionais; a DT do alvo determina se houve acerto. A classificação da forma é escolhida na seção Dano e usada automaticamente nos ataques. <strong>Esquiva não tem crítico.</strong></p>
+  </div> : <div className="hb-combat-config-grid">{field('combat.critical','Margem base do crítico (d20)')}</div>}
+  <div className="hb-combat-config-grid">
+    {field('combat.armor', 'Armadura')}
+    {field('combat.mentalArmor','Armadura Mental')}
+    {field('combat.essence','Essência')}
+  </div>
+  <div className="hb-combat-editor-section-head"><div><span>03 · MOBILIDADE</span><h4>Turnos e deslocamento</h4></div><p>Os valores consideram equipamentos e condições aplicadas.</p></div>
+  <div className="hb-combat-stat-grid hb-combat-stat-grid--mobility">
+    <div className="hb-combat-stat"><span>Deslocamento</span><strong>{Math.max(0, movementActions * dexterity)}</strong><small>Ações de Movimento × Destreza{renderOverloaded ? ' · sobrecarregado' : ''}</small>{equippedArmor && equippedArmor.metadata?.armorClass !== 'leve' && <small>Com armadura: {Math.max(0, Math.floor((movementActions * dexterity) / (equippedArmor.metadata?.armorClass === 'media' ? 2 : 4)))}</small>}</div>
+    <div className="hb-combat-stat"><span>Ações de Movimento</span><strong>{movementActions}</strong><small>Base + Agilidade</small></div>
+    <div className="hb-combat-stat"><span>Ações Extras</span><strong>{extraActions}</strong><small>{hasFlow('dragao','agility') ? 'Inclui Veloz e Furioso' : 'Atributo e condições'}</small></div>
+    <div className="hb-combat-stat"><span>Reações</span><strong>{reactions}</strong><small>{criticalProfile.corvoDefense ? 'Fortaleza Intocável: reações ilimitadas, salvo flanqueamento' : hasFlow('dragao','defense') ? 'Inclui Muralha (+1 reação)' : 'Defesa + modificadores'}</small></div>
+  </div>
+  <div className="hb-combat-initiative-guide">
+    <div><span>04 · ORDEM DA BATALHA</span><h4>Iniciativa e turnos</h4><p>Teste de Agilidade + Destreza de armadura. Cada turno comporta até três ações; quando houver ações excedentes, um turno adicional entra na ordem com metade da iniciativa.</p></div>
+    <div className="hb-combat-initiative-metrics"><div><small>Rolagem</small><strong>{Math.max(1, 1 + agility) + kitInitiativeDice}D20</strong><span>Maior resultado + {armorDexterity} Destreza</span></div><div><small>Ações disponíveis</small><strong>{1 + extraActions + movementActions}</strong><span>Principal + {extraActions} extra(s) + {movementActions} movimento(s)</span></div><div><small>Turnos por rodada</small><strong>{Math.ceil((1 + extraActions + movementActions) / 3)}</strong><span>Até 3 ações por turno</span></div></div>
+    <p className="hb-combat-initiative-note">O bônus de iniciativa da habilidade “Iniciativa Aprimorada” (+5) pode ser informado como bônus situacional no painel de rolagem quando o personagem possuir a habilidade. “Sempre Pronto” ganha prioridade em empates.</p>
+  </div>
+  <div className="hb-combat-editor-notes">{area('combat.actions','Observações de ações e regras de combate')}</div>
+</div>)}
 
-                      {panel('4. Fluxos', <>{area('flows.details','Fluxos desbloqueados e detalhes')}</>)}
+                      {panel('4. Fluxos', isKisatsutaiSystem
+                        ? <div className="hb-flows-panel-fullwidth"><KisatsutaiFlows
+                            group={flowRankGroup}
+                            values={flowValues}
+                            selections={flowSelections}
+                            editable={renderCanEdit}
+                            onSelect={(tier, attribute) => write('flows.selections', { ...flowSelections, [tier]: attribute || null })}
+                          /></div>
+                        : area('flows.details', 'Fluxos desbloqueados e detalhes'))}
 {panel(
   isKisatsutaiSystem
     ? '5. Habilidades & Respirações'
@@ -10286,7 +10529,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 const total = best + vigor + preparationBonus
                                 if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
                                 const success = total >= dt
-                                const recovery = Math.floor(value / (success ? 4 : 8))
+                                const recovery = Math.floor(value / (hasFlow('tigre','breathing') ? (success ? 2 : 4) : (success ? 4 : 8)))
                                 const applied = Math.min(recovery, Math.max(0, value - current))
                                 setBreathingTestResult({ rolls, best, total, dt, success, recovery, applied, group })
                                 if (renderCanEdit && applied > 0) {
@@ -10301,7 +10544,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 {group === 'Carpa' ? <small style={{display:'block',marginTop:7,opacity:.8}}>Este grupo não realiza o {forEnemy && isKisatsutaiSystem ? 'teste de Sangue' : 'teste de Respiração'}.</small> : <>
                                   <small style={{display:'block',marginTop:5,opacity:.8}}>{1 + breathing}d20 · maior resultado + Vigor ({vigor})</small>
                                   <button type="button" onClick={runBreathingTest} style={{marginTop:9,padding:'8px 12px',borderRadius:9,border:'1px solid rgba(117,201,238,.55)',background:'rgba(117,201,238,.16)',color:'inherit',fontWeight:700,cursor:'pointer'}}>Rolar teste</button>
-                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {breathingTestResult.total - breathingTestResult.best} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} {sheetResourceUnit} ({breathingTestResult.success?'¼':'⅛'} do máximo) · aplicado: <strong>{breathingTestResult.applied} {sheetResourceUnit}</strong></div></div>}
+                                  {breathingTestResult && breathingTestResult.group === group && <div style={{marginTop:9,fontSize:13}}><div>Dados: {breathingTestResult.rolls.join(' · ')} → maior: <strong>{breathingTestResult.best}</strong></div><div>Resultado: <strong>{breathingTestResult.best} + {breathingTestResult.total - breathingTestResult.best} = {breathingTestResult.total}</strong> / DT {breathingTestResult.dt} — <strong style={{color:breathingTestResult.success?'#8de0a5':'#f0a0a0'}}>{breathingTestResult.success?'Sucesso':'Falha'}</strong></div><div>Recuperação: {breathingTestResult.recovery} {sheetResourceUnit} ({hasFlow('tigre','breathing') ? (breathingTestResult.success?'½':'¼') : (breathingTestResult.success?'¼':'⅛')} do máximo) · aplicado: <strong>{breathingTestResult.applied} {sheetResourceUnit}</strong></div></div>}
                                 </>}
                               </div>
                             })()}
@@ -10326,13 +10569,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
     {[
       ['Dano base', baseDamage],
       ['Dano extra', totalExtraDamage],
-      ['CA (incluindo kits)', Math.max(0,Number(read('combat.armor',0))||0)+kitArmorClass],
+      ['Contra-Ataque (CA)', counterAttackDT],
       ['Deslocamento', Math.max(0, applyConditionModifier(Math.max(1, Math.floor((movementActions * dexterity) / (renderOverloaded ? 2 : 1))), activeCombatConditions, 'combat_stats', 'movement'))],
-      ['Ações', movementActions + extraActions],
+      ['Ações por rodada', 1 + movementActions + extraActions],
+      ...(isKisatsutaiSystem ? [['Turnos por rodada', Math.ceil((1 + movementActions + extraActions) / 3)]] : []),
       ['Reações', reactions],
-['Contra-ataque', counterAttackDT],
 ['Constituição', resistance + vigor + kitConstitution],
-['Crítico', criticalValue],
+['Crítico (d20)', `${criticalValue}+`],
 ...(usesFamilyTiers ? [['Essência', read('combat.essence', '—')]] : [])
     ].map(([label, value]) => (
       <div key={String(label)}>
@@ -10362,44 +10605,118 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                         <div className="sheet-summary-notes"><div className="sheet-card-title"><span className="sheet-card-title-icon">✎</span><div><span>HISTÓRIA E TRAÇOS</span><h3>Resumo {forEnemy ? 'do inimigo' : 'do personagem'}</h3></div></div><p>{String(read('identity.appearance','Aparência não registrada'))}</p><p>{String(read('identity.beliefs',''))}</p><p>{String(read('identity.lore',''))}</p></div>
                         <p className="sheet-summary-hint">Esta é uma visão resumida. {renderCanEdit ? 'Clique em “Editar ficha” para acessar todos os campos e detalhes.' : 'Você não tem permissão para editar esta ficha.'}</p>
                       </section>)}
-                        <section className="combat-actions-panel sheet-actions-premium" id={forEnemy ? 'inimigo-acoes' : 'ficha-acoes'}>
-                          <div className="combat-actions-heading"><div><span className="combat-eyebrow">{forEnemy ? 'TURNO DO INIMIGO' : 'TURNO DO PERSONAGEM'}</span><h3>Ações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div><div className="combat-d20-mark">D20</div></div>
-                          <div className="combat-action-grid">
-                            <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque bruto')}>
-                              <span className="combat-action-icon">⚔</span>
-                              <strong>Ataque Bruto</strong>
-                              <small>{Math.floor(1 + strength) <= 0 ? `${2 - Math.floor(1 + strength)}D20 (desvantagem)` : `${Math.floor(1 + strength)}D20`} + Combate ({combat})</small>
-                            </button>
-
-                            <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque ágil')}>
-                              <span className="combat-action-icon">➶</span>
-                              <strong>Ataque Ágil</strong>
-                              <small>{Math.floor(1 + agility) <= 0 ? `${2 - Math.floor(1 + agility)}D20 (desvantagem)` : `${Math.floor(1 + agility)}D20`} + Combate ({combat})</small>
-                            </button>
-
-                            {isKisatsutaiSystem && <><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">🎯</span><strong>Tiro</strong><small>{Math.max(1, 1 + Math.floor(intellect))}D20 + Habilidade ({ability})</small></button><button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">🏹</span><strong>Disparo</strong><small>{Math.max(1, 1 + Math.floor(agility))}D20 + Habilidade ({ability})</small></button></>}
-
-                            <button type="button" className="combat-action-card" onClick={() => performCombatRoll('Ataque especial')}>
-                              <span className="combat-action-icon">✦</span>
-                              <strong>Ataque Especial</strong>
-                              <small>{Math.floor(1 + breathing) <= 0 ? `${2 - Math.floor(1 + breathing)}D20 (desvantagem)` : `${Math.floor(1 + breathing)}D20`} + Habilidade ({ability})</small>
-                            </button>
-                            {isKisatsutaiSystem && <button type="button" className="combat-action-card" aria-expanded={skillTestOpen} onClick={() => setSkillTestOpen(open => !open)}>
-                              <span className="combat-action-icon">✧</span>
-                              <strong>Teste de Perícia</strong>
-                              <small>{skillTestOpen ? 'Fechar teste' : 'Com perícia ou somente atributo'}</small>
-                            </button>}
-                            {isKisatsutaiSystem && <button type="button" className="combat-action-card" aria-expanded={complexActionsOpen} aria-controls="haxbag-complex-actions" onClick={() => setComplexActionsOpen(open => !open)}>
-                              <span className="combat-action-icon">🧠</span>
-                              <strong>Ações Complexas</strong>
-                              <small>{complexActionsOpen ? 'Fechar preparo' : 'Preparar bônus para a próxima ação'}</small>
-                            </button>}
-                            {isKisatsutaiSystem && !forEnemy && <button type="button" className="combat-action-card" aria-expanded={restActionsOpen} aria-controls="haxbag-rest-actions" onClick={() => setRestActionsOpen(open => !open)}>
-                              <span className="combat-action-icon">🛏️</span>
-                              <strong>Descanso</strong>
-                              <small>{restActionsOpen ? 'Fechar opções de descanso' : 'Recuperar PV, PS e PR'}</small>
-                            </button>}
+                        <section className="combat-actions-panel sheet-actions-premium hb-actiondeck-v279" id={forEnemy ? 'inimigo-acoes' : 'ficha-acoes'}>
+                          <div className="combat-actions-heading combat-actions-heading-v278 hb-actiondeck-hero-v279">
+                            <div className="hb-actiondeck-heading-v279">
+                              <span className="combat-eyebrow"><span className="hb-actiondeck-mark-v279" aria-hidden="true">✦</span> {forEnemy ? 'TURNO DO INIMIGO' : 'TURNO DO PERSONAGEM'} <span className="hb-actiondeck-eyebrow-separator-v279">/</span> PAINEL DE COMBATE</span>
+                              <h3>Ações de <em>Combate</em></h3>
+                              <p>Escolha uma ação, confira o resultado e avance para o dano quando acertar.</p>
+                            </div>
+                            <div className="hb-actiondeck-hero-emblem-v279" aria-hidden="true"><span>✧</span><strong>D20</strong><small>KISATSUTAI</small></div>
                           </div>
+                          {isKisatsutaiSystem && <div className="hb-actiondeck-settings-v279" aria-label="Configuração de ataque e crítico">
+                            <div className="hb-actiondeck-critical-v279">
+                              <span className="hb-actiondeck-field-title-v279">✦ MARGEM DE CRÍTICO</span>
+                              <div className="hb-actiondeck-threshold-v279"><strong>{criticalValue}<span>+</span></strong><span>no d20</span></div>
+                              <p>Base {criticalProfile.base}+ · {criticalProfile.agilityBonuses} redução(ões) por Fluxos de AGI</p>
+                              <small>O crítico só gera dano extra ao confirmar o acerto, ou com 20 natural.</small>
+                            </div>
+                            <div className="hb-actiondeck-mode-v279" aria-live="polite">
+                              <span className="hb-actiondeck-field-title-v279">FORMA SELECIONADA</span>
+                              <strong>{attackDamageMode === 'pure' ? 'Dano puro' : `Respiração ${BREATHING_TIER_LABEL[attackBreathingTier]}`}</strong>
+                              <span className="hb-actiondeck-mode-note-v279">{attackDamageMode === 'pure' ? 'Sem gasto de PR' : 'Custo de PR definido na seção Dano'}</span>
+                              <button type="button" className="hb-actiondeck-mode-link-v279" onClick={() => revealDamageSection(forEnemy)}>Configurar em Dano <span aria-hidden="true">↗</span></button>
+                            </div>
+                            <label className="hb-actiondeck-dt-v279" htmlFor={forEnemy ? 'enemy-target-dt-v279' : 'character-target-dt-v279'}>
+                              <span className="hb-actiondeck-field-title-v279">DEFESA DO ALVO · DT</span>
+                              <input id={forEnemy ? 'enemy-target-dt-v279' : 'character-target-dt-v279'} type="number" min="0" step="1" value={attackTargetDt} onChange={event => setAttackTargetDt(event.target.value)} placeholder="Ex.: 18" aria-label="Dificuldade do alvo para o ataque" aria-describedby={forEnemy ? 'enemy-dt-tip-v279' : 'character-dt-tip-v279'} />
+                              <small id={forEnemy ? 'enemy-dt-tip-v279' : 'character-dt-tip-v279'}>Ajuste a DT para reavaliar o mesmo teste, sem rolar novamente.</small>
+                            </label>
+                          </div>}
+                          <div className="hb-actiondeck-status-v279" aria-label="Resumo do turno">
+                            <div className="hb-actiondeck-status-lead-v279"><span className="hb-actiondeck-live-dot-v279" aria-hidden="true"/><strong>Preparado para agir</strong><small>Fluxos e condições considerados na rolagem</small></div>
+                            <div className="hb-actiondeck-status-number-v279"><span>Ações / rodada</span><strong>{1 + movementActions + extraActions}</strong></div>
+                            <div className="hb-actiondeck-status-number-v279"><span>Reações</span><strong>{reactions}</strong></div>
+                            <button type="button" className="hb-actiondeck-status-cta-v279" onClick={() => revealDamageSection(forEnemy)}><span aria-hidden="true">✹</span> Abrir Dano <span aria-hidden="true">↗</span></button>
+                          </div>
+                          <div className="hb-combat-group-title"><div><span>01 · AÇÕES</span><h4>Ações de Combate</h4></div><small>Os ataques ficam separados das utilidades para agilizar o turno.</small></div>
+                          <div className="combat-actions-layout-v277">
+                            <section className="combat-actions-block-v277">
+                              <div className="combat-actions-block-head-v277">
+                                <div><span>OFENSIVA</span><strong>Seus ataques</strong></div>
+                                <small>Role o ataque. O resultado aparecerá logo abaixo.</small>
+                              </div>
+                              <div className="combat-action-grid hb-combat-attacks-grid combat-action-grid--primary">
+                                <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Ataque bruto' ? 'true' : undefined} onClick={() => performCombatRoll('Ataque bruto')}>
+                                  <span className="combat-action-icon">⚔</span>
+                                  <span className="hb-actiondeck-attack-tag-v279">FOR · COMBATE</span><strong>Ataque Bruto</strong>
+                                  <small>{Math.floor(1 + strength) <= 0 ? `${2 - Math.floor(1 + strength)}D20 (desvantagem)` : `${Math.floor(1 + strength)}D20`} + Combate ({combat})</small>
+                                </button>
+                                <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Ataque ágil' ? 'true' : undefined} onClick={() => performCombatRoll('Ataque ágil')}>
+                                  <span className="combat-action-icon">➶</span>
+                                  <span className="hb-actiondeck-attack-tag-v279">AGI · COMBATE</span><strong>Ataque Ágil</strong>
+                                  <small>{Math.floor(1 + agility) <= 0 ? `${2 - Math.floor(1 + agility)}D20 (desvantagem)` : `${Math.floor(1 + agility)}D20`} + Combate ({combat})</small>
+                                </button>
+                                <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Ataque especial' ? 'true' : undefined} onClick={() => performCombatRoll('Ataque especial')}>
+                                  <span className="combat-action-icon">✦</span>
+                                  <span className="hb-actiondeck-attack-tag-v279">{sheetResourceAbbreviation} · HABILIDADE</span><strong>Ataque Especial</strong>
+                                  <small>{Math.floor(1 + breathing) <= 0 ? `${2 - Math.floor(1 + breathing)}D20 (desvantagem)` : `${Math.floor(1 + breathing)}D20`} + Habilidade ({ability})</small>
+                                </button>
+                                {isKisatsutaiSystem && <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Tiro' ? 'true' : undefined} onClick={()=>performCombatRoll('Tiro')}><span className="combat-action-icon">◎</span><span className="hb-actiondeck-attack-tag-v279">INT · HABILIDADE</span><strong>Tiro</strong><small>{Math.max(1, 1 + Math.floor(intellect))}D20 + Habilidade ({ability})</small></button>}
+                                {isKisatsutaiSystem && <button type="button" className="combat-action-card combat-action-card--attack-v278" data-last-rolled={lastCombatTestKey === 'Disparo' ? 'true' : undefined} onClick={()=>performCombatRoll('Disparo')}><span className="combat-action-icon">➤</span><span className="hb-actiondeck-attack-tag-v279">AGI · HABILIDADE</span><strong>Disparo</strong><small>{Math.max(1, 1 + Math.floor(agility))}D20 + Habilidade ({ability})</small></button>}
+                              </div>
+                            </section>
+                            <section className="combat-actions-block-v277 combat-actions-block-v277--support">
+                              <div className="combat-actions-block-head-v277">
+                                <div><span>RECURSOS DE TURNO</span><strong>Ferramentas táticas</strong></div>
+                                <small>Prepare ações, consulte perícias e abra o painel de dano.</small>
+                              </div>
+                              <div className="combat-action-grid combat-action-grid--support">
+                                {isKisatsutaiSystem && <button type="button" className="combat-action-card combat-action-card--utility" data-expanded={skillTestOpen ? "true" : undefined} aria-expanded={skillTestOpen} onClick={() => setSkillTestOpen(open => !open)}>
+                                  <span className="combat-action-icon">✧</span>
+                                  <strong>Teste de Perícia</strong>
+                                  <small>{skillTestOpen ? 'Fechar teste' : 'Com perícia ou somente atributo'}</small>
+                                </button>}
+                                {isKisatsutaiSystem && <button type="button" className="combat-action-card combat-action-card--utility" data-expanded={complexActionsOpen ? "true" : undefined} aria-expanded={complexActionsOpen} aria-controls="haxbag-complex-actions" onClick={() => setComplexActionsOpen(open => !open)}>
+                                  <span className="combat-action-icon">🧠</span>
+                                  <strong>Ações Complexas</strong>
+                                  <small>{complexActionsOpen ? 'Fechar preparo' : 'Preparar bônus para a próxima ação'}</small>
+                                </button>}
+                                {isKisatsutaiSystem && !forEnemy && <button type="button" className="combat-action-card combat-action-card--utility" data-expanded={restActionsOpen ? "true" : undefined} aria-expanded={restActionsOpen} onClick={() => setRestActionsOpen(open => !open)}>
+                                  <span className="combat-action-icon">🛏️</span>
+                                  <strong>Descanso</strong>
+                                  <small>{restActionsOpen ? 'Fechar opções de descanso' : 'Recuperar PV, PS e PR'}</small>
+                                </button>}
+                                <button type="button" className="combat-action-card combat-action-card--utility combat-action-card--accent" aria-expanded={damageSectionOpen[forEnemy ? 'enemy' : 'character']} onClick={() => setDamageSectionOpen(previous => ({...previous,[forEnemy ? 'enemy' : 'character']: !previous[forEnemy ? 'enemy' : 'character'],}))}>
+                                  <span className="combat-action-icon">✹</span>
+                                  <strong>{damageSectionOpen[forEnemy ? 'enemy' : 'character'] ? 'Fechar Dano' : 'Abrir Dano'}</strong>
+                                  <small>Rolar dano puro ou de Forma de Respiração</small>
+                                </button>
+                              </div>
+                            </section>
+                          </div>
+                          <section className={`combat-actions-test-feedback-v278${liveAttackStatus === 'critical' ? ' is-critical' : liveAttackStatus === 'failure' || liveAttackStatus === 'miss' ? ' is-miss' : ''}`} aria-label="Resultado do teste de combate" aria-live="polite">
+                            <div className="combat-actions-test-feedback-header-v278">
+                              <div><span className="combat-actions-kicker-v278">02 · SEU ÚLTIMO TESTE</span><h4>Resultado do ataque</h4></div>
+                              <span className={`combat-actions-outcome-v278 is-${liveAttackStatus}`}>{displayedAttackTest ? liveAttackStatusLabel : combatActionResult && combatResultIsAction ? 'Teste realizado' : 'Aguardando rolagem'}</span>
+                            </div>
+                            {displayedAttackTest ? <div className="combat-actions-test-grid-v278">
+                              <div className="combat-actions-dice-readout-v278"><span>{displayedAttackTest.kind}</span><strong>{displayedAttackTest.total}</strong><small>Resultado total · d20 escolhido: {displayedAttackTest.die}</small></div>
+                              <div className="combat-actions-test-verdict-v278"><span className="hb-actiondeck-verdict-label-v279">CONFIRMAÇÃO DO ACERTO</span><strong>{liveAttackStatusLabel}</strong><p>{liveAttackStatus === 'critical'
+                                ? `Margem ${displayedAttackTest.threshold}+ confirmada. O bônus de crítico será rolado na seção Dano.`
+                                : liveAttackStatus === 'hit'
+                                  ? `O resultado superou a DT ${liveAttackDt}. O ataque acertou sem crítico.`
+                                  : liveAttackStatus === 'miss'
+                                    ? `Resultado ${displayedAttackTest.total} não superou a DT ${liveAttackDt}.`
+                                    : liveAttackStatus === 'failure'
+                                      ? '1 natural: falha crítica. O resultado não acerta, independentemente da DT.'
+                                      : 'Informe a DT do alvo acima para confirmar se o ataque acertou. Um 20 natural confirma o acerto.'}</p>
+                                <small>{displayedAttackTest.breakdown}</small>
+                              </div>
+                              {(liveAttackStatus === 'hit' || liveAttackStatus === 'critical') && <button type="button" className="combat-actions-to-damage-v278" onClick={() => revealDamageSection(forEnemy)}>Continuar para Dano <span aria-hidden="true">↗</span></button>}
+                            </div> : <div className="combat-actions-test-empty-v278"><span className="combat-actions-test-empty-icon-v278" aria-hidden="true">⚄</span><div><strong>{combatActionResult && combatResultIsAction ? 'Última rolagem' : 'Escolha um ataque acima para realizar o teste'}</strong><p>{combatActionResult && combatResultIsAction ? combatActionResult : 'A DT do alvo e os Fluxos aprendidos serão considerados ao avaliar o resultado. O dano e o consumo de PR continuam na seção Dano.'}</p></div></div>}
+                            {displayedAttackTest && <p className="combat-actions-test-footer-v278">Alterar a DT atualiza a verificação usando o mesmo d20. Nenhum dano ou PR é aplicado nesta etapa.</p>}
+                          </section>
                           {isKisatsutaiSystem && (() => {
                             const trainings = (read('skills.extraTrainings', {}) || {}) as Record<string, string>
                             const trainingBonuses = (read('skills.extraTrainingBonuses', {}) || {}) as Record<string, number>
@@ -10454,6 +10771,8 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                     ? `${roll.rolls.length}D20 [${roll.rolls.join(', ')}] (desvantagem: ${roll.result})`
                                     : `${roll.effectiveDiceCount}D20 [${roll.rolls.join(', ')}] (maior: ${roll.result})`
                                   setBlockDamageReduction(null)
+                                  setLastCombatTestKey('Teste de Perícia')
+                                  setLastAttackTest(null)
                                   setCombatActionResult(selected
                                     ? `Teste de Perícia — ${selected.name} (${selected.group}) com ${testAttribute.label} (${testAttribute.value}): ${diceDescription} + Perícia (${effectiveSkillBonus >= 0 ? '+' : ''}${effectiveSkillBonus}; treinamento +${selected.bonus}, condições ${skillConditionBonus >= 0 ? '+' : ''}${skillConditionBonus}, kits ${equippedBonus >= 0 ? '+' : ''}${equippedBonus}${conditionedSkill + equippedBonus > MAX_KISATSUTAI_SKILL_BONUS ? ', teto +25 aplicado' : ''})${attributeConditionBonus ? ` + Condições do atributo (${attributeConditionBonus > 0 ? '+' : ''}${attributeConditionBonus})` : ''} = ${total}.`
                                     : `Teste sem perícia — ${testAttribute.label} (${testAttribute.value}): ${diceDescription}${attributeConditionBonus ? ` + Condições do atributo (${attributeConditionBonus > 0 ? '+' : ''}${attributeConditionBonus})` : ''} = ${total}.`)
@@ -10538,7 +10857,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                 <label><span>2 · 📚 Perícia de arquétipo utilizada</span><select value={chosen?.key || ''} onChange={e => {setComplexSkill(e.target.value);setComplexResult('')}}><option value="">Selecione uma perícia de arquétipo...</option>{extraSkills.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key)}>{skill.label} (+{skill.bonus}){complexPreparations.some(preparation => preparation.sourceSkillKey === skill.key) ? ' · Já usada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>3 · 🎯 Perícia principal beneficiada</span><select value={targetSkill?.key || ''} onChange={event=>setComplexMainSkill(event.target.value)}><option value="">Selecione uma das seis perícias...</option>{COMPLEX_MAIN_SKILLS.map(skill => <option key={skill.key} value={skill.key} disabled={complexPreparations.some(preparation => preparation.targetSkillKey === skill.key)}>{skill.label}{complexPreparations.some(preparation => preparation.targetSkillKey === skill.key) ? ' · Já beneficiada nesta cena' : ''}</option>)}</select></label>
                                 <label><span>🎲 Resultado total do teste</span><input type="number" min="0" step="1" value={complexResult} onChange={e => setComplexResult(e.target.value)} placeholder="Role ou informe o resultado" /></label>
-                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=capKisatsutaiSkillBonus(effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name));const total=roll.result+trained;setComplexResult(String(total));setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
+                                <button type="button" className="secondary-button" disabled={!chosen} onClick={()=>{if(!chosen)return;const attributeValue=complexAttribute==='intelligence'?intellect:complexAttribute==='strength'?strength:complexAttribute==='agility'?agility:complexAttribute==='defense'?defense:resistance;const count=1+Math.floor(attributeValue)+conditionModifier(conditionRules.dice,'status',complexAttribute);const roll=rollAttributeDice(count,complexAttribute==='agility');const trained=capKisatsutaiSkillBonus(effectiveConditionSkill(chosen.bonus,conditionModifiers,'archetype_skill',chosen.key,chosen.name));const total=roll.result+trained;setComplexResult(String(total));setLastCombatTestKey('Ação Complexa');setLastAttackTest(null);setCombatActionResult(`Ação Complexa — ${chosen.label}: ${roll.rolls.join(', ')} (${roll.hasDisadvantage?'menor':'maior'} ${roll.result}) + Perícia de Arquétipo ${trained>=0?'+':''}${trained} = ${total}.`)}}>🎲 Rolar (Atributo + 1)d20 + Perícia</button>
                               </div>
                               <div className="hax-complex-result-preview"><span>🎲 {complexAttribute === 'intelligence' ? 'Intelecto' : complexAttribute === 'strength' ? 'Força' : complexAttribute === 'agility' ? 'Agilidade' : complexAttribute === 'defense' ? 'Defesa' : 'Resistência'}</span><span>📚 {chosen?.label || 'Perícia não selecionada'}</span><span>🎯 {targetSkill?.label || 'Destino não selecionado'}</span></div>
                               <div className="hax-complex-scale">{thresholds.map(tier => <div key={tier.label} className={`hax-complex-tier${validResult && complexBonus === tier.bonus ? ' active' : ''}`}><small>{tier.label}</small><strong>+{tier.bonus}</strong></div>)}</div>
@@ -10557,7 +10876,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                                   }
                                   setComplexPreparations(previous => complexPreparationError(previous,chosen.key,targetSkill.key,result,kitComplexActionCount) ? previous : [...advanceComplexAction(previous),preparation])
                                   setComplexSkill('');setComplexMainSkill('');setComplexResult('')
-                                  setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para ${targetSkill.label} (perícia principal). Uma ação de preparo utilizada.`)
+                                  setLastCombatTestKey('Ação Complexa');setLastAttackTest(null);setCombatActionResult(`Ação Complexa — ${chosen.label}: resultado ${result}, bônus +${complexBonus} para ${targetSkill.label} (perícia principal). Uma ação de preparo utilizada.`)
                                 }}>🎯 Preparar ação</button>
                                 <button type="button" className="secondary-button" disabled={!complexPreparations.some(preparation=>!preparation.consumed)} onClick={()=>{setComplexPreparations(previous=>advanceComplexAction(previous));setCombatActionResult('Uma ação registrada. A duração dos bônus ativos foi reduzida em 1 ação.')}}>⏳ Registrar ação sem rolagem</button>
                                 <button type="button" className="secondary-button" onClick={() => {setComplexPreparations([]);setComplexSkill('');setComplexMainSkill('');setComplexResult('')}}>↺ Nova cena</button>
@@ -10622,35 +10941,40 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           /></div>}
                           <div className="combat-complementary-section">
                             <div className="combat-reactions-heading"><h3>Ações Complementares</h3><p>Role testes e ações auxiliares {forEnemy ? 'do inimigo' : 'do personagem'}.</p></div>
+                            <div className="hb-combat-initiative-toolbar"><div><strong>⚡ Iniciativa</strong><small>Agilidade + Destreza, com dados de kits e bônus situacionais.</small></div><label>Bônus de habilidade / situacional<input type="number" step="1" value={initiativeSituationalBonus} onChange={event => setInitiativeSituationalBonus(event.target.value)} aria-label="Bônus situacional de iniciativa" /></label></div>
                             <div className="combat-action-grid combat-complementary-grid">
                               <button
                                 type="button"
                                 className="combat-action-card"
                                 onClick={() => {
-                                  const diceCount = 1 + kitInitiativeDice
-                                  const rolls = Array.from({ length: diceCount }, () => rollD20())
-                                  const highest = Math.max(...rolls)
+                                  const diceCount = 1 + Math.floor(agility) + kitInitiativeDice
+                                  const roll = rollSheetAttributeDice(diceCount, renderOverloaded)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'dexterity')
-                                  const total = highest + armorDexterity + preparationBonus
+                                  const situational = Number(initiativeSituationalBonus)
+                                  const initiativeBonus = Number.isFinite(situational) ? Math.floor(situational) : 0
+                                  const total = roll.result + armorDexterity + preparationBonus + initiativeBonus
+                                  const totalActions = 1 + movementActions + extraActions
+                                  const secondaryTurns = Math.max(0, Math.ceil(totalActions / 3) - 1)
                                   if (!forEnemy && complexPreparations.some(item => !item.consumed)) setComplexPreparations(previous => advanceComplexAction(previous))
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Iniciativa: ${diceCount}D20 = [${rolls.join(', ')}] (maior: ${highest}) + Destreza de armadura (${armorDexterity})${preparationBonus ? ` + Preparo Destreza (+${preparationBonus})` : ''} = ${total}.`
+                                    `Iniciativa: ${roll.description} + Destreza de armadura (${armorDexterity})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''}${initiativeBonus ? ` + Bônus situacional (${initiativeBonus})` : ''} = ${total}. ${totalActions} ações disponíveis, até 3 por turno.${secondaryTurns ? ` ${secondaryTurns} turno(s) extra(s) com iniciativa ${total / 2}, inseridos automaticamente no Escudo do Mestre.` : ' Nenhum turno extra.'}${hasFlow('raposa','agility') ? ' Sempre Pronto: prioridade em caso de empate.' : ''}`
                                   )
                                   void persistRenderInitiative(total)
                                 }}
                               >
                                 <span className="combat-action-icon">⚡</span>
                                 <strong>Iniciativa</strong>
-                                <small>{1+kitInitiativeDice}D20 + Destreza de armadura ({armorDexterity})</small>
+                                <small>{Math.max(1,1+agility+kitInitiativeDice)}D20 + Destreza ({armorDexterity}){Number(initiativeSituationalBonus) ? ` + ${initiativeSituationalBonus} bônus` : ''}</small>
                               </button>
 
                               <button
                                 type="button"
                                 className="combat-action-card"
                                 onClick={() => {
-                                  const diceCount = 1 + Math.floor(strength)
+                                  const manobraFlowAdvantage = hasFlow('raposa','strength') ? 1 : 0
+                                  const diceCount = 1 + Math.floor(strength) + manobraFlowAdvantage
                                   const roll = rollSheetAttributeDice(diceCount)
                                   const preparationBonus = forEnemy ? 0 : pendingComplexBonus(complexPreparations,'vigor')
                                   const total = roll.result + vigor + preparationBonus
@@ -10658,13 +10982,13 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 
                                   setBlockDamageReduction(null)
                                   setCombatActionResult(
-                                    `Manobra de Luta: ${roll.description} + Vigor (${vigor})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''} = ${total}.`
+                                    `Manobra de Luta: ${roll.description} + Vigor (${vigor})${preparationBonus ? ` + Preparo (+${preparationBonus})` : ''}${manobraFlowAdvantage ? ' · Esforço Otimizado: uma vantagem (+1d20, aplicada somente uma vez)' : ''} = ${total}.`
                                   )
                                 }}
                               >
                                 <span className="combat-action-icon">⚔</span>
                                 <strong>Manobra de Luta</strong>
-                                <small>{Math.floor(1 + strength) <= 0 ? `${2 - Math.floor(1 + strength)}D20 (desvantagem)` : `${Math.floor(1 + strength)}D20`} + Vigor ({vigor})</small>
+                                <small>{1 + Math.floor(strength) + (hasFlow('raposa','strength') ? 1 : 0) <= 0 ? `${2 - (1 + Math.floor(strength) + (hasFlow('raposa','strength') ? 1 : 0))}D20 (desvantagem)` : `${1 + Math.floor(strength) + (hasFlow('raposa','strength') ? 1 : 0)}D20`} + Vigor ({vigor}){hasFlow('raposa','strength') ? ' · +1D20 Esforço Otimizado' : ''}</small>
                               </button>
 
                               <button
@@ -10712,7 +11036,7 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
                           </div>
 
                           <div className="combat-reactions-section" id={forEnemy ? 'inimigo-reacoes' : 'ficha-reacoes'}>
-                            <div className="combat-reactions-heading"><h3>Reações</h3><p>Escolha uma ação para rolar os dados automaticamente.</p></div>
+                            <div className="combat-reactions-heading"><h3>Reações e defesa</h3><p>Bloqueio pode ser crítico; Esquiva não possui crítico. Informe a DT do inimigo para calcular a proteção.</p></div>
                             <div className="combat-action-grid combat-reactions-grid">
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Bloqueio', dodgeTarget)}><span className="combat-action-icon">▣</span><strong>Bloqueio</strong><small>{1 + Math.floor(defense) <= 0 ? `${2 - (1 + Math.floor(defense))}D20 (desvantagem)` : `${1 + Math.floor(defense)}D20`} + Constituição</small></button>
                             <button type="button" className="combat-action-card" onClick={()=>performCombatRoll('Esquiva', dodgeTarget)}><span className="combat-action-icon">↗</span><strong>Esquiva</strong><small>
@@ -10767,7 +11091,77 @@ const dt = counterAttackDT
                             </div>
                           </div>
 
-                          <div className="combat-action-result"><div className="combat-result-title"><span>Resultado da rolagem</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && blockDamageReduction !== 1 && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div>{blockDamageReduction !== 1 && (
+                          <div className="hb-combat-damage-access-v276" id={forEnemy ? 'inimigo-dano' : 'ficha-dano'}>
+                            <button
+                              type="button"
+                              className={`hb-combat-damage-toggle-v276${damageSectionOpen[forEnemy ? 'enemy' : 'character'] ? ' is-open' : ''}`}
+                              aria-expanded={damageSectionOpen[forEnemy ? 'enemy' : 'character']}
+                              aria-controls={forEnemy ? 'inimigo-dano-conteudo' : 'ficha-dano-conteudo'}
+                              onClick={() => setDamageSectionOpen(previous => ({
+                                ...previous,
+                                [forEnemy ? 'enemy' : 'character']: !previous[forEnemy ? 'enemy' : 'character'],
+                              }))}
+                            >
+                              <span className="hb-combat-damage-toggle-icon-v276" aria-hidden="true">⚔</span>
+                              <span className="hb-combat-damage-toggle-copy-v276"><strong>Dano</strong><small>Rolar dano puro ou de Forma de Respiração</small></span>
+                              <span className="hb-combat-damage-toggle-action-v276">{damageSectionOpen[forEnemy ? 'enemy' : 'character'] ? 'Fechar' : 'Abrir'} <span aria-hidden="true">{damageSectionOpen[forEnemy ? 'enemy' : 'character'] ? '⌃' : '⌄'}</span></span>
+                            </button>
+                            <div
+                              id={forEnemy ? 'inimigo-dano-conteudo' : 'ficha-dano-conteudo'}
+                              className="hb-combat-damage-content-v276"
+                              role="region"
+                              aria-label="Rolagem de dano causado"
+                              hidden={!damageSectionOpen[forEnemy ? 'enemy' : 'character']}
+                            >
+                          <CombatDamageRollerV274
+                            key={`${forEnemy ? 'enemy' : 'character'}-${renderSubjectId ?? 'unknown'}`}
+                            id={forEnemy ? 'inimigo-dano-rolagem' : 'ficha-dano-rolagem'}
+                            baseFormula={String(baseDamage)}
+                            weaponFormula={equippedWeaponDamage}
+                            weaponName={equippedWeapon?.name}
+                            kitBonus={kitExtraDamage}
+                            dragonStrength={isKisatsutaiSystem && criticalProfile.dragaoStrength}
+                            corvoStrength={isKisatsutaiSystem && criticalProfile.corvoStrength}
+                            criticalThreshold={criticalValue}
+                            mode={attackDamageMode}
+                            onModeChange={setAttackDamageMode}
+                            tier={attackBreathingTier}
+                            onTierChange={setAttackBreathingTier}
+                            currentPR={Math.max(0, Number(read('status.current.pr', derived[2][1])) || 0)}
+                            resourceLabel={sheetResourceAbbreviation}
+                            canSpendPR={renderCanEdit && isKisatsutaiSystem}
+                            onSpendPR={async cost => {
+                              if (!renderCanEdit || !isKisatsutaiSystem || !Number.isSafeInteger(cost) || cost <= 0) return false
+                              const current = Number(read('status.current.pr', derived[2][1]))
+                              if (!Number.isFinite(current) || current < cost) return false
+                              const saved = data.status && typeof data.status === 'object' ? data.status : {}
+                              const currentSaved = saved.current && typeof saved.current === 'object' ? saved.current : {}
+                              const next = {
+                                ...data,
+                                status: {
+                                  ...saved,
+                                  current: {
+                                    ...currentSaved,
+                                    pv: Number(read('status.current.pv', derived[0][1])),
+                                    ps: Number(read('status.current.ps', derived[1][1])),
+                                    pr: current - cost,
+                                  },
+                                },
+                              }
+                              const enemyDraftBefore = forEnemy ? JSON.stringify(data, null, 2) : null
+                              const success = await persistRenderConditions(next)
+                              if (!success) {
+                                if (enemyDraftBefore !== null) updateRenderDraft(enemyDraftBefore)
+                                return false
+                              }
+                              setNotice(`Forma de Respiração: ${cost} ${sheetResourceAbbreviation} consumidos.`)
+                              return true
+                            }}
+                          />
+                            </div>
+                          </div>
+
+                          <div hidden={combatResultIsAction && blockDamageReduction === null} className={`combat-action-result hb-combat-roll-result${combatActionResult.includes('ACERTO CRÍTICO') ? ' hb-combat-roll-result--critical' : combatActionResult.includes('Falha crítica') ? ' hb-combat-roll-result--failure' : ''}`} role="status" aria-live="polite"><div className="combat-result-title"><span>Resultado da última ação</span><span className="combat-result-die">D20</span></div><p>{combatActionResult || 'Nenhuma ação rolada ainda. Escolha uma das ações acima.'}</p>{blockDamageReduction !== null && blockDamageReduction !== 1 && <div className="combat-block-damage-entry"><div className="combat-block-damage-heading"><strong>Dano recebido</strong><button type="button" className="combat-block-damage-close" onClick={()=>{setBlockDamageReduction(null);setBlockIncomingDamage('')}} aria-label="Fechar dano total do inimigo">Fechar</button></div>{blockDamageReduction !== 1 && (
 <label htmlFor="combat-incoming-damage-type">
 
   Categoria do dano recebido
@@ -10824,7 +11218,7 @@ const dt = counterAttackDT
     )
   })()}
 </div><button type="button" className="combat-counter-button" onClick={applyBlockedDamage} disabled={blockIncomingDamage.trim() === '' || !Number.isFinite(Number(blockIncomingDamage)) || Number(blockIncomingDamage) < 0}>Aplicar dano aos PV</button></div>}</div>
-                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>1D20 + Destreza de armadura. Habilidades podem conceder D20 adicionais.</span></p>
+                          <details className="combat-rules"><summary>Consultar regras das ações</summary><div className="combat-rules-grid"><p><strong>Ataque Bruto</strong><span>1 + Força d20 + Combate.</span></p><p><strong>Ataque Ágil</strong><span>1 + Agilidade d20 + Combate.</span></p><p><strong>Ataque Especial</strong><span>1 + Resistência d20 + Habilidade.</span></p><p><strong>Iniciativa</strong><span>(1 + AGI)d20, mantendo o maior resultado, + Destreza de armadura; kits e habilidades podem adicionar dados ou bônus. Cada turno comporta até 3 ações; turno extra usa metade da iniciativa.</span></p>
 <p><strong>Manobra de Luta</strong><span>1 + Força D20 (utiliza o maior resultado) + Vigor.</span></p>
 <p><strong>Resistência Física</strong><span>1 + Defesa D20 (utiliza o maior resultado) + Resistência.</span></p>
 <p><strong>Teste de Sanidade</strong><span>1 + Intelecto D20 (utiliza o maior resultado) + Mental.</span></p><p><strong>Bloqueio</strong><span>(Defesa + 1)d20 + Constituição. Falha: nega ¼ do dano; sucesso (resultado maior que DT): nega ½ do dano; crítico: dano completo negado.</span></p><p><strong>Esquiva</strong><span>1 + Agilidade d20 + Destreza de armadura. Se alcançar a DT, nega 100% do dano.</span></p><p>
@@ -11504,6 +11898,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
 .sheet-editor-premium[open] > summary { border-bottom:1px solid var(--sheet-line); }
 .sheet-editor-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); align-items:start; gap:13px; margin-top:0; padding:19px; }
 .sheet-editor-fields > label { min-width:0; }
+.sheet-editor-fields > .hb-flows-panel-fullwidth { grid-column: 1 / -1; width:100%; min-width:0; }
 .sheet-editor-fields input,.sheet-editor-fields select,.sheet-editor-fields textarea { max-width:100%; box-sizing:border-box; border-radius:10px !important; }
 .sheet-editor-fields :focus-visible { outline:2px solid var(--sheet-accent); outline-offset:2px; }
 .sheet-quick-nav button:active,.sheet-library-open:active { transform:scale(.98); }
@@ -13396,7 +13791,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
           /></DeferredModule>}
           </div>
           <div className="hb-v129-section hb-v129-friends" id="hb-v129-panel-friends" role="tabpanel" aria-labelledby="hb-v129-tab-friends" hidden={profileSection!=='friends'}>
-            <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <DeferredModule><FriendsPanel
+            <div id="hb-social-hub">{(socialOpened || profileSection === 'friends') && <SocialRuntimeGuard><DeferredModule><FriendsPanel
               active={profileSection === 'friends'}
               isSiteAdmin={isSiteAdmin}
               selectedTab={socialNavigationTab}
@@ -13412,7 +13807,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                 avatarPosition: profilePhotoUrls.avatarPosition,
                 coverPosition: profilePhotoUrls.coverPosition,
               }}
-            /></DeferredModule>}</div>
+            /></DeferredModule></SocialRuntimeGuard>}</div>
           </div>
           {previewMyPublicProfile && session && <DeferredModule><PublicAdventurerProfile isSelf person={{id:session.user.id,display_name:String(displayName),username:accountUsername}} onClose={()=>setPreviewMyPublicProfile(false)}/></DeferredModule>}
           {commentAuthorProfile && session && <DeferredModule><PublicAdventurerProfile person={commentAuthorProfile} isSelf={commentAuthorProfile.id===session.user.id} onClose={()=>setCommentAuthorProfile(null)}/></DeferredModule>}
@@ -14053,12 +14448,12 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
             </div>
           </div>
         </div>
-        <SheetSectionNav label="Navegação da ficha do inimigo" sections={enemyEditingSheet ? [
+        <SheetSectionNav label="Navegação da ficha do inimigo" onSelect={id => { if (id === 'inimigo-dano') { revealDamageSection(true); return true }; return false }} sections={enemyEditingSheet ? [
           ['✎', 'Edição', 'inimigo-edicao'], ['⚔', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'],
           ['✺', 'Condições', 'inimigo-condicoes'], ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
         ] : [
           ['♥', 'Status', 'inimigo-status'], ['✦', 'Atributos', 'inimigo-atributos'], ['✧', 'Perícias', 'inimigo-pericias'],
-          ['⚔', 'Combate', 'inimigo-combate'], ['◈', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'],
+          ['⚔', 'Combate', 'inimigo-combate'], ['◈', 'Ações', 'inimigo-acoes'], ['↶', 'Reações', 'inimigo-reacoes'], ['✹', 'Dano', 'inimigo-dano'],
           ['✺', 'Condições', 'inimigo-condicoes'], ['⛨', 'Armadura', 'inimigo-armadura-protecao'], ['▤', 'Inventário', 'inimigo-inventario'],
         ]} />
         {renderSharedSheetCore(true)}
@@ -14661,7 +15056,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     <div>
                       <span className="hb-kicker">02 · ORDEM DE COMBATE</span>
                       <h3 id="hb-ms-initiative-heading">⚡ Iniciativa da batalha</h3>
-                      <p>Personagens e inimigos juntos, da maior iniciativa para a menor.</p>
+                      <p>Personagens e inimigos juntos, da maior iniciativa para a menor. Turnos extras entram com metade da iniciativa principal.</p>
                     </div>
                     <span className="hb-ms-section-count">{masterShieldInitiativeEntries.filter(entry => entry.initiative !== null).length} de {masterShieldInitiativeEntries.length} prontos</span>
                   </div>
@@ -14672,7 +15067,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         <div className="hb-ms-turn-copy">
                           <span className="hb-kicker">CONTROLE DO ENCONTRO</span>
                           <strong>Rodada {activeShieldDesk.round}</strong>
-                          <small aria-live="polite">{activeShieldTurn ? `Turno de ${activeShieldTurn.name}` : masterShieldReadyTurns.length ? 'Escolha o primeiro turno ou avance para começar.' : 'Registre iniciativas para iniciar a rodada.'}</small>
+                          <small aria-live="polite">{activeShieldTurn ? `Turno de ${activeShieldTurn.name}${activeShieldTurn.turnSlot ? ` (extra ${activeShieldTurn.turnSlot})` : ''}` : masterShieldReadyTurns.length ? 'Escolha o primeiro turno ou avance para começar.' : 'Registre iniciativas para iniciar a rodada.'}</small>
                         </div>
                         <div className="hb-ms-turn-actions">
                           <button type="button" className="secondary-button" disabled={!masterShieldReadyTurns.length || !shieldDeskKey || (activeShieldTurnIndex === 0 && activeShieldDesk.round === 1)}
@@ -14684,7 +15079,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         </div>
                       </div>
                       <div className="hb-ms-initiative-toolbar">
-                        <p>As iniciativas continuam salvas nas fichas. O marcador de turno e rodada é sincronizado entre mestres da campanha.</p>
+                        <p>As iniciativas principais continuam salvas nas fichas; turnos extras são calculados automaticamente por Agilidade e Fluxos. O marcador de turno permanece neste navegador.</p>
                         <button type="button" className="secondary-button" style={{ padding: '8px 12px', fontSize: 12 }}
                           disabled={sheetSaving || enemyPartySavingId !== null || masterShieldLoading ||
                             !masterShieldInitiativeEntries.some(entry => entry.initiative !== null)}
@@ -14697,14 +15092,14 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                         <p className="master-shield-empty">Nenhum personagem ou inimigo participa desta batalha.</p>}
                       {!masterShieldLoading && masterShieldInitiativeEntries.length > 0 &&
                         <div className="hb-ms-combined-initiative-list">
-                          {masterShieldInitiativeEntries.map((entry, index) => (
-                            <div className={`hb-ms-initiative-row hb-ms-initiative-${entry.kind}${index === 0 && entry.initiative !== null ? ' hb-ms-initiative-leader' : ''}${activeShieldDesk.turn === `${entry.kind}:${entry.id}` && entry.initiative !== null ? ' hb-ms-turn-active' : ''}`} key={`${entry.kind}-${entry.id}`} aria-current={activeShieldDesk.turn === `${entry.kind}:${entry.id}` && entry.initiative !== null ? 'step' : undefined}>
+                          {masterShieldTurnEntries.map((entry, index) => (
+                            <div className={`hb-ms-initiative-row hb-ms-initiative-${entry.kind}${entry.turnSlot ? ' hb-ms-initiative-extra' : ''}${index === 0 && entry.initiative !== null ? ' hb-ms-initiative-leader' : ''}${activeShieldDesk.turn === masterShieldTurnKey(entry) && entry.initiative !== null ? ' hb-ms-turn-active' : ''}`} key={masterShieldTurnKey(entry)} aria-current={activeShieldDesk.turn === masterShieldTurnKey(entry) && entry.initiative !== null ? 'step' : undefined}>
                               <div className="hb-ms-initiative-identity">
                                 <strong className="hb-ms-initiative-rank" aria-label={`${index + 1}ª posição`}>{index + 1}<small>º</small></strong>
                                 <span className="hb-ms-initiative-avatar" aria-hidden="true">{entry.emoji || (entry.kind === 'enemy' ? '👹' : '🧑')}</span>
                                 <div className="hb-ms-initiative-person">
                                   <strong>{entry.name}</strong>
-                                  <small>{entry.kind === 'enemy' ? '⚔ Inimigo' : '♙ Personagem'}{activeShieldDesk.turn === `${entry.kind}:${entry.id}` && entry.initiative !== null ? ' · TURNO ATUAL' : ''}</small>
+                                  <small>{entry.kind === 'enemy' ? '⚔ Inimigo' : '♙ Personagem'}{entry.turnSlot > 0 ? ` · TURNO EXTRA ${entry.turnSlot} (½ da iniciativa)` : ''}{activeShieldDesk.turn === masterShieldTurnKey(entry) && entry.initiative !== null ? ' · TURNO ATUAL' : ''}</small>
                                 </div>
                               </div>
                               <div className="hb-ms-initiative-score">
@@ -14712,11 +15107,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                                   {entry.initiative ?? 'Não rolou'}
                                 </strong>
                                 {entry.initiative !== null && <button type="button" className="hb-ms-set-turn"
-                                  disabled={!shieldDeskKey || activeShieldDesk.turn === `${entry.kind}:${entry.id}`}
-                                  onClick={() => updateMasterShieldDesk({ turn: `${entry.kind}:${entry.id}` })}>
-                                  {activeShieldDesk.turn === `${entry.kind}:${entry.id}` ? 'Em turno' : 'Definir turno'}
+                                  disabled={!shieldDeskKey || activeShieldDesk.turn === masterShieldTurnKey(entry)}
+                                  onClick={() => updateMasterShieldDesk({ turn: masterShieldTurnKey(entry) })}>
+                                  {activeShieldDesk.turn === masterShieldTurnKey(entry) ? 'Em turno' : 'Definir turno'}
                                 </button>}
-                                {entry.initiative !== null && (
+                                {entry.initiative !== null && entry.turnSlot === 0 && (
                                   <button type="button" className="secondary-button"
                                     disabled={sheetSaving || enemyPartySavingId !== null}
                                     onClick={() => entry.kind === 'enemy'
@@ -15186,12 +15581,12 @@ disabled={
   </div>
 )}
                   </div>
-                                     <SheetSectionNav label="Navegação da ficha" sections={editingSheet ? [
+                                     <SheetSectionNav label="Navegação da ficha" onSelect={id => { if (id === 'ficha-dano') { revealDamageSection(false); return true }; return false }} sections={editingSheet ? [
                      ['✎', 'Edição', 'ficha-edicao'], ['⚔', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'],
                      ['✺', 'Condições', 'ficha-condicoes'], ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
                    ] : [
                      ['♥', 'Status', 'ficha-status'], ['✦', 'Atributos', 'ficha-atributos'], ['✧', 'Perícias', 'ficha-pericias'],
-                     ['⚔', 'Combate', 'ficha-combate'], ['◈', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'],
+                     ['⚔', 'Combate', 'ficha-combate'], ['◈', 'Ações', 'ficha-acoes'], ['↶', 'Reações', 'ficha-reacoes'], ['✹', 'Dano', 'ficha-dano'],
                      ['✺', 'Condições', 'ficha-condicoes'], ['⛨', 'Armadura', 'ficha-armadura-protecao'], ['▤', 'Inventário', 'ficha-inventario'],
                    ]} />
                   {renderSharedSheetCore(false)}

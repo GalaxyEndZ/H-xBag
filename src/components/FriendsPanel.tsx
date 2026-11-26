@@ -21,6 +21,9 @@ import SiteAdministrationV234 from './SiteAdministrationV234'
 import SocialExpansionV245 from './SocialExpansionV245'
 import { useSocialV245Chat } from './useSocialV245Chat'
 import './SocialRedesignV232.css'
+import './SocialRedesignV264.css'
+import SocialNavigatorV265 from './SocialNavigatorV265'
+import ChatReactionPickerV266 from './ChatReactionPickerV266'
 
 type Person = {
   person_id: string
@@ -108,13 +111,16 @@ const pageInfo:Record<SocialTab,{kicker:string;title:string;description:string;i
 
 export default function FriendsPanel({ campaignId, campaignName, canInvite, active = true, isSiteAdmin = false, selectedTab, onSelectTab, onViewOwnProfile, onEditOwnProfile, profileIdentity }: Props) {
   const [internalTab,setInternalTab] = useState<Tab>('feed')
+  const [focusedPostId,setFocusedPostId] = useState('')
+  const [focusRequest,setFocusRequest] = useState(0)
   const tab = selectedTab ?? internalTab
   const setTab = (next:Tab) => {
+    if(next!=='feed')setFocusedPostId('')
     setInternalTab(next)
     onSelectTab?.(next)
     // A área social é longa: em telas menores, mostrar a nova aba após a navegação.
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      window.requestAnimationFrame(() => document.getElementById('hb-social-page-heading')?.scrollIntoView({behavior:'smooth',block:'start'}))
+      window.requestAnimationFrame(() => document.getElementById('hb-social-page-heading')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}))
     }
   }
   const [userId,setUserId] = useState('')
@@ -396,9 +402,10 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     if(!active || tab!=='discover'){setSearchBusy(false);return}
     if(search.trim().length<2){setSearchResults([]);setSearchBusy(false);return}
     setSearchResults([])
+    // Evita mostrar 'nenhum perfil' durante o debounce da nova pesquisa.
+    setSearchBusy(true)
     let canceled=false
     const timer=window.setTimeout(async()=>{
-      setSearchBusy(true)
       try {
         const rows=await rpc<Person[]>('hax_social_search',{p_query:search.trim()})
         if(!canceled)setSearchResults(rows||[])
@@ -789,7 +796,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       canReport={post.author_id!==userId} onReport={()=>setLegacyReportPost(post)}
       busy={!!busy||!!likePending[post.post_id]}
     /></footer></article>
-  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-v189 hb-social-v201 hb-social-v214 hb-social-v232 hb-social-page-${tab} ${readingMode&&tab==='feed'?'hb-v214-reading-mode':''}`} aria-label="Comunidade do HäxBag">
+  return <section className={`hb-friends-panel hb-social-hub hb-social-v158 hb-social-v160 hb-social-v161 hb-social-v162 hb-social-v163 hb-social-v180 hb-social-v189 hb-social-v201 hb-social-v214 hb-social-v232 hb-social-v264 hb-social-v265 hb-social-page-${tab} ${readingMode&&tab==='feed'?'hb-v214-reading-mode':''}`} aria-label="Comunidade do HäxBag">
+    <a className="hb-v265-skip" href="#hb-social-page-heading">Pular para o conteúdo do Social</a>
     <div className="hb-v158-social-columns">
       <aside className="hb-v158-social-sidebar" aria-label="Sua identidade e navegação da comunidade">
         <div className="hb-v232-brand" aria-label="HäxBag Social"><span className="hb-v232-brand-glyph" aria-hidden="true">✧</span><div><strong>HäxBag <em>Social</em></strong><small>Um mundo de histórias</small></div></div>
@@ -820,7 +828,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         </div>
       </aside>
       <div className="hb-v158-social-content">
-    <header className="hb-social-hero hb-v160-hero" id="hb-social-page-heading">
+    <header className="hb-social-hero hb-v160-hero" id="hb-social-page-heading" tabIndex={-1}>
       <div className="hb-v160-hero-copy"><span className="hb-social-overline">HÄXBAG / SOCIAL / {info.kicker}</span><h2><span className="hb-v160-hero-icon" aria-hidden="true">{info.icon}</span>{info.title}</h2><p>{info.description}</p></div>
       <div className="hb-v160-hero-actions">
         {tab!=='feed'&&<button type="button" className="hb-v160-hero-main" onClick={()=>setTab('feed')}>✦ Ver feed</button>}
@@ -835,6 +843,8 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       <button type="button" className={tab==='events'?'is-active':''} onClick={()=>setTab('events')}><span aria-hidden="true">◷</span> Eventos</button><button type="button" className={tab==='tablefinder'?'is-active':''} onClick={()=>setTab('tablefinder')}><span aria-hidden="true">⚔</span> Procurar mesa</button>
       <button type="button" className={tab==='saved'?'is-active':''} onClick={()=>setTab('saved')}><span aria-hidden="true">▤</span> Salvos</button>
       <button type="button" className={tab==='messages'?'is-active':''} onClick={()=>setTab('messages')}><span aria-hidden="true">✉</span> Mensagens {summary.unread>0&&<em>{summary.unread}</em>}</button>
+      <button type="button" className={tab==='notifications'?'is-active':''} onClick={()=>setTab('notifications')}><span aria-hidden="true">◉</span> Notificações</button>
+      <SocialNavigatorV265 active={active} currentTab={tab} entries={tabs.map(item=>({...item,description:pageInfo[item.id].description}))} onNavigate={next=>{setTab(next);setNotice('');setError('')}}/>
     </div>
     <div className="hb-social-stats hb-v160-stats" aria-label="Resumo das conexões">
       {([{id:'following',icon:'↗',count:summary.following,label:'Seguindo'}, {id:'followers',icon:'↙',count:summary.followers,label:'Seguidores'}, {id:'friends',icon:'♧',count:summary.friends,label:'Amigos'}, {id:'messages',icon:'✉',count:summary.unread,label:'Não lidas'}] as const).map(stat=><button key={stat.id} type="button" className={tab===stat.id?'is-current':''} onClick={()=>setTab(stat.id)} aria-label={`${stat.count} ${stat.label}. Abrir ${stat.id==='messages'?'mensagens':stat.label.toLowerCase()}`}><span className="hb-v160-stat-icon" aria-hidden="true">{stat.icon}</span><span><strong>{stat.count}</strong><small>{stat.label}</small></span><span className="hb-v160-stat-arrow" aria-hidden="true">↗</span></button>)}
@@ -859,7 +869,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         <div className="hb-social-feed-header hb-v214-feed-heading"><div><span className="hb-social-overline">LINHA DO TEMPO</span><h3>Publicações da comunidade</h3><small className="hb-v214-feed-caption">Histórias, personagens, enquetes e fotos em uma só linha do tempo.</small></div><div className="hb-social-segments" role="group" aria-label="Filtrar publicações">{([['all','Comunidade'],['following','Seguindo'],['friends','Amigos'],['mine','Minhas']] as const).map(([key,label])=><button type="button" key={key} aria-pressed={feedScope===key} className={feedScope===key?'selected':''} onClick={()=>setFeedScope(key)}>{label}</button>)}</div></div>
         <div className="hb-v163-feed-tools hb-v214-feed-tools"><label className="hb-v163-feed-search"><span>⌕</span><input type="search" placeholder="Buscar nas publicações carregadas…" aria-label="Buscar no feed" value={feedSearch} onChange={e=>setFeedSearch(e.target.value)} /></label><label className="hb-v163-photo-filter"><input type="checkbox" checked={onlyPhotos} onChange={e=>setOnlyPhotos(e.target.checked)} />▧ Com fotos</label><label className="hb-v163-post-order">Ordem <select value={feedOrder} onChange={e=>setFeedOrder(e.target.value as 'recent'|'oldest'|'popular')}><option value="recent">Mais recentes</option><option value="popular">Mais interações</option><option value="oldest">Mais antigas</option></select></label><button type="button" className={`hb-v214-reading-toggle ${readingMode?'is-on':''}`} aria-pressed={readingMode} title={readingMode?'Voltar ao layout normal':'Ampliar a área de leitura'} onClick={()=>setReadingMode(value=>!value)}><span aria-hidden="true">{readingMode?'◧':'▤'}</span> {readingMode?'Visão normal':'Modo leitura'}</button></div>
         <SocialV231Suite page="feed" userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username}
-          onNavigate={next=>setTab(next)}
+          onNavigate={next=>setTab(next)} focusPostId={focusedPostId} focusRequest={focusRequest}
           onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}
           legacyPosts={feedLoaded?visiblePosts.filter(post=>!mutedLegacyIds.has(post.author_id)).map(post=>({...post,pinned:pinnedLegacyIds.has(post.post_id),engagement:Math.max(0,Number(post.like_count)||0)+Math.max(0,commentCounts[post.post_id]||0)})):[]} renderLegacyPost={id=>{const post=visiblePosts.find(item=>item.post_id===id&&!mutedLegacyIds.has(item.author_id));return post?renderLegacyFeedPost(post):null}}
           feedScope={feedScope} feedSearch={feedSearch} onlyPhotos={onlyPhotos} feedOrder={feedOrder}
@@ -883,7 +893,15 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     {tab==='administration'&&(canSeeAdministration
       ? <SiteAdministrationV234 userId={userId} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}} />
       : <section className="hb-social-empty" role="alert"><h3>Área restrita</h3><p>O Painel Administrativo é exclusivo dos administradores globais do HäxBag.</p><button type="button" onClick={()=>setTab('feed')}>Voltar ao Social</button></section>)}
-    {(['communities','saved','events','notifications','activity','moderation'] as SocialV231Page[]).includes(tab as SocialV231Page)&&<SocialV231Suite page={tab as SocialV231Page} userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username} onNavigate={next=>setTab(next)} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}/>}
+    {(['communities','saved','events','notifications','activity','moderation'] as SocialV231Page[]).includes(tab as SocialV231Page)&&<SocialV231Suite page={tab as SocialV231Page} userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username} onNavigate={next=>setTab(next)} onOpenPost={id=>{
+      setFeedScope('all')
+      setFeedSearch('')
+      setOnlyPhotos(false)
+      setFeedOrder('recent')
+      setFocusedPostId(id)
+      setFocusRequest(request=>request+1)
+      setTab('feed')
+    }} onViewProfile={id=>{if(id===userId)onViewOwnProfile?.();else setProfile({id,display_name:'Aventureiro'})}}/>}
     {(['showcase','tablefinder','trends','insights','security','characternews'] as Tab[]).includes(tab)&&<SocialExpansionV245 page={tab as 'showcase'|'tablefinder'|'trends'|'insights'|'security'|'characternews'} userId={userId} onViewProfile={id=>id===userId?onViewOwnProfile?.():setProfile({id,display_name:'Aventureiro'})} onNavigate={next=>setTab(next)}/>}
 
     {tab==='messages'&&<section className={`hb-social-chat-shell hb-v160-chat hb-v201-chat ${selectedChat?'has-active-chat':''}`} aria-label="Mensagens privadas">
@@ -950,7 +968,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
                     </>}
                     {v245Chat.reactions.some(r=>r.message_id===message.message_id)&&<div className="hb-v245-chat-reactions">{v245Chat.emojiOptions.filter(emoji=>v245Chat.reactions.some(r=>r.message_id===message.message_id&&r.emoji===emoji)).map(emoji=><button type="button" key={emoji} disabled={v245Chat.busy} className={v245Chat.reactions.some(r=>r.message_id===message.message_id&&r.user_id===userId&&r.emoji===emoji)?'is-selected':''} onClick={()=>void v245Chat.react(message.message_id,emoji)}>{emoji} {v245Chat.reactions.filter(r=>r.message_id===message.message_id&&r.emoji===emoji).length}</button>)}</div>}
                     <div className="hb-v201-message-footer">
-                      {!message.deleted_at&&<div className="hb-v201-message-tools"><details className="hb-v245-chat-react-menu"><summary aria-label="Reagir à mensagem">☺ Reagir</summary><div>{v245Chat.emojiOptions.map(emoji=><button key={emoji} type="button" disabled={v245Chat.busy} onClick={()=>void v245Chat.react(message.message_id,emoji)}>{emoji}</button>)}</div></details>
+                      {!message.deleted_at&&<div className="hb-v201-message-tools"><ChatReactionPickerV266 emojis={v245Chat.emojiOptions} busy={v245Chat.busy} onReact={emoji=>v245Chat.react(message.message_id,emoji)} />
                         <button type="button" disabled={v245Chat.busy} onClick={()=>void v245Chat.pin(message.message_id)}>{v245Chat.pins.some(p=>p.message_id===message.message_id)?'◉ Desafixar':'◇ Fixar'}</button>
                         {own&&!message.image_path&&new Date(message.created_at).getTime()>Date.now()-900000&&<button type="button" disabled={v245Chat.busy} onClick={()=>void v245Chat.edit(message.message_id,message.body)}>Editar</button>}
 <button type="button" onClick={()=>{setReplyMessage(message);setMessageDraft(value=>value)}}>↪ Responder</button>

@@ -1,0 +1,60 @@
+/* V265 – Navegação rápida acessível; assume os tokens da temporada, sem substituir menus. */
+.hb-social-v265 .hb-v265-trigger{display:inline-flex;align-items:center;gap:9px;margin-left:auto;min-height:41px;padding:8px 13px!important;border:1px solid var(--s264-stroke-hot)!important;border-radius:11px!important;background:var(--s264-elevated)!important;color:var(--s264-text)!important;font-weight:770!important}
+.hb-social-v265 .hb-v265-trigger:hover{background:var(--s264-soft)!important;border-color:var(--s264-accent)!important}
+.hb-v265-trigger kbd,.hb-v265-dialog kbd{font:600 .68rem ui-monospace,SFMono-Regular,Consolas,monospace;padding:3px 5px;border:1px solid var(--s264-stroke-hot,#5b5d57);border-radius:5px;color:var(--s264-muted,#aeb7b1);background:var(--s264-base,#17201f)}
+.hb-v265-backdrop{position:fixed;z-index:99999;inset:0;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:clamp(55px,11vh,120px) 16px 28px;background:rgba(4,8,10,.76);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.hb-v265-dialog{box-sizing:border-box;width:min(620px,100%);max-height:calc(100dvh - 95px);display:flex;flex-direction:column;overflow:hidden;color:var(--s264-text,#f4efe9);background:var(--s264-base,#161c1d);border:1px solid var(--s264-stroke-hot,#625b4a);border-radius:22px;box-shadow:0 25px 95px rgba(0,0,0,.5)}
+.hb-v265-dialog-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;padding:24px 25px 17px}
+.hb-v265-eyebrow{font-size:.68rem;font-weight:800;color:var(--s264-accent,#d9bd8b);letter-spacing:.17em}
+.hb-v265-dialog-top h3{margin:6px 0;font-size:1.5rem;letter-spacing:-.04em;line-height:1.15}
+.hb-v265-dialog-top p{font-size:.82rem;line-height:1.6;margin:0;color:var(--s264-muted,#b0b6b1)}
+.hb-v265-close{display:grid;place-items:center;flex:0 0 36px;min-height:36px;padding:0!important;border:1px solid var(--s264-stroke,#4a514f)!important;border-radius:10px!important;background:var(--s264-elevated,#273233)!important;color:var(--s264-text,#fff)!important}
+.hb-v265-search{display:flex;gap:11px;align-items:center;margin:0 24px 16px;padding:0 14px;border:1px solid var(--s264-stroke-hot,#655a45);border-radius:12px;background:var(--s264-elevated,#273233);color:var(--s264-accent,#d9bd8b)}
+.hb-v265-search>span{font-size:1.6rem}
+.hb-v265-search input{width:100%;min-width:0;min-height:49px;padding:12px 0;border:0!important;outline:none!important;background:transparent!important;color:var(--s264-text,#f9f9f9)!important;font:inherit;font-size:.91rem}
+.hb-v265-search input::placeholder{color:var(--s264-muted,#afb4b0)}
+.hb-v265-search:focus-within{border-color:var(--s264-accent,#d9bd8b);box-shadow:0 0 0 3px var(--s264-soft,rgba(218,189,139,.11))}
+.hb-v265-results-heading{display:flex;justify-content:space-between;padding:0 26px 10px;color:var(--s264-muted,#9ca9a4);font-size:.65rem;letter-spacing:.12em}
+.hb-v265-results-heading small{font-size:.72rem;letter-spacing:0}
+.hb-v265-results{padding:0 13px 15px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.hb-v265-result{display:flex;align-items:center;width:100%;min-height:63px;gap:13px;padding:10px 13px;border:1px solid transparent;border-radius:12px;background:transparent;text-align:left;color:var(--s264-text,#f4efe9);cursor:pointer}
+.hb-v265-result:is(:hover,.is-highlighted,:focus-visible){border-color:var(--s264-stroke-hot,#655b4e);background:var(--s264-soft,rgba(218,189,139,.1))}
+.hb-v265-result:focus-visible,.hb-v265-close:focus-visible,.hb-v265-trigger:focus-visible{outline:2px solid var(--s264-accent,#d9bd8b);outline-offset:2px}
+.hb-v265-result-icon{display:grid;place-items:center;flex:0 0 42px;height:42px;border-radius:12px;background:var(--s264-elevated,#283231);color:var(--s264-accent,#d9bd8b);font-size:1.25rem}
+.hb-v265-result-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.hb-v265-result-copy strong{font-size:.89rem;font-weight:780}
+.hb-v265-result-copy small{font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--s264-muted,#aab2ad)}
+.hb-v265-result-arrow{font-size:.87rem;color:var(--s264-accent,#d9bd8b)}
+.hb-v265-result-count{font-size:.74rem;font-weight:800;border-radius:9px;padding:4px 8px;background:var(--s264-elevated,#283231);color:var(--s264-text,#fff)}
+.hb-v265-empty{padding:28px;text-align:center}
+.hb-v265-empty strong{font-size:.92rem}.hb-v265-empty p{font-size:.82rem;color:var(--s264-muted,#adb5b0)}
+.hb-v265-empty button{padding:9px 14px;border:1px solid var(--s264-stroke-hot);border-radius:11px;background:var(--s264-soft);color:var(--s264-text)}
+.hb-v265-dialog-footer{display:flex;justify-content:space-between;gap:10px;padding:13px 24px;background:var(--s264-elevated,#263130);color:var(--s264-muted,#abb2ad);font-size:.7rem}
+.hb-social-v265 .hb-v265-skip{position:absolute;top:-100px;left:8px;z-index:5;padding:9px 14px;border-radius:10px;background:var(--s264-accent);color:var(--season-on-primary,#171717);font-weight:800}
+.hb-social-v265 .hb-v265-skip:focus{top:8px}
+/* Melhor legibilidade em telas estreitas, preservando todos os menus React existentes. */
+@media(max-width:720px){
+ .hb-social-v265 .hb-v158-social-sidebar{gap:8px!important}
+ .hb-social-v265 .hb-v158-social-sidebar>.hb-v158-nav-label{margin-top:5px}
+ .hb-social-v265 .hb-v158-mini-profile{margin:0 0 7px}
+ .hb-social-v265 .hb-v158-mini-cover{height:68px;min-height:68px}
+ .hb-social-v265 .hb-v158-mini-avatar{width:46px;height:46px;margin-top:-21px;border-radius:12px}
+ .hb-social-v265 .hb-v158-mini-profile-body{padding:0 12px 12px}
+ .hb-social-v265 .hb-social-tabs button,.hb-social-v265 .hb-v180-secondary-nav button{min-height:42px;white-space:nowrap}
+ .hb-social-v265 .hb-v214-quickbar .hb-v265-trigger{margin-left:0}
+ .hb-v265-dialog-footer{font-size:.64rem}
+}
+@media(max-width:420px){
+ .hb-v265-backdrop{padding:24px 9px}
+ .hb-v265-dialog{max-height:calc(100dvh - 48px);border-radius:16px}
+ .hb-v265-dialog-top{padding:19px 18px 13px}
+ .hb-v265-search{margin:0 16px 13px}
+ .hb-v265-results-heading{padding-inline:19px}
+ .hb-v265-dialog-footer{padding:12px 15px}
+ .hb-v265-dialog-footer>span:first-child{display:none}
+ .hb-v265-result-copy small{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+ .hb-social-v265 .hb-v265-trigger kbd{display:none}
+}
+@media(prefers-reduced-motion:reduce){.hb-v265-backdrop,.hb-v265-dialog,.hb-v265-dialog *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+.hb-v265-selection-announce{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}

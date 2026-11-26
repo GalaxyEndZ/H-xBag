@@ -1,0 +1,173 @@
+/* HäxBag V279 — Central de Combate, redesign visual sem mudanças de regras. */
+.app-shell .hb-actiondeck-v279 {
+  --deck-gold: var(--season-primary, #e4ba80);
+  --deck-ink: var(--season-text, #f6f4f0);
+  --deck-muted: var(--season-muted, #aab3bd);
+  --deck-line: color-mix(in srgb, var(--deck-gold) 16%, var(--season-line, #394048));
+  --deck-bg: color-mix(in srgb, var(--season-bg, #10151d) 86%, var(--season-surface, #202936));
+  --deck-panel: color-mix(in srgb, var(--season-surface-alt, #26313a) 60%, var(--season-bg, #10151d));
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(16px, 2.6vw, 30px);
+  border: 1px solid color-mix(in srgb, var(--deck-gold) 22%, var(--season-line, #394048));
+  border-radius: 24px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--deck-gold) 3%, var(--season-surface, #18212b)), var(--deck-bg) 62%);
+  box-shadow: 0 24px 52px rgba(0,0,0,.20), inset 0 1px rgba(255,255,255,.035);
+  color: var(--deck-ink);
+}
+.app-shell .hb-actiondeck-v279::before {
+  content: ''; position: absolute; pointer-events: none; z-index:-1;
+  inset: 0 0 auto; height: 250px;
+  background: radial-gradient(ellipse at 74% -20%, color-mix(in srgb, var(--deck-gold) 12%, transparent), transparent 63%);
+}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-hero-v279 {
+  margin: 0 0 20px; padding: 0 0 19px;
+  display:flex; align-items:center; justify-content:space-between; gap:20px;
+  border-bottom:1px solid var(--deck-line);
+}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-heading-v279{min-width:0;max-width:650px;}
+.app-shell .hb-actiondeck-v279 .combat-eyebrow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:10px;letter-spacing:.17em;font-weight:850;color:var(--deck-gold)}
+.app-shell .hb-actiondeck-mark-v279{display:grid;place-items:center;width:25px;height:25px;border-radius:8px;background:color-mix(in srgb,var(--deck-gold) 14%,transparent);border:1px solid var(--deck-line);font-size:14px;letter-spacing:0}
+.app-shell .hb-actiondeck-eyebrow-separator-v279{color:color-mix(in srgb,var(--deck-gold) 35%,var(--deck-muted))}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-hero-v279 h3{margin:11px 0 7px;font-size:clamp(27px,3vw,37px);line-height:1.07;letter-spacing:-.045em;font-weight:850;color:var(--deck-ink)}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-hero-v279 h3 em{font-style:normal;color:var(--deck-gold)}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-hero-v279 p{font-size:12px;line-height:1.65;max-width:555px;color:var(--deck-muted);margin:0}
+.app-shell .hb-actiondeck-hero-emblem-v279{width:85px;min-width:85px;height:85px;border:1px solid color-mix(in srgb,var(--deck-gold) 33%,transparent);border-radius:22px;display:grid;place-content:center;gap:3px;text-align:center;background:radial-gradient(circle at 45% 25%,color-mix(in srgb,var(--deck-gold) 17%,transparent),transparent 70%),color-mix(in srgb,var(--season-surface,#1b2630) 85%,transparent);box-shadow:0 16px 26px rgba(0,0,0,.14),inset 0 1px rgba(255,255,255,.09);transform:rotate(3deg);}
+.app-shell .hb-actiondeck-hero-emblem-v279>span{color:var(--deck-gold);font-size:15px;line-height:1}
+.app-shell .hb-actiondeck-hero-emblem-v279>strong{color:var(--deck-ink);font-size:24px;letter-spacing:-.08em;line-height:1}
+.app-shell .hb-actiondeck-hero-emblem-v279>small{font-size:8px;font-weight:800;letter-spacing:.12em;color:var(--deck-muted)}
+/* Critical and DT are one consistent configuration deck. */
+.app-shell .hb-actiondeck-settings-v279{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(180px,.8fr);gap:1px;padding:1px;border:1px solid var(--deck-line);border-radius:19px;background:var(--deck-line);overflow:hidden;margin-bottom:12px;box-shadow:0 8px 26px rgba(0,0,0,.1)}
+.app-shell .hb-actiondeck-settings-v279>div,.app-shell .hb-actiondeck-settings-v279>label{display:flex;flex-direction:column;min-width:0;min-height:158px;padding:17px 19px;background:var(--deck-bg);text-align:left;gap:7px}
+.app-shell .hb-actiondeck-settings-v279>div:first-child{background:linear-gradient(120deg,color-mix(in srgb,var(--deck-gold) 9%,var(--deck-bg)),var(--deck-bg) 82%)}
+.app-shell .hb-actiondeck-field-title-v279{font-size:10px;letter-spacing:.13em;font-weight:900;color:var(--deck-gold);line-height:1.4}
+.app-shell .hb-actiondeck-threshold-v279{display:flex;gap:10px;align-items:baseline;margin:0}
+.app-shell .hb-actiondeck-threshold-v279 strong{color:var(--deck-gold);font-size:clamp(32px,3.7vw,47px);font-weight:900;letter-spacing:-.075em;line-height:1}
+.app-shell .hb-actiondeck-threshold-v279 strong span{font-size:.6em;vertical-align:top}
+.app-shell .hb-actiondeck-threshold-v279>span{font-size:12px;color:var(--deck-ink);font-weight:800}
+.app-shell .hb-actiondeck-critical-v279 p{font-size:11px;color:var(--deck-ink);font-weight:700;line-height:1.5;margin:0}
+.app-shell .hb-actiondeck-critical-v279 small{font-size:10px;color:var(--deck-muted);line-height:1.6}
+.app-shell .hb-actiondeck-mode-v279>strong{font-size:17px;line-height:1.25;color:var(--deck-ink);letter-spacing:-.025em;overflow-wrap:anywhere;margin-top:11px}
+.app-shell .hb-actiondeck-mode-note-v279{font-size:11px;color:var(--deck-muted);line-height:1.5}
+.app-shell .hb-actiondeck-mode-link-v279{display:inline-flex;justify-content:space-between;align-items:center;gap:7px;width:100%;margin-top:auto;padding:9px 11px;border-radius:10px;border:1px solid color-mix(in srgb,var(--deck-gold) 31%,transparent);background:color-mix(in srgb,var(--deck-gold) 11%,transparent);color:var(--deck-gold);font-size:11px;font-weight:800;text-align:left;cursor:pointer;transform:none!important}
+.app-shell .hb-actiondeck-mode-link-v279:hover{background:color-mix(in srgb,var(--deck-gold) 21%,transparent)}
+.app-shell .hb-actiondeck-mode-link-v279:focus-visible{outline:2px solid var(--deck-gold);outline-offset:3px}
+.app-shell .hb-actiondeck-dt-v279{cursor:default}
+.app-shell .hb-actiondeck-dt-v279 input{width:100%;min-width:0;min-height:50px;margin-top:8px;padding:10px 14px;border:1px solid color-mix(in srgb,var(--deck-gold) 32%,var(--season-line,#434750));border-radius:11px;background:color-mix(in srgb,var(--season-bg,#0d151c) 90%,transparent);color:var(--deck-ink);font-size:24px;font-weight:850;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 4px rgba(0,0,0,.12);outline-offset:2px}
+.app-shell .hb-actiondeck-dt-v279 input:focus{outline:2px solid var(--deck-gold);border-color:var(--deck-gold)}
+.app-shell .hb-actiondeck-dt-v279>small{font-size:10px;color:var(--deck-muted);line-height:1.55}
+/* Small, readable combat pulse; avoid duplicating the mode selection. */
+.app-shell .hb-actiondeck-status-v279{display:flex;align-items:stretch;flex-wrap:wrap;gap:0;min-height:64px;margin:0 0 22px;border:1px solid var(--deck-line);border-radius:15px;background:color-mix(in srgb,var(--season-bg,#0b141b) 81%,var(--season-surface,#1e2830));overflow:hidden}
+.app-shell .hb-actiondeck-status-lead-v279{display:flex;align-items:center;align-content:center;flex-wrap:wrap;column-gap:9px;row-gap:4px;padding:11px 15px;flex:1 1 265px;min-width:0}
+.app-shell .hb-actiondeck-live-dot-v279{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:var(--deck-gold);box-shadow:0 0 0 4px color-mix(in srgb,var(--deck-gold) 10%,transparent)}
+.app-shell .hb-actiondeck-status-lead-v279 strong{font-size:12px;color:var(--deck-ink)}
+.app-shell .hb-actiondeck-status-lead-v279 small{flex-basis:100%;padding-left:17px;font-size:10px;color:var(--deck-muted)}
+.app-shell .hb-actiondeck-status-number-v279{display:grid;gap:3px;align-content:center;min-width:115px;padding:10px 15px;border-left:1px solid var(--deck-line)}
+.app-shell .hb-actiondeck-status-number-v279 span{font-size:10px;color:var(--deck-muted)}
+.app-shell .hb-actiondeck-status-number-v279 strong{font-size:20px;font-weight:900;line-height:1;color:var(--deck-ink);font-variant-numeric:tabular-nums}
+.app-shell .hb-actiondeck-status-cta-v279{min-width:140px;border:0;border-left:1px solid var(--deck-line);padding:12px 17px;background:color-mix(in srgb,var(--deck-gold) 14%,transparent);color:var(--deck-gold);font-size:12px;font-weight:850;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transform:none!important}
+.app-shell .hb-actiondeck-status-cta-v279:hover{background:color-mix(in srgb,var(--deck-gold) 25%,transparent)}
+.app-shell .hb-actiondeck-status-cta-v279:focus-visible{outline:2px solid var(--deck-gold);outline-offset:-3px}
+/* Combat cards */
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-section-title-v279{padding:0 0 14px;margin:0 0 14px;align-items:end;border-bottom:1px solid var(--deck-line)}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-section-title-v279 h4{font-size:19px;letter-spacing:-.025em;margin:5px 0 0}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-section-title-v279 small{color:var(--deck-muted);font-size:11px}
+.app-shell .hb-actiondeck-v279 .combat-actions-layout-v277{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(285px,.9fr);gap:14px;align-items:stretch}
+.app-shell .hb-actiondeck-v279 .combat-actions-block-v277{border:1px solid var(--deck-line);border-radius:19px;padding:17px;background:var(--deck-panel);box-shadow:none;min-width:0}
+.app-shell .hb-actiondeck-v279 .combat-actions-block-head-v277{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-bottom:14px;padding-bottom:13px;border-bottom:1px solid var(--deck-line)}
+.app-shell .hb-actiondeck-v279 .combat-actions-block-head-v277 span{font-size:10px;letter-spacing:.15em}
+.app-shell .hb-actiondeck-v279 .combat-actions-block-head-v277 strong{font-size:20px;letter-spacing:-.03em}
+.app-shell .hb-actiondeck-v279 .combat-actions-block-head-v277 small{font-size:11px;line-height:1.5;max-width:unset;text-align:left;color:var(--deck-muted)}
+.app-shell .hb-actiondeck-v279 .combat-action-grid--primary,.app-shell .hb-actiondeck-v279 .combat-action-grid--support{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.app-shell .hb-actiondeck-v279 .combat-action-card{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;min-width:0;min-height:142px;padding:15px;border:1px solid color-mix(in srgb,var(--deck-line) 80%,var(--season-line,#434750));border-radius:15px;background:linear-gradient(148deg,color-mix(in srgb,var(--season-surface,#1e2934) 80%,transparent),color-mix(in srgb,var(--season-bg,#0d131b) 90%,transparent));overflow:hidden;text-align:left;transform:none!important;transition:border-color .16s,box-shadow .16s,background .16s}
+.app-shell .hb-actiondeck-v279 .combat-action-card::after{inset:auto 15px 0;height:2px;background:linear-gradient(90deg,var(--deck-gold),transparent);opacity:.15}
+.app-shell .hb-actiondeck-v279 .combat-action-card:hover,.app-shell .hb-actiondeck-v279 .combat-action-card:focus-visible{border-color:color-mix(in srgb,var(--deck-gold) 72%,transparent);background:linear-gradient(148deg,color-mix(in srgb,var(--deck-gold) 9%,var(--season-surface,#1e2934)),var(--season-bg,#0d131b));box-shadow:0 10px 24px rgba(0,0,0,.14);transform:none!important}
+.app-shell .hb-actiondeck-v279 .combat-action-card:hover::after,.app-shell .hb-actiondeck-v279 .combat-action-card[data-last-rolled="true"]::after,.app-shell .hb-actiondeck-v279 .combat-action-card[data-expanded="true"]::after{opacity:.95}
+.app-shell .hb-actiondeck-v279 .combat-action-card[data-last-rolled="true"],.app-shell .hb-actiondeck-v279 .combat-action-card[data-expanded="true"]{border-color:var(--deck-gold);background:linear-gradient(148deg,color-mix(in srgb,var(--deck-gold) 13%,var(--season-surface,#1e2934)),var(--season-bg,#0d131b));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--deck-gold) 14%,transparent)}
+.app-shell .hb-actiondeck-v279 .combat-action-card .combat-action-icon{display:grid;place-items:center;width:39px;height:39px;min-width:39px;border:1px solid color-mix(in srgb,var(--deck-gold) 24%,transparent);border-radius:12px;background:color-mix(in srgb,var(--deck-gold) 12%,transparent);color:var(--deck-gold);font-size:19px;line-height:1;transform:none!important}
+.app-shell .hb-actiondeck-v279 .combat-action-card strong{font-size:14px;line-height:1.2;color:var(--deck-ink);letter-spacing:-.015em}
+.app-shell .hb-actiondeck-v279 .combat-action-card small{color:var(--deck-muted);font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.app-shell .hb-actiondeck-attack-tag-v279{color:var(--deck-gold);font-size:9px;font-weight:850;letter-spacing:.13em;line-height:1.2}
+.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child{grid-column:1/-1;display:grid;grid-template-columns:54px minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;column-gap:15px;row-gap:5px;min-height:116px;padding:16px 19px;background:linear-gradient(110deg,color-mix(in srgb,var(--deck-gold) 14%,var(--season-surface,#1e2934)),var(--season-bg,#0d131b) 80%);border-color:color-mix(in srgb,var(--deck-gold) 43%,transparent)}
+.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child .combat-action-icon{grid-column:1;grid-row:1/4;align-self:center;width:52px;height:52px;font-size:25px;border-radius:15px}
+.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child .hb-actiondeck-attack-tag-v279{grid-column:2;grid-row:1}
+.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child strong{grid-column:2;grid-row:2;font-size:17px}
+.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child small{grid-column:2;grid-row:3}
+.app-shell .hb-actiondeck-v279 .combat-action-card--utility{min-height:126px}
+.app-shell .hb-actiondeck-v279 .combat-action-card--accent{background:linear-gradient(140deg,color-mix(in srgb,var(--deck-gold) 11%,var(--season-surface,#1e2934)),var(--season-bg,#0d131b));border-color:color-mix(in srgb,var(--deck-gold) 36%,transparent)}
+.app-shell .hb-actiondeck-v279 .combat-action-card--accent strong{color:var(--deck-gold)}
+/* The outcome is the focal point of the completed attack. */
+.app-shell .hb-actiondeck-v279 .combat-actions-test-feedback-v278{margin:17px 0 0;padding:19px;border:1px solid var(--deck-line);border-radius:19px;background:linear-gradient(145deg,color-mix(in srgb,var(--deck-gold) 5%,var(--deck-panel)),var(--deck-bg) 65%);box-shadow:0 10px 28px rgba(0,0,0,.09)}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-feedback-v278.is-critical{border-color:color-mix(in srgb,var(--deck-gold) 75%,transparent);box-shadow:0 0 26px color-mix(in srgb,var(--deck-gold) 8%,transparent)}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-feedback-v278.is-miss{border-color:color-mix(in srgb,#e98a93 46%,var(--deck-line))}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-feedback-header-v278{margin-bottom:14px}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-feedback-header-v278 h4{font-size:19px;letter-spacing:-.03em}
+.app-shell .hb-actiondeck-v279 .combat-actions-kicker-v278{color:var(--deck-gold)}
+.app-shell .hb-actiondeck-v279 .combat-actions-outcome-v278{padding:7px 11px;font-size:11px}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-grid-v278{grid-template-columns:minmax(150px,.47fr) minmax(220px,1fr) auto;gap:16px;align-items:stretch}
+.app-shell .hb-actiondeck-v279 .combat-actions-dice-readout-v278{border:1px solid var(--deck-line);border-radius:14px;background:color-mix(in srgb,var(--season-bg,#0d151c) 88%,transparent);padding:14px 17px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.app-shell .hb-actiondeck-v279 .combat-actions-dice-readout-v278 span{color:var(--deck-muted);font-size:11px}
+.app-shell .hb-actiondeck-v279 .combat-actions-dice-readout-v278 strong{font-size:42px;letter-spacing:-.06em;line-height:1;color:var(--deck-gold)}
+.app-shell .hb-actiondeck-v279 .combat-actions-dice-readout-v278 small{font-size:10px;color:var(--deck-muted)}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-verdict-v278{justify-content:center;gap:7px}
+.app-shell .hb-actiondeck-v279 .hb-actiondeck-verdict-label-v279{color:var(--deck-gold);font-size:9px;font-weight:900;letter-spacing:.13em}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-verdict-v278>strong{font-size:16px;letter-spacing:-.025em}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-verdict-v278 p{line-height:1.55}
+.app-shell .hb-actiondeck-v279 .combat-actions-to-damage-v278{align-self:center;min-height:48px;padding:11px 15px;background:var(--deck-gold);border-radius:12px;box-shadow:0 6px 17px color-mix(in srgb,var(--deck-gold) 12%,transparent);font-size:12px;color:var(--season-bg,#10151d)}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-empty-v278{padding:18px;border:1px dashed color-mix(in srgb,var(--deck-gold) 25%,var(--deck-line));background:color-mix(in srgb,var(--season-bg,#0c151c) 80%,transparent)}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-empty-icon-v278{display:grid;place-items:center;width:51px;height:51px;border-radius:15px;background:color-mix(in srgb,var(--deck-gold) 10%,transparent);font-size:26px}
+.app-shell .hb-actiondeck-v279 .combat-actions-test-footer-v278{border-top:1px solid var(--deck-line)}
+@media(max-width:1200px){
+ .app-shell .hb-actiondeck-v279 .combat-actions-layout-v277{grid-template-columns:1fr}
+ .app-shell .hb-actiondeck-v279 .combat-action-grid--primary{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child{grid-column:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;min-height:142px;padding:15px}
+ .app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child .combat-action-icon{grid-column:auto;grid-row:auto;width:39px;height:39px;font-size:19px}
+ .app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child .hb-actiondeck-attack-tag-v279,.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child strong,.app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child small{grid-column:auto;grid-row:auto}
+ .app-shell .hb-actiondeck-v279 .combat-action-card--attack-v278:first-child strong{font-size:14px}
+}
+@media(max-width:790px){
+ .app-shell .hb-actiondeck-settings-v279{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .app-shell .hb-actiondeck-dt-v279{grid-column:1/-1}
+ .app-shell .hb-actiondeck-settings-v279>label{min-height:132px}
+ .app-shell .hb-actiondeck-v279 .combat-action-grid--primary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .app-shell .hb-actiondeck-v279 .combat-actions-test-grid-v278{grid-template-columns:minmax(125px,.45fr) minmax(0,1fr)}
+ .app-shell .hb-actiondeck-v279 .combat-actions-to-damage-v278{grid-column:1/-1;min-height:45px}
+}
+@media(max-width:520px){
+ .app-shell .hb-actiondeck-v279{border-radius:17px;padding:15px}
+ .app-shell .hb-actiondeck-v279 .hb-actiondeck-hero-v279{align-items:flex-start;margin-bottom:15px}
+ .app-shell .hb-actiondeck-hero-emblem-v279{display:none}
+ .app-shell .hb-actiondeck-v279 .hb-actiondeck-hero-v279 h3{font-size:28px}
+ .app-shell .hb-actiondeck-settings-v279{grid-template-columns:1fr}
+ .app-shell .hb-actiondeck-settings-v279>div,.app-shell .hb-actiondeck-settings-v279>label{min-height:unset;padding:14px}
+ .app-shell .hb-actiondeck-dt-v279{grid-column:auto}
+ .app-shell .hb-actiondeck-status-lead-v279{flex-basis:100%;padding:12px;border-bottom:1px solid var(--deck-line)}
+ .app-shell .hb-actiondeck-status-number-v279{flex:1;min-width:0;padding:12px}
+ .app-shell .hb-actiondeck-status-number-v279:nth-of-type(2){border-left:0}
+ .app-shell .hb-actiondeck-status-cta-v279{flex-basis:100%;border-left:0;border-top:1px solid var(--deck-line);min-height:44px}
+ .app-shell .hb-actiondeck-v279 .combat-actions-block-v277{padding:13px}
+ .app-shell .hb-actiondeck-v279 .combat-action-grid--primary,.app-shell .hb-actiondeck-v279 .combat-action-grid--support{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .app-shell .hb-actiondeck-v279 .combat-action-card{min-height:132px;padding:12px;gap:7px}
+ .app-shell .hb-actiondeck-v279 .combat-action-card strong{font-size:13px}
+ .app-shell .hb-actiondeck-v279 .combat-action-card small{font-size:10px}
+ .app-shell .hb-actiondeck-v279 .combat-actions-test-grid-v278{grid-template-columns:1fr}
+ .app-shell .hb-actiondeck-v279 .combat-actions-dice-readout-v278 strong{font-size:34px}
+ .app-shell .hb-actiondeck-v279 .combat-actions-test-feedback-v278{padding:13px}
+}
+@media(max-width:355px){
+ .app-shell .hb-actiondeck-v279 .combat-action-grid--primary,.app-shell .hb-actiondeck-v279 .combat-action-grid--support{grid-template-columns:1fr}
+ .app-shell .hb-actiondeck-v279 .combat-action-card{min-height:108px}
+}
+@media(prefers-reduced-motion:reduce){.app-shell .hb-actiondeck-v279 :is(.combat-action-card,.hb-actiondeck-mode-link-v279,.hb-actiondeck-status-cta-v279){transition:none!important;transform:none!important}}
+.app-shell .hb-actiondeck-v279 [hidden]{display:none!important}
+
+/* Últimos ajustes de densidade e legibilidade. */
+.app-shell .hb-actiondeck-v279 .combat-actions-layout-v277{align-items:start}
+@media(max-width:520px){
+ .app-shell .hb-actiondeck-v279 .hb-actiondeck-section-title-v279{flex-direction:column;align-items:flex-start;gap:7px}
+ .app-shell .hb-actiondeck-v279 .hb-actiondeck-section-title-v279 small{font-size:11px;line-height:1.5}
+ .app-shell .hb-actiondeck-v279 .combat-action-card small{font-size:11px;line-height:1.5}
+ .app-shell .hb-actiondeck-v279 .combat-action-card strong{font-size:13px}
+ .app-shell .hb-actiondeck-v279 .combat-actions-test-verdict-v278 p{font-size:12px}
+}

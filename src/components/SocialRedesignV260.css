@@ -1,0 +1,331 @@
+/* HäxBag Social V260 — Nocturne / editorial community UI.
+   Visual only. Theme variables inherited from the configured season.
+   Scoped to the Social screen; personal profile theme colors stay independent. */
+.hb-social-v260{
+  --s260-accent:var(--season-primary,var(--hs-accent,#d9bd8b));
+  --s260-text:var(--season-text,var(--hs-ink,#eee9e2));
+  --s260-muted:var(--season-muted,var(--hs-muted,#aca8ad));
+  --s260-bg:var(--season-bg,#101216);
+  --s260-base:var(--season-surface,#1b1d22);
+  --s260-raised:var(--season-surface-alt,#23262b);
+  --s260-frost:color-mix(in srgb,var(--s260-base) 95%,var(--s260-accent));
+  --s260-elevated:color-mix(in srgb,var(--s260-raised) 96%,var(--s260-accent));
+  --s260-soft:color-mix(in srgb,var(--s260-accent) 10%,transparent);
+  --s260-tint:color-mix(in srgb,var(--s260-accent) 17%,transparent);
+  --s260-stroke:color-mix(in srgb,var(--s260-text) 12%,transparent);
+  --s260-stroke-hot:color-mix(in srgb,var(--s260-accent) 43%,var(--s260-stroke));
+  --s260-shadow:0 16px 46px rgba(0,0,0,.13),0 2px 9px rgba(0,0,0,.035);
+  --s260-radius:20px;
+  --sr-accent:var(--s260-accent);
+  --sr-muted:var(--s260-muted);
+  --sr-ink:var(--s260-text);
+  --sr-line:var(--s260-stroke);
+  --sr-strong-line:var(--s260-stroke-hot);
+  --sr-glow:var(--s260-soft);
+  padding:clamp(10px,1.35vw,20px) 0 44px;
+  color:var(--s260-text);
+  isolation:isolate;
+}
+.hb-social-v260 button,.hb-social-v260 summary{touch-action:manipulation}
+.hb-social-v260 button:disabled{cursor:not-allowed}
+.hb-social-v260 :is(input,textarea,select){accent-color:var(--s260-accent)}
+.hb-social-v260 :is(button,input,textarea,select,summary,a):focus-visible{outline:2px solid var(--s260-accent);outline-offset:3px}
+.hb-social-v260 :is(p,h2,h3,h4,small,strong){overflow-wrap:break-word}
+.hb-social-v260 :is(.hb-social-post,.hb-v231-post,.hb-v231-group-grid>article,.hb-v245-panel){min-width:0}
+
+/* The left rail is a quiet, legible navigation instrument, not a second feed. */
+.hb-social-v260 .hb-v158-social-columns{grid-template-columns:minmax(224px,252px) minmax(0,1fr);gap:clamp(14px,1.7vw,28px)}
+.hb-social-v260 .hb-v158-social-sidebar{
+  top:18px;gap:6px;padding:16px 13px;
+  background:linear-gradient(170deg,var(--s260-frost),var(--s260-base) 50%,color-mix(in srgb,var(--s260-bg) 14%,var(--s260-base)));
+  border:1px solid var(--s260-stroke);border-radius:24px;
+  box-shadow:var(--s260-shadow);max-height:calc(100dvh - 36px);
+}
+.hb-social-v260 .hb-v232-brand{padding:5px 8px 18px;margin-bottom:5px;gap:12px;border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v232-brand-glyph{
+  width:42px;height:42px;border-radius:14px;
+  background:linear-gradient(145deg,var(--s260-tint),color-mix(in srgb,var(--s260-bg) 45%,var(--s260-raised)));
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--s260-accent) 28%,transparent);
+  font-size:27px;
+}
+.hb-social-v260 .hb-v232-brand strong{font-size:1.14rem;letter-spacing:-.055em}
+.hb-social-v260 .hb-v232-brand small{font-size:.69rem;letter-spacing:.015em}
+.hb-social-v260 .hb-v158-mini-profile{border-radius:18px;margin:5px 2px 10px;background:var(--s260-elevated);border-color:var(--s260-stroke);box-shadow:0 9px 22px rgba(0,0,0,.085)}
+.hb-social-v260 .hb-v158-mini-cover{height:110px;min-height:110px;background:radial-gradient(circle at 78% 2%,var(--s260-tint),transparent 65%),linear-gradient(125deg,var(--s260-raised),var(--s260-bg))}
+.hb-social-v260 .hb-v158-mini-avatar{border-radius:17px;width:64px;height:64px;margin-top:-32px}
+.hb-social-v260 .hb-v158-mini-profile-body{padding:0 15px 16px}
+.hb-social-v260 .hb-v158-mini-profile-body>strong{font-size:1.03rem}
+.hb-social-v260 .hb-v158-mini-profile-body>button{background:var(--s260-soft);border-color:var(--s260-stroke-hot);border-radius:11px;transition:background .16s}
+.hb-social-v260 .hb-v158-mini-profile-body>button:hover{background:var(--s260-tint)}
+.hb-social-v260 .hb-v158-nav-label{font-size:.65rem;font-weight:850;letter-spacing:.19em;margin:14px 11px 1px}
+.hb-social-v260 .hb-social-tabs,.hb-social-v260 .hb-v180-secondary-nav{gap:3px;padding:3px 0 8px}
+.hb-social-v260 .hb-social-tabs button{
+  min-height:40px;border-radius:11px;padding:9px 12px;
+  font-size:.78rem;font-weight:680;transition:background-color .16s,color .16s,border-color .16s;
+}
+.hb-social-v260 .hb-social-tabs button:hover:not(.selected){background:var(--s260-soft);color:var(--s260-text)}
+.hb-social-v260 .hb-social-tabs button.selected{
+  color:var(--s260-text);background:linear-gradient(90deg,var(--s260-tint),color-mix(in srgb,var(--s260-accent) 4%,var(--s260-base)));
+  border-color:var(--s260-stroke-hot);box-shadow:inset 0 1px color-mix(in srgb,var(--s260-accent) 18%,transparent);
+}
+.hb-social-v260 .hb-social-tabs button.selected:before{width:3px;top:10px;bottom:10px;left:0}
+.hb-social-v260 .hb-social-tabs small{border-radius:7px;font-size:.64rem;font-variant-numeric:tabular-nums}
+.hb-social-v260 .hb-v158-sidebar-actions{margin:8px 4px 0;padding:15px 5px 3px}
+.hb-social-v260 .hb-v158-sidebar-actions>button{border-radius:11px}
+
+/* Page title: editorial typography + controlled atmospheric lighting. */
+.hb-social-v260 .hb-v158-social-content{gap:clamp(11px,1.25vw,17px)}
+.hb-social-v260 .hb-social-hero.hb-v160-hero{
+  position:relative;isolation:isolate;display:flex;align-items:center;justify-content:space-between;
+  min-height:148px;gap:25px;padding:clamp(22px,2.6vw,36px);
+  border-radius:24px;border:1px solid var(--s260-stroke-hot);
+  background:
+    radial-gradient(ellipse 63% 120% at 96% -20%,color-mix(in srgb,var(--s260-accent) 22%,transparent),transparent 78%),
+    linear-gradient(125deg,color-mix(in srgb,var(--s260-raised) 80%,var(--s260-bg)),var(--s260-base) 70%);
+  box-shadow:var(--s260-shadow);overflow:hidden;
+}
+.hb-social-v260 .hb-social-hero.hb-v160-hero:before{display:block!important;content:""!important;position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--s260-accent),color-mix(in srgb,var(--s260-accent) 12%,transparent) 65%,transparent);opacity:.83;pointer-events:none}
+.hb-social-v260 .hb-social-hero.hb-v160-hero:after{
+  content:"✧";position:absolute;right:clamp(140px,23vw,310px);top:-125px;font-size:280px;
+  color:var(--s260-accent);opacity:.045;line-height:1;pointer-events:none;z-index:-1;
+}
+.hb-social-v260 .hb-v160-hero-copy{position:relative;z-index:1}
+.hb-social-v260 .hb-v160-hero-copy .hb-social-overline{font-size:.67rem;letter-spacing:.21em;font-weight:850;color:var(--s260-accent)}
+.hb-social-v260 .hb-v160-hero-copy h2{gap:14px;margin:11px 0 8px;font-size:clamp(1.55rem,2.65vw,2.45rem);font-weight:870;line-height:1.11;letter-spacing:-.057em}
+.hb-social-v260 .hb-v160-hero-copy p{font-size:.88rem;max-width:670px;line-height:1.64;color:var(--s260-muted)}
+.hb-social-v260 .hb-v160-hero-icon{width:50px;height:50px;flex-basis:50px;border-radius:16px;font-size:1.5rem;border-color:var(--s260-stroke-hot);background:var(--s260-soft);box-shadow:inset 0 1px 0 var(--s260-tint)}
+.hb-social-v260 .hb-v160-hero-actions{position:relative;z-index:1;flex:none;gap:9px}
+.hb-social-v260 .hb-v160-hero-actions button{border-radius:12px;padding:10px 15px;min-height:42px}
+.hb-social-v260 .hb-v160-hero-main{background:var(--s260-accent);color:var(--season-on-primary,#151414);box-shadow:0 7px 20px color-mix(in srgb,var(--s260-accent) 17%,transparent)}
+.hb-social-v260 .hb-v160-refresh{background:var(--s260-soft);border:1px solid var(--s260-stroke);color:var(--s260-text)}
+
+/* Page switcher and live-looking (but real-data) metrics. */
+.hb-social-v260 .hb-v214-quickbar{
+  gap:5px;padding:7px;border:1px solid var(--s260-stroke);border-radius:16px;
+  background:var(--s260-frost);box-shadow:0 5px 16px rgba(0,0,0,.045);
+}
+.hb-social-v260 .hb-v214-quickbar button{min-height:41px;padding:9px 14px;border-radius:11px;font-size:.79rem;font-weight:725;white-space:nowrap;color:var(--s260-muted)}
+.hb-social-v260 .hb-v214-quickbar button:hover,.hb-social-v260 .hb-v214-quickbar button.is-active{background:var(--s260-soft);border-color:var(--s260-stroke-hot);color:var(--s260-text)}
+.hb-social-v260 .hb-v214-quickbar .hb-v180-quickbar-primary{
+  background:var(--s260-accent);color:var(--season-on-primary,#171615);
+  border:1px solid var(--s260-accent);box-shadow:0 3px 12px color-mix(in srgb,var(--s260-accent) 13%,transparent);
+}
+.hb-social-v260 .hb-v214-quickbar .hb-v180-quickbar-primary:hover{background:color-mix(in srgb,var(--s260-accent) 85%,white);color:var(--season-on-primary,#171615)}
+.hb-social-v260 .hb-v160-stats{gap:10px}
+.hb-social-v260 .hb-v160-stats>button{
+  position:relative;min-width:0;min-height:78px;gap:12px;padding:14px 16px;
+  background:var(--s260-frost);border:1px solid var(--s260-stroke);border-radius:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.035);overflow:hidden;
+}
+.hb-social-v260 .hb-v160-stats>button:before{content:"";position:absolute;width:50%;height:1px;left:0;top:0;background:linear-gradient(90deg,var(--s260-accent),transparent);opacity:.55}
+.hb-social-v260 .hb-v160-stats>button:is(:hover,.is-current){border-color:var(--s260-stroke-hot);background:var(--s260-elevated)}
+.hb-social-v260 .hb-v160-stat-icon{width:43px;height:43px;flex-basis:43px;border-radius:13px;background:var(--s260-soft);color:var(--s260-accent);border:1px solid color-mix(in srgb,var(--s260-accent) 17%,transparent)}
+.hb-social-v260 .hb-v160-stats strong{font-size:1.37rem;letter-spacing:-.055em;font-variant-numeric:tabular-nums}
+.hb-social-v260 .hb-v160-stats small{font-size:.72rem}
+
+/* A unified timeline: the legacy and character posts share the same visual language. */
+.hb-social-v260 .hb-social-feed-layout{gap:clamp(14px,1.6vw,24px);grid-template-columns:minmax(0,1fr) minmax(216px,254px)}
+.hb-social-v260 .hb-social-feed-main{gap:17px}
+.hb-social-v260 .hb-social-composer.hb-v160-composer{
+  background:var(--s260-frost);border:1px solid var(--s260-stroke-hot);
+  border-radius:20px;padding:clamp(18px,2vw,25px);box-shadow:0 10px 27px rgba(0,0,0,.055);
+}
+.hb-social-v260 .hb-v160-composer-author{padding-bottom:15px;border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v160-editor-label{font-size:.97rem;font-weight:800;letter-spacing:-.02em}
+.hb-social-v260 .hb-v160-composer textarea{min-height:118px;border-radius:14px;padding:15px 16px;background:var(--s260-elevated);border-color:var(--s260-stroke);font-size:.91rem}
+.hb-social-v260 .hb-v160-composer textarea:focus{border-color:var(--s260-accent);box-shadow:0 0 0 3px var(--s260-soft)}
+.hb-social-v260 .hb-v160-writing-prompts button{border-radius:10px;min-height:33px;padding:7px 11px}
+.hb-social-v260 .hb-social-composer-bottom{border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v160-composer-submit button{min-height:43px;padding:10px 18px;border-radius:12px;background:var(--s260-accent);color:var(--season-on-primary,#111)}
+.hb-social-v260 .hb-v214-feed-heading{margin-top:3px}
+.hb-social-v260 .hb-v214-feed-heading h3{font-size:1.28rem;font-weight:850;letter-spacing:-.04em}
+.hb-social-v260 .hb-v214-feed-tools{background:var(--s260-frost);border-color:var(--s260-stroke);border-radius:15px;padding:12px}
+.hb-social-v260 .hb-social-segments{border-radius:13px;background:var(--s260-elevated)}
+.hb-social-v260 .hb-social-segments button.selected{background:var(--s260-base);box-shadow:0 2px 12px rgba(0,0,0,.1)}
+.hb-social-v260 .hb-social-v231-feed>.hb-v231-unified-section{
+  padding:0;margin:0;border:0;box-shadow:none;background:transparent;gap:15px;
+}
+.hb-social-v260 .hb-v248-unified-feed{gap:15px}
+.hb-social-v260 .hb-v248-unified-feed .hb-v248-feed-entry.is-classic>.hb-social-post,
+.hb-social-v260 .hb-v248-unified-feed .hb-v248-feed-entry.is-special .hb-v231-post{
+  position:relative;margin:0;padding:clamp(18px,2vw,25px);gap:15px;
+  background:var(--s260-frost);border:1px solid var(--s260-stroke);
+  border-radius:20px;box-shadow:0 8px 26px rgba(0,0,0,.045);transition:border-color .16s,box-shadow .16s;
+}
+.hb-social-v260 .hb-v248-unified-feed .hb-v248-feed-entry.is-classic>.hb-social-post:hover,
+.hb-social-v260 .hb-v248-unified-feed .hb-v248-feed-entry.is-special .hb-v231-post:hover{border-color:var(--s260-stroke-hot);box-shadow:0 14px 29px rgba(0,0,0,.075)}
+.hb-social-v260 .hb-v231-post.is-pinned{border-color:var(--s260-stroke-hot)!important}
+.hb-social-v260 .hb-v231-post>header{gap:12px}
+.hb-social-v260 .hb-v231-avatar,.hb-social-v260 .hb-social-post-top .hb-social-avatar{width:48px;height:48px;border:1px solid var(--s260-stroke-hot);border-radius:15px;background:var(--s260-soft);overflow:hidden}
+.hb-social-v260 .hb-v231-byline button strong,.hb-social-v260 .hb-social-post-top strong{font-size:.94rem;letter-spacing:-.015em}
+.hb-social-v260 .hb-v231-byline small{font-size:.76rem;color:var(--s260-muted)}
+.hb-social-v260 .hb-v231-post-text,.hb-social-v260 .hb-v189-post-text>p{font-size:.91rem;line-height:1.78}
+.hb-social-v260 .hb-v231-link-preview,.hb-social-v260 .hb-v249-quoted-legacy,.hb-social-v260 .hb-v245-quoted-card{background:var(--s260-elevated);border:1px solid var(--s260-stroke);border-radius:14px}
+.hb-social-v260 .hb-v231-poll{background:var(--s260-elevated);border-color:var(--s260-stroke);border-radius:15px}
+.hb-social-v260 .hb-v231-comment{background:var(--s260-elevated);border:1px solid var(--s260-stroke);border-radius:13px}
+.hb-social-v260 .hb-v231-comments{border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v249-post-actions{border-top-color:var(--s260-stroke);gap:5px 7px;padding-top:14px}
+.hb-social-v260 .hb-v249-post-actions button{
+  min-height:38px;padding:8px 11px;border-radius:10px;
+  color:var(--s260-muted);background:transparent;font-weight:720;
+}
+.hb-social-v260 .hb-v249-post-actions button:is(:hover,:focus-visible){background:var(--s260-soft);border-color:var(--s260-stroke);color:var(--s260-text)}
+.hb-social-v260 .hb-v249-post-actions button[aria-pressed="true"]{background:var(--s260-soft);color:var(--s260-accent)}
+.hb-social-v260 .hb-v231-composer-panel,.hb-social-v260 .hb-v231-details{background:var(--s260-elevated);border:1px solid var(--s260-stroke);border-radius:15px}
+.hb-social-v260 .hb-v231-composer-toggle{font-size:.86rem}
+.hb-social-v260 .hb-v231-segments{background:var(--s260-elevated)}
+.hb-social-v260 .hb-v231-segments button.active{background:var(--s260-base);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+
+/* The contextual rail reads like a real companion, not a promotional banner. */
+.hb-social-v260 .hb-social-feed-aside{
+  top:18px;gap:14px;padding:23px;border:1px solid var(--s260-stroke);
+  border-radius:21px;background:linear-gradient(170deg,var(--s260-frost),var(--s260-base));
+  box-shadow:0 9px 24px rgba(0,0,0,.045);
+}
+.hb-social-v260 .hb-social-feed-aside h3{font-size:1.45rem;line-height:1.23;letter-spacing:-.055em;font-weight:865}
+.hb-social-v260 .hb-social-feed-aside p{font-size:.83rem;line-height:1.75}
+.hb-social-v260 .hb-v158-aside-stats{border-radius:14px;padding:13px;background:var(--s260-elevated)}
+.hb-social-v260 .hb-v232-aside-links button{min-height:43px;border-radius:11px;padding:10px;font-size:.78rem}
+.hb-social-v260 .hb-v232-aside-links button:hover{background:var(--s260-soft);border-color:var(--s260-stroke-hot)}
+.hb-social-v260 .hb-social-privacy-note{border-color:var(--s260-stroke);padding-top:13px}
+
+/* Discovery, members, groups, events, saved posts, notices. */
+.hb-social-v260 .hb-social-list-pane,
+.hb-social-v260 .hb-social-v231:not(.hb-social-v231-feed)>.hb-v231-section{
+  background:var(--s260-frost);padding:clamp(18px,2.2vw,27px);
+  border:1px solid var(--s260-stroke);border-radius:21px;box-shadow:0 8px 24px rgba(0,0,0,.045);
+}
+.hb-social-v260 .hb-social-pane-top h3,.hb-social-v260 .hb-v231-heading h3{font-size:clamp(1.2rem,1.9vw,1.5rem);font-weight:850;letter-spacing:-.04em}
+.hb-social-v260 .hb-v231-heading{padding-bottom:17px;border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-social-person{border:1px solid var(--s260-stroke);border-radius:16px;background:var(--s260-elevated);padding:14px}
+.hb-social-v260 .hb-social-person:hover{background:var(--s260-frost);border-color:var(--s260-stroke-hot)}
+.hb-social-v260 .hb-social-person-actions button{border-radius:11px;min-height:37px}
+.hb-social-v260 .hb-v231-group-grid{gap:13px}
+.hb-social-v260 .hb-v231-group-grid>article,.hb-social-v260 .hb-v231-saved-list>article,.hb-social-v260 .hb-v231-reports>article{
+  border:1px solid var(--s260-stroke);background:var(--s260-elevated);
+  border-radius:17px;padding:18px;gap:11px;
+}
+.hb-social-v260 .hb-v231-group-grid>article:hover{border-color:var(--s260-stroke-hot)}
+.hb-social-v260 .hb-v231-group-top{color:var(--s260-accent);font-weight:780}
+.hb-social-v260 .hb-v231-group-grid h4{font-size:1.02rem;letter-spacing:-.025em}
+.hb-social-v260 .hb-v231-events>article{padding:20px;border-radius:17px;background:var(--s260-elevated);border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v231-event-calendar{min-width:62px;padding:11px;border-radius:14px;background:var(--s260-soft)}
+.hb-social-v260 .hb-v231-member-request{padding:11px;border-radius:13px;border-color:var(--s260-stroke);background:var(--s260-frost)}
+.hb-social-v260 .hb-v231-notices{gap:10px}
+.hb-social-v260 .hb-v231-notice-wrap>article{
+  position:relative;padding:17px 18px 17px 21px;gap:15px;
+  background:var(--s260-elevated);border:1px solid var(--s260-stroke);border-radius:15px;transition:border-color .15s,background .15s;
+}
+.hb-social-v260 .hb-v231-notice-wrap>article:before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:3px;border-radius:3px;background:var(--s260-accent);opacity:.32}
+.hb-social-v260 .hb-v231-notice-wrap>article.unread{background:var(--s260-soft);border-color:var(--s260-stroke-hot)}
+.hb-social-v260 .hb-v231-notice-wrap>article.unread:before{opacity:1}
+.hb-social-v260 .hb-v231-notice-wrap>article:hover{border-color:var(--s260-stroke-hot)}
+.hb-social-v260 .hb-v231-notice-wrap>article>div>strong{font-size:.89rem}
+.hb-social-v260 .hb-v231-notice-wrap>article>div>small{font-size:.76rem}
+.hb-social-v260 .hb-v231-notice-wrap>article>button{border-radius:10px;padding:9px 12px}
+.hb-social-v260 .hb-v231-empty,.hb-social-v260 .hb-social-empty{border:1px dashed var(--s260-stroke-hot);background:var(--s260-soft);border-radius:16px;padding:22px}
+.hb-social-v260 .hb-v231-preferences{border:0;padding:3px;gap:10px}
+.hb-social-v260 .hb-v231-check,.hb-social-v260 .hb-v245-checkbox{border-radius:12px;background:var(--s260-elevated);padding:13px;border:1px solid var(--s260-stroke)}
+.hb-social-v260 .hb-v231-notice-wrap>article button:hover,.hb-social-v260 .hb-v231-group-grid button:hover{border-color:var(--s260-stroke-hot)}
+
+/* Conversations: distinct panes, softer message bubbles, clear composition. */
+.hb-social-v260 .hb-social-chat-shell{background:var(--s260-frost);border:1px solid var(--s260-stroke);border-radius:21px;box-shadow:var(--s260-shadow)}
+.hb-social-v260 .hb-social-chat-sidebar{background:var(--s260-elevated);border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-social-chat-contact{border-radius:13px}
+.hb-social-v260 .hb-social-chat-contact.selected{background:var(--s260-soft);border-color:var(--s260-stroke-hot)}
+.hb-social-v260 .hb-v214-chat-main{background:var(--s260-frost)}
+.hb-social-v260 .hb-v201-chat-header{padding:15px 18px;background:var(--s260-elevated);border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v201-chat-messages{background:linear-gradient(155deg,var(--s260-frost),var(--s260-base));scrollbar-width:thin}
+.hb-social-v260 .hb-social-bubble{border:1px solid var(--s260-stroke);border-radius:17px 17px 17px 5px;box-shadow:0 3px 11px rgba(0,0,0,.045)}
+.hb-social-v260 .hb-social-bubble.own{background:color-mix(in srgb,var(--s260-accent) 11%,var(--s260-base));border-color:var(--s260-stroke-hot);border-radius:17px 17px 5px 17px}
+.hb-social-v260 .hb-v201-chat-compose{background:var(--s260-frost);border-color:var(--s260-stroke);padding:15px}
+.hb-social-v260 .hb-v201-chat-compose textarea{border-radius:12px;background:var(--s260-elevated);border-color:var(--s260-stroke)}
+.hb-social-v260 .hb-v201-chat-send{border-radius:12px;background:var(--s260-accent);color:var(--season-on-primary,#151515)}
+
+/* Extended pages: showcase, search for a game, RPG diary, metrics, and security. */
+.hb-social-v260 .hb-v245-stack{gap:15px}
+.hb-social-v260 .hb-v245-panel{padding:clamp(20px,2.3vw,29px);background:var(--s260-frost);border:1px solid var(--s260-stroke);border-radius:21px;box-shadow:0 8px 27px rgba(0,0,0,.05)}
+.hb-social-v260 .hb-v245-section-heading{border-bottom:1px solid var(--s260-stroke);padding-bottom:14px;margin-bottom:19px}
+.hb-social-v260 .hb-v245-section-heading h3{font-size:clamp(1.25rem,2vw,1.6rem);letter-spacing:-.044em}
+.hb-social-v260 .hb-v245-showcase-grid article,.hb-social-v260 .hb-v245-listing-grid>article,.hb-social-v260 .hb-v245-metrics>div{
+  padding:17px;border:1px solid var(--s260-stroke);border-radius:16px;background:var(--s260-elevated);box-shadow:none;
+}
+.hb-social-v260 .hb-v245-metrics strong{color:var(--s260-accent);font-weight:860;letter-spacing:-.06em}
+.hb-social-v260 .hb-v245-panel :is(input:not([type=checkbox]),select,textarea){background:var(--s260-elevated);border-color:var(--s260-stroke);border-radius:12px}
+.hb-social-v260 .hb-v245-panel :is(button,.hb-v245-pill){border-radius:11px}
+.hb-social-v260 .hb-v245-trends li{background:var(--s260-elevated);border:1px solid var(--s260-stroke);border-radius:14px;padding:11px 15px}
+.hb-social-v260 .hb-v245-activity-list li{background:var(--s260-elevated);border-radius:14px;padding:15px}
+
+/* Dialogs: keep actions and text readable without changing behavior. */
+.hb-social-v260 .hb-v231-report-dialog{border-color:var(--s260-stroke-hot);background:var(--s260-base);border-radius:22px;box-shadow:0 22px 80px rgba(0,0,0,.35)}
+.hb-social-v260 .hb-v231-report-backdrop{backdrop-filter:blur(6px)}
+.hb-social-v260 .hb-social-alert,.hb-social-v260 .hb-social-notice{border-radius:13px;padding:13px 17px}
+
+/* Tablet and narrow desktops: cards never force horizontal overflow. */
+@media(max-width:1240px){
+  .hb-social-v260 .hb-social-feed-layout{grid-template-columns:minmax(0,1fr)}
+  .hb-social-v260 .hb-social-feed-aside{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hb-social-v260 .hb-social-feed-aside .hb-social-privacy-note{grid-column:1/-1}
+  .hb-social-v260 .hb-v214-quickbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;overscroll-behavior-inline:contain}
+  .hb-social-v260 .hb-v214-quickbar button{flex:0 0 auto}
+}
+@media(max-width:1000px){
+  .hb-social-v260 .hb-v158-social-columns{grid-template-columns:minmax(0,1fr)}
+  .hb-social-v260 .hb-v158-social-sidebar{position:static;display:grid;grid-template-columns:minmax(170px,.75fr) minmax(0,1.25fr);max-height:none;overflow:visible}
+  .hb-social-v260 .hb-v232-brand{grid-column:1/-1}
+  .hb-social-v260 .hb-v158-mini-profile{grid-column:1;grid-row:2/8}
+  .hb-social-v260 .hb-v158-nav-label,.hb-social-v260 .hb-social-tabs,.hb-social-v260 .hb-v180-secondary-nav{grid-column:2}
+  .hb-social-v260 .hb-social-tabs,.hb-social-v260 .hb-v180-secondary-nav{display:flex;flex-direction:row;flex-wrap:wrap}
+  .hb-social-v260 .hb-social-tabs button{width:auto;min-height:35px;padding:7px 10px}
+  .hb-social-v260 .hb-v158-sidebar-actions{grid-column:1/-1;display:flex}
+}
+@media(max-width:720px){
+  .hb-social-v260{padding:0 0 28px}
+  .hb-social-v260 .hb-v158-social-sidebar{display:flex;gap:5px;padding:12px;border-radius:17px}
+  .hb-social-v260 .hb-v232-brand{width:100%;padding:4px 5px 11px;margin:0}
+  .hb-social-v260 .hb-v158-mini-profile{display:none}
+  .hb-social-v260 .hb-v158-nav-label{margin:8px 7px 0}
+  .hb-social-v260 .hb-social-tabs,.hb-social-v260 .hb-v180-secondary-nav{display:flex;flex-wrap:nowrap;width:100%;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
+  .hb-social-v260 .hb-social-tabs button{flex:0 0 auto;width:auto;white-space:nowrap;min-height:35px;padding:8px 11px}
+  .hb-social-v260 .hb-v158-sidebar-actions{display:none}
+  .hb-social-v260 .hb-social-hero.hb-v160-hero{min-height:0;padding:21px;border-radius:18px;flex-direction:column;align-items:stretch;gap:17px}
+  .hb-social-v260 .hb-v160-hero-copy h2{font-size:clamp(1.34rem,5vw,1.8rem)}
+  .hb-social-v260 .hb-v160-hero-copy p{font-size:.83rem}
+  .hb-social-v260 .hb-v160-hero-actions{display:flex;width:100%}
+  .hb-social-v260 .hb-v160-hero-actions button{flex:1}
+  .hb-social-v260 .hb-v214-quickbar{padding:6px;border-radius:13px;gap:4px}
+  .hb-social-v260 .hb-v214-quickbar button{min-height:38px;padding:8px 12px}
+  .hb-social-v260 .hb-v160-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .hb-social-v260 .hb-v160-stats>button{min-height:67px;padding:11px;gap:9px}
+  .hb-social-v260 .hb-v160-stat-icon{width:36px;height:36px;flex-basis:36px;border-radius:11px}
+  .hb-social-v260 .hb-v160-stats strong{font-size:1.23rem}
+  .hb-social-v260 .hb-social-composer.hb-v160-composer{padding:17px;border-radius:16px}
+  .hb-social-v260 .hb-v248-unified-feed .hb-v248-feed-entry.is-classic>.hb-social-post,
+  .hb-social-v260 .hb-v248-unified-feed .hb-v248-feed-entry.is-special .hb-v231-post{padding:17px;border-radius:16px}
+  .hb-social-v260 .hb-v231-notice-wrap>article{padding:14px 13px 14px 17px;flex-wrap:wrap}
+  .hb-social-v260 .hb-social-feed-aside{grid-template-columns:1fr}
+  .hb-social-v260 .hb-v231-tools>input{width:100%!important}
+  .hb-social-v260 .hb-v231-segments{width:100%;overflow-x:auto;flex-wrap:nowrap}
+  .hb-social-v260 .hb-v231-segments button{white-space:nowrap}
+  .hb-social-v260 .hb-v245-panel{padding:17px;border-radius:17px}
+  .hb-social-v260 .hb-v245-showcase-grid,.hb-social-v260 .hb-v245-listing-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:420px){
+  .hb-social-v260 .hb-v160-hero-icon{display:none}
+  .hb-social-v260 .hb-v160-stats>button{gap:7px}
+  .hb-social-v260 .hb-v160-stats small{font-size:.65rem}
+  .hb-social-v260 .hb-v249-post-actions button{font-size:.71rem;padding:7px 9px;min-height:36px}
+  .hb-social-v260 .hb-social-chat-shell{border-radius:15px}
+  .hb-social-v260 .hb-v231-events>article{padding:13px}
+}
+@media(prefers-reduced-motion:reduce){
+  .hb-social-v260 *,.hb-social-v260 *:before,.hb-social-v260 *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+
+/* Mobile: preserve the existing, proven tab rail instead of mounting a second menu.
+   The navigation remains visible if the extended pages cannot load. */
+@media(max-width:720px){
+ .hb-social-v260 .hb-v158-social-sidebar{display:flex;flex-direction:column;overflow:visible}
+ .hb-social-v260 .hb-social-tabs,.hb-social-v260 .hb-v180-secondary-nav{display:flex!important;overflow-x:auto;max-width:100%;scrollbar-width:thin}
+ .hb-social-v260 .hb-social-tabs button,.hb-social-v260 .hb-v180-secondary-nav button{flex:0 0 auto}
+}

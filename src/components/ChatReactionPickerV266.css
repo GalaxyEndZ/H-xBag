@@ -1,0 +1,93 @@
+/* HäxBag V266 — reaction selector anchored to the message, not the scroll area. */
+.hb-v266-chat-reaction-popover {
+  position: fixed;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: max-content;
+  max-width: calc(100vw - 20px);
+  padding: 8px;
+  border: 1px solid var(--hb-v266-reaction-line, rgba(170,180,190,.32));
+  border-radius: 15px;
+  background: var(--hb-v266-reaction-bg, #202125);
+  color: var(--hb-v266-reaction-text, #eee9e2);
+  box-shadow: 0 12px 36px rgba(0,0,0,.35), 0 2px 9px rgba(0,0,0,.14);
+}
+.hb-v266-chat-reaction-popover > button {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font-family: system-ui, sans-serif;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .14s, transform .14s;
+}
+.hb-v266-chat-reaction-popover > button:hover {
+  border-color: var(--hb-v266-reaction-line, rgba(170,180,190,.32));
+  background: color-mix(in srgb, var(--hb-v266-reaction-accent, #d9bd8b) 15%, transparent);
+  transform: translateY(-2px);
+}
+.hb-v266-chat-reaction-popover > button:focus-visible {
+  outline: 2px solid var(--hb-v266-reaction-accent, #d9bd8b);
+  outline-offset: 1px;
+}
+.hb-v266-chat-reaction-popover > button:disabled { opacity: .4; cursor: wait; }
+@media (prefers-reduced-motion: reduce) {
+  .hb-v266-chat-reaction-popover > button { transition: none; }
+  .hb-v266-chat-reaction-popover > button:hover { transform: none; }
+}
+
+/* Message actions may wrap inside narrow bubbles instead of overflowing them. */
+.hb-social-v201 .hb-v201-chat-messages .hb-v201-message-footer {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+}
+.hb-social-v201 .hb-v201-chat-messages .hb-v201-message-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+.hb-social-v201 .hb-v201-chat-messages .hb-v201-message-tools > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 6px;
+  margin: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--hchat-dim, currentColor);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.hb-social-v201 .hb-v201-chat-messages .hb-v201-message-tools > button:hover,
+.hb-social-v201 .hb-v201-chat-messages .hb-v201-message-tools > button[aria-expanded="true"] {
+  color: var(--hs-ink, currentColor);
+  background: var(--hchat-hover, rgba(180,180,180,.12));
+}
+@media (max-width: 450px) {
+  .hb-v266-chat-reaction-popover { padding: 6px; gap: 2px; }
+  .hb-v266-chat-reaction-popover > button { flex-basis: 36px; width: 36px; height: 36px; min-height: 36px; font-size: 22px; }
+}

@@ -1,0 +1,91 @@
+/* V278 - Central de combate: interface conectada ao teste de ataque da própria ficha. */
+.app-shell .sheet-actions-premium {
+  --hb-v278-line: color-mix(in srgb,var(--season-primary,#deb078) 18%,var(--season-line,#38434d));
+  --hb-v278-panel: color-mix(in srgb,var(--season-surface,#161d23) 84%,var(--season-bg,#0c131b));
+}
+.app-shell .sheet-actions-premium .combat-actions-heading-v278 {
+  position: relative;
+  align-items: center;
+  gap: 20px;
+  margin: -4px -4px 16px;
+  padding: 6px 5px 20px;
+}
+.app-shell .sheet-actions-premium .combat-actions-heading-v278 h3 {
+  font-size: clamp(23px, 2.4vw, 31px);
+  line-height: 1.14;
+  letter-spacing: -.035em;
+  color:var(--season-text,#f4f4f3);
+}
+.app-shell .combat-actions-heading-v278 .combat-eyebrow {font-size:10px;letter-spacing:.18em;color:var(--season-primary,#deb078)}
+.app-shell .combat-actions-heading-v278 p {max-width:590px;font-size:12px;line-height:1.65}
+.app-shell .combat-actions-header-side-v278{display:flex;gap:10px;align-items:center;white-space:nowrap;color:var(--season-muted,#a9b1bb);font-size:9px;font-weight:800;letter-spacing:.12em}
+.app-shell .combat-actions-header-die-v278{display:grid;place-items:center;width:47px;height:47px;border:1px solid color-mix(in srgb,var(--season-primary,#deb078) 38%,transparent);border-radius:13px;color:var(--season-primary,#deb078);background:color-mix(in srgb,var(--season-primary,#deb078) 11%,transparent);font:800 13px Manrope,sans-serif;letter-spacing:0;transform:none}
+.app-shell .sheet-actions-premium .hb-critical-roll-config{margin:0 0 12px;padding:14px;gap:14px;border:1px solid var(--hb-v278-line);border-radius:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025);background:linear-gradient(132deg,color-mix(in srgb,var(--season-primary,#deb078) 8%,var(--season-surface,#151b21)),var(--hb-v278-panel));}
+.app-shell .sheet-actions-premium .hb-critical-roll-config>div:first-child strong{display:block;font-size:14px;color:var(--season-primary,#deb078);letter-spacing:-.015em}
+.app-shell .sheet-actions-premium .hb-critical-roll-config>div:first-child small{margin-top:8px;line-height:1.6}
+.app-shell .sheet-actions-premium .hb-critical-linked-class{min-height:88px;background:color-mix(in srgb,var(--season-bg,#0b131a) 68%,transparent);border-color:var(--hb-v278-line)}
+.app-shell .sheet-actions-premium .hb-critical-linked-class strong{font-size:13px}
+.app-shell .combat-linked-dt-v278{min-width:0;align-self:stretch;display:flex!important;flex-direction:column;gap:7px;justify-content:center}
+.app-shell .combat-linked-dt-v278 input{font-size:15px;font-weight:800;padding:10px 12px!important;min-height:40px!important}
+.app-shell .combat-linked-dt-v278 small{font-size:10px!important;font-weight:400;color:var(--season-muted,#9da7b1)!important;line-height:1.45}
+.app-shell .combat-actions-quickbar-v278{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 13px;margin:0 0 21px;border-radius:14px;border:1px solid var(--hb-v278-line);background:color-mix(in srgb,var(--season-bg,#0b131a) 74%,var(--season-surface-alt,#242b33));}
+.app-shell .combat-actions-quickbar-status-v278{min-width:0;display:flex;align-items:center;gap:8px;flex:1 1 220px;color:var(--season-muted,#9da7b1);font-size:11px}
+.app-shell .combat-actions-quickbar-status-v278 strong{overflow-wrap:anywhere;color:var(--season-text,#f4f4f3);font-size:12px}
+.app-shell .combat-actions-live-dot-v278{width:7px;height:7px;flex:0 0 7px;background:var(--season-primary,#deb078);border-radius:50%;box-shadow:0 0 12px color-mix(in srgb,var(--season-primary,#deb078) 40%,transparent)}
+.app-shell .combat-actions-quickbar-metric-v278{display:flex;align-items:baseline;gap:7px;padding:0 12px;border-left:1px solid var(--hb-v278-line)}
+.app-shell .combat-actions-quickbar-metric-v278 small{font-size:11px;color:var(--season-muted,#a9b3bd)}
+.app-shell .combat-actions-quickbar-metric-v278 strong{font-variant-numeric:tabular-nums;font-size:16px;color:var(--season-text,#f4f4f3)}
+.app-shell .combat-actions-quickbar-button-v278{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;min-height:36px;border:1px solid color-mix(in srgb,var(--season-primary,#deb078) 40%,transparent);border-radius:10px;background:color-mix(in srgb,var(--season-primary,#deb078) 12%,transparent);color:var(--season-primary,#deb078);font-size:11px;font-weight:800;cursor:pointer;transition:background .18s,border-color .18s;transform:none!important}
+.app-shell .combat-actions-quickbar-button-v278:hover,.app-shell .combat-actions-quickbar-button-v278:focus-visible{background:color-mix(in srgb,var(--season-primary,#deb078) 21%,transparent);border-color:var(--season-primary,#deb078)}
+.app-shell .combat-actions-quickbar-button-v278:focus-visible{outline:2px solid var(--season-primary,#deb078);outline-offset:3px}
+.app-shell .sheet-actions-premium .hb-combat-group-title{margin:0 0 12px;padding-bottom:11px}
+.app-shell .sheet-actions-premium .hb-combat-group-title h4{font-size:17px}
+.app-shell .sheet-actions-premium .combat-actions-layout-v277{gap:13px;grid-template-columns:minmax(0,1.45fr) minmax(310px,.95fr)}
+.app-shell .sheet-actions-premium .combat-actions-block-v277{padding:17px;border-radius:17px;box-shadow:none;background:linear-gradient(160deg,color-mix(in srgb,var(--season-surface-alt,#242b33) 58%,var(--season-bg,#0b141c)),var(--hb-v278-panel));}
+.app-shell .combat-actions-block-head-v277{align-items:flex-start;flex-direction:column;gap:5px}
+.app-shell .combat-actions-block-head-v277 small{text-align:left;max-width:unset;line-height:1.5}
+.app-shell .sheet-actions-premium .combat-action-grid--primary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.app-shell .sheet-actions-premium .combat-action-grid--support{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.app-shell .sheet-actions-premium .combat-action-card{min-height:128px;padding:16px 14px;border-radius:14px;gap:8px;justify-content:flex-start;background:linear-gradient(165deg,color-mix(in srgb,var(--season-surface-alt,#1d252d) 86%,var(--season-bg,#0b141b)),var(--season-surface,#141d26));transition:box-shadow .15s,border-color .15s,background .15s;transform:none!important;}
+.app-shell .sheet-actions-premium .combat-action-card:is(:hover,:focus-visible){box-shadow:0 8px 18px rgba(0,0,0,.12),inset 0 1px 0 color-mix(in srgb,var(--season-primary,#deb078) 17%,transparent);border-color:color-mix(in srgb,var(--season-primary,#deb078) 68%,transparent);transform:none!important}
+.app-shell .sheet-actions-premium .combat-action-card[data-last-rolled="true"],.app-shell .sheet-actions-premium .combat-action-card[data-expanded="true"]{border-color:color-mix(in srgb,var(--season-primary,#deb078) 62%,transparent);background:linear-gradient(145deg,color-mix(in srgb,var(--season-primary,#deb078) 16%,var(--season-surface-alt,#202731)),var(--season-surface,#151b23));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--season-primary,#deb078) 12%,transparent)}
+.app-shell .sheet-actions-premium .combat-action-card--attack-v278:first-child{grid-column:1/-1;min-height:100px;display:grid;grid-template-columns:46px minmax(0,1fr);align-content:center;column-gap:13px;}
+.app-shell .sheet-actions-premium .combat-action-card--attack-v278:first-child .combat-action-icon{grid-row:span 2;align-self:center;width:43px;height:43px;font-size:23px}
+.app-shell .sheet-actions-premium .combat-action-card--attack-v278:first-child strong{font-size:16px}
+.app-shell .sheet-actions-premium .combat-action-card--attack-v278:first-child small{grid-column:2}
+.app-shell .sheet-actions-premium .combat-action-card .combat-action-icon{flex:0 0 34px;}
+.app-shell .sheet-actions-premium .combat-action-card strong{font-size:13px;line-height:1.3;color:var(--season-text,#f4f4f4)}
+.app-shell .sheet-actions-premium .combat-action-card small{font-size:11px;line-height:1.45;color:var(--season-muted,#9fabba)}
+.app-shell .sheet-actions-premium .combat-action-card--accent strong{color:var(--season-primary,#deb078)}
+.app-shell .combat-actions-test-feedback-v278{margin-top:15px;border:1px solid var(--hb-v278-line);border-radius:18px;padding:17px 18px;background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--season-primary,#deb078) 9%,transparent),transparent 65%),var(--hb-v278-panel);scroll-margin-top:24px;min-width:0;}
+.app-shell .combat-actions-test-feedback-v278.is-critical{border-color:color-mix(in srgb,var(--season-primary,#deb078) 70%,var(--hb-v278-line))}
+.app-shell .combat-actions-test-feedback-v278.is-miss{border-color:color-mix(in srgb,#cd7881 43%,var(--hb-v278-line))}
+.app-shell .combat-actions-test-feedback-header-v278{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.app-shell .combat-actions-test-feedback-header-v278 h4{font:850 18px/1.2 Manrope,sans-serif;letter-spacing:-.02em;color:var(--season-text,#f2f3f4);margin:3px 0 0}
+.app-shell .combat-actions-kicker-v278{font-size:10px;font-weight:800;letter-spacing:.16em;color:var(--season-primary,#deb078)}
+.app-shell .combat-actions-outcome-v278{padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;background:color-mix(in srgb,var(--season-muted,#8395a9) 12%,transparent);border:1px solid var(--hb-v278-line);color:var(--season-muted,#a9b3bd)}
+.app-shell .combat-actions-outcome-v278.is-critical,.app-shell .combat-actions-outcome-v278.is-hit{color:var(--season-primary,#deb078);border-color:color-mix(in srgb,var(--season-primary,#deb078) 38%,transparent);background:color-mix(in srgb,var(--season-primary,#deb078) 13%,transparent)}
+.app-shell .combat-actions-outcome-v278.is-failure,.app-shell .combat-actions-outcome-v278.is-miss{color:#f1a1a7;border-color:color-mix(in srgb,#cc6d7a 35%,transparent);background:rgba(204,109,122,.1)}
+.app-shell .combat-actions-test-grid-v278{display:grid;grid-template-columns:minmax(128px,.45fr) minmax(220px,1fr) auto;gap:14px;align-items:center}
+.app-shell .combat-actions-dice-readout-v278{border:1px solid var(--hb-v278-line);border-radius:13px;background:color-mix(in srgb,var(--season-bg,#0b141b) 72%,transparent);padding:13px 15px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.app-shell .combat-actions-dice-readout-v278 span{color:var(--season-muted,#a8b0bc);font-size:11px}
+.app-shell .combat-actions-dice-readout-v278 strong{color:var(--season-primary,#deb078);font-size:32px;line-height:1.1;font-weight:850;font-variant-numeric:tabular-nums}
+.app-shell .combat-actions-dice-readout-v278 small{font-size:10px;line-height:1.55;color:var(--season-muted,#a8b0bc)}
+.app-shell .combat-actions-test-verdict-v278{min-width:0;display:grid;gap:6px}
+.app-shell .combat-actions-test-verdict-v278>strong{font-size:14px;color:var(--season-text,#f4f4f3)}
+.app-shell .combat-actions-test-verdict-v278 p{font-size:12px;color:var(--season-text,#f2f3f4);line-height:1.5;margin:0}
+.app-shell .combat-actions-test-verdict-v278 small{font-size:10px;color:var(--season-muted,#a8b0bc);overflow-wrap:anywhere;line-height:1.5}
+.app-shell .combat-actions-to-damage-v278{display:flex;align-items:center;justify-content:center;gap:8px;min-width:140px;min-height:43px;padding:10px 12px;border-radius:11px;border:1px solid var(--season-primary,#deb078);background:var(--season-primary,#deb078);color:var(--season-bg,#14171b);font-weight:800;font-size:11px;cursor:pointer;transform:none!important;}
+.app-shell .combat-actions-to-damage-v278:hover{filter:brightness(1.09);transform:none!important}
+.app-shell .combat-actions-to-damage-v278:focus-visible{outline:2px solid var(--season-primary,#deb078);outline-offset:3px}
+.app-shell .combat-actions-test-empty-v278{display:flex;align-items:center;gap:14px;padding:13px 14px;border:1px dashed var(--hb-v278-line);border-radius:12px;background:color-mix(in srgb,var(--season-bg,#0d141b) 72%,transparent)}
+.app-shell .combat-actions-test-empty-icon-v278{font-size:27px;color:var(--season-primary,#deb078)}
+.app-shell .combat-actions-test-empty-v278 strong{font-size:13px;color:var(--season-text,#f4f4f3)}
+.app-shell .combat-actions-test-empty-v278 p{margin:5px 0 0;font-size:11px;line-height:1.65;color:var(--season-muted,#a8b0bc);overflow-wrap:anywhere}
+.app-shell .combat-actions-test-footer-v278{margin:13px 0 0;padding-top:11px;border-top:1px solid var(--hb-v278-line);font-size:11px;line-height:1.5;color:var(--season-muted,#a8b0bc)}
+.app-shell .combat-action-result[hidden]{display:none!important}
+@media (max-width:1170px){.app-shell .sheet-actions-premium .combat-actions-layout-v277{grid-template-columns:1fr}.app-shell .sheet-actions-premium .combat-action-grid--primary{grid-template-columns:repeat(3,minmax(0,1fr))}.app-shell .sheet-actions-premium .combat-action-card--attack-v278:first-child{grid-column:auto;min-height:128px;display:flex}.app-shell .sheet-actions-premium .combat-action-card--attack-v278:first-child small{grid-column:auto}.app-shell .combat-actions-test-grid-v278{grid-template-columns:minmax(125px,.4fr) minmax(180px,1fr) auto;}}
+@media (max-width:780px){.app-shell .sheet-actions-premium .hb-critical-roll-config{grid-template-columns:repeat(2,minmax(0,1fr))}.app-shell .sheet-actions-premium .hb-critical-roll-config>div:first-child{grid-column:1/-1}.app-shell .combat-actions-test-grid-v278{grid-template-columns:minmax(125px,.4fr) minmax(0,1fr)}.app-shell .combat-actions-to-damage-v278{grid-column:1/-1}.app-shell .combat-actions-header-side-v278>span:last-child{display:none}.app-shell .sheet-actions-premium .combat-action-grid--primary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.app-shell .combat-actions-heading-v278{align-items:flex-start}.app-shell .combat-actions-header-side-v278{display:none}.app-shell .sheet-actions-premium .hb-critical-roll-config{grid-template-columns:1fr}.app-shell .sheet-actions-premium .hb-critical-roll-config>div:first-child{grid-column:auto}.app-shell .combat-actions-quickbar-v278{gap:10px}.app-shell .combat-actions-quickbar-status-v278{flex-basis:100%}.app-shell .combat-actions-quickbar-metric-v278{border-left:none;padding:0 8px 0 0}.app-shell .combat-actions-quickbar-button-v278{flex:1 1 130px}.app-shell .sheet-actions-premium .combat-action-grid--primary,.app-shell .sheet-actions-premium .combat-action-grid--support{grid-template-columns:repeat(2,minmax(0,1fr))}.app-shell .sheet-actions-premium .combat-action-card{min-height:125px;padding:13px 11px}.app-shell .combat-actions-test-grid-v278{grid-template-columns:1fr}.app-shell .combat-actions-dice-readout-v278{flex-direction:row;align-items:center;flex-wrap:wrap}.app-shell .combat-actions-dice-readout-v278 strong{font-size:25px}.app-shell .combat-actions-test-feedback-v278{padding:13px}}
+@media (max-width:360px){.app-shell .sheet-actions-premium .combat-action-grid--primary,.app-shell .sheet-actions-premium .combat-action-grid--support{grid-template-columns:1fr}.app-shell .sheet-actions-premium .combat-action-card{min-height:102px}}
+@media (prefers-reduced-motion: reduce){.app-shell .sheet-actions-premium .combat-action-card,.app-shell .combat-actions-to-damage-v278{transition:none!important;transform:none!important}}

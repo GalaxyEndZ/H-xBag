@@ -1,0 +1,84 @@
+/* V272 — painel de críticos; preserva a paleta do tema da ficha */
+.sheet-editor-fields .hb-critical-panel { grid-column:1 / -1; min-width:0; }
+.hb-critical-panel {display:grid;gap:13px;border-radius:16px;padding:17px;border:1px solid color-mix(in srgb,var(--season-primary,#ecaf69) 34%,var(--season-line,#53515a));background:linear-gradient(125deg,color-mix(in srgb,var(--season-primary,#ecaf69) 8%,var(--season-surface,#141a20)),var(--season-surface-alt,#182129));color:var(--season-text,inherit)}
+.hb-critical-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hb-critical-heading small {font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:850;color:var(--season-primary,#ecaf69)}
+.hb-critical-heading strong {display:block;font-size:17px;margin-top:3px}
+.hb-critical-pill {border:1px solid color-mix(in srgb,var(--season-primary,#ecaf69) 50%,transparent);border-radius:12px;padding:7px 13px;background:color-mix(in srgb,var(--season-primary,#ecaf69) 12%,transparent);color:var(--season-primary,#ecaf69);font-size:21px;font-weight:900;font-variant-numeric:tabular-nums}
+.hb-critical-fields {display:grid;grid-template-columns:minmax(140px,180px) 1fr;gap:12px;align-items:end}
+.hb-critical-fields label,.hb-critical-form-select {display:grid;gap:6px;font-size:11px;font-weight:700;color:var(--season-muted,#b8b8bd)}
+.hb-critical-fields input,.hb-critical-form-select select {min-width:0;width:100%;box-sizing:border-box;border-radius:9px;border:1px solid var(--season-line,#454a51);background:var(--season-surface,#131a20);color:var(--season-text,#fafafa);font:inherit;padding:9px 10px}
+.hb-critical-breakdown {font-size:12px;line-height:1.5;color:var(--season-muted,#a4acb5)}
+.hb-critical-flow-chips {display:flex;flex-wrap:wrap;gap:6px}
+.hb-critical-flow-chips span {display:inline-flex;padding:5px 8px;border:1px solid color-mix(in srgb,var(--season-primary,#d7a96f) 32%,transparent);border-radius:20px;font-size:11px;font-weight:740;background:color-mix(in srgb,var(--season-primary,#d7a96f) 9%,transparent)}
+.hb-critical-example {display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;line-height:1.5;padding-top:10px;border-top:1px solid var(--season-line,rgba(255,255,255,.12))}
+.hb-critical-example strong {color:var(--season-primary,#ecaf69);font-size:15px}
+.hb-critical-hint {font-size:11px;color:var(--season-muted,#b8b8bd);line-height:1.6;margin:0}
+.hb-critical-roll-config {display:grid;grid-template-columns:1fr minmax(150px,260px);gap:12px;align-items:center;border:1px solid var(--season-line,rgba(255,255,255,.16));padding:12px;border-radius:12px;margin:14px 0;background:var(--season-surface-alt,rgba(0,0,0,.2))}
+.hb-critical-roll-config strong {font-size:13px}.hb-critical-roll-config small {display:block;margin-top:4px;color:var(--season-muted,#a7abb4);font-size:11px;line-height:1.5}
+.hb-critical-roll-config label {display:grid;gap:5px;font-size:11px;font-weight:700}
+.hb-critical-roll-config select {width:100%;min-width:0;border-radius:8px;border:1px solid var(--season-line,#5f636a);background:var(--season-surface,#171c25);color:var(--season-text,#f5f5f5);padding:9px}
+@media(max-width:600px){.hb-critical-panel{padding:13px}.hb-critical-fields,.hb-critical-roll-config{grid-template-columns:1fr}.hb-critical-pill{font-size:17px}}
+
+/* V272 — reorganização da aba Combate e leitura dos turnos de iniciativa */
+.app-shell .sheet-editor-layout .sheet-editor-fields > .hb-combat-editor {grid-column:1/-1;min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+.hb-combat-editor {--hb-combat-accent:var(--season-primary,#e4ae70);display:grid;gap:19px;min-width:0}
+.hb-combat-editor * {box-sizing:border-box}
+.hb-combat-editor-hero{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(200px,.65fr);gap:16px;align-items:center;border:1px solid color-mix(in srgb,var(--hb-combat-accent) 25%,var(--season-line,#37414a));border-radius:18px;background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--hb-combat-accent) 16%,transparent),transparent 55%),linear-gradient(140deg,var(--season-surface,#171d24),var(--season-bg,#111720));padding:22px;min-width:0}
+.hb-combat-editor-intro{min-width:0}
+.hb-combat-editor-kicker,.hb-combat-mini-label {display:block;font-size:10px;font-weight:850;letter-spacing:.16em;color:var(--hb-combat-accent);text-transform:uppercase}
+.hb-combat-editor-hero h3{margin:8px 0 7px;font-size:clamp(18px,2.3vw,25px);line-height:1.2;color:var(--season-text,#f7f7fa);letter-spacing:-.035em}
+.hb-combat-editor-hero p{margin:0;max-width:580px;font-size:12px;line-height:1.65;color:var(--season-muted,#a8afba)}
+.hb-combat-editor-weapon{border:1px solid var(--season-line,rgba(255,255,255,.16));border-radius:13px;background:color-mix(in srgb,var(--season-surface-alt,#232933) 80%,transparent);padding:14px;min-width:0;display:grid;gap:7px}
+.hb-combat-editor-weapon strong{font-size:15px;overflow-wrap:anywhere;color:var(--season-text,#eee)}
+.hb-combat-editor-weapon small{font-size:11px;color:var(--season-muted,#b1b7bd);line-height:1.55}
+.hb-combat-editor-section-head{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:end;padding-bottom:9px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.14))}
+.hb-combat-editor-section-head>div>span,.hb-combat-group-title>div>span,.hb-combat-initiative-guide>div:first-child>span{font-size:10px;letter-spacing:.15em;font-weight:850;color:var(--hb-combat-accent,var(--season-primary,#e4ae70))}
+.hb-combat-editor-section-head h4,.hb-combat-group-title h4,.hb-combat-initiative-guide h4{font-size:17px;line-height:1.25;color:var(--season-text,#eee);margin:3px 0 0}
+.hb-combat-editor-section-head>p{margin:0;color:var(--season-muted,#acb4bb);font-size:11px;line-height:1.5}
+.hb-combat-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;min-width:0}
+.hb-combat-stat{min-width:0;border-radius:13px;border:1px solid var(--season-line,#39434d);background:linear-gradient(155deg,color-mix(in srgb,var(--season-surface,#1b2128) 91%,transparent),var(--season-bg,#111720));padding:15px 14px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;justify-content:center;overflow-wrap:anywhere}
+.hb-combat-stat--primary{background:linear-gradient(145deg,color-mix(in srgb,var(--hb-combat-accent) 16%,var(--season-surface,#161c24)),var(--season-surface,#161c24));border-color:color-mix(in srgb,var(--hb-combat-accent) 43%,var(--season-line,#39434d))}
+.hb-combat-stat>span{font-weight:750;font-size:11px;color:var(--season-muted,#adb4bd)}
+.hb-combat-stat>strong{color:var(--season-text,#f7f7fc);font-size:clamp(18px,2vw,24px);font-variant-numeric:tabular-nums;line-height:1.25;word-break:break-word}
+.hb-combat-stat--primary>strong{color:var(--hb-combat-accent)}
+.hb-combat-stat>small{color:var(--season-muted,#aab2b9);font-size:10px;line-height:1.4}
+.hb-combat-config-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0}
+.hb-combat-config-grid>label{display:flex;flex-direction:column;gap:6px;min-width:0;border:1px solid var(--season-line,#36414d);border-radius:12px;background:var(--season-surface,#171e26);padding:12px;color:var(--season-muted,#b1b6be);font-size:11px;font-weight:750}
+.hb-combat-config-grid>label>input{min-width:0;width:100%;border:1px solid var(--season-line,#36414d);background:var(--season-bg,#101720);border-radius:8px;padding:10px;color:var(--season-text,#f7f7fa);font:inherit;font-size:15px}
+.hb-combat-initiative-guide{padding:16px;display:grid;gap:12px;border:1px solid color-mix(in srgb,var(--hb-combat-accent) 30%,var(--season-line,#36414d));border-radius:15px;background:color-mix(in srgb,var(--hb-combat-accent) 5%,var(--season-surface,#151c24))}
+.hb-combat-initiative-guide p{margin:6px 0 0;font-size:11px;line-height:1.6;color:var(--season-muted,#abb1bc)}
+.hb-combat-initiative-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hb-combat-initiative-metrics>div{min-width:0;display:flex;flex-direction:column;gap:4px;border:1px solid var(--season-line,#38414b);border-radius:10px;padding:10px;background:var(--season-surface,#171e25)}
+.hb-combat-initiative-metrics small{font-size:10px;color:var(--season-muted,#b4b7bb)}
+.hb-combat-initiative-metrics strong{font-size:19px;line-height:1.2;font-weight:850;color:var(--hb-combat-accent)}
+.hb-combat-initiative-metrics span{font-size:10px;line-height:1.5;color:var(--season-muted,#abb3bb)}
+.hb-combat-editor-notes{min-width:0}
+.hb-combat-editor-notes>label{display:grid;gap:8px;font-size:12px;color:var(--season-muted,#a9adb6)}
+.hb-combat-editor-notes textarea{min-width:0;width:100%;min-height:75px}
+.hb-combat-group-title{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:10px;border-bottom:1px solid var(--season-line,rgba(255,255,255,.14));padding-bottom:11px;margin:4px 0 12px}
+.hb-combat-group-title small{color:var(--season-muted,#afb5be);font-size:11px;line-height:1.5}
+.hb-combat-initiative-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:15px 0 11px;padding:11px 14px;border-radius:11px;background:color-mix(in srgb,var(--season-primary,#ddb07a) 7%,var(--season-bg,#111821));border:1px solid var(--season-line,#394450)}
+.hb-combat-initiative-toolbar strong{font-size:13px}.hb-combat-initiative-toolbar small{display:block;font-size:11px;color:var(--season-muted,#b3bac2);margin-top:3px}
+.hb-combat-initiative-toolbar label{font-size:10px;font-weight:800;color:var(--season-muted,#b3bac2);display:flex;flex-direction:column;gap:5px;min-width:160px}
+.hb-combat-initiative-toolbar input{width:100%;font-size:14px;min-width:0;padding:8px 10px;border-radius:9px;color:var(--season-text,#fff);background:var(--season-surface,#151b22);border:1px solid var(--season-line,#38434d)}
+.app-shell .hb-combat-roll-result--critical{border-color:color-mix(in srgb,var(--season-primary,#e9b777) 64%,var(--season-line,#38434d));background:linear-gradient(110deg,color-mix(in srgb,var(--season-primary,#e9b777) 16%,var(--season-surface,#1c2228)),var(--season-bg,#141920))}
+.app-shell .hb-combat-roll-result--failure{border-color:color-mix(in srgb,#da6570 52%,var(--season-line,#38434d));background:linear-gradient(110deg,color-mix(in srgb,#da6570 10%,var(--season-surface,#1c2228)),var(--season-bg,#141920))}
+.app-shell .hb-ms-initiative-extra{border-left-color:color-mix(in srgb,var(--season-primary,#d6ab75) 55%,var(--season-line,#39434d));opacity:.88}
+.app-shell .hb-ms-initiative-extra .hb-ms-initiative-rank{color:var(--season-muted,#aab2bc)}
+.app-shell .hb-ms-initiative-extra .hb-ms-initiative-score>strong{background:color-mix(in srgb,var(--season-primary,#d6ab75) 6%,var(--season-surface,#171b23));font-size:18px}
+@media(max-width:940px){.hb-combat-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-combat-editor-hero{grid-template-columns:1fr 220px}}
+@media(max-width:630px){.hb-combat-editor{gap:15px}.hb-combat-editor-hero{grid-template-columns:1fr;padding:16px}.hb-combat-config-grid{grid-template-columns:1fr}.hb-combat-editor-section-head>p{flex-basis:100%}.hb-combat-initiative-metrics{grid-template-columns:1fr 1fr}.hb-combat-editor-hero h3{font-size:21px}}
+@media(max-width:430px){.hb-combat-stat-grid,.hb-combat-initiative-metrics{grid-template-columns:1fr 1fr}.hb-combat-stat{padding:11px}.hb-combat-stat>strong{font-size:18px}.hb-combat-editor-hero{padding:14px}.hb-combat-initiative-toolbar label{width:100%}.hb-combat-initiative-guide{padding:12px}}
+@media(prefers-reduced-motion:reduce){.hb-combat-editor :is(button,input,select){transition:none!important}}
+.hb-critical-roll-config {grid-template-columns:minmax(0,1.3fr) minmax(160px,.8fr) minmax(125px,.6fr)}
+.hb-critical-roll-config input{width:100%;min-width:0;border-radius:8px;border:1px solid var(--season-line,#5f636a);background:var(--season-surface,#171c25);color:var(--season-text,#f5f5f5);padding:9px}
+@media(max-width:780px){.hb-critical-roll-config{grid-template-columns:1fr 1fr}.hb-critical-roll-config>div{grid-column:1/-1}}
+@media(max-width:500px){.hb-critical-roll-config{grid-template-columns:1fr}.hb-critical-roll-config>div{grid-column:auto}}
+/* V275: classificação vinculada ao seletor de Dano, sem escolha divergente no Ataque. */
+.hb-critical-linked-class{display:grid;align-content:center;gap:5px;min-width:0;padding:9px 12px;border:1px solid var(--season-line,#424b55);border-radius:10px;background:var(--season-bg,#111923)}
+.hb-critical-linked-class small{font-size:10px;color:var(--season-muted,#bdc3cd);margin:0}
+.hb-critical-linked-class strong{font-size:12px;line-height:1.4;color:var(--season-text,#fff);overflow-wrap:anywhere}
+.hb-critical-linked-class a{font-size:10px;color:var(--season-primary,#e8b774);text-decoration:underline;text-underline-offset:3px;justify-self:start}
+.hb-critical-linked-class a:hover{filter:brightness(1.1)}
+.hb-critical-linked-class a:focus-visible{outline:2px solid var(--season-primary,#e8b774);outline-offset:3px}

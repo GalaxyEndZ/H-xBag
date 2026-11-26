@@ -1,0 +1,21 @@
+
+.app-shell .combat-actions-overview-v277{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 14px}
+.app-shell .combat-actions-chip-v277{display:grid;gap:6px;align-content:start;min-height:94px;padding:14px 15px;border-radius:16px;border:1px solid color-mix(in srgb,var(--season-primary,#ffc078) 16%,var(--season-line,#393244));background:linear-gradient(160deg,color-mix(in srgb,var(--season-surface-alt,#211c31) 70%,transparent),color-mix(in srgb,var(--season-bg,#100e19) 92%,transparent));box-shadow:0 10px 24px rgba(0,0,0,.12)}
+.app-shell .combat-actions-chip-v277>span{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--season-primary,#ffc078);text-transform:uppercase}
+.app-shell .combat-actions-chip-v277 strong{font:800 15px/1.25 Manrope,sans-serif;color:var(--season-text,#f6f3fb)}
+.app-shell .combat-actions-chip-v277 small{font-size:11px;line-height:1.55;color:var(--season-muted,#b4bac5)}
+.app-shell .combat-actions-layout-v277{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(280px,.95fr);gap:16px;align-items:start}
+.app-shell .combat-actions-block-v277{padding:16px;border-radius:18px;border:1px solid color-mix(in srgb,var(--season-primary,#ffc078) 16%,var(--season-line,#393244));background:linear-gradient(160deg,color-mix(in srgb,var(--season-surface-alt,#211c31) 72%,transparent),color-mix(in srgb,var(--season-bg,#100e19) 96%,transparent));box-shadow:0 12px 28px rgba(0,0,0,.14)}
+.app-shell .combat-actions-block-head-v277{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px;padding-bottom:11px;border-bottom:1px solid color-mix(in srgb,var(--season-primary,#ffc078) 14%,transparent)}
+.app-shell .combat-actions-block-head-v277>div{display:grid;gap:4px}
+.app-shell .combat-actions-block-head-v277 span{font-size:10px;letter-spacing:.14em;font-weight:800;color:var(--season-primary,#ffc078);text-transform:uppercase}
+.app-shell .combat-actions-block-head-v277 strong{font:800 16px/1.2 Manrope,sans-serif;color:var(--season-text,#f6f3fb)}
+.app-shell .combat-actions-block-head-v277 small{max-width:280px;font-size:11px;line-height:1.5;color:var(--season-muted,#b4bac5);text-align:right}
+.app-shell .combat-action-grid--primary{grid-template-columns:repeat(3,minmax(0,1fr))}
+.app-shell .combat-action-grid--support{grid-template-columns:repeat(2,minmax(0,1fr))}
+.app-shell .combat-action-card--utility{min-height:118px}
+.app-shell .combat-action-card--accent{border-color:color-mix(in srgb,var(--season-primary,#ffc078) 38%,var(--season-line,#393244));background:linear-gradient(155deg,color-mix(in srgb,var(--season-primary,#ffc078) 14%,var(--season-surface-alt,#211c31)),color-mix(in srgb,var(--season-bg,#100e19) 92%,transparent))}
+.app-shell .combat-action-card--accent strong{color:var(--season-primary,#ffc078)}
+@media(max-width:1180px){.app-shell .combat-actions-overview-v277{grid-template-columns:repeat(2,minmax(0,1fr))}.app-shell .combat-actions-layout-v277{grid-template-columns:1fr}.app-shell .combat-actions-block-head-v277 small{max-width:none;text-align:left}}
+@media(max-width:760px){.app-shell .combat-action-grid--primary,.app-shell .combat-action-grid--support{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.app-shell .combat-actions-overview-v277{grid-template-columns:1fr}.app-shell .combat-action-grid--primary,.app-shell .combat-action-grid--support{grid-template-columns:1fr}.app-shell .combat-actions-block-v277{padding:14px}}

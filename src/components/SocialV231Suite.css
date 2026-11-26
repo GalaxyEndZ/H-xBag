@@ -144,3 +144,28 @@
 .hb-v231-member-request .hb-v257-member-profile:focus-visible{outline:2px solid var(--v231-accent);outline-offset:3px;border-radius:3px}
 .hb-v231-member-request .hb-v257-member-profile:disabled{opacity:.65;cursor:default}
 .hb-v231-member-request .hb-v257-member-person small{opacity:.73;font-size:.76rem;overflow-wrap:anywhere}
+
+/* Identidades de publicação: aviso não bloqueante e tentativa manual de recarga. */
+.hb-v231-character-access-warning{display:block;margin-top:7px;line-height:1.5;font-size:.83em;opacity:.9}
+.hb-v231-character-access-warning button{display:inline-block;margin-left:8px;padding:2px 8px;border:1px solid currentColor;border-radius:7px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.hb-v231-character-access-warning button:hover{opacity:.75}
+
+/* V259 · notificações abrem a publicação que originou a interação. */
+.hb-v231-notice-wrap .hb-v259-notice-open{display:flex;align-items:center;gap:13px;flex:1;min-width:0;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer;font:inherit}
+.hb-v231-notice-wrap .hb-v259-notice-open>span:last-child{display:grid;gap:4px;min-width:0}
+.hb-v231-notice-wrap .hb-v259-notice-open strong{overflow-wrap:anywhere}
+.hb-v231-notice-wrap .hb-v259-notice-open small{opacity:.65}
+.hb-v231-notice-wrap .hb-v259-notice-open em{font-size:.78rem;font-style:normal;font-weight:700;color:var(--v231-accent)}
+.hb-v231-notice-wrap .hb-v259-notice-open:hover em{text-decoration:underline}
+.hb-v231-notice-wrap .hb-v259-notice-open:focus-visible{outline:2px solid var(--v231-accent);outline-offset:5px;border-radius:6px}
+.hb-v259-focused-post{scroll-margin-top:125px;border-radius:16px;outline:2px solid var(--v231-accent);outline-offset:4px;animation:hb-v259-focus 2s ease-out}
+@keyframes hb-v259-focus{0%,40%{box-shadow:0 0 0 9px color-mix(in srgb,var(--v231-accent) 22%,transparent)}100%{box-shadow:0 0 0 0 transparent}}
+@media(prefers-reduced-motion:reduce){.hb-v259-focused-post{animation:none}}
+
+/* V261 — responder em nome de personagem, com autoria da conta preservada. */
+.hb-v231-comment-body .hb-v261-identity-label{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:.76rem;font-weight:750}
+.hb-v231-comment-body .hb-v261-identity-label select{max-width:100%;min-width:185px;padding:9px 12px;border-radius:10px;border:1px solid var(--v231-line);background:var(--season-surface-alt,#24242a);color:var(--season-text,#eee)}
+.hb-v231-comment .hb-v261-comment-author{padding:0;background:transparent;border:0;color:inherit;font:inherit;cursor:pointer}
+.hb-v231-comment .hb-v261-comment-author:hover strong{color:var(--v231-accent)}
+.hb-v231-comment .hb-v261-comment-author:disabled{cursor:default}
+.hb-v231-comment div>small{font-size:.69rem;color:var(--season-muted,#a9a6af)}
