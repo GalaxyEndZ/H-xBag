@@ -1,5 +1,5 @@
 import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from '../desktopPublicLinks'
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { supabase } from '../supabase'
 import './CommunicationHubV284.css'
 import './CommunicationHubV285.css'
@@ -7,7 +7,8 @@ import './CommunicationHubV287.css'
 import './CommunicationHubV288.css'
 import './CommunicationHubV289.css'
 import './CommunicationHubV295.css'
-import VoiceCallV288 from './VoiceCallV288'
+// O WebRTC só é baixado quando alguém entra numa chamada (não ao abrir Comunicação).
+const VoiceCallV288 = lazy(() => import('./VoiceCallV288'))
 
 const TABLE = {
   servers: 'hax_v284_servers', members: 'hax_v284_members', channels: 'hax_v284_channels',
@@ -17,8 +18,12 @@ const BUCKET = 'hax-v284-communication'
 const REACTIONS = ['❤️','😂','🔥','✨','👍','🎲','⚔️','👏'] as const
 const MIME = ['image/png','image/jpeg','image/webp','image/gif','application/pdf','text/plain']
 const roleLabels: Record<string,string> = {owner:'Dono',admin:'Administrador',mod:'Moderador',member:'Membro'}
-const formatTime = (date:string) => new Date(date).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
-const formatDate = (date:string) => new Date(date).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'})
+// Reutiliza formatadores: mensagens são redesenhadas frequentemente ao digitar.
+const timeFormatter = new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit'})
+const dateFormatter = new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short',year:'numeric'})
+const longDateFormatter = new Intl.DateTimeFormat('pt-BR',{day:'numeric',month:'long',year:'numeric'})
+const formatTime = (date:string) => timeFormatter.format(new Date(date))
+const formatDate = (date:string) => dateFormatter.format(new Date(date))
 const calendarDay = (date:string) => {
   const d=new Date(date)
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -29,12 +34,40 @@ const friendlyDay = (date:string) => {
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1)
   if (day === today) return 'Hoje'
   if (day === calendarDay(yesterday.toISOString())) return 'Ontem'
-  return new Date(date).toLocaleDateString('pt-BR',{day:'numeric',month:'long',year:'numeric'})
+  return longDateFormatter.format(new Date(date))
 }
 const isImageAttachment = (name:string|null) => Boolean(name && /\.(png|jpe?g|gif|webp)$/i.test(name))
 const normalizeSearch = (value:string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').trim()
 const friendlyError = (error:unknown) => error instanceof Error ? error.message : typeof error==='object' && error && 'message' in error ? String(error.message) : String(error)
 const cleanSlug = (value:string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9_-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40)
+
+// SELECTs do Supabase retornam novos objetos mesmo quando nada mudou. Evita
+// processar novamente 100 mensagens/reações idênticas a cada atualização.
+// Comparação rasa é suficiente para os registros escalares desta tela.
+function sameRows<T extends object>(previous: readonly T[], next: readonly T[]): boolean {
+  if (previous === next) return true
+  if (previous.length !== next.length) return false
+  for (let index = 0; index < previous.length; index++) {
+    const before = previous[index] as Record<string, unknown>
+    const after = next[index] as Record<string, unknown>
+    if (!before || !after) return false
+    const keys = Object.keys(before)
+    if (keys.length !== Object.keys(after).length) return false
+    for (const key of keys) if (before[key] !== after[key]) return false
+  }
+  return true
+}
+function sameRecordMap<T>(previous: Record<string,T>, next: Record<string,T>): boolean {
+  const keys = Object.keys(previous)
+  return keys.length === Object.keys(next).length && keys.every(key => previous[key] === next[key])
+}
+function sameProfiles(previous: Record<string,Profile>, next: Record<string,Profile>): boolean {
+  const keys = Object.keys(previous)
+  return keys.length === Object.keys(next).length && keys.every(key => {
+    const a=previous[key], b=next[key]
+    return Boolean(a && b && a.id===b.id && a.username===b.username && a.display_name===b.display_name && a.avatar_url===b.avatar_url)
+  })
+}
 
 type Server = {id:string;owner_id:string;name:string;description:string;icon:string;created_at:string}
 type Channel = {id:string;server_id:string;name:string;topic:string;staff_only:boolean;sort_order:number;kind?:'text'|'voice'}
@@ -93,6 +126,8 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
   const channelSearchRef=useRef<HTMLInputElement>(null)
   const composerRef=useRef<HTMLTextAreaElement>(null)
   const messageCountRef=useRef<number>(0)
+  // Evita consultar reações a cada polling de mensagens quando os IDs não mudaram.
+  const reactionMessageIdsRef=useRef<string>('')
   const activeServerRef=useRef(serverId)
   activeServerRef.current=serverId
   const activeChannelRef=useRef(channelId)
@@ -112,8 +147,11 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
   },[messages,search,showPinned,profiles,displayName,username,userId])
   const unreadIds = useMemo(()=>new Set(channels.filter(c=>Boolean(lastActivity[c.id] && (!reads[c.id] || new Date(lastActivity[c.id]).getTime()>new Date(reads[c.id]).getTime()))).map(c=>c.id)),[channels,lastActivity,reads])
   const unreadCount = unreadIds.size
-  const visibleChannel = (channel:Channel) => (!unreadOnly || channel.id === channelId || unreadIds.has(channel.id)) && (!normalizeSearch(channelSearch) || normalizeSearch(channel.name).includes(normalizeSearch(channelSearch)) || normalizeSearch(channel.topic).includes(normalizeSearch(channelSearch)))
-  const matchesMember = (member:Member) => !normalizeSearch(memberSearch) || normalizeSearch(accountLabel(member.user_id)).includes(normalizeSearch(memberSearch)) || normalizeSearch(accountHandle(member.user_id)).includes(normalizeSearch(memberSearch))
+  // Normalizar a busca apenas quando ela muda, não para cada canal/membro.
+  const channelQuery = useMemo(()=>normalizeSearch(channelSearch),[channelSearch])
+  const memberQuery = useMemo(()=>normalizeSearch(memberSearch),[memberSearch])
+  const visibleChannel = (channel:Channel) => (!unreadOnly || channel.id === channelId || unreadIds.has(channel.id)) && (!channelQuery || normalizeSearch(channel.name).includes(channelQuery) || normalizeSearch(channel.topic).includes(channelQuery))
+  const matchesMember = (member:Member) => !memberQuery || normalizeSearch(accountLabel(member.user_id)).includes(memberQuery) || normalizeSearch(accountHandle(member.user_id)).includes(memberQuery)
   const showError = (e:unknown) => {setNotice('');setError(friendlyError(e))}
   const dismissMessages = () => {setError('');setNotice('')}
 
@@ -144,7 +182,7 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
     const {data,error:failure}=await supabase.from(TABLE.servers).select('*').order('created_at',{ascending:true})
     if(failure) throw failure
     const list=(data||[]) as Server[]
-    setServers(list)
+    setServers(previous => sameRows(previous,list) ? previous : list)
     setServerId(current => {
       if(preferId && list.some(s=>s.id===preferId))return preferId
       if(current && list.some(s=>s.id===current))return current
@@ -169,25 +207,26 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
     if(memResult.error)throw memResult.error
     if(activeServerRef.current!==sid)return
     const incoming=(chResult.data||[]) as Channel[]
-    setChannels(incoming)
+    setChannels(previous => sameRows(previous,incoming) ? previous : incoming)
     setChannelId(current=>incoming.some(c=>c.id===current)?current:(incoming[0]?.id||''))
     const memberList=(memResult.data||[]) as Member[]
-    setMembers(memberList)
+    setMembers(previous => sameRows(previous,memberList) ? previous : memberList)
     // Convites são visíveis apenas para os cargos de equipe (RLS).
-    setInvites(inviteResult.error?[]:(inviteResult.data||[]) as Invite[])
-    setReads(Object.fromEntries((readsResult.data||[]).map(r=>[r.channel_id,r.read_at])))
+    setInvites(previous => {const next=inviteResult.error?[]:(inviteResult.data||[]) as Invite[];return sameRows(previous,next)?previous:next})
+    setReads(previous => {const next=Object.fromEntries((readsResult.data||[]).map(r=>[r.channel_id,r.read_at]));return sameRecordMap(previous,next)?previous:next})
     if(incoming.length){
       const {data:recent}=await supabase.from(TABLE.messages).select('channel_id,created_at').in('channel_id',incoming.map(c=>c.id)).order('created_at',{ascending:false}).limit(500)
       const activity:Record<string,string>={}
       for(const row of recent||[]) if(!activity[row.channel_id])activity[row.channel_id]=row.created_at
-      setLastActivity(activity)
-    }else setLastActivity({})
+      if(activeServerRef.current!==sid)return
+      setLastActivity(previous => sameRecordMap(previous,activity)?previous:activity)
+    }else setLastActivity(previous => Object.keys(previous).length ? {} : previous)
     if(memberList.length){
       const ids=memberList.map(m=>m.user_id)
       let {data, error:profileError}=await supabase.from('profiles').select('id,username,display_name,avatar_url').in('id',ids)
       if(profileError){ const backup=await supabase.from('profiles').select('id,username,display_name').in('id',ids);data=backup.data as typeof data;profileError=backup.error }
       if(activeServerRef.current!==sid)return
-      if(!profileError && data)setProfiles(Object.fromEntries((data as Profile[]).map(p=>[p.id,p])))
+      if(!profileError && data)setProfiles(previous=>{const next=Object.fromEntries((data as Profile[]).map(p=>[p.id,p]));return sameProfiles(previous,next)?previous:next})
     }
   },[userId])
 
@@ -195,8 +234,13 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
     if(!serverId){setChannels([]);setChannelId('');setMembers([]);setMessages([]);return}
     let current=true
     void refreshServerData(serverId).catch(e=>{if(current)showError(e)})
-    const timer=window.setInterval(()=>{if(current)void refreshServerData(serverId).catch(e=>{if(current)showError(e)})},35000)
-    return ()=>{current=false;window.clearInterval(timer)}
+    // Pausar o polling de metadados quando o desktop está minimizado.
+    // A sincronização imediata ao voltar evita dados antigos na interface.
+    const poll = () => {if(current && !document.hidden)void refreshServerData(serverId).catch(e=>{if(current)showError(e)})}
+    const onVisibility = () => {if(!document.hidden)poll()}
+    const timer=window.setInterval(poll,35000)
+    document.addEventListener('visibilitychange',onVisibility)
+    return ()=>{current=false;window.clearInterval(timer);document.removeEventListener('visibilitychange',onVisibility)}
   },[serverId,refreshServerData])
 
   useEffect(()=>{
@@ -206,7 +250,10 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
       .on('postgres_changes',{event:'INSERT',schema:'public',table:TABLE.messages},payload=>{
         const incoming=payload.new as {channel_id?:string;created_at?:string}
         if(!incoming.channel_id || !allowed.has(incoming.channel_id))return
-        setLastActivity(prev=>({...prev,[incoming.channel_id!]:incoming.created_at||new Date().toISOString()}))
+        setLastActivity(prev=>{
+          const stamp=incoming.created_at||new Date().toISOString()
+          return prev[incoming.channel_id!]===stamp ? prev : {...prev,[incoming.channel_id!]:stamp}
+        })
       }).subscribe()
     return()=>{void supabase.removeChannel(realtime)}
   },[serverId,channels.map(c=>c.id).join(',')])
@@ -216,13 +263,18 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
     if(failure)throw failure
     if (activeChannelRef.current !== cid) return
     const rows=((data||[]) as Message[]).reverse()
-    setMessages(rows)
+    setMessages(previous => sameRows(previous,rows) ? previous : rows)
     setLoadedMessagesChannelId(cid)
     if(rows.length){
       const ids=rows.map(m=>m.id)
-      const reactionResult=await supabase.from(TABLE.reactions).select('message_id,user_id,emoji').in('message_id',ids)
-      if(!reactionResult.error && activeChannelRef.current === cid)setReactions((reactionResult.data||[]) as Reaction[])
-    }else setReactions([])
+      const signature=`${cid}:${ids.join(',')}`
+      if(reactionMessageIdsRef.current!==signature){
+        reactionMessageIdsRef.current=signature
+        const reactionResult=await supabase.from(TABLE.reactions).select('message_id,user_id,emoji').in('message_id',ids)
+        if(!reactionResult.error && activeChannelRef.current === cid){const next=(reactionResult.data||[]) as Reaction[];setReactions(previous=>sameRows(previous,next)?previous:next)}
+      }
+      // Alterações de reações sem mensagens novas continuam sincronizadas pelo polling de 10 s.
+    }else {reactionMessageIdsRef.current='';setReactions(previous => previous.length ? [] : previous)}
   },[])
   // Mantém as reações visíveis quando outra pessoa reage sem enviar nova mensagem.
   useEffect(()=>{
@@ -230,10 +282,10 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
     let alive=true
     const ids=messages.map(message=>message.id)
     const polling=window.setInterval(()=>{
-      if(!alive || activeChannelRef.current!==channelId)return
+      if(!alive || document.hidden || activeChannelRef.current!==channelId)return
       void supabase.from(TABLE.reactions).select('message_id,user_id,emoji').in('message_id',ids)
         .then(({data,error:failure})=>{
-          if(alive && activeChannelRef.current===channelId && !failure && data)setReactions(data as Reaction[])
+          if(alive && activeChannelRef.current===channelId && !failure && data){const next=data as Reaction[];setReactions(previous=>sameRows(previous,next)?previous:next)}
         })
     },10000)
     return()=>{alive=false;window.clearInterval(polling)}
@@ -248,16 +300,20 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
   useEffect(()=>{
     if(!channelId || channel?.kind==='voice'){setMessages([]);setReactions([]);setLoadedMessagesChannelId('');return}
     let alive=true
+    reactionMessageIdsRef.current=''
     setMessages([]);setReactions([]);setLoadedMessagesChannelId('')
     setSearch('');setShowPinned(false);setReplyTo(null);setEditingId(null);setFile(null);setNearBottom(true)
     void refreshMessages(channelId).catch(e=>{if(alive)showError(e)})
     void markRead(channelId)
     const subscription=supabase.channel(`hax-v284-messages-${channelId}`)
       .on('postgres_changes',{event:'*',schema:'public',table:TABLE.messages,filter:`channel_id=eq.${channelId}`},()=>{
-        if(alive){void refreshMessages(channelId);void markRead(channelId)}
+        if(alive && !document.hidden){void refreshMessages(channelId);void markRead(channelId)}
       }).subscribe()
-    const polling=window.setInterval(()=>{if(alive)void refreshMessages(channelId)},12000)
-    return()=>{alive=false;window.clearInterval(polling);void supabase.removeChannel(subscription)}
+    const poll = () => {if(alive && !document.hidden)void refreshMessages(channelId)}
+    const onVisibility = () => {if(!document.hidden && alive){poll();void markRead(channelId)}}
+    const polling=window.setInterval(poll,12000)
+    document.addEventListener('visibilitychange',onVisibility)
+    return()=>{alive=false;window.clearInterval(polling);document.removeEventListener('visibilitychange',onVisibility);void supabase.removeChannel(subscription)}
   },[channelId,channel?.kind,refreshMessages,markRead])
 
   useEffect(()=>{
@@ -447,11 +503,14 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
   const handleComposerKey=(event:React.KeyboardEvent<HTMLTextAreaElement>)=>{
     if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){event.preventDefault();void sendMessage()}
   }
-  const textChannels=channels.filter(c=>c.kind!=='voice'&&!c.staff_only)
-  const staffChannels=channels.filter(c=>c.kind!=='voice'&&c.staff_only)
-  const voiceChannels=channels.filter(c=>c.kind==='voice'&&!c.staff_only)
-  const staffVoiceChannels=channels.filter(c=>c.kind==='voice'&&c.staff_only)
-  const selectedReply = (message:Message) => messages.find(m=>m.id===message.reply_to)
+  const {textChannels,staffChannels,voiceChannels,staffVoiceChannels}=useMemo(()=>({
+    textChannels:channels.filter(c=>c.kind!=='voice'&&!c.staff_only),
+    staffChannels:channels.filter(c=>c.kind!=='voice'&&c.staff_only),
+    voiceChannels:channels.filter(c=>c.kind==='voice'&&!c.staff_only),
+    staffVoiceChannels:channels.filter(c=>c.kind==='voice'&&c.staff_only),
+  }),[channels])
+  const messageById=useMemo(()=>new Map(messages.map(message=>[message.id,message])),[messages])
+  const selectedReply = (message:Message) => messageById.get(message.reply_to||'')
   const focusComposer = () => { window.requestAnimationFrame(()=>composerRef.current?.focus()) }
   const scrollToRecent = () => scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:'smooth'})
 
@@ -557,7 +616,7 @@ export default function CommunicationHubV284({userId,displayName,username,onOpen
           </div>
           </>}
         </>:<div className="hb-comm-start"><div className="hb-comm-start-symbol">✦</div><span>COMUNICAÇÃO HÄXBAG</span><h2>{loading?'Carregando seus servidores…':server?'Este servidor ainda não tem canais disponíveis.':'Um universo de conversas começa aqui.'}</h2><p>Crie seu espaço para reunir o grupo de RPG ou entre usando o convite de outro aventureiro.</p><div><button type="button" className="hb-comm-primary" onClick={()=>openModal('create-server')}>＋ Criar servidor</button><button type="button" className="hb-comm-subtle" onClick={()=>openModal('join')}>↗ Entrar com convite</button></div></div>}
-        {activeVoice&&<VoiceCallV288 key={activeVoice.id} room={activeVoice} userId={userId} label={displayName} compact={channel?.id!==activeVoice.id} onLeave={()=>setActiveVoice(null)}/>}
+        {activeVoice&&<Suspense fallback={<div className="hb-comm-voice-stage-hint-v288" role="status">Preparando chamada de voz…</div>}><VoiceCallV288 key={activeVoice.id} room={activeVoice} userId={userId} label={displayName} compact={channel?.id!==activeVoice.id} onLeave={()=>setActiveVoice(null)}/></Suspense>}
       </main>
       {server&&showMembers&&<><button type="button" className="hb-comm-members-shade-v285" aria-label="Fechar lista de membros" onClick={()=>setShowMembers(false)}/><aside className="hb-comm-members" aria-label="Membros do servidor"><div className="hb-comm-members-title"><strong>MEMBROS</strong><span>{members.length}</span><button type="button" onClick={()=>setShowMembers(false)} aria-label="Fechar lista de membros">×</button></div><label className="hb-comm-member-search-v285"><span aria-hidden="true">⌕</span><input type="search" value={memberSearch} onChange={e=>setMemberSearch(e.target.value)} placeholder="Encontrar membro..." aria-label="Filtrar membros"/></label>{(['owner','admin','mod','member'] as const).map(role=>{const group=members.filter(m=>m.role===role&&matchesMember(m));return group.length?<div key={role} className="hb-comm-member-group"><div>{roleLabels[role].toUpperCase()} · {group.length}</div>{group.map(member=><div key={member.user_id} className="hb-comm-member"><div className="hb-comm-member-avatar">{profiles[member.user_id]?.avatar_url?<img src={profiles[member.user_id].avatar_url||''} alt="" loading="lazy" referrerPolicy="no-referrer"/>:accountLabel(member.user_id)[0]?.toUpperCase()}</div><div><strong>{accountLabel(member.user_id)}</strong><small>@{accountHandle(member.user_id)}</small></div>{canManageRoles&&member.role!=='owner'&&member.user_id!==userId&&(isOwner||member.role!=='admin')&&<select aria-label={`Cargo de ${accountLabel(member.user_id)}`} value={member.role} disabled={busy} onChange={event=>void updateRole(member,event.target.value)}><option value="member">Membro</option><option value="mod">Moderador</option>{isOwner&&<option value="admin">Admin</option>}</select>}{isStaff&&member.role!=='owner'&&member.user_id!==userId&&(isOwner||(myMember?.role==='admin'&&member.role!=='admin')||(myMember?.role==='mod'&&member.role==='member'))&&<button className="hb-comm-member-kick" type="button" title={`Remover ${accountLabel(member.user_id)}`} aria-label={`Remover ${accountLabel(member.user_id)}`} disabled={busy} onClick={()=>void kickMember(member)}>×</button>}</div>)}</div>:null})}{!members.some(matchesMember)&&<div className="hb-comm-members-empty-v285">Nenhum membro encontrado.</div>}</aside></>}
     </div>

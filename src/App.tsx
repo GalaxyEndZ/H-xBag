@@ -1786,10 +1786,15 @@ const resetCreatureFilters = () => {
       if(active&&!error)setUnreadCommunityNotices(Math.max(0,count??0))
     }
     void update()
-    const timer=window.setInterval(()=>{void update()},60000)
+    // O evento explícito continua sempre ativo; a consulta periódica pausa
+    // quando a janela está minimizada e retoma imediatamente ao voltar.
     const onRead=()=>{void update()}
+    const poll=()=>{if(!document.hidden)void update()}
+    const onVisibility=()=>{if(!document.hidden)poll()}
+    const timer=window.setInterval(poll,60000)
     window.addEventListener('haxbag:social-notifications-updated',onRead)
-    return()=>{active=false;window.clearInterval(timer);window.removeEventListener('haxbag:social-notifications-updated',onRead)}
+    document.addEventListener('visibilitychange',onVisibility)
+    return()=>{active=false;window.clearInterval(timer);window.removeEventListener('haxbag:social-notifications-updated',onRead);document.removeEventListener('visibilitychange',onVisibility)}
   },[session?.user.id])
   const [socialOpened, setSocialOpened] = useState(false)
   const [previewMyPublicProfile, setPreviewMyPublicProfile] = useState(false)
@@ -2216,7 +2221,7 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   }, [sheetDraft])
 
   const [activePage, setActivePage] = useState<HaxPage>(initialHaxLocation.current.page)
-  const kitRosterIds = characters.map(character=>character.id).sort().join(',')
+  const kitRosterIds = useMemo(()=>characters.map(character=>character.id).sort().join(','),[characters])
   useEffect(()=>{
     let alive=true
     const refresh=async()=>{
@@ -2231,8 +2236,11 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
       if(alive)setMasterShieldKitItems(error?[]:(data||[]) as Item[])
     }
     void refresh()
-    const interval=setInterval(()=>void refresh(),15000)
-    return ()=>{alive=false;clearInterval(interval)}
+    const poll=()=>{if(!document.hidden)void refresh()}
+    const onVisibility=()=>{if(!document.hidden)poll()}
+    const interval=setInterval(poll,15000)
+    document.addEventListener('visibilitychange',onVisibility)
+    return ()=>{alive=false;clearInterval(interval);document.removeEventListener('visibilitychange',onVisibility)}
   },[selectedCampaignId,isMaster,activePage,kitRosterIds])
 
   const lastRpgPage = useRef<Exclude<typeof activePage,'profile'|'minigames'|'communication'>>('overview')
