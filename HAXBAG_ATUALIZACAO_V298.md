@@ -79,3 +79,5 @@ Se estiver conectado em uma chamada, escolha **Depois**; ao fechar o aplicativo 
 - O teste automatizado local cobre checagem, progresso, instalação solicitada, modo portátil e erro 404 com **simulações** (sem acesso ao Windows ou a uma release real).
 - A geração do `.exe` NSIS e a atualização ponta a ponta dependem do GitHub Actions no Windows e da publicação acima. Nenhuma release foi criada por este pacote.
 - O `package-lock.json` recebido da V297 estava incompleto para Electron. Aqui preservamos o lock existente e a atualização de versão; o workflow usa `npm install` para resolver as dependências na máquina com rede. Após rodar `npm install` localmente, inclua o lockfile regenerado no próximo commit. Não use `npm ci` antes de atualizá-lo.
+
+> **Correção V298.1:** para o erro `latest.yml nao foi publicado`, consulte `HAXBAG_CORRECAO_PUBLICACAO_V298_1.md`. Use a tag `v0.298.1`, não reutilize `v0.298.0`.

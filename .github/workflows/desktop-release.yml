@@ -88,6 +88,52 @@ jobs:
           if ($content -notmatch [regex]::Escape("HaxBag-Setup-$version-x64.exe")) { throw 'latest.yml nao referencia o Setup NSIS.' }
           Write-Host "Manifesto e instalador verificados: v$version"
 
+      # Um build pode terminar com latest.yml local, mas a publicação
+      # automática do electron-builder deixar o asset ausente na release.
+      # Por isso enviamos explicitamente o manifesto e o Setup NSIS,
+      # sempre da MESMA compilação, antes de tornar a release pública.
+      - name: Garantir upload do latest.yml e Setup na release de destino
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.HAXBAG_RELEASE_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          $setup = "dist-desktop/HaxBag-Setup-$version-x64.exe"
+          $manifest = 'dist-desktop/latest.yml'
+          $files = @($setup, $manifest)
+          $blockmap = "$setup.blockmap"
+          if (Test-Path $blockmap) { $files += $blockmap }
+
+          # A publicação do electron-builder normalmente cria um draft.
+          # Se não criou, garantimos que a release exista no repositório novo.
+          gh release view $tag --repo $env:HAXBAG_RELEASE_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:HAXBAG_RELEASE_REPOSITORY --draft --title "HäxBag v$version" --notes "Atualização do HäxBag Desktop v$version."
+            if ($LASTEXITCODE -ne 0) { throw 'Não foi possível criar a release de destino.' }
+          }
+
+          Write-Host "Enviando para $env:HAXBAG_RELEASE_REPOSITORY / $tag"
+          gh release upload $tag @files --clobber --repo $env:HAXBAG_RELEASE_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Falha no upload do latest.yml e/ou do instalador NSIS.' }
+
+          # Confere os assets na API ANTES de publicar a release.
+          # Pequenos atrasos na indexação do GitHub são tolerados.
+          $found = $false
+          for ($attempt = 1; $attempt -le 10; $attempt++) {
+            $data = gh release view $tag --repo $env:HAXBAG_RELEASE_REPOSITORY --json assets | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0) { throw 'Não foi possível consultar os assets publicados.' }
+            $names = @($data.assets | ForEach-Object { $_.name })
+            if (($names -contains 'latest.yml') -and ($names -contains "HaxBag-Setup-$version-x64.exe")) {
+              $found = $true
+              break
+            }
+            Start-Sleep -Seconds 3
+          }
+          if (-not $found) { throw "A release $tag continua sem latest.yml e/ou Setup após o upload." }
+          Write-Host "Ambos os arquivos foram confirmados no GitHub antes de tornar $tag publica."
+
       - name: Tornar release publica apos gerar os artefatos
         shell: pwsh
         env:
