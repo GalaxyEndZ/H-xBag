@@ -11545,22 +11545,41 @@ counterAttackDT
       {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
       {sidebarMobileOpen && <button type="button" className="hb-sidebar-scrim" aria-label="Fechar menu lateral" onClick={() => setSidebarMobileOpen(false)} />}
       <aside id="hb-sidebar-menu" className={`sidebar hb-sidebar hb-sidebar-v20${sidebarMobileOpen ? ' hb-sidebar--open' : ''}`} aria-label="Menu principal do HäxBag">
-        <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
-          <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
-          <span className="hb-sidebar-brand-copy">
-            <strong>Häx<span className="brand-light">Bag</span></strong>
-            <small>SEU UNIVERSO DE RPG</small>
-          </span>
-          <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
-        </a>
+        {desktopClient ? (
+          <details className="hb-discord-launcher-v305">
+            <summary className="brand hb-sidebar-brand hb-sidebar-brand-launcher" aria-label="Abrir áreas do HäxBag" title="Abrir áreas do HäxBag">
+              <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
+            </summary>
+            <div className="hb-discord-launcher-panel-v305" role="menu" aria-label="Áreas do HäxBag">
+              <div className="hb-discord-launcher-head-v305">
+                <strong>HäxBag</strong>
+                <small>Escolha um espaço</small>
+              </div>
+              <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={event => { openSocialSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir Social" aria-label="Abrir Social"><span aria-hidden="true">✦</span><span>Social</span></button>
+              <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={event => { openRpgSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir RPG" aria-label="Abrir RPG"><span aria-hidden="true">⚔</span><span>RPG</span></button>
+              <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={event => { openMinigamesSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir Minigames" aria-label="Abrir Minigames"><span aria-hidden="true">◉</span><span>Minigames</span></button>
+              <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={event => { openCommunicationSpace(); (event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open') }} title="Abrir Comunicação" aria-label="Abrir Comunicação"><span aria-hidden="true">✉</span><span>Comunicação</span></button>
+            </div>
+          </details>
+        ) : (
+          <>
+            <a className="brand hb-sidebar-brand" href="#inicio" onClick={event => { event.preventDefault(); openRpgSpace() }} aria-label="HäxBag — abrir o espaço RPG">
+              <span className="brand-mark"><img src="/haxbag-symbol.png" alt="" aria-hidden="true" className="hb-brand-symbol" /></span>
+              <span className="hb-sidebar-brand-copy">
+                <strong>Häx<span className="brand-light">Bag</span></strong>
+                <small>SEU UNIVERSO DE RPG</small>
+              </span>
+              <span className="hb-sidebar-brand-spark" aria-hidden="true">✦</span>
+            </a>
+            <div className="hb-v159-space-switch" role="group" aria-label="Escolher espaço do HäxBag">
+              <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace} title="Abrir Social" aria-label="Abrir Social"><span aria-hidden="true">✦</span> Social</button>
+              <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={openRpgSpace} title="Abrir RPG" aria-label="Abrir RPG"><span aria-hidden="true">⚔</span> RPG</button>
+              <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={openMinigamesSpace} title="Abrir Minigames" aria-label="Abrir Minigames"><span aria-hidden="true">◉</span> Minigames</button>
+              <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={openCommunicationSpace} title="Abrir Comunicação" aria-label="Abrir Comunicação"><span aria-hidden="true">✉</span> Comunicação</button>
+            </div>
+          </>
+        )}
         <button type="button" className="hb-sidebar-close" onClick={() => setSidebarMobileOpen(false)} aria-label="Fechar menu lateral" title="Fechar menu lateral">✕</button>
-
-        <div className="hb-v159-space-switch" role="group" aria-label="Escolher espaço do HäxBag">
-          <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace} title="Abrir Social" aria-label="Abrir Social"><span aria-hidden="true">✦</span> Social</button>
-          <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={openRpgSpace} title="Abrir RPG" aria-label="Abrir RPG"><span aria-hidden="true">⚔</span> RPG</button>
-          <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={openMinigamesSpace} title="Abrir Minigames" aria-label="Abrir Minigames"><span aria-hidden="true">◉</span> Minigames</button>
-          <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={openCommunicationSpace} title="Abrir Comunicação" aria-label="Abrir Comunicação"><span aria-hidden="true">✉</span> Comunicação</button>
-        </div>
 
         <div className="hb-v301-section-panel">
         {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
