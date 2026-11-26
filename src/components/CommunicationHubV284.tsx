@@ -13,6 +13,7 @@ import './CommunicationDesktopRedesignV299.css'
 import './CommunicationLayoutV300.css'
 import './CommunicationExperienceV301.css'
 import './CommunicationRedesignV3044.css'
+import './CommunicationRefinementV3045.css'
 
 const TABLE = {
   servers: 'hax_v284_servers', members: 'hax_v284_members', channels: 'hax_v284_channels',
@@ -118,6 +119,26 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
   const [search,setSearch]=useState('')
   const [channelSearch,setChannelSearch]=useState('')
   const [unreadOnly,setUnreadOnly]=useState(false)
+  // Organização por grupo; preferência do usuário é local ao computador.
+  type ChannelGroup = 'text' | 'staff' | 'voice' | 'staffVoice'
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<ChannelGroup, boolean>>(() => {
+    const initial = { text: false, staff: false, voice: false, staffVoice: false }
+    try {
+      const saved = JSON.parse(window.localStorage.getItem('haxbag:v3045:channel-groups') || '{}') as Partial<Record<ChannelGroup, unknown>>
+      return {
+        text: saved.text === true, staff: saved.staff === true,
+        voice: saved.voice === true, staffVoice: saved.staffVoice === true,
+      }
+    } catch { return initial }
+  })
+  useEffect(() => {
+    try { window.localStorage.setItem('haxbag:v3045:channel-groups', JSON.stringify(collapsedGroups)) }
+    catch { /* modo privado ou armazenamento indisponível */ }
+  }, [collapsedGroups])
+  const toggleChannelGroup = (key: ChannelGroup) => setCollapsedGroups(previous => ({ ...previous, [key]: !previous[key] }))
+  // Pesquisar ou ver não lidos abre os grupos temporariamente, sem alterar o ajuste salvo.
+  const groupOpen = (key: ChannelGroup) => Boolean(channelSearch.trim() || unreadOnly || !collapsedGroups[key])
+
   const [memberSearch,setMemberSearch]=useState('')
   const [nearBottom,setNearBottom]=useState(true)
   const [showPinned,setShowPinned]=useState(false)
@@ -588,7 +609,7 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
   const focusComposer = () => { window.requestAnimationFrame(()=>composerRef.current?.focus()) }
   const scrollToRecent = () => scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:'smooth'})
 
-  return <section className="hb-communication hb-communication-v287 hb-communication-v3044" id="hb-communication" aria-labelledby="hb-communication-title">
+  return <section className="hb-communication hb-communication-v287 hb-communication-v3044 hb-communication-v3045" id="hb-communication" aria-labelledby="hb-communication-title">
     <header className="hb-comm-hero hb-comm-hero-v285 hb-comm-hero-v3044">
       <div className="hb-comm-hero-copy"><span className="hb-comm-eyebrow"><span className="hb-comm-live-dot" aria-hidden="true"/> HÄXBAG / SEU ESPAÇO SOCIAL</span><h1 id="hb-communication-title">Comunicação<span className="hb-comm-title-star">✦</span></h1><p>Suas pessoas, seus servidores, suas histórias — tudo em um só lugar.</p></div>
       <div className="hb-comm-hero-right">
@@ -598,7 +619,7 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
     </header>
     {error&&<div className="hb-comm-banner hb-comm-banner--error" role="alert"><span>{/(?:does not exist|schema cache|PGRST205|42P01)/i.test(error)?'A tabela da Comunicação não foi encontrada. Confira a migração SQL V284 no Supabase. ':/row.level security policy.*hax_v284_servers|hax_v284_servers.*row.level security policy/i.test(error)?'A política de criação de servidores foi bloqueada. Execute o reparo RLS V286 no Supabase. ':/row.level security policy.*hax_v284_channels|hax_v284_channels.*row.level security policy/i.test(error)?'O Supabase bloqueou um canal. Execute HAXBAG_REPARO_CANAIS_RLS_V289.sql e tente novamente. ':/row.level security policy|permission denied/i.test(error)?'A política de segurança do banco recusou esta operação. ':''}{error}</span><button type="button" aria-label="Dispensar aviso" onClick={()=>setError('')}>×</button></div>}
     {notice&&<div className="hb-comm-banner" role="status"><span>{notice}</span><button type="button" aria-label="Dispensar aviso" onClick={()=>setNotice('')}>×</button></div>}
-    <div ref={channelShellRef} style={{'--hb-v301-channel-width':`${channelPanelWidth}px`} as React.CSSProperties} className={`hb-comm-shell hb-comm-shell-v285 hb-comm-shell-v287${desktopExperience?' hb-comm-v301':''}${desktopExperience&&channelsCollapsed?' hb-v301-channels-collapsed':''}${mobileSidebar?' hb-comm-shell--show-nav':''}${showMembers?' hb-comm-shell--show-members':''} hb-comm-shell-v3044`}>
+    <div ref={channelShellRef} style={{'--hb-v301-channel-width':`${channelPanelWidth}px`} as React.CSSProperties} className={`hb-comm-shell hb-comm-shell-v285 hb-comm-shell-v287${desktopExperience?' hb-comm-v301':''}${desktopExperience&&channelsCollapsed?' hb-v301-channels-collapsed':''}${mobileSidebar?' hb-comm-shell--show-nav':''}${showMembers?' hb-comm-shell--show-members':''} hb-comm-shell-v3044 hb-comm-shell-v3045`}>
       <aside className="hb-comm-servers" aria-label="Seus servidores">
         <span className="hb-comm-rail-label">SERVIDORES</span>
         {servers.map(s=><button key={s.id} className={`hb-comm-server-icon${serverId===s.id?' active':''}`} type="button" aria-label={`Servidor ${s.name}`} title={s.name} aria-pressed={serverId===s.id} onClick={()=>{setServerId(s.id);setMobileSidebar(true)}}><span>{s.icon||s.name[0]}</span>{serverId===s.id&&<i aria-hidden="true" className="hb-comm-rail-active"/>}</button>)}
@@ -615,12 +636,12 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
             <label className="hb-comm-channel-search-v285"><span aria-hidden="true">⌕</span><input ref={channelSearchRef} type="search" value={channelSearch} onChange={event=>setChannelSearch(event.target.value)} placeholder="Buscar canais" aria-label="Filtrar canais" title="Atalho Ctrl+Shift+K"/>{channelSearch&&<button type="button" onClick={()=>setChannelSearch('')} aria-label="Limpar filtro de canais">×</button>}</label>
             <button type="button" className={`hb-comm-channel-unread-v285${unreadOnly?' active':''}`} aria-pressed={unreadOnly} onClick={()=>setUnreadOnly(value=>!value)}><span aria-hidden="true">◉</span> Não lidos <strong>{unreadCount}</strong></button>
           </div>
-          <div className="hb-comm-channel-heading"><span>CANAIS DE TEXTO <span className="hb-comm-channel-count-v289">{textChannels.length+(canReadPrivateV303?staffChannels.length:0)}</span></span>{canManageChannelsV303&&<button type="button" onClick={()=>openModal('create-channel')} aria-label="Criar canal">＋</button>}</div>
-          {textChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel${channelId===c.id?' active':''}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span>#</span><span>{c.name}</span>{unreadIds.has(c.id)&&c.id!==channelId&&<i className="hb-comm-unread-dot" aria-label="Não lido"/>}</button>)}
-          {canReadPrivateV303&&staffChannels.length>0&&<><div className="hb-comm-channel-heading"><span>EQUIPE · PRIVADO</span><span>⌁</span></div>{staffChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel${channelId===c.id?' active':''}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span>♙</span><span>{c.name}</span>{unreadIds.has(c.id)&&c.id!==channelId&&<i className="hb-comm-unread-dot" aria-label="Não lido"/>}</button>)}</>}
-          <div className="hb-comm-channel-heading hb-comm-voice-group-title-v288"><span>◉ SALAS DE VOZ <span className="hb-comm-channel-count-v289">{voiceChannels.length+(canReadPrivateV303?staffVoiceChannels.length:0)}</span></span>{canManageChannelsV303&&<button type="button" onClick={()=>{openModal('create-channel');setChannelKind('voice')}} aria-label="Criar canal de voz">＋</button>}</div>
-          {voiceChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel hb-comm-voice-channel-v288${channelId===c.id?' active':''}${activeVoice?.id===c.id?' in-call':''}`} aria-label={`Canal de voz ${c.name}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span className="hb-comm-voice-channel-icon-v288">♫</span><span>{c.name}</span>{activeVoice?.id===c.id&&<i className="hb-comm-voice-live-v288" title="Você está nesta chamada"/>}</button>)}
-          {canReadPrivateV303&&staffVoiceChannels.length>0&&<><div className="hb-comm-channel-heading"><span>◉ VOZ · EQUIPE</span></div>{staffVoiceChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel hb-comm-voice-channel-v288${channelId===c.id?' active':''}${activeVoice?.id===c.id?' in-call':''}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span className="hb-comm-voice-channel-icon-v288">♬</span><span>{c.name}</span></button>)}</>}
+          <div className="hb-comm-channel-heading hb-comm-group-heading-v3045"><button type="button" className="hb-comm-group-toggle-v3045" aria-expanded={groupOpen('text')} onClick={()=>toggleChannelGroup('text')}><span className="hb-comm-group-chevron-v3045">⌄</span><span>CANAIS DE TEXTO</span><span className="hb-comm-channel-count-v289">{textChannels.length}</span></button>{canManageChannelsV303&&<button type="button" onClick={()=>openModal('create-channel')} aria-label="Criar canal">＋</button>}</div>
+          {groupOpen('text')&&textChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel${channelId===c.id?' active':''}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span>#</span><span>{c.name}</span>{unreadIds.has(c.id)&&c.id!==channelId&&<i className="hb-comm-unread-dot" aria-label="Não lido"/>}</button>)}
+          {canReadPrivateV303&&staffChannels.length>0&&<><div className="hb-comm-channel-heading hb-comm-group-heading-v3045"><button type="button" className="hb-comm-group-toggle-v3045" aria-expanded={groupOpen('staff')} onClick={()=>toggleChannelGroup('staff')}><span className="hb-comm-group-chevron-v3045">⌄</span><span>EQUIPE · PRIVADO</span><span className="hb-comm-channel-count-v289">{staffChannels.length}</span></button></div>{groupOpen('staff')&&staffChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel${channelId===c.id?' active':''}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span>♙</span><span>{c.name}</span>{unreadIds.has(c.id)&&c.id!==channelId&&<i className="hb-comm-unread-dot" aria-label="Não lido"/>}</button>)}</>}
+          <div className="hb-comm-channel-heading hb-comm-voice-group-title-v288 hb-comm-group-heading-v3045"><button type="button" className="hb-comm-group-toggle-v3045" aria-expanded={groupOpen('voice')} onClick={()=>toggleChannelGroup('voice')}><span className="hb-comm-group-chevron-v3045">⌄</span><span>SALAS DE VOZ</span><span className="hb-comm-channel-count-v289">{voiceChannels.length}</span></button>{canManageChannelsV303&&<button type="button" onClick={()=>{openModal('create-channel');setChannelKind('voice')}} aria-label="Criar canal de voz">＋</button>}</div>
+          {groupOpen('voice')&&voiceChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel hb-comm-voice-channel-v288${channelId===c.id?' active':''}${activeVoice?.id===c.id?' in-call':''}`} aria-label={`Canal de voz ${c.name}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span className="hb-comm-voice-channel-icon-v288">♫</span><span>{c.name}</span>{activeVoice?.id===c.id&&<i className="hb-comm-voice-live-v288" title="Você está nesta chamada"/>}</button>)}
+          {canReadPrivateV303&&staffVoiceChannels.length>0&&<><div className="hb-comm-channel-heading hb-comm-group-heading-v3045"><button type="button" className="hb-comm-group-toggle-v3045" aria-expanded={groupOpen('staffVoice')} onClick={()=>toggleChannelGroup('staffVoice')}><span className="hb-comm-group-chevron-v3045">⌄</span><span>VOZ · EQUIPE</span><span className="hb-comm-channel-count-v289">{staffVoiceChannels.length}</span></button></div>{groupOpen('staffVoice')&&staffVoiceChannels.filter(visibleChannel).map(c=><button key={c.id} type="button" className={`hb-comm-channel hb-comm-voice-channel-v288${channelId===c.id?' active':''}${activeVoice?.id===c.id?' in-call':''}`} onClick={()=>{setChannelId(c.id);setMobileSidebar(false)}}><span className="hb-comm-voice-channel-icon-v288">♬</span><span>{c.name}</span></button>)}</>}
           {!textChannels.some(visibleChannel)&&!(canReadPrivateV303&&staffChannels.some(visibleChannel))&&!voiceChannels.some(visibleChannel)&&!(canReadPrivateV303&&staffVoiceChannels.some(visibleChannel))&&<div className="hb-comm-channels-empty-v285">{unreadOnly?'Não há canais não lidos.':'Nenhum canal corresponde à busca.'}</div>}
           <details className="hb-comm-server-tools-v3044">
             <summary><span aria-hidden="true">⚙</span> Gerenciar servidor</summary>
