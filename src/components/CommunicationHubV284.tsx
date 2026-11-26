@@ -6,6 +6,7 @@ import './CommunicationHubV285.css'
 import './CommunicationHubV287.css'
 import './CommunicationHubV288.css'
 import './CommunicationHubV289.css'
+import './CommunicationHubV295.css'
 import VoiceCallV288 from './VoiceCallV288'
 
 const TABLE = {

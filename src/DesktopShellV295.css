@@ -1,0 +1,175 @@
+/* HäxBag V295 · Desktop Workspace.
+   Apenas no Electron: a classe hb-desktop-v295 é ativada pela preload segura.
+   O site web, as cores de temporada e os outros módulos permanecem independentes. */
+.app-shell.hb-polish.hb-desktop-v295{
+  --hb-desktop-ink:color-mix(in srgb,var(--season-text,#f1f0eb) 94%,#fff);
+  --hb-desktop-muted:color-mix(in srgb,var(--season-muted,#aab1b6) 86%,#a3b0b6);
+  --hb-desktop-quiet:color-mix(in srgb,var(--hb-desktop-muted) 68%,#647078);
+  --hb-desktop-accent:var(--season-primary,#dda970);
+  --hb-desktop-edge:color-mix(in srgb,var(--season-line,#38404b) 30%,#87959d 12%);
+  --hb-desktop-base:color-mix(in srgb,var(--season-bg,#10151b) 70%,#0b1117);
+  --hb-desktop-panel:color-mix(in srgb,var(--season-surface,#161d25) 68%,#101820);
+  --hb-desktop-raised:color-mix(in srgb,var(--season-surface-alt,#202733) 64%,#1a242e);
+  min-width:0;
+  background:var(--hb-desktop-base);
+}
+.app-shell.hb-polish.hb-desktop-v295 :is(button,a,[role="button"]){-webkit-tap-highlight-color:transparent}
+.app-shell.hb-polish.hb-desktop-v295 :is(button,a,[role="button"],input,textarea,select):focus-visible{outline:2px solid var(--hb-desktop-accent);outline-offset:2px}
+.app-shell.hb-polish.hb-desktop-v295 > .main-content{
+  background:
+    radial-gradient(ellipse at 93% 4%,color-mix(in srgb,var(--hb-desktop-accent) 3%,transparent),transparent 44%),
+    var(--hb-desktop-base);
+  min-width:0;
+}
+/* A navegação principal vira uma coluna de ferramentas, não uma pilha de cartões. */
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20{
+  --hb-nav-line:color-mix(in srgb,var(--hb-desktop-edge) 56%,transparent);
+  background:linear-gradient(178deg,color-mix(in srgb,var(--hb-desktop-raised) 25%,#11171e) 0%,#0d1319 62%,#0b1016 100%)!important;
+  border-right:1px solid var(--hb-desktop-edge);
+  box-shadow:none!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-brand{
+  padding:13px 7px 17px!important;
+  min-height:77px;
+  margin:0 0 8px!important;
+  border-bottom:1px solid var(--hb-nav-line);
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .brand-mark{
+  border-radius:14px;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--hb-desktop-accent) 8%,#1b252d),#0b1015);
+  border:1px solid color-mix(in srgb,var(--hb-desktop-accent) 15%,#45535b);
+  box-shadow:0 10px 22px #0004;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-brand-copy strong{letter-spacing:-.055em;font-size:23px;line-height:1.1}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-brand-copy small{
+  letter-spacing:.145em;font-size:8px;color:var(--hb-desktop-quiet);margin-top:6px;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-brand-spark{opacity:.55}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-v159-space-switch{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:4px!important;margin:5px 0 10px!important;padding:4px!important;
+  border:1px solid var(--hb-nav-line)!important;border-radius:13px!important;
+  background:#080e13a6!important;box-shadow:inset 0 1px #ffffff08;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-v159-space-switch button{
+  min-width:0!important;min-height:34px!important;padding:6px 3px!important;
+  border:1px solid transparent!important;border-radius:9px!important;
+  background:transparent!important;color:var(--hb-desktop-muted)!important;
+  font-size:10px!important;font-weight:740!important;letter-spacing:-.012em;
+  box-shadow:none!important;transition:background .15s,color .15s,border-color .15s;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-v159-space-switch button:is(:hover,:focus-visible){background:#ffffff0c!important;color:var(--hb-desktop-ink)!important}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-v159-space-switch button.is-active{
+  color:var(--hb-desktop-ink)!important;background:linear-gradient(135deg,color-mix(in srgb,var(--hb-desktop-accent) 15%,#28303a),#252d36)!important;
+  border-color:color-mix(in srgb,var(--hb-desktop-accent) 33%,#3e454c)!important;
+  box-shadow:0 2px 8px #0004!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-v159-space-switch button span{font-size:12px;opacity:.83}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-global-actions{margin:4px 0 0!important}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-quick-launcher{
+  min-height:39px;padding:7px 11px!important;background:#17202a!important;
+  border:1px solid color-mix(in srgb,var(--hb-desktop-edge) 85%,transparent)!important;
+  border-radius:10px!important;color:var(--hb-desktop-muted)!important;box-shadow:none!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-quick-launcher:hover{border-color:color-mix(in srgb,var(--hb-desktop-accent) 38%,var(--hb-desktop-edge))!important;color:var(--hb-desktop-ink)!important}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav{
+  border-top:0!important;border-bottom:0!important;
+  margin-top:7px!important;gap:13px!important;padding-top:8px;
+  scrollbar-color:#55606a66 transparent;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav-group + .hb-sidebar-nav-group{
+  padding-top:12px;border-top:1px solid var(--hb-nav-line);
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-group-title{
+  font-size:9px;letter-spacing:.16em;color:var(--hb-desktop-quiet);
+  padding:0 10px 5px;font-weight:850;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav .nav-link{
+  min-height:41px!important;margin:1px 0;padding:5px 9px!important;
+  border-radius:10px!important;border:1px solid transparent!important;
+  color:var(--hb-desktop-muted)!important;background:transparent!important;
+  box-shadow:none!important;transform:none!important;font-size:12px;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav .nav-link:not(:disabled):hover{
+  color:var(--hb-desktop-ink)!important;background:#ffffff0c!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav .nav-link.active{
+  background:color-mix(in srgb,var(--hb-desktop-accent) 12%,#1b252f)!important;
+  color:var(--hb-desktop-ink)!important;
+  box-shadow:inset 2px 0 var(--hb-desktop-accent)!important;
+  border-color:color-mix(in srgb,var(--hb-desktop-accent) 15%,transparent)!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav-icon{
+  flex-basis:30px!important;width:30px!important;height:30px!important;
+  border-radius:9px!important;background:#ffffff06;color:var(--hb-desktop-accent)!important;
+  font-size:17px!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav .nav-link.active .hb-sidebar-nav-icon{
+  background:color-mix(in srgb,var(--hb-desktop-accent) 14%,transparent);
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav-name{font-size:11px!important;font-weight:680!important}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-footer{
+  gap:5px!important;padding-top:9px!important;
+  border-top:1px solid var(--hb-nav-line);
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-profile{
+  min-height:56px!important;padding:7px 9px!important;
+  border:1px solid var(--hb-nav-line)!important;border-radius:12px!important;
+  background:linear-gradient(105deg,#1a242d,#121a21)!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-profile .avatar{
+  border-radius:11px!important;box-shadow:0 4px 12px #0003;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-profile .profile-info strong{font-size:12px}
+.app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-profile .profile-info small{font-size:9px;color:var(--hb-desktop-muted)}
+/* Toolbar do aplicativo: a conversa ocupa o espaço, não o cabeçalho. */
+.app-shell.hb-polish.hb-desktop-v295 > .main-content > .topbar{
+  min-height:58px!important;height:58px!important;max-height:58px!important;
+  box-sizing:border-box;padding:0 clamp(13px,1.3vw,23px)!important;
+  border-bottom:1px solid var(--hb-desktop-edge)!important;
+  background:color-mix(in srgb,var(--hb-desktop-panel) 78%,#0d141a)!important;
+  box-shadow:none!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-topbar-trail{font-size:11px;gap:10px!important;white-space:nowrap;min-width:0}
+.app-shell.hb-polish.hb-desktop-v295 .hb-topbar-trail strong{font-size:12px;color:var(--hb-desktop-ink);letter-spacing:.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-shell.hb-polish.hb-desktop-v295 .hb-topbar-trail .crumb-slash{opacity:.36}
+.app-shell.hb-polish.hb-desktop-v295 .topbar-right{gap:8px!important;color:var(--hb-desktop-muted);font-size:10px}
+.app-shell.hb-polish.hb-desktop-v295 .online-dot{width:7px;height:7px;box-shadow:0 0 0 3px #69d9a715}
+.app-shell.hb-polish.hb-desktop-v295 .hb-quick-topbar{
+  min-height:35px!important;padding:5px 9px!important;
+  background:#ffffff05!important;border:1px solid var(--hb-desktop-edge)!important;
+  border-radius:9px!important;color:var(--hb-desktop-muted)!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-quick-topbar:hover{border-color:color-mix(in srgb,var(--hb-desktop-accent) 38%,var(--hb-desktop-edge))!important;background:#ffffff0b!important}
+.app-shell.hb-polish.hb-desktop-v295 .hb-topbar-logout{
+  min-height:35px!important;padding:6px 12px!important;
+  border:1px solid var(--hb-desktop-edge)!important;border-radius:9px!important;
+  background:#ffffff05!important;color:var(--hb-desktop-muted)!important;box-shadow:none!important;
+}
+.app-shell.hb-polish.hb-desktop-v295 .hb-topbar-logout:hover{background:#f3718115!important;color:#ffb5bf!important;border-color:#f371814b!important}
+.app-shell.hb-polish.hb-desktop-v295 .topbar-right .hb-v178-notifications-bell>button{
+  height:35px;width:35px;border-radius:9px;background:#ffffff05;border-color:var(--hb-desktop-edge);box-shadow:none;
+}
+.app-shell.hb-polish.hb-desktop-v295 .page-content.page-communication{
+  padding:10px 14px 12px!important;max-width:none!important;margin:0!important;
+  width:100%;box-sizing:border-box;min-width:0;
+}
+@media(min-width:801px){
+  .app-shell.hb-polish.hb-desktop-v295{--hb-sidebar-width:246px!important;grid-template-columns:var(--hb-sidebar-width) minmax(0,1fr)!important}
+  .app-shell.hb-polish.hb-desktop-v295[data-hb-space="communication"]{--hb-sidebar-width:218px!important}
+  .app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20{width:var(--hb-sidebar-width)!important;padding:9px 11px 10px!important}
+  .app-shell.hb-polish.hb-desktop-v295>.main-content{grid-column:2!important;min-width:0!important}
+}
+@media(min-width:801px) and (max-height:760px){
+  .app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-brand{min-height:61px;padding:8px 7px 11px!important}
+  .app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav{gap:7px!important}
+  .app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 .hb-sidebar-nav .nav-link{min-height:36px!important}
+}
+@media(max-width:800px){
+  .app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20{width:min(86vw,320px)!important}
+  .app-shell.hb-polish.hb-desktop-v295 .page-content.page-communication{padding:9px!important}
+  .app-shell.hb-polish.hb-desktop-v295 > .main-content > .topbar{height:56px!important;min-height:56px!important;max-height:56px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .app-shell.hb-polish.hb-desktop-v295 .hb-sidebar-v20 :is(button,a){transition:none!important}
+}
