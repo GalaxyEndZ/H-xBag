@@ -209,7 +209,7 @@ export default function KisatsutaiFlows({ group, values, selections, editable, o
         <div className="hb-flow-inspector-meta">
           <div className="hb-flow-inspector-rule"><span>Aplicação na ficha</span><p>{focusedChoice.automatic}</p></div>
           <div className="hb-flow-inspector-requirement"><span>Graduações</span><strong>{FLOW_TIER_RANKS[focused.tier]}</strong>
-            {!focusTierUnlocked && <small>Atinga essa graduação para desbloquear o Fluxo.</small>}
+            {!focusTierUnlocked && <small>Alcance a graduação necessária para desbloquear este Fluxo.</small>}
             {focusTierUnlocked && !focusEligible && !isFocusedChoice && <small>{focused.tier === 'corvo'
               ? `Seu atributo ${FLOW_ATTRIBUTE_LABELS[focused.attribute]} não possui o maior valor entre os atributos do personagem.`
               : `Seu atributo ${FLOW_ATTRIBUTE_LABELS[focused.attribute]} não está entre os ${REQUIRED_RANKING[focused.tier]}.`}</small>}
