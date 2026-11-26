@@ -1,0 +1,218 @@
+/* HäxBag Desktop V304.7 — acabamento de Comunicação / correção de cascata.
+   Mantém o layout da web e as regras de acesso; altera apenas apresentação. */
+.app-shell .hb-communication-v3047 {
+  --comm-v3047-line: color-mix(in srgb, var(--hc-edge) 78%, transparent);
+  --comm-v3047-muted: var(--hc-muted);
+  min-width: 0;
+}
+
+/* Correção de especificidade: o seletor antigo de botões de cabeçalho da
+   V299 forçava font-size:19px e width:27px também no botão que contém o
+   título inteiro da seção. Por isso os grupos apareciam enormes/cortados. */
+.app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299 .hb-communication-v3047
+.hb-comm-channel-heading.hb-comm-group-heading-v3045 .hb-comm-group-toggle-v3045 {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  height: 29px !important;
+  min-height: 29px !important;
+  max-width: none !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  padding: 3px 6px !important;
+  border: none !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+  font-weight: 800 !important;
+  letter-spacing: .09em !important;
+  color: var(--hc-muted) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: left !important;
+}
+.app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299 .hb-communication-v3047
+.hb-comm-group-heading-v3045 .hb-comm-group-toggle-v3045:is(:hover,:focus-visible) {
+  color: var(--hc-text) !important;
+  background: color-mix(in srgb,var(--hc-gold) 8%,transparent) !important;
+}
+.app-shell .hb-communication-v3047 .hb-comm-group-heading-v3045 {
+  margin: 13px 9px 3px !important;
+  padding: 0 !important;
+  gap: 3px;
+  min-height: 29px;
+  align-items: center;
+}
+.app-shell .hb-communication-v3047 .hb-comm-group-heading-v3045 .hb-comm-group-chevron-v3045 {
+  font-size: 13px !important;
+  flex: 0 0 10px !important;
+  text-align: center;
+}
+.app-shell .hb-communication-v3047 .hb-comm-group-heading-v3045 .hb-comm-channel-count-v289 {
+  margin-left: auto;
+  line-height: 18px !important;
+  height: 18px !important;
+  font-size: 10px !important;
+}
+.app-shell .hb-communication-v3047 .hb-comm-group-heading-v3045 > button:not(.hb-comm-group-toggle-v3045) {
+  display: grid;
+  place-items: center;
+  flex: 0 0 25px;
+  width: 25px !important;
+  height: 25px !important;
+  padding: 0 !important;
+  font-size: 17px !important;
+  border-radius: 7px;
+}
+
+/* Mensagens, canais e painéis: componentes mais legíveis e proporcionais. */
+.app-shell .hb-communication-v3047 .hb-comm-chat-name-v285 strong { font-size: 16px !important; letter-spacing: -.02em; }
+.app-shell .hb-communication-v3047 .hb-comm-chat-title small { font-size: 11px; line-height: 1.35; }
+.app-shell .hb-communication-v3047 .hb-comm-server-heading h2 { font-size: 16px !important; line-height: 1.25 !important; }
+.app-shell .hb-communication-v3047 .hb-comm-server-description {
+  color: var(--comm-v3047-muted) !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+.app-shell .hb-communication-v3047 .hb-comm-channel {
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  gap: 10px;
+}
+.app-shell .hb-communication-v3047 .hb-comm-message-scroll {
+  background: linear-gradient(180deg,color-mix(in srgb,var(--hc-bg) 94%,var(--hc-card)),var(--hc-bg)) !important;
+  scrollbar-gutter: stable;
+  overflow-anchor: auto;
+}
+.app-shell .hb-communication-v3047 .hb-comm-message {
+  gap: 12px;
+  padding: 8px 10px !important;
+  margin: 1px 0 !important;
+  border: 1px solid transparent;
+  border-radius: 11px;
+}
+.app-shell .hb-communication-v3047 .hb-comm-message-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  flex: 0 0 36px;
+  border-radius: 11px !important;
+  overflow: hidden;
+}
+.app-shell .hb-communication-v3047 .hb-comm-message-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.app-shell .hb-communication-v3047 .hb-comm-message-content {
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  letter-spacing: .004em;
+}
+.app-shell .hb-communication-v3047 .hb-comm-message-meta { gap: 6px 9px; margin-bottom: 4px; }
+.app-shell .hb-communication-v3047 .hb-comm-message-meta strong { font-size: 12.5px !important; }
+.app-shell .hb-communication-v3047 .hb-comm-message-meta time { opacity: .73; }
+.app-shell .hb-communication-v3047 .hb-comm-reactions { margin-top: 8px; }
+.app-shell .hb-communication-v3047 .hb-comm-date-divider-v285 { margin: 13px 0 9px !important; }
+.app-shell .hb-communication-v3047 .hb-comm-date-divider-v285 span {
+  border-radius: 100px; padding: 4px 10px !important;
+  font-size: 10px !important;
+  background: color-mix(in srgb,var(--hc-panel) 82%,var(--hc-bg));
+}
+/* Miniaturas previsíveis para fotos altas: menos saltos de rolagem e
+   mais mensagens visíveis antes do compositor; clique abre tamanho real. */
+.app-shell .hb-communication-v3047 .hb-comm-attachment-image-v285 {
+  display: grid !important;
+  place-items: center;
+  width: 244px !important;
+  max-width: 100% !important;
+  height: 214px !important;
+  min-height: 214px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background: color-mix(in srgb,var(--hc-panel) 76%,var(--hc-bg));
+}
+.app-shell .hb-communication-v3047 .hb-comm-attachment-image-v285 img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  transform: none !important;
+  transition: none !important;
+}
+.app-shell .hb-communication-v3047 .hb-comm-attachment-file-v285 {
+  max-width: min(100%,330px);
+  border-radius: 9px;
+}
+.app-shell .hb-communication-v3047 .hb-comm-composer { border-radius: 13px !important; }
+.app-shell .hb-communication-v3047 .hb-comm-composer textarea { resize: none !important; min-height: 35px !important; }
+.app-shell .hb-communication-v3047 .hb-comm-channel-dock-v3044 {
+  border-top: 1px solid var(--comm-v3047-line);
+}
+.app-shell .hb-communication-v3047 .hb-comm-chat-controls-v3044 button {
+  font-size: 12px;
+}
+.app-shell .hb-communication-v3047 .hb-comm-chat-controls-v3044 button:focus-visible,
+.app-shell .hb-communication-v3047 .hb-comm-channel:focus-visible {
+  outline: 2px solid var(--hc-gold);
+  outline-offset: -2px;
+}
+
+/* Área desktop: elimina o cabeçalho ornamental redundante (o caminho da
+   página e o título do canal já dizem onde o usuário está). O botão + da
+   barra de servidores continua disponível para criar servidores. */
+@media (min-width: 801px) {
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 > .hb-comm-hero {
+    display: none !important;
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-shell-v3044 {
+    border-radius: 14px !important;
+    border: 1px solid var(--comm-v3047-line) !important;
+    box-shadow: 0 8px 30px #00000020 !important;
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-chat-head-v3044 {
+    padding: 10px 18px !important;
+    min-height: 65px !important;
+    border-bottom: 1px solid var(--comm-v3047-line);
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-chat-tools-v3044 {
+    min-height: 42px !important;
+    padding: 5px 16px !important;
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-message-scroll {
+    padding: 18px clamp(16px,2vw,28px) 24px !important;
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-channel-dock-v3044 {
+    padding: 6px 17px !important;
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-composer-wrap-v304 {
+    padding: 8px 17px 11px !important;
+  }
+  .app-shell.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3047 .hb-comm-server-tools-v3044 {
+    margin-top: 13px;
+  }
+  /* A Conversa já tem atalho direto para MPs; o chat flutuante não precisa
+     de um botão gigante cobrindo a área inferior nessa seção. */
+  .app-shell[data-hb-space="communication"] .hb-v172-float-chat {
+    bottom: 12px !important;
+    right: 12px !important;
+  }
+  .app-shell[data-hb-space="communication"] .hb-v172-chat-launch {
+    width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+    background: color-mix(in srgb,var(--season-surface,#182129) 94%,var(--season-primary,#d9bd8b)) !important;
+    border: 1px solid color-mix(in srgb,var(--season-primary,#d9bd8b) 38%,var(--season-line,#38444c)) !important;
+    color: var(--season-primary,#d9bd8b) !important;
+    box-shadow: 0 6px 20px #0008 !important;
+    font-size: 16px;
+  }
+  .app-shell[data-hb-space="communication"] .hb-v172-chat-launch span { display: none !important; }
+  .app-shell[data-hb-space="communication"] .hb-v172-chat-launch:focus-visible { outline: 2px solid var(--season-primary,#d9bd8b); outline-offset: 3px; }
+}
+
+@media (max-width: 800px) {
+  .app-shell .hb-communication-v3047 .hb-comm-message { padding: 8px 6px !important; }
+  .app-shell .hb-communication-v3047 .hb-comm-message-scroll { scrollbar-gutter: auto; }
+  .app-shell .hb-communication-v3047 .hb-comm-attachment-image-v285 { height: 190px !important; min-height: 190px !important; width: 210px !important; max-width: 100% !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .hb-communication-v3047 .hb-comm-message { transition: none !important; }
+}

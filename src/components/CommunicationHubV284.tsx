@@ -14,6 +14,7 @@ import './CommunicationLayoutV300.css'
 import './CommunicationExperienceV301.css'
 import './CommunicationRedesignV3044.css'
 import './CommunicationRefinementV3045.css'
+import './CommunicationPolishV3047.css'
 
 const TABLE = {
   servers: 'hax_v284_servers', members: 'hax_v284_members', channels: 'hax_v284_channels',
@@ -609,7 +610,7 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
   const focusComposer = () => { window.requestAnimationFrame(()=>composerRef.current?.focus()) }
   const scrollToRecent = () => scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:'smooth'})
 
-  return <section className="hb-communication hb-communication-v287 hb-communication-v3044 hb-communication-v3045" id="hb-communication" aria-labelledby="hb-communication-title">
+  return <section className="hb-communication hb-communication-v287 hb-communication-v3044 hb-communication-v3045 hb-communication-v3047" id="hb-communication" aria-labelledby="hb-communication-title">
     <header className="hb-comm-hero hb-comm-hero-v285 hb-comm-hero-v3044">
       <div className="hb-comm-hero-copy"><span className="hb-comm-eyebrow"><span className="hb-comm-live-dot" aria-hidden="true"/> HÄXBAG / SEU ESPAÇO SOCIAL</span><h1 id="hb-communication-title">Comunicação<span className="hb-comm-title-star">✦</span></h1><p>Suas pessoas, seus servidores, suas histórias — tudo em um só lugar.</p></div>
       <div className="hb-comm-hero-right">
