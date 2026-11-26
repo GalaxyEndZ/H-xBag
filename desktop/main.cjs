@@ -41,6 +41,7 @@ function configureNetworkIdentity() {
 const STATE = new Map() // Screen-source chooser state keyed by its webContents ID.
 let mainWindow = null
 let shuttingDown = false
+let updateController = null
 
 protocol.registerSchemesAsPrivileged([{
   scheme: APP_SCHEME,
@@ -240,6 +241,25 @@ function createMainWindow() {
   })
 }
 
+// Somente a janela confiável do HäxBag pode consultar ou controlar o atualizador.
+function requireAppUpdateSender(event) {
+  if (!approvedSender(event.sender, event.senderFrame?.url)) {
+    throw new Error('Solicitação de atualização não autorizada')
+  }
+}
+ipcMain.handle('haxbag:update:status', event => {
+  requireAppUpdateSender(event)
+  return updateController?.getStatus() ?? { enabled: false, phase: 'idle', message: 'Inicializando atualizador…', version: app.getVersion() }
+})
+ipcMain.handle('haxbag:update:check', async event => {
+  requireAppUpdateSender(event)
+  return updateController ? updateController.check() : { enabled: false, phase: 'idle', message: 'Inicializando atualizador…', version: app.getVersion() }
+})
+ipcMain.handle('haxbag:update:install', event => {
+  requireAppUpdateSender(event)
+  return updateController?.install() ?? false
+})
+
 app.whenReady().then(() => {
   if (!gotSingleInstanceLock) return
   if (!app.isPackaged && !DEV_URL && !existsSync(path.resolve(__dirname, '..', 'dist', 'index.html'))) {
@@ -250,7 +270,12 @@ app.whenReady().then(() => {
   registerPermissions()
   createMainWindow()
   // O app instalado busca atualizações publicadas sem interferir no modo web/dev.
-  startAutoUpdates({ app, getWindow: () => mainWindow })
+  updateController = startAutoUpdates({ app, getWindow: () => mainWindow })
+  updateController.subscribe(status => {
+    if (mainWindow && !mainWindow.isDestroyed() && trusted(mainWindow.webContents.getURL())) {
+      mainWindow.webContents.send('haxbag:update:changed', status)
+    }
+  })
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow() })
 })
 app.on('before-quit', () => { shuttingDown = true })

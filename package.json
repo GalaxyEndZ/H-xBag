@@ -1,7 +1,7 @@
 {
   "name": "haxbag",
   "private": true,
-  "version": "0.297.0",
+  "version": "0.298.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,7 +12,9 @@
     "desktop:installer": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish never",
     "desktop:portable": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win portable --x64 --publish never",
     "desktop:unpacked": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win --dir --x64 --publish never",
-    "desktop:release": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish always"
+    "desktop:release": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish always",
+    "desktop:check-feed": "node desktop/check-public-release.cjs",
+    "test:updater": "node --test tests/desktop-update.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

@@ -1,3 +1,5 @@
+> **HäxBag Desktop V298:** atualizador Windows NSIS corrigido, com painel de status no aplicativo, diagnóstico de releases e validações no GitHub Actions. Consulte [HAXBAG_ATUALIZACAO_V298.md](HAXBAG_ATUALIZACAO_V298.md).
+
 # HäxBag — Projeto fonte
 
 HäxBag é uma plataforma de RPG compartilhado com campanhas, fichas, inventários, áreas sociais e um Arcade de minigames. O projeto usa React, TypeScript, Vite e Supabase.

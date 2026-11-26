@@ -51,8 +51,15 @@ jobs:
           Write-Host 'Destino da release: GalaxyEndZ/H-xBagReleases'
 
       - name: Instalar dependências
-        # O lockfile original ainda não contém todas as dependências Electron.
+        # O lockfile legado da V297 não listava o Electron: npm install recompõe
+        # a árvore até que o lockfile atualizado seja gerado e commitado.
         run: npm install --no-audit --no-fund
+
+      - name: Confirmar dependências do desktop
+        run: npm ls electron electron-updater electron-builder --depth=0
+
+      - name: Testar o fluxo de atualizacoes
+        run: npm run test:updater
 
       - name: Compilar interface React
         run: npm run build
@@ -71,8 +78,15 @@ jobs:
       - name: Conferir instalador e metadados
         shell: pwsh
         run: |
-          if (!(Test-Path dist-desktop/latest.yml)) { throw 'latest.yml ausente; sem ele o auto-updater nao funciona.' }
-          if (!(Get-ChildItem dist-desktop -Filter 'HaxBag-Setup-*.exe')) { throw 'Instalador NSIS ausente.' }
+          $version = node -p "require('./package.json').version"
+          $manifest = 'dist-desktop/latest.yml'
+          $setup = "dist-desktop/HaxBag-Setup-$version-x64.exe"
+          if (!(Test-Path $manifest)) { throw 'latest.yml ausente; sem ele o auto-updater nao funciona.' }
+          if (!(Test-Path $setup)) { throw "Instalador NSIS ausente: $setup" }
+          $content = Get-Content $manifest -Raw
+          if ($content -notmatch ('(?m)^version:\s*' + [regex]::Escape($version) + '\s*$')) { throw 'latest.yml nao corresponde a versao do instalador.' }
+          if ($content -notmatch [regex]::Escape("HaxBag-Setup-$version-x64.exe")) { throw 'latest.yml nao referencia o Setup NSIS.' }
+          Write-Host "Manifesto e instalador verificados: v$version"
 
       - name: Tornar release publica apos gerar os artefatos
         shell: pwsh
@@ -82,3 +96,17 @@ jobs:
           $version = node -p "require('./package.json').version"
           $tag = "v$version"
           gh release edit $tag --draft=false --repo $env:HAXBAG_RELEASE_REPOSITORY
+
+      - name: Conferir release PUBLICA com os arquivos do auto-updater
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.HAXBAG_RELEASE_TOKEN }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $tag = "v$version"
+          $data = gh release view $tag --repo $env:HAXBAG_RELEASE_REPOSITORY --json tagName,isDraft,isPrerelease,assets | ConvertFrom-Json
+          if (!$data -or $data.tagName -ne $tag -or $data.isDraft -or $data.isPrerelease) { throw 'A release ainda nao esta publica/estavel.' }
+          $names = @($data.assets | ForEach-Object { $_.name })
+          if ($names -notcontains 'latest.yml') { throw 'latest.yml nao foi publicado.' }
+          if ($names -notcontains "HaxBag-Setup-$version-x64.exe") { throw 'O instalador NSIS nao foi publicado.' }
+          Write-Host "Release publica verificada: $tag / latest.yml / Setup NSIS"
