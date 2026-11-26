@@ -1016,3 +1016,35 @@
 }
 
 .app-shell .hb-comm-avatar .hb-v304-account-photo{width:100%;height:100%;object-fit:cover;border-radius:inherit;}
+
+
+/* V304.3 · Comunicação mais organizada */
+.app-shell .hb-comm-shell-v287 .hb-comm-channels{position:relative}
+.app-shell .hb-comm-shell-v287 .hb-comm-channel-tools-v285{padding-bottom:10px;border-bottom:1px solid color-mix(in srgb,var(--hc-edge) 72%,transparent)}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-head-v285{position:relative}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-head-v285::after{content:'';position:absolute;left:clamp(16px,1.7vw,28px);right:clamp(16px,1.7vw,28px);bottom:0;height:1px;background:linear-gradient(90deg,transparent,var(--hc-hairline),transparent)}
+.app-shell .hb-comm-shell-v287 .hb-comm-chat-tools-v285{background:linear-gradient(180deg,color-mix(in srgb,var(--hc-panel) 84%,var(--hc-card)),color-mix(in srgb,var(--hc-card) 94%,var(--hc-bg)))}
+.app-shell .hb-comm-channel-dock-v304{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px clamp(17px,1.7vw,29px) 6px;border-top:1px solid color-mix(in srgb,var(--hc-hairline) 84%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--hc-card) 88%,var(--hc-bg)),color-mix(in srgb,var(--hc-panel) 72%,var(--hc-card)))}
+.app-shell .hb-comm-dock-card-v304{margin:0!important;border-radius:16px;border:1px solid color-mix(in srgb,var(--hc-edge) 92%,var(--hc-gold));background:linear-gradient(180deg,color-mix(in srgb,var(--hc-panel) 88%,var(--hc-bg)),color-mix(in srgb,var(--hc-card) 94%,black));overflow:hidden;box-shadow:0 10px 24px #0000001e}
+.app-shell .hb-comm-dock-card-v304>summary{list-style:none;display:flex;align-items:flex-start;gap:10px;padding:13px 15px;cursor:pointer;user-select:none}
+.app-shell .hb-comm-dock-card-v304>summary::-webkit-details-marker{display:none}
+.app-shell .hb-comm-dock-card-v304>summary>span:first-child{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:color-mix(in srgb,var(--hc-gold) 13%,transparent);border:1px solid color-mix(in srgb,var(--hc-gold) 24%,var(--hc-edge));font-size:16px}
+.app-shell .hb-comm-dock-card-v304>summary>span:last-child{display:grid;gap:4px;min-width:0}
+.app-shell .hb-comm-dock-card-v304>summary strong{display:block;font-size:13px;line-height:1.2;color:var(--hc-text)}
+.app-shell .hb-comm-dock-card-v304>summary small{display:block;font-size:11px;line-height:1.35;color:var(--hc-muted)}
+.app-shell .hb-comm-dock-card-v304[open]{border-color:color-mix(in srgb,var(--hc-gold) 42%,var(--hc-edge));box-shadow:0 14px 32px #00000028}
+.app-shell .hb-comm-dock-card-v304[open]>summary{background:linear-gradient(180deg,color-mix(in srgb,var(--hc-gold) 8%,transparent),transparent)}
+.app-shell .hb-comm-dock-card-v304> :not(summary){padding:0 14px 14px}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-wrap-v304{padding-top:8px;border-top:0;background:linear-gradient(180deg,color-mix(in srgb,var(--hc-panel) 85%,var(--hc-card)),var(--hc-card))}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-wrap-v304 .hb-comm-composer{border-color:color-mix(in srgb,var(--hc-edge) 82%,var(--hc-gold));background:linear-gradient(180deg,color-mix(in srgb,var(--hc-panel) 92%,var(--hc-bg)),color-mix(in srgb,var(--hc-bg) 82%,black));box-shadow:0 14px 28px #00000024}
+.app-shell .hb-comm-shell-v287 .hb-comm-compose-reply,.app-shell .hb-comm-shell-v287 .hb-comm-compose-file{margin-bottom:8px;border-radius:12px;background:color-mix(in srgb,var(--hc-panel) 82%,var(--hc-bg));border:1px solid var(--hc-edge)}
+.app-shell .hb-comm-shell-v287 .hb-comm-footer{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid color-mix(in srgb,var(--hc-edge) 75%,transparent);border-radius:14px;background:linear-gradient(180deg,color-mix(in srgb,var(--hc-card) 92%,var(--hc-bg)),color-mix(in srgb,var(--hc-panel) 75%,var(--hc-bg)))}
+.app-shell .hb-comm-shell-v287 .hb-comm-sidebar-action{position:relative;overflow:hidden}
+.app-shell .hb-comm-shell-v287 .hb-comm-sidebar-action::after{content:'';position:absolute;left:12px;right:12px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--hc-edge) 70%,transparent),transparent);opacity:.55}
+.app-shell .hb-comm-shell-v287 .hb-comm-sidebar-action:last-of-type::after{display:none}
+@media(max-width:1120px){
+  .app-shell .hb-comm-channel-dock-v304{grid-template-columns:minmax(0,1fr);padding-top:8px}
+}
+@media(max-width:700px){
+  .app-shell .hb-comm-shell-v287 .hb-comm-footer{padding:10px 12px;align-items:flex-start;flex-direction:column}
+}
