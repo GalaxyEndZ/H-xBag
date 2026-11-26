@@ -17,6 +17,28 @@
     min-height:100dvh;
     background:var(--hb-v301-surface)!important;
   }
+  /* V301.1 - Corrige a página RPG em branco.
+   * ChestMessages monta .hbn-root como filho direto do grid global.
+   * O botão é fixed, mas o wrapper NÃO era: ele ocupava a primeira célula,
+   * deslocando a sidebar para a coluna 2 e o main para a linha 2.
+   * display:contents elimina apenas a caixa do wrapper, não os botões/modais
+   * flutuantes, nem as variáveis de estilo herdadas.
+   */
+  .app-shell.hb-polish.hb-desktop-v301 > .hbn-root {
+    display:contents!important;
+  }
+  /* A posição explícita independe de notificações, correio ou outros widgets
+   * adicionados antes da sidebar e evita que o conteúdo saia da viewport. */
+  .app-shell.hb-polish.hb-desktop-v301 > .hb-sidebar-v20 {
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301 > .main-content {
+    grid-column:2!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:100dvh;
+  }
   .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301:not(.hb-desktop-sidebar-compact){
     --hb-sidebar-width:var(--hb-v301-sidebar-width,286px)!important;
     grid-template-columns:var(--hb-v301-sidebar-width,286px) minmax(0,1fr)!important;
