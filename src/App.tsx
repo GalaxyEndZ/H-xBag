@@ -53,6 +53,7 @@ import './components/AppProfile.styles.css'
 import './DeferredModule.css'
 import './DesktopShellV295.css'
 import './DesktopRedesignV299.css'
+import './DesktopSidebarV300.css'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
 import { PlayerConditionsLibrary, ConditionsPanel, CharacterConditions, EnemyConditions } from './ConditionsPanel'
 import { ARCHETYPE_KITS } from './archetypeKits'
@@ -2321,6 +2322,22 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
       })
     }
   }, [activeVisualStyleKey, activeThemeKey, displayPalette.primary, displayPalette.secondary, displayPalette.glow, displayPalette.bg, displayPalette.surface, displayPalette.surfaceAlt, displayPalette.line, displayPalette.onPrimary, personalProfileTheme])
+  // V300: sidebar contextual. Na Comunicação a navegação global fica compacta
+  // por padrão para não competir com a lista de servidores/canais. Pode ser
+  // expandida a qualquer momento e a escolha fica salva apenas neste dispositivo.
+  const [desktopSidebarMode, setDesktopSidebarMode] = useState<'auto' | 'compact' | 'expanded'>(() => {
+    try {
+      const stored = window.localStorage.getItem('haxbag-desktop-sidebar-v300')
+      return stored === 'compact' || stored === 'expanded' ? stored : 'auto'
+    } catch { return 'auto' }
+  })
+  const desktopClient = typeof window !== 'undefined' && Boolean((window as Window & { haxbagDesktop?: { enabled?: boolean } }).haxbagDesktop?.enabled)
+  const desktopSidebarCompact = desktopSidebarMode === 'compact' || (desktopSidebarMode === 'auto' && activePage === 'communication')
+  const toggleDesktopSidebar = () => {
+    const next = desktopSidebarCompact ? 'expanded' : 'compact'
+    setDesktopSidebarMode(next)
+    try { window.localStorage.setItem('haxbag-desktop-sidebar-v300', next) } catch { /* armazenamento indisponível */ }
+  }
   const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false)
   useEffect(() => { setSidebarMobileOpen(false) }, [activePage, selectedCampaignId])
   useEffect(() => {
@@ -11436,7 +11453,7 @@ counterAttackDT
 
 
   return (
-    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${typeof window !== 'undefined' && (window as Window & { haxbagDesktop?: { enabled?: boolean } }).haxbagDesktop?.enabled ? ' hb-desktop-v295 hb-desktop-v299' : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
+    <div data-hb-space={activePage === 'profile' ? 'social' : activePage === 'minigames' ? 'minigames' : activePage === 'communication' ? 'communication' : 'rpg'} className={`app-shell hb-polish${desktopClient ? ` hb-desktop-v295 hb-desktop-v299 hb-desktop-v300${desktopSidebarCompact ? ' hb-desktop-sidebar-compact' : ''}` : ''} theme-${personalProfileTheme?'default':activeThemeKey} visual-style-${activeVisualStyleKey} ${personalProfileTheme?'hb-personal-profile-theme':''}`} data-personal-profile-frame={personalProfileTheme?profileAppearance.frame:undefined} data-personal-profile-layout={personalProfileTheme?profileAppearance.layout:undefined} style={{'--season-primary': displayPalette.primary, '--season-secondary': displayPalette.secondary, '--season-glow': displayPalette.glow, '--season-bg': displayPalette.bg, '--season-surface': displayPalette.surface, '--season-surface-alt': displayPalette.surfaceAlt, '--season-line': displayPalette.line, '--season-line-soft': displayPalette.glow.replace(/\.\d+\)/, '.14'), '--season-muted': '#b9b4c2', '--season-on-primary': displayPalette.onPrimary, '--season-panel-tint': displayPalette.surfaceAlt, '--purple': displayPalette.primary, '--purple-bright': displayPalette.primary, '--purple-dark': displayPalette.secondary} as React.CSSProperties}>
       <a className="hb-skip-link" href="#inicio-conteudo">Pular para o conteúdo</a>
       <DesktopUpdateCenter />
       {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <ChestMessages userId={session.user.id} campaignId={selectedCampaignId} />}
@@ -11453,10 +11470,10 @@ counterAttackDT
         <button type="button" className="hb-sidebar-close" onClick={() => setSidebarMobileOpen(false)} aria-label="Fechar menu lateral" title="Fechar menu lateral">✕</button>
 
         <div className="hb-v159-space-switch" role="group" aria-label="Escolher espaço do HäxBag">
-          <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace}><span aria-hidden="true">✦</span> Social</button>
-          <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={openRpgSpace}><span aria-hidden="true">⚔</span> RPG</button>
-          <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={openMinigamesSpace}><span aria-hidden="true">◉</span> Minigames</button>
-          <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={openCommunicationSpace}><span aria-hidden="true">✉</span> Comunicação</button>
+          <button type="button" className={activePage === 'profile' ? 'is-active' : ''} aria-pressed={activePage === 'profile'} onClick={openSocialSpace} title="Abrir Social" aria-label="Abrir Social"><span aria-hidden="true">✦</span> Social</button>
+          <button type="button" className={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' ? 'is-active' : ''} aria-pressed={activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication'} onClick={openRpgSpace} title="Abrir RPG" aria-label="Abrir RPG"><span aria-hidden="true">⚔</span> RPG</button>
+          <button type="button" className={activePage === 'minigames' ? 'is-active' : ''} aria-pressed={activePage === 'minigames'} onClick={openMinigamesSpace} title="Abrir Minigames" aria-label="Abrir Minigames"><span aria-hidden="true">◉</span> Minigames</button>
+          <button type="button" className={activePage === 'communication' ? 'is-active' : ''} aria-pressed={activePage === 'communication'} onClick={openCommunicationSpace} title="Abrir Comunicação" aria-label="Abrir Comunicação"><span aria-hidden="true">✉</span> Comunicação</button>
         </div>
 
         {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>
@@ -11501,7 +11518,7 @@ counterAttackDT
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
           </> : activePage === 'communication' ? <>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNICAÇÃO</span>
-              <button type="button" className="nav-link active" aria-current="page" onClick={()=>document.getElementById('hb-communication')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">✉</span><span className="hb-sidebar-nav-name">Servidores e canais</span></button>
+              <button type="button" className="nav-link active hb-communication-nav-duplicate" aria-current="page" onClick={()=>document.getElementById('hb-communication')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">✉</span><span className="hb-sidebar-nav-name">Servidores e canais</span></button>
               <button type="button" className="nav-link" onClick={()=>openSocialTab('messages')}><span className="hb-sidebar-nav-icon" aria-hidden="true">✉</span><span className="hb-sidebar-nav-name">Mensagens privadas</span></button>
               <button type="button" className="nav-link" onClick={()=>openSocialTab('communities')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♧</span><span className="hb-sidebar-nav-name">Comunidades do Social</span></button>
             </div>
@@ -11693,6 +11710,14 @@ counterAttackDT
             aria-expanded={sidebarMobileOpen} aria-controls="hb-sidebar-menu" title="Menu do HäxBag">
             <span aria-hidden="true">☰</span><span>Menu</span>
           </button>
+          {desktopClient && <button type="button" className="hb-desktop-sidebar-toggle" onClick={toggleDesktopSidebar}
+            aria-label={desktopSidebarCompact ? 'Expandir navegação lateral' : 'Recolher navegação lateral'}
+            title={desktopSidebarCompact ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            aria-expanded={!desktopSidebarCompact} aria-controls="hb-sidebar-menu">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path d={desktopSidebarCompact ? 'm14 9 3 3-3 3' : 'm16 9-3 3 3 3'}/>
+            </svg>
+          </button>}
           <div className="breadcrumb hb-topbar-trail">
             <span>HäxBag</span><span className="crumb-slash">/</span>
             <span className="hb-topbar-campaign">{activePage === 'profile' ? 'Social' : activePage === 'minigames' ? 'Arcade' : activePage === 'communication' ? 'Comunicação' : selectedCampaign?.name ?? 'Suas campanhas'}</span>

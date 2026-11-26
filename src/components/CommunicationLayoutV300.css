@@ -1,0 +1,138 @@
+/* HäxBag V300 — comunicação. Usa os mesmos componentes e eventos existentes.
+   Reorganização dimensional: servidor (rail) + canais + conversa, sem
+   painel de perfil repetido. Escopo apenas Electron. */
+@media(min-width:801px){
+  .app-shell.hb-polish.hb-desktop-v300[data-hb-space="communication"] .page-content.page-communication{
+    padding:10px clamp(10px,1vw,18px) 11px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300[data-hb-space="communication"] .hb-communication-v287 .hb-comm-hero-v285{
+    min-height:70px!important;
+    padding:9px 18px!important;
+    margin-bottom:9px!important;
+    border-radius:11px!important;
+    background:linear-gradient(100deg,color-mix(in srgb,var(--hc-panel) 78%,var(--hc-bg)),var(--hc-bg))!important;
+    box-shadow:none!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-hero-v285 h1{font-size:23px!important;letter-spacing:-.04em!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-hero-v285 .hb-comm-eyebrow{font-size:9px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-hero-v285 p{font-size:11px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-context-v287{
+    min-height:40px!important;margin-bottom:8px!important;padding:3px 11px!important;
+    border-radius:10px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287,
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287:not(:has(.hb-comm-members)),
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287:has(.hb-comm-members){
+    grid-template-columns:54px clamp(218px,19vw,258px) minmax(0,1fr)!important;
+    height:calc(100dvh - 211px)!important;
+    min-height:410px!important;
+    max-height:none!important;
+    border-radius:12px!important;
+    border-color:color-mix(in srgb,var(--hc-edge) 75%,transparent)!important;
+    box-shadow:none!important;
+    overflow:hidden!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287 .hb-comm-servers{
+    padding:13px 4px!important;gap:12px!important;
+    background:color-mix(in srgb,var(--hc-bg) 89%,#090e13)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm){
+    width:42px!important;height:42px!important;min-height:42px!important;
+    flex-basis:42px!important;border-radius:13px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287 .hb-comm-channels{
+    min-width:0!important;box-shadow:none!important;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--hc-panel) 85%,var(--hc-bg)),var(--hc-panel))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-server-heading{
+    min-height:71px!important;padding:12px 12px 10px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-server-heading h2{
+    font-size:18px!important;letter-spacing:-.025em!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-server-description{
+    font-size:11px!important;padding:9px 13px 2px!important;
+    max-height:42px!important;overflow:hidden!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-channel-heading{
+    margin:15px 10px 6px!important;font-size:10px!important;letter-spacing:.1em!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-channel {
+    min-height:43px!important;padding:8px 10px!important;
+    font-size:13px!important;margin:3px 8px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-channel.active{
+    border-color:color-mix(in srgb,var(--hc-gold) 30%,var(--hc-edge))!important;
+    background:color-mix(in srgb,var(--hc-gold) 11%,var(--hc-raised))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-channel-tools-v285{padding:8px 9px 2px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-channel-search-v285{min-height:39px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-channel-search-v285 input{font-size:12px!important}
+  /* Já existe perfil clicável no rodapé do aplicativo, não repeti-lo na lista de canais. */
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-self{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-chat-head-v285{
+    min-height:65px!important;padding:10px clamp(15px,1.6vw,25px)!important;
+    background:color-mix(in srgb,var(--hc-panel) 64%,var(--hc-card))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-chat-head-v285 .hb-comm-chat-title strong{font-size:16px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-chat-head-v285 .hb-comm-chat-title small{font-size:11px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-chat-tools-v285{
+    min-height:48px!important;padding:7px 14px!important;
+    background:var(--hc-card)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-message-scroll{
+    padding:16px clamp(14px,1.8vw,28px) 20px!important;
+    scrollbar-width:thin;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-message{
+    border-radius:12px!important;padding:9px 10px!important;
+    font-size:13px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-message-meta strong{font-size:13px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-message-content{font-size:13px!important}
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-composer-wrap{
+    padding:10px clamp(12px,1.6vw,23px) 8px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-composer{
+    border-radius:13px!important;min-height:55px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-composer textarea{font-size:13px!important}
+  /* A lista de membros é um overlay já implementado no componente;
+     nunca encolhe a conversa para abrir uma quarta coluna. */
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-members{
+    z-index:15!important;box-shadow:-18px 0 42px #0009!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287 .hb-comm-rail-label{letter-spacing:0!important;font-size:8px!important}
+  /* Não há necessidade de dois perfis visíveis e três níveis de navegação
+     com títulos grandes. Links de ação continuam acessíveis no contexto. */
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-footer{display:none!important}
+}
+@media(min-width:801px) and (max-width:1100px){
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287,
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287:not(:has(.hb-comm-members)),
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287:has(.hb-comm-members){
+    grid-template-columns:50px 208px minmax(0,1fr)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-hero-v285 p{display:none!important}
+}
+@media(max-width:800px){
+  /* Mantém o drawer móvel e seus botões acessíveis. */
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287,
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287:not(:has(.hb-comm-members)){
+    grid-template-columns:49px minmax(0,1fr)!important;
+  }
+}
+@media(min-width:801px){
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287 .hb-comm-members{
+    display:block!important;
+    position:absolute!important;
+    inset:0 0 0 auto!important;
+    width:min(280px,calc(100% - 105px))!important;
+    min-width:0!important;
+    border-left:1px solid var(--hc-edge)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300 .hb-comm-shell-v287 .hb-comm-members-shade-v285{
+    position:absolute!important;inset:0!important;z-index:7!important;
+    display:block!important;border:0!important;background:#03090d63!important;
+  }
+}

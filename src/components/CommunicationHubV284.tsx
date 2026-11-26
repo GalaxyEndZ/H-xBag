@@ -3,6 +3,7 @@ import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useS
 import { supabase } from '../supabase'
 import './CommunicationHub.styles.css'
 import './CommunicationDesktopRedesignV299.css'
+import './CommunicationLayoutV300.css'
 // O WebRTC só é baixado quando alguém entra numa chamada (não ao abrir Comunicação).
 const VoiceCallV288 = lazy(() => import('./VoiceCallV288'))
 

@@ -1,0 +1,194 @@
+/* HäxBag V300 — navegação desktop contextual.
+   A Comunicação já possui a própria navegação; por padrão, o menu global
+   vira um rail de quatro destinos. O usuário pode expandi-lo pelo topo.
+   Escopo fechado em Electron; temas, web e mobile continuam intactos. */
+.app-shell.hb-polish.hb-desktop-v300 {
+  --hb-v300-line: color-mix(in srgb,var(--season-line,#36424a) 54%,#69737c);
+  --hb-v300-dim: color-mix(in srgb,var(--season-muted,#b9b4c2) 83%,#adbbc8);
+  --hb-v300-accent:var(--season-primary,#dda970);
+  --hb-v300-shell:color-mix(in srgb,var(--season-bg,#0b1015) 84%,#0d1820);
+}
+/* Sidebar expandida continua útil nas áreas de RPG/Social.
+   Só há uma navegação de primeiro nível e as ferramentas da seção abaixo. */
+@media (min-width:801px){
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v300:not(.hb-desktop-sidebar-compact){
+    --hb-sidebar-width:244px!important;
+    grid-template-columns:244px minmax(0,1fr)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v300:not(.hb-desktop-sidebar-compact) > .hb-sidebar-v20 {
+    width:244px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact{
+    --hb-sidebar-width:76px!important;
+    grid-template-columns:76px minmax(0,1fr)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact > .hb-sidebar-v20{
+    width:76px!important;
+    min-width:76px!important;
+    max-width:76px!important;
+    padding:13px 9px 12px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--season-surface,#111c24) 30%,#0b1118),#0a1016)!important;
+    box-shadow:none!important;
+    border-right:1px solid color-mix(in srgb,var(--hb-v300-line) 52%,transparent)!important;
+    scrollbar-width:none;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact > .hb-sidebar-v20::-webkit-scrollbar{display:none}
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-brand{
+    width:100%!important;
+    min-width:0!important;
+    height:67px!important;
+    min-height:67px!important;
+    margin:0 0 16px!important;
+    padding:0 0 17px!important;
+    justify-content:center!important;
+    gap:0!important;
+    border-bottom:1px solid color-mix(in srgb,var(--hb-v300-line) 55%,transparent)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-brand .brand-mark{
+    margin:0!important;
+    flex:0 0 42px!important;
+    width:42px!important;
+    height:42px!important;
+    display:grid!important;
+    place-items:center!important;
+    border-radius:13px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact :is(.hb-sidebar-brand-copy,.hb-sidebar-brand-spark,.hb-sidebar-style-identity,.hb-sidebar-nav,.hb-global-actions,.hb-sidebar-invite){
+    display:none!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    flex:0 0 auto;
+    width:100%!important;
+    gap:10px!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button{
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+    flex:0 0 auto!important;
+    width:50px!important;
+    height:50px!important;
+    min-height:50px!important;
+    min-width:50px!important;
+    margin:0!important;
+    padding:0!important;
+    gap:0!important;
+    position:relative;
+    overflow:visible!important;
+    border-radius:14px!important;
+    border:1px solid transparent!important;
+    font-size:0!important;
+    line-height:0!important;
+    color:transparent!important;
+    background:transparent!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button > span {
+    display:grid!important;
+    width:40px!important;
+    height:40px!important;
+    flex:0 0 40px!important;
+    place-items:center!important;
+    border-radius:12px!important;
+    font-size:23px!important;
+    line-height:1!important;
+    background:color-mix(in srgb,var(--season-surface-alt,#1c2b34) 43%,transparent)!important;
+    border:1px solid color-mix(in srgb,var(--hb-v300-line) 35%,transparent);
+    color:var(--hb-v300-dim)!important;
+    opacity:1!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button:hover {
+    background:color-mix(in srgb,var(--hb-v300-accent) 9%,transparent)!important;
+    border-color:color-mix(in srgb,var(--hb-v300-accent) 20%,transparent)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button:hover > span{color:var(--hb-v300-accent)!important}
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button.is-active{
+    background:color-mix(in srgb,var(--hb-v300-accent) 12%,#13202a)!important;
+    border-color:color-mix(in srgb,var(--hb-v300-accent) 40%,var(--hb-v300-line))!important;
+    box-shadow:0 4px 16px #0004!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button.is-active:before{
+    content:"";position:absolute;left:-13px;top:12px;bottom:12px;width:3px;
+    border-radius:0 3px 3px 0;background:var(--hb-v300-accent);
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button.is-active > span {
+    color:var(--hb-v300-accent)!important;
+    background:color-mix(in srgb,var(--hb-v300-accent) 12%,#15232c)!important;
+    border-color:transparent!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-footer{
+    width:100%;margin-top:auto!important;padding:14px 0 0!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    border-top:1px solid color-mix(in srgb,var(--hb-v300-line) 55%,transparent)!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-profile{
+    width:50px!important;min-width:50px!important;max-width:50px!important;
+    height:50px!important;min-height:50px!important;
+    margin:0!important;padding:5px!important;
+    display:grid!important;place-items:center!important;
+    position:relative;
+    border-radius:15px!important;
+    background:color-mix(in srgb,var(--season-surface-alt,#1a2630) 40%,transparent)!important;
+    overflow:visible!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-profile .avatar{
+    width:38px!important;height:38px!important;display:grid!important;place-items:center!important;
+    border-radius:11px!important;flex:0 0 38px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-profile .profile-info{display:none!important}
+  .app-shell.hb-polish.hb-desktop-v300.hb-desktop-sidebar-compact .hb-sidebar-profile .hb-sidebar-online{
+    position:absolute!important;bottom:0!important;right:-1px!important;z-index:2;
+  }
+  /* Navegação secundária de Comunicação não repete "Servidores e canais":
+     essa seção já está aberta no painel ao lado. */
+  .app-shell.hb-polish.hb-desktop-v300[data-hb-space="communication"] .hb-communication-nav-duplicate{
+    display:none!important;
+  }
+}
+/* Controle persistente na barra superior, sempre com nome acessível. */
+.app-shell.hb-polish.hb-desktop-v300 .hb-desktop-sidebar-toggle{
+  flex:0 0 36px!important;width:36px!important;height:36px!important;
+  border:1px solid color-mix(in srgb,var(--hb-v300-line) 65%,transparent)!important;
+  border-radius:10px!important;
+  background:color-mix(in srgb,var(--season-surface-alt,#1a2932) 43%,transparent)!important;
+  color:var(--hb-v300-dim)!important;
+  display:grid!important;place-items:center;
+  padding:0!important;margin-right:10px!important;
+  transition:border-color .17s ease,color .17s ease,background .17s ease;
+}
+.app-shell.hb-polish.hb-desktop-v300 .hb-desktop-sidebar-toggle:hover{
+  background:color-mix(in srgb,var(--hb-v300-accent) 11%,transparent)!important;
+  color:var(--hb-v300-accent)!important;
+  border-color:color-mix(in srgb,var(--hb-v300-accent) 43%,transparent)!important;
+}
+.app-shell.hb-polish.hb-desktop-v300 .hb-topbar-trail{flex:1 1 auto;gap:12px!important;min-width:0}
+.app-shell.hb-polish.hb-desktop-v300 .hb-quick-topbar{min-width:210px}
+.app-shell.hb-polish.hb-desktop-v300 .hb-sidebar-v20 .hb-sidebar-nav-name{font-size:12px!important}
+.app-shell.hb-polish.hb-desktop-v300 .hb-sidebar-v20 .hb-v159-space-switch button{font-size:13px!important}
+/* Tamanho não define a experiência: em telas estreitas o drawer mobile
+   prevalece, e o controle desktop desaparece. */
+@media(max-width:800px){
+  .app-shell.hb-polish.hb-desktop-v300 .hb-desktop-sidebar-toggle{display:none!important}
+}
+@media(max-width:1050px){
+  .app-shell.hb-polish.hb-desktop-v300 .hb-quick-topbar{min-width:154px}
+}
+@media(prefers-reduced-motion:reduce){
+  .app-shell.hb-polish.hb-desktop-v300 :is(.hb-v159-space-switch button,.hb-desktop-sidebar-toggle){transition:none!important}
+}
+
+/* O texto de rótulo continua visível ao leitor de tela via aria-label. */
+@media(min-width:801px){.app-shell.hb-polish.hb-desktop-v295.hb-desktop-v300.hb-desktop-sidebar-compact .hb-v159-space-switch button{font-size:0!important;line-height:0!important}}
+/* Busca global já está na barra superior; não a repete na navegação expandida.
+   O botão de notas do RPG permanece disponível. */
+.app-shell.hb-polish.hb-desktop-v300 .hb-sidebar-v20 .hb-quick-launcher{display:none!important}
+.app-shell.hb-polish.hb-desktop-v300[data-hb-space="communication"] .hb-global-actions{display:none!important}
