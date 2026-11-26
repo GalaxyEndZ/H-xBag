@@ -1,0 +1,315 @@
+/* HäxBag V304.4 — Comunicação em camadas: espaço, canais, conversa e ferramentas.
+   Reaproveita o grid V301 e todas as ações/assinaturas WebRTC existentes. */
+.app-shell .hb-communication-v3044 {
+  --comm-soft-line: color-mix(in srgb, var(--hc-edge) 74%, transparent);
+  --comm-subtle: color-mix(in srgb, var(--hc-gold) 7%, var(--hc-panel));
+  min-height: 0;
+}
+.app-shell .hb-communication-v3044 .hb-comm-hero-v3044 {
+  box-shadow: none;
+}
+.app-shell .hb-communication-v3044 .hb-comm-hero-v3044 .hb-comm-hero-copy {
+  min-width: 0;
+}
+.app-shell .hb-communication-v3044 .hb-comm-chat-head-v3044 {
+  gap: 12px;
+}
+.app-shell .hb-communication-v3044 .hb-comm-chat-controls-v3044 {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 5px;
+}
+.app-shell .hb-communication-v3044 .hb-comm-chat-controls-v3044 button {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.app-shell .hb-communication-v3044 .hb-comm-chat-current-v3044 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--hc-muted);
+  white-space: nowrap;
+}
+.app-shell .hb-communication-v3044 .hb-comm-chat-current-dot-v3044 {
+  background: color-mix(in srgb, var(--hc-gold) 78%, #78cfaa);
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+}
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 {
+  margin: 14px 9px 10px;
+  flex: 0 0 auto;
+  border: 1px solid var(--comm-soft-line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--hc-bg) 40%, var(--hc-panel));
+}
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 760;
+  color: var(--hc-muted);
+  user-select: none;
+}
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 > summary::-webkit-details-marker { display: none; }
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 > summary::after {
+  content: '⌄';
+  color: var(--hc-muted);
+  margin-left: auto;
+  font-size: 16px;
+  transition: transform .16s ease;
+}
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044[open] > summary::after { transform: rotate(180deg); }
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 > summary:hover { color: var(--hc-gold); }
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 .hb-comm-sidebar-actions-v285 {
+  display: grid;
+  gap: 3px;
+  padding: 3px 6px 9px;
+  margin: 0;
+  border-top: 1px solid var(--comm-soft-line);
+}
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 .hb-comm-sidebar-action {
+  min-height: 35px;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 7px 9px;
+  background: transparent;
+  text-align: left;
+  box-shadow: none;
+}
+.app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 .hb-comm-sidebar-action:hover {
+  border-color: var(--comm-soft-line);
+  background: var(--comm-subtle);
+}
+/* Toolbar recolhida ocupa só uma linha. As seções abrem em painel suspenso,
+   sem diminuir o chat nem interromper a chamada em andamento. */
+.app-shell .hb-communication-v3044 .hb-comm-channel-dock-v3044 {
+  position: relative;
+  z-index: 12;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px clamp(12px, 1.6vw, 24px) 4px;
+  border-top: 1px solid var(--comm-soft-line);
+  background: color-mix(in srgb, var(--hc-panel) 84%, var(--hc-bg));
+}
+.app-shell .hb-communication-v3044 .hb-comm-tools-label-v3044 {
+  margin-right: 8px;
+  font-size: 10px;
+  letter-spacing: .08em;
+  font-weight: 800;
+  color: var(--hc-dim);
+  text-transform: uppercase;
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 {
+  position: static;
+  overflow: visible !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-width: 0;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  box-shadow: none;
+  background: transparent;
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 > summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--hc-muted);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.4;
+  user-select: none;
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 > summary > span:first-child {
+  display: inline;
+  padding: 0;
+  width: auto;
+  height: auto;
+  flex: initial;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 > summary:is(:hover,:focus-visible),
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044[open] > summary {
+  background: color-mix(in srgb, var(--hc-gold) 11%, var(--hc-panel));
+  color: var(--hc-gold);
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044[open] {
+  border-color: var(--comm-soft-line);
+  box-shadow: none;
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 > .hb-comm-tool-popover-v3044 {
+  position: absolute;
+  z-index: 14;
+  left: clamp(12px, 1.6vw, 24px);
+  right: clamp(12px, 1.6vw, 24px);
+  bottom: calc(100% + 5px);
+  width: auto;
+  max-height: min(400px, 52vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px !important;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--hc-gold) 30%, var(--hc-edge));
+  background: var(--hc-panel);
+  box-shadow: 0 18px 58px #000a;
+  color: var(--hc-text);
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 .hb-comm-tool-title-v3044 {
+  font-size: 13px;
+  font-weight: 850;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--comm-soft-line);
+  padding-bottom: 9px;
+}
+.app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 .hb-v304-wrap { max-width: 100%; }
+.app-shell .hb-communication-v3044 .hb-comm-composer-wrap-v304 {
+  padding-top: 5px;
+}
+.app-shell .hb-communication-v3044 button:focus-visible,
+.app-shell .hb-communication-v3044 summary:focus-visible {
+  outline: 2px solid var(--hc-gold);
+  outline-offset: 2px;
+}
+/* Desktop: usa o espaço da janela sem repetir a rota do canal em três barras. */
+@media (min-width:801px) {
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-hero-v3044 {
+    min-height: 58px !important;
+    padding: 9px 14px !important;
+    margin-bottom: 8px !important;
+    border-radius: 11px !important;
+    background: linear-gradient(90deg,var(--hc-panel),color-mix(in srgb,var(--hc-bg) 92%,var(--hc-panel))) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-hero-v3044 h1 {
+    font-size: 20px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-hero-v3044 p {
+    display: none !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-hero-v3044 .hb-comm-overview {
+    gap: 8px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044:not(:has(.hb-comm-members)) {
+    border-radius: 13px !important;
+    border-color: var(--comm-soft-line) !important;
+    grid-template-columns: 50px var(--hb-v301-channel-width,248px) minmax(0,1fr) !important;
+    box-shadow: 0 14px 40px #00000026 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044.hb-v301-channels-collapsed {
+    grid-template-columns: 50px minmax(0,1fr) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-servers {
+    gap: 7px !important;
+    padding: 10px 3px !important;
+    background: color-mix(in srgb,var(--hc-bg) 96%,black) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 :is(.hb-comm-server-icon,.hb-comm-server-add,.hb-comm-server-join,.hb-comm-server-dm) {
+    width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    flex-basis: 38px !important;
+    border-radius: 12px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-v301-channel-resizer {
+    left: calc(50px + var(--hb-v301-channel-width,248px) - 5px) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-v301-channel-reopen {
+    left: 61px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-v301-channels-collapsed .hb-comm-chat-head-v3044 {
+    padding-left: 111px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-channels {
+    background: color-mix(in srgb,var(--hc-panel) 90%,var(--hc-bg)) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-server-heading {
+    padding: 11px 39px 10px 13px !important;
+    min-height: 60px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-server-description {
+    max-height: 42px !important;
+    overflow: hidden !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    padding: 8px 13px 0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-channel {
+    min-height: 38px !important;
+    margin: 2px 7px !important;
+    padding: 7px 10px !important;
+    border-radius: 9px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-channel-heading {
+    margin-top: 12px !important;
+    margin-bottom: 5px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-chat-head-v3044 {
+    min-height: 64px !important;
+    padding: 10px 15px !important;
+    background: var(--hc-panel) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-chat-controls-v3044 button {
+    min-height: 34px !important;
+    padding: 6px 9px !important;
+    border-radius: 9px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-chat-tools-v3044 {
+    min-height: 38px !important;
+    padding: 4px 14px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-message-scroll {
+    padding: 12px clamp(14px,2vw,30px) 24px !important;
+    background: color-mix(in srgb,var(--hc-bg) 88%,var(--hc-card)) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-message {
+    padding: 9px 10px !important;
+    border-radius: 12px !important;
+    transition: background .14s ease,border-color .14s ease;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301 .hb-communication-v3044 .hb-comm-shell-v3044 .hb-comm-message:is(:hover,:focus-within) {
+    background: color-mix(in srgb,var(--hc-panel) 45%,transparent) !important;
+  }
+}
+@media (min-width:801px) and (max-width:1050px) {
+  .app-shell .hb-communication-v3044 .hb-comm-chat-controls-v3044 button span { display: none; }
+  .app-shell .hb-communication-v3044 .hb-comm-chat-head-v3044 { gap: 9px; }
+  .app-shell .hb-communication-v3044 .hb-comm-chat-current-v3044 { display: none; }
+}
+@media (max-width:800px) {
+  .app-shell .hb-communication-v3044 .hb-comm-hero-v3044 { padding: 11px 12px; }
+  .app-shell .hb-communication-v3044 .hb-comm-hero-v3044 .hb-comm-overview { display: none; }
+  .app-shell .hb-communication-v3044 .hb-comm-chat-controls-v3044 button span { display: none; }
+  .app-shell .hb-communication-v3044 .hb-comm-chat-current-v3044 { display: none; }
+  .app-shell .hb-communication-v3044 .hb-comm-tools-label-v3044 { display: none; }
+  .app-shell .hb-communication-v3044 .hb-comm-channel-dock-v3044 { gap: 2px; padding: 5px 8px; }
+  .app-shell .hb-communication-v3044 .hb-comm-dock-card-v3044 > summary { padding: 6px 8px; font-size: 11px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .app-shell .hb-communication-v3044 .hb-comm-message,
+  .app-shell .hb-communication-v3044 .hb-comm-server-tools-v3044 > summary::after { transition: none !important; }
+}
