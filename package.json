@@ -1,7 +1,7 @@
 {
   "name": "haxbag",
   "private": true,
-  "version": "0.306.1",
+  "version": "0.306.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,8 @@
     "mobile:android:sync": "node mobile/scripts/android.mjs sync",
     "mobile:android:open": "node mobile/scripts/android.mjs open",
     "mobile:apk": "node mobile/scripts/android.mjs apk",
-    "mobile:check": "node mobile/scripts/check.mjs"
+    "mobile:check": "node mobile/scripts/check.mjs",
+    "test:civil-npcs": "node --test tests/civil-npcs.test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

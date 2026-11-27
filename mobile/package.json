@@ -1,6 +1,6 @@
 {
   "name": "haxbag-mobile-native",
-  "version": "0.306.1",
+  "version": "0.306.3",
   "private": true,
   "type": "module",
   "description": "Runtime Capacitor isolado para Android e iOS do HäxBag",

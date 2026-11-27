@@ -28,6 +28,7 @@ import { seasonThemes } from './themes'
 import { visualStyles, type VisualStyleKey } from './themes/visualStyles'
 import CyberneticsInventory from './systems/cyberflower/CyberneticsInventory'
 import { KISATSUTAI_TRAINING, KISATSUTAI_SKILL_GROUPS, KISATSUTAI_PATHS, KISATSUTAI_ONI_CLASSES } from './systems/kisatsutai/extendedData'
+import { CIVIL_JOB_PRESETS, CIVIL_SKILLS, CIVIL_SKILL_LIMIT, civilSkillLabel, civilSuggestedSkills, normalizeCivilSkills } from './civilProfessions'
 import KisatsutaiFlows from './components/KisatsutaiFlows'
 import { flowIsActive, normalizeFlowSelections, type FlowAttribute, type FlowTier } from './systems/kisatsutai/flowRules'
 import { calculateCriticalProfile, classifyCriticalD20, getCriticalBonus, CRITICAL_FORM_LABELS, type CriticalFormClass } from './combatCriticalRules'
@@ -61,6 +62,7 @@ import './DesktopCommunityLayoutV3055.css'
 import './DesktopSocialPolishV3056.css'
 import './DesktopNavRefinementV30510.css'
 import './DesktopNavPolishV30512.css'
+import './components/CivilNpcGeneratorV3063.css'
 import SocialSidebarGroupV3056 from './components/SocialSidebarGroupV3056'
 import MobileTabsV306 from './mobile/MobileTabsV306'
 import { isHaxbagMobileNative } from './mobile/runtime'
@@ -85,6 +87,7 @@ const DiceTower = lazy(() => import('./components/DiceTower'))
 const MinigamesHub = lazy(() => import('./components/MinigamesHub'))
 const CommunicationHubV284 = lazy(() => import('./components/CommunicationHubV284'))
 const EncyclopediaV304 = lazy(() => import('./components/EncyclopediaV304'))
+const CivilNpcGeneratorV3063 = lazy(() => import('./components/CivilNpcGeneratorV3063'))
 const VoiceDockV302 = lazy(() => import('./components/VoiceDockV302'))
 const MasterChest = lazy(() => import('./components/MasterChest'))
 const CampaignMissions = lazy(() => import('./components/CampaignMissions'))
@@ -1349,6 +1352,7 @@ function App() {
   const [sheetSeasonRoster, setSheetSeasonRoster] = useState<Record<string, Record<string, {participating:boolean;party:boolean;team:string;teams:string[]}>>>({})
   const [sheetCharacterOwnerFilter, setSheetCharacterOwnerFilter] = useState<'all' | 'mine' | 'assigned' | 'unassigned'>('all')
   const [sheetCharacterSort, setSheetCharacterSort] = useState<'name' | 'recent' | 'level' | 'favorites'>('name')
+  const [showCivilNpcsV3063, setShowCivilNpcsV3063] = useState(false)
   const [sheetCharacterLayout, setSheetCharacterLayout] = useState<'grid' | 'list'>('grid')
   const [sheetOnlyFavorites, setSheetOnlyFavorites] = useState(false)
   const [sheetFavoriteCollections, setSheetFavoriteCollections] = useState<Record<string, string[]>>(() => {
@@ -10385,7 +10389,29 @@ style={{...inputStyle,margin:0,padding:'8px 9px',fontSize:15,fontWeight:700,bord
 
                         </section>
                       })()}
-                      {panel('1. Identidade', <>{renderCanRename && <div className="character-name-editor identity-character-name-editor"><label htmlFor="sheet-character-name">{forEnemy ? 'Nome do inimigo' : 'Nome do personagem'}</label><div><input id="sheet-character-name" value={renderNameDraft} onChange={event => setRenderNameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void saveRenderName() } }} maxLength={80} placeholder={forEnemy ? 'Nome do inimigo' : 'Nome do personagem'} disabled={renderNameSaving} /><button className="secondary-button" type="button" onClick={() => void saveRenderName()} disabled={renderNameSaving || !renderNameDraft.trim()}>{renderNameSaving ? 'Salvando…' : 'Salvar nome'}</button></div></div>}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
+                      {panel('1. Identidade', <>{renderCanRename && <div className="character-name-editor identity-character-name-editor"><label htmlFor="sheet-character-name">{forEnemy ? 'Nome do inimigo' : 'Nome do personagem'}</label><div><input id="sheet-character-name" value={renderNameDraft} onChange={event => setRenderNameDraft(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void saveRenderName() } }} maxLength={80} placeholder={forEnemy ? 'Nome do inimigo' : 'Nome do personagem'} disabled={renderNameSaving} /><button className="secondary-button" type="button" onClick={() => void saveRenderName()} disabled={renderNameSaving || !renderNameDraft.trim()}>{renderNameSaving ? 'Salvando…' : 'Salvar nome'}</button></div></div>}{field('identity.sex','Sexo','text')}{field('identity.family','Família','text')}{field('identity.age','Idade')}{field('identity.height','Altura','text')}{field('identity.weight','Peso','text')}
+<div className="hb-civil-job-editor">
+  <div><strong>Trabalho / Profissão</strong><small>O ofício do personagem e as perícias que ele utiliza no cotidiano.</small></div>
+  <div className="hb-civil-job-grid"><label style={{...labelStyle,display:'grid',gap:6}}>Trabalho
+    <input type="text" maxLength={80} list="hb-civil-jobs-sheet" value={String(read('identity.job', ''))} disabled={!renderCanEdit}
+      onChange={event=>write('identity.job',event.target.value)} style={inputStyle} placeholder="Ex.: Ferreiro, agricultor, comerciante..."/>
+    <datalist id="hb-civil-jobs-sheet">{CIVIL_JOB_PRESETS.map(entry=><option key={entry.name} value={entry.name}/>)}</datalist>
+  </label></div>
+  {isKisatsutaiSystem && <>
+    <div className="hb-civil-job-skill-heading"><small>Perícias profissionais: {normalizeCivilSkills(read('identity.jobSkills', [])).length}/{CIVIL_SKILL_LIMIT}. Não há bônus de treinamento automático.</small>
+      {civilSuggestedSkills(String(read('identity.job',''))).length>0 && <button type="button" className="secondary-button" disabled={!renderCanEdit}
+        onClick={()=>write('identity.jobSkills',civilSuggestedSkills(String(read('identity.job',''))))}>✦ Sugerir 5 perícias</button>}
+    </div>
+    <div className="hb-civil-skill-chips">{normalizeCivilSkills(read('identity.jobSkills', [])).map(key=><button key={key} type="button" disabled={!renderCanEdit}
+      onClick={()=>write('identity.jobSkills',normalizeCivilSkills(read('identity.jobSkills', [])).filter(item=>item!==key))}>{civilSkillLabel(key)} <span aria-hidden="true">×</span></button>)}</div>
+    <select aria-label="Adicionar perícia profissional" value="" disabled={!renderCanEdit || normalizeCivilSkills(read('identity.jobSkills', [])).length>=CIVIL_SKILL_LIMIT}
+      onChange={event=>{if(event.target.value)write('identity.jobSkills',normalizeCivilSkills([...normalizeCivilSkills(read('identity.jobSkills', [])),event.target.value]))}} style={inputStyle}>
+      <option value="">＋ Adicionar perícia profissional...</option>
+      {CIVIL_SKILLS.filter(skill=>!normalizeCivilSkills(read('identity.jobSkills', [])).includes(skill.key)).map(skill=><option key={skill.key} value={skill.key}>{skill.group} · {skill.name}</option>)}
+    </select>
+  </>}
+</div>
+{(['primaryArchetype', 'secondaryArchetype'] as const).map((key) => {
   const otherKey = key === 'primaryArchetype'
     ? 'secondaryArchetype'
     : 'primaryArchetype'
@@ -15556,6 +15582,7 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     </div>
                   </div>
                   <div className="sheet-library-toolbar">
+                    {isMaster && isKisatsutaiSystem && <button type="button" className="secondary-button" onClick={() => {setShowCivilNpcsV3063(value=>!value);setShowCharacterForm(false)}} aria-expanded={showCivilNpcsV3063} aria-controls="hb-civil-npcs-title">{showCivilNpcsV3063?'✕ Fechar NPCs':'♙ Gerador de NPCs'}</button>}
                     {isMaster && <button type="button" className="secondary-button sheet-library-manage-button" onClick={() => { setShowCharacterManagement(value => !value); setShowCharacterForm(false) }} aria-pressed={showCharacterManagement}>
                       {showCharacterManagement ? '✓ Concluir gerenciamento' : '⚙ Gerenciar'}
                     </button>}
@@ -15564,6 +15591,11 @@ button.sheet-library-avatar-edit:focus-visible { outline:2px solid var(--sheet-a
                     </button>}
                   </div>
                 </div>
+                {isMaster && isKisatsutaiSystem && showCivilNpcsV3063 && <DeferredModule><CivilNpcGeneratorV3063
+                  key={selectedCampaignId} campaignId={selectedCampaignId}
+                  tierOptions={getSystemFamilyTiers().map(([key, value])=>({value:String(key),label:String(value.label)}))}
+                  onClose={()=>setShowCivilNpcsV3063(false)}
+                /></DeferredModule>}
                 <div className="sheet-roster-overview" aria-label="Resumo da campanha">
                   <div className="sheet-roster-stat"><span className="sheet-roster-stat-icon" aria-hidden="true">♙</span><div><small>PERSONAGENS</small><strong>{characters.length}</strong><span>no arquivo</span></div></div>
                   <div className="sheet-roster-stat"><span className="sheet-roster-stat-icon" aria-hidden="true">◉</span><div><small>COM JOGADOR</small><strong>{sheetCharactersWithPlayer}</strong><span>atribuídos</span></div></div>
