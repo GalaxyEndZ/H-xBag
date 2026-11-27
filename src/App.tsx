@@ -60,6 +60,7 @@ import './DesktopGlobalRailV3054.css'
 import './DesktopCommunityLayoutV3055.css'
 import './DesktopSocialPolishV3056.css'
 import './DesktopNavRefinementV30510.css'
+import './DesktopNavPolishV30512.css'
 import SocialSidebarGroupV3056 from './components/SocialSidebarGroupV3056'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
@@ -11668,6 +11669,14 @@ counterAttackDT
           <span className="hb-sidebar-style-ornament" aria-hidden="true">✧</span>
         </div>}
 
+        {desktopClient && activePage === 'profile' && (
+          <div className="hb-v30512-social-heading" aria-label="Espaço Social">
+            <span className="hb-v30512-social-eyebrow">SEU ESPAÇO</span>
+            <strong>Social <span aria-hidden="true">✦</span></strong>
+            <small>Conexões, atividade e identidade</small>
+          </div>
+        )}
+
         <div className="hb-global-actions" aria-label="Ferramentas rápidas">
           <button type="button" className="hb-quick-launcher" onClick={() => openQuick('search')}
             title="Buscar e navegar pelo HäxBag (Ctrl ou ⌘ + K)" aria-keyshortcuts="Control+K Meta+K">
@@ -11680,11 +11689,6 @@ counterAttackDT
           {activePage === 'profile' ? <>
             {desktopClient ? <>
               <div className="hb-v3056-desktop-nav">
-              <div className="hb-v3056-social-intro">
-                <span>SEU ESPAÇO</span>
-                <strong>Social <span aria-hidden="true">✦</span></strong>
-                <small>Conexões, atividade e identidade</small>
-              </div>
               <SocialSidebarGroupV3056 title="Sua rede" icon="♧" initiallyOpen active={profileSection==='friends' && ['following','followers','events'].includes(socialNavigationTab)}>
                 {([['following','↗','Seguindo'],['followers','↙','Seguidores'],['events','◷','Eventos']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" title={label} className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
               </SocialSidebarGroupV3056>

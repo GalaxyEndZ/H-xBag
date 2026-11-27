@@ -241,3 +241,26 @@
     min-height: 54px !important;
   }
 }
+
+
+/* V305.11 — corrigir a divisória do cabeçalho do Social */
+@media (min-width: 801px) {
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro {
+    position: relative;
+    border-bottom: 0 !important;
+    margin-left: -10px;
+    margin-right: -10px;
+    padding-left: 22px !important;
+    padding-right: 22px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: color-mix(in srgb,var(--season-line,#39434d) 60%,transparent);
+    pointer-events: none;
+  }
+}

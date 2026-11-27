@@ -1,0 +1,288 @@
+/* HäxBag V305.12 — cabeçalhos fixos e navegação contextual consistente.
+   Desktop Electron >800px somente: mantém a versão web e janelas pequenas intactas.
+   Respeita a paleta da temporada, modo de foco e o ajuste de largura do painel. */
+.hb-v30512-social-heading { display:none }
+@media (min-width:801px) {
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) {
+    --hb-v312-line: color-mix(in srgb,var(--season-line,#34424c) 75%,transparent);
+    --hb-v312-faint: color-mix(in srgb,var(--season-line,#34424c) 41%,transparent);
+    --hb-v312-tint: color-mix(in srgb,var(--season-primary,#d9bd8b) 10%,transparent);
+    --hb-v312-tint-hover: color-mix(in srgb,var(--season-primary,#d9bd8b) 7%,transparent);
+    --hb-v312-accent: var(--season-primary,#d9bd8b);
+    --hb-v312-text: var(--season-text,#eef0f1);
+    --hb-v312-muted: var(--season-muted,#adb7bf);
+  }
+
+  /* Keep the first column as launcher + shortcuts, while the second starts at y=0. */
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) > .hb-sidebar-v20 {
+    grid-template-rows:64px minmax(0,1fr) 70px !important;
+    isolation:isolate;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel {
+    grid-column:2 !important;
+    grid-row:1 / 3 !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    background:linear-gradient(180deg,
+      color-mix(in srgb,var(--season-surface,#16212a) 87%,var(--season-bg,#0b1118)),
+      color-mix(in srgb,var(--season-bg,#0b1118) 87%,black)) !important;
+    border-left:1px solid var(--hb-v312-faint) !important;
+    border-right:1px solid var(--hb-v312-line) !important;
+    overflow:hidden !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-sidebar-v20 .hb-v3051-launcher-slot {
+    height:64px !important;
+    border-bottom:1px solid var(--hb-v312-line) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v3055-global-quickrail {
+    grid-row:2 !important;
+    padding:10px 6px 12px !important;
+    gap:9px !important;
+    border-right:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v3055-global-quickrail button {
+    width:42px !important;
+    height:42px !important;
+    min-width:42px !important;
+    min-height:42px !important;
+    flex:0 0 42px !important;
+    border-radius:14px !important;
+    transition:background-color .15s,border-color .15s,border-radius .15s !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v3055-global-quickrail button:is(:focus-visible,:hover):not(:disabled){
+    transform:none !important;
+    border-color:color-mix(in srgb,var(--hb-v312-accent) 38%,var(--hb-v312-line)) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v3055-global-quickrail button.is-active::before {
+    top:10px !important;
+    bottom:10px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v3055-rail-divider {
+    width:30px !important;
+    margin:2px auto !important;
+    background:var(--hb-v312-line) !important;
+  }
+
+  /* The Social heading no longer scrolls with links, nor depends on negative margins. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v30512-social-heading {
+    display:flex;
+    flex:0 0 96px;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:4px;
+    box-sizing:border-box;
+    min-height:96px;
+    width:100%;
+    margin:0;
+    padding:13px 19px 12px;
+    border-bottom:1px solid var(--hb-v312-line);
+    background:linear-gradient(115deg,var(--hb-v312-tint),transparent 78%);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v30512-social-eyebrow {
+    color:var(--hb-v312-accent);
+    font-size:9px;
+    letter-spacing:.13em;
+    line-height:1.25;
+    font-weight:830;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v30512-social-heading strong {
+    font-size:20px;
+    letter-spacing:-.04em;
+    font-weight:800;
+    line-height:1.2;
+    color:var(--hb-v312-text);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v30512-social-heading strong span {
+    font-size:14px;
+    color:var(--hb-v312-accent);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v30512-social-heading small {
+    max-width:100%;
+    color:var(--hb-v312-muted);
+    font-size:10px;
+    line-height:1.4;
+  }
+
+  /* RPG header uses the same total height as Social: 80px card + 8px margins. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-style-identity {
+    flex:0 0 80px !important;
+    min-height:80px !important;
+    height:80px !important;
+    max-height:80px !important;
+    width:auto !important;
+    margin:8px 12px !important;
+    padding:10px 11px !important;
+    border-radius:13px !important;
+    border-color:color-mix(in srgb,var(--hb-v312-accent) 28%,var(--hb-v312-line)) !important;
+    box-shadow:0 7px 18px #00000018 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-style-emblem {
+    flex:0 0 42px !important;
+    height:42px !important;
+    width:42px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-style-text {
+    gap:3px !important;
+    min-width:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-style-text strong {
+    font-size:13px !important;
+    line-height:1.24 !important;
+    overflow:hidden !important;
+    display:-webkit-box !important;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+  }
+
+  /* Same scrolling area, spacing and scrollbar in both workspaces. */
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel .hb-sidebar-nav {
+    display:flex !important;
+    flex-direction:column !important;
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    padding:12px 11px 18px !important;
+    gap:7px !important;
+    scrollbar-gutter:stable;
+    scrollbar-width:thin;
+    scrollbar-color:color-mix(in srgb,var(--hb-v312-muted) 30%,transparent) transparent;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-desktop-nav {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:6px !important;
+    min-height:0;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group {
+    border-radius:10px !important;
+    margin:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group>summary {
+    display:grid !important;
+    grid-template-columns:28px minmax(0,1fr) 15px;
+    align-items:center !important;
+    gap:9px !important;
+    min-height:41px !important;
+    padding:6px 10px !important;
+    font-size:12px !important;
+    border-radius:10px !important;
+    border:1px solid transparent !important;
+    color:var(--hb-v312-muted) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group:where([open],.is-current)>summary {
+    color:var(--hb-v312-text) !important;
+    background:var(--hb-v312-tint-hover) !important;
+    border-color:var(--hb-v312-faint) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-emblem {
+    width:28px !important;
+    height:28px !important;
+    flex:0 0 28px !important;
+    border-radius:9px !important;
+    font-size:14px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-chevron {
+    margin:0 !important;
+    justify-self:center;
+    color:var(--hb-v312-muted) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items {
+    gap:2px !important;
+    padding:5px 4px 9px !important;
+  }
+
+  /* RPG sections become quieter separators, with a consistent active treatment. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-nav-group {
+    margin:0 !important;
+    padding:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-nav-group + .hb-sidebar-nav-group {
+    margin-top:8px !important;
+    padding-top:12px !important;
+    border-top:1px solid var(--hb-v312-line) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-group-title {
+    min-height:25px !important;
+    margin:0 0 5px !important;
+    padding:0 10px 5px !important;
+    font-size:9px !important;
+    letter-spacing:.105em !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel .nav-link {
+    gap:10px !important;
+    min-height:40px !important;
+    padding:7px 10px !important;
+    border-radius:10px !important;
+    border:1px solid transparent !important;
+    margin:0 !important;
+    text-align:left !important;
+    line-height:1.3 !important;
+    transition:background-color .15s,border-color .15s !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel .nav-link .hb-sidebar-nav-icon {
+    width:29px !important;
+    height:29px !important;
+    flex:0 0 29px !important;
+    font-size:14px !important;
+    border-radius:9px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel .nav-link.active {
+    color:var(--hb-v312-text) !important;
+    background:var(--hb-v312-tint) !important;
+    border-color:color-mix(in srgb,var(--hb-v312-accent) 30%,var(--hb-v312-line)) !important;
+    box-shadow:inset 3px 0 var(--hb-v312-accent) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel .nav-link:where(:hover,:focus-visible):not(:disabled) {
+    color:var(--hb-v312-text) !important;
+    background:var(--hb-v312-tint-hover) !important;
+    border-color:var(--hb-v312-line) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-section-panel .nav-link:focus-visible,
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group>summary:focus-visible {
+    outline:2px solid var(--hb-v312-accent) !important;
+    outline-offset:1px !important;
+  }
+
+  /* Stable profile strip, readable and separated from navigation scroll. */
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-sidebar-v20 .hb-sidebar-footer {
+    grid-row:3 !important;
+    min-height:70px !important;
+    height:70px !important;
+    padding:8px 9px !important;
+    border-top:1px solid var(--hb-v312-line) !important;
+    background:color-mix(in srgb,var(--season-bg,#0a1118) 87%,black) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-sidebar-v20 .hb-sidebar-profile {
+    height:52px !important;
+    min-height:52px !important;
+    border-radius:12px !important;
+    border-color:var(--hb-v312-line) !important;
+    background:color-mix(in srgb,var(--season-surface,#1a252b) 75%,var(--season-bg,#0b131a)) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-sidebar-v20 .hb-sidebar-profile:hover {
+    border-color:color-mix(in srgb,var(--hb-v312-accent) 35%,var(--hb-v312-line)) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-sidebar-v20 .hb-sidebar-profile .profile-info {
+    min-width:0 !important;
+    flex:1 1 auto !important;
+    text-align:left !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-sidebar-v20 .hb-sidebar-profile .profile-info :is(strong,small){
+    max-width:100% !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    white-space:nowrap !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301:is([data-hb-space="social"],[data-hb-space="rpg"]) .hb-v301-nav-resizer {
+    top:0 !important;
+    bottom:70px !important;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  .app-shell.hb-desktop-v301 .hb-v301-section-panel .nav-link,
+  .app-shell.hb-desktop-v301 .hb-v3055-global-quickrail button { transition:none !important }
+}
