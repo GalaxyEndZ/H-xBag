@@ -102,3 +102,102 @@
   .app-shell.hb-desktop-v301[data-hb-space="social"] .hb-v3056-desktop-nav {display:contents}
   .app-shell.hb-desktop-v301[data-hb-space="social"] .hb-v3056-small-nav {display:none}
 }
+
+
+/* V305.7 — compactar a rail esquerda e alinhar melhor o painel Social */
+@media (min-width: 801px) {
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail {
+    padding-top: 4px !important;
+    gap: 9px !important;
+    align-content: start;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail button {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+    flex-basis: 42px;
+    border-radius: 14px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail button.is-active::before {
+    top: 9px;
+    bottom: 9px;
+    left: -7px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v301-section-panel .hb-sidebar-nav {
+    padding: 8px 10px 12px !important;
+    gap: 10px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-desktop-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro {
+    gap: 3px;
+    padding: 4px 12px 10px;
+    margin-bottom: 0;
+    border-bottom: 1px solid color-mix(in srgb,var(--season-line,#39434d) 58%,transparent);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro>span {
+    font-size: 8px;
+    letter-spacing: .16em;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro strong {
+    font-size: 15px;
+    line-height: 1.15;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro strong span {
+    font-size: 12px;
+    margin-left: 3px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro small {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group {
+    border-radius: 14px;
+    padding: 2px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group>summary {
+    min-height: 38px;
+    padding: 7px 9px;
+    gap: 9px;
+    font-size: 12px;
+    font-weight: 770;
+    border-radius: 10px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-emblem {
+    flex: 0 0 26px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items {
+    gap: 3px;
+    padding: 2px 4px 8px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items .nav-link {
+    min-height: 35px !important;
+    padding: 6px 8px !important;
+    border-radius: 9px !important;
+    font-size: 12px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items .hb-sidebar-nav-icon {
+    width: 25px;
+    height: 25px;
+    flex: 0 0 25px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-chevron {
+    font-size: 14px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-sidebar-footer {
+    padding-top: 8px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-sidebar-profile {
+    min-height: 54px !important;
+  }
+}
