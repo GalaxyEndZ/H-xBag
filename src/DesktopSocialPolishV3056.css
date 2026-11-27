@@ -1,0 +1,104 @@
+/* V305.6 · Ações principais permanecem na rail; o menu Social organiza apenas opções complementares.
+   Isolado no Electron para manter intacta a versão web. */
+@media (min-width: 801px) {
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v301-section-panel {
+    background:linear-gradient(170deg,
+      color-mix(in srgb,var(--season-surface,#172027) 88%,var(--season-bg,#0c1217)),
+      var(--season-bg,#0e1319))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v301-section-panel .hb-sidebar-nav {
+    gap:7px!important;
+    padding:10px 10px 14px!important;
+    align-content:start;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro {
+    display:grid;gap:5px;
+    padding:10px 12px 16px;margin-bottom:4px;
+    border-bottom:1px solid color-mix(in srgb,var(--season-line,#39434d) 64%,transparent);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro>span {
+    color:var(--season-primary,#d9bd8b);font-size:9px;font-weight:800;letter-spacing:.14em;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro strong {
+    font-size:18px;line-height:1.25;font-weight:800;letter-spacing:-.035em;color:var(--season-text,#eef0ed);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro strong span {
+    color:var(--season-primary,#d9bd8b);font-size:14px;margin-left:4px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-social-intro small {
+    color:var(--season-muted,#a6adb3);font-size:10px;line-height:1.45;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group {
+    border:1px solid transparent;border-radius:12px;min-width:0;
+    transition:border-color .15s,background .15s;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group.is-current {
+    border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 22%,transparent);
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 4%,transparent);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group>summary {
+    display:flex;gap:10px;align-items:center;list-style:none;
+    min-height:40px;padding:8px 10px;
+    cursor:pointer;border-radius:10px;
+    color:var(--season-muted,#b0b5bd);font-size:11px;font-weight:760;
+    outline-offset:2px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group>summary::-webkit-details-marker {display:none}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group>summary:hover {
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 8%,transparent);
+    color:var(--season-text,#fff);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-emblem {
+    display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;
+    border-radius:9px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 10%,var(--season-surface,#182028));
+    color:var(--season-primary,#d9bd8b);font-size:14px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-chevron {
+    margin-left:auto;font-size:16px;transition:transform .15s;
+    color:var(--season-muted,#b0b5bd);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-sidebar-group[open] .hb-v3056-group-chevron {transform:rotate(180deg)}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items {
+    display:grid;gap:2px;padding:1px 4px 8px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items .nav-link {
+    min-height:36px!important;margin:0!important;padding:6px 9px!important;
+    font-size:11px!important;border-radius:8px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3056-group-items .hb-sidebar-nav-icon {
+    width:27px;height:27px;flex:0 0 27px;border-radius:8px;font-size:13px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail {
+    gap:8px;padding-top:13px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail button {
+    position:relative;width:43px;height:43px;min-height:43px;flex-basis:43px;
+    border-radius:15px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail button.is-active::before {
+    content:'';position:absolute;left:-7px;top:11px;bottom:11px;width:3px;
+    border-radius:0 4px 4px 0;background:var(--season-primary,#d9bd8b);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-global-quickrail button:hover {
+    box-shadow:0 6px 18px #00000020;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-sidebar-footer {
+    border-top:1px solid color-mix(in srgb,var(--season-line,#39434d) 64%,transparent);
+    padding-top:9px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-sidebar-profile {
+    min-height:56px!important;border-radius:12px!important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .hb-v3056-sidebar-group,
+  .app-shell .hb-v3056-group-chevron {transition:none!important}
+}
+
+/* Preserve the complete navigation in compact Electron windows, where the rail is hidden. */
+.app-shell.hb-desktop-v301 .hb-v3056-desktop-nav { display:none }
+.app-shell.hb-desktop-v301 .hb-v3056-small-nav { display:contents }
+@media (min-width: 801px) {
+  .app-shell.hb-desktop-v301[data-hb-space="social"] .hb-v3056-desktop-nav {display:contents}
+  .app-shell.hb-desktop-v301[data-hb-space="social"] .hb-v3056-small-nav {display:none}
+}

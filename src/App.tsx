@@ -58,6 +58,8 @@ import './DesktopExperienceV301.css'
 import './DesktopLayoutV3051.css'
 import './DesktopGlobalRailV3054.css'
 import './DesktopCommunityLayoutV3055.css'
+import './DesktopSocialPolishV3056.css'
+import SocialSidebarGroupV3056 from './components/SocialSidebarGroupV3056'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
 import DesktopSpaceLauncherV3051 from './components/DesktopSpaceLauncherV3051'
@@ -1588,6 +1590,7 @@ const resetCreatureFilters = () => {
   const [shopLoading, setShopLoading] = useState(false)
   const [shopPurchaseLoading, setShopPurchaseLoading] = useState<string | null>(null)
   const [seasons, setSeasons] = useState<Season[]>([])
+  const seasonsCampaignRef = useRef('')
   const [campaignActivities, setCampaignActivities] = useState<CampaignActivity[]>([])
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityTableMissing, setActivityTableMissing] = useState(false)
@@ -2936,17 +2939,55 @@ useEffect(() => {
   }, [session?.user.id, authLoading])
 
   useEffect(() => {
-    // Só valide a temporada após a sessão estar pronta (link direto / F5).
+    // Uma falha de rede não é uma lista vazia: manter as temporadas carregadas
+    // evita perder a seleção durante quedas breves do Supabase ou da conexão.
     if (authLoading) return
-    if (!session?.user.id || !selectedCampaignId) { setSeasons([]); setSelectedSeasonId(''); return }
+    if (!session?.user.id || !selectedCampaignId) { seasonsCampaignRef.current = ''; setSeasons([]); setSelectedSeasonId(''); return }
+    if (seasonsCampaignRef.current !== selectedCampaignId) {
+      // Trocar de campanha é diferente de perder a conexão: não mostrar dados de outra campanha.
+      if (seasonsCampaignRef.current) { setSeasons([]); setSelectedSeasonId('') }
+      seasonsCampaignRef.current = selectedCampaignId
+    }
     let cancelled = false
+    let requestVersion = 0
+    let consecutiveFailures = 0
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+    const errorPrefix = 'Erro ao carregar temporadas:'
+
+    function scheduleRetry() {
+      if (retryTimer || cancelled || consecutiveFailures > 3 || !navigator.onLine) return
+      const delays = [1200, 3000, 7000]
+      retryTimer = window.setTimeout(() => {
+        retryTimer = undefined
+        void loadSeasons()
+      }, delays[Math.min(consecutiveFailures - 1, delays.length - 1)])
+    }
+
     async function loadSeasons() {
-      const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('*').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
-      if (cancelled) return
-      if (seasonsError) { setError(`Erro ao carregar temporadas: ${seasonsError.message}`); setSeasons([]); setSelectedSeasonId(''); return }
-      const rows = (data ?? []) as Season[]
-      setSeasons(rows)
-      setSelectedSeasonId(current => rows.some(row => row.id === current) ? current : (rows.find(row => row.status === 'active')?.id ?? rows[0]?.id ?? ''))
+      const thisRequest = ++requestVersion
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = undefined }
+      try {
+        const { data, error: seasonsError } = await supabase.from('campaign_seasons').select('*').eq('campaign_id', selectedCampaignId).order('season_number', { ascending: true })
+        if (cancelled || thisRequest !== requestVersion) return
+        if (seasonsError) throw seasonsError
+        consecutiveFailures = 0
+        const rows = (data ?? []) as Season[]
+        setSeasons(rows)
+        setSelectedSeasonId(current => rows.some(row => row.id === current) ? current : (rows.find(row => row.status === 'active')?.id ?? rows[0]?.id ?? ''))
+        setError(current => current.startsWith(errorPrefix) ? '' : current)
+      } catch (reason) {
+        if (cancelled || thisRequest !== requestVersion) return
+        const message = reason instanceof Error ? reason.message : typeof reason === 'object' && reason && 'message' in reason ? String(reason.message) : String(reason)
+        const networkFailure = /failed to fetch|networkerror|network request failed|load failed|timeout|fetch failed/i.test(message)
+        if (networkFailure) {
+          consecutiveFailures += 1
+          setError(`${errorPrefix} conexão com o Supabase indisponível. As temporadas já carregadas foram preservadas; o aplicativo tentará reconectar. Verifique a internet e o acesso ao Supabase.`)
+          scheduleRetry()
+        } else {
+          consecutiveFailures = 0
+          setError(`${errorPrefix} ${message}`)
+        }
+      }
     }
     void loadSeasons()
     const channel = supabase.channel(`campaign-seasons-visual-${selectedCampaignId}`)
@@ -2955,11 +2996,17 @@ useEffect(() => {
         filter: `campaign_id=eq.${selectedCampaignId}`,
       }, () => { void loadSeasons() })
       .subscribe()
-    const refreshOnFocus = () => { void loadSeasons() }
-    window.addEventListener('focus', refreshOnFocus)
+    const refreshOnReconnect = () => { consecutiveFailures = 0; void loadSeasons() }
+    window.addEventListener('focus', refreshOnReconnect)
+    window.addEventListener('online', refreshOnReconnect)
+    window.addEventListener('haxbag:retry-seasons', refreshOnReconnect)
     return () => {
       cancelled = true
-      window.removeEventListener('focus', refreshOnFocus)
+      requestVersion += 1
+      if (retryTimer) clearTimeout(retryTimer)
+      window.removeEventListener('focus', refreshOnReconnect)
+      window.removeEventListener('online', refreshOnReconnect)
+      window.removeEventListener('haxbag:retry-seasons', refreshOnReconnect)
       void supabase.removeChannel(channel)
     }
   }, [selectedCampaignId, session?.user.id, authLoading])
@@ -11626,6 +11673,29 @@ counterAttackDT
         </div>
         <nav className="navigation hb-sidebar-nav" aria-label="Navegação principal" onClick={event => { if ((event.target as HTMLElement).closest('button.nav-link')) setSidebarMobileOpen(false) }}>
           {activePage === 'profile' ? <>
+            {desktopClient ? <>
+              <div className="hb-v3056-desktop-nav">
+              <div className="hb-v3056-social-intro">
+                <span>SEU ESPAÇO</span>
+                <strong>Social <span aria-hidden="true">✦</span></strong>
+                <small>Conexões, atividade e identidade</small>
+              </div>
+              <SocialSidebarGroupV3056 title="Sua rede" icon="♧" initiallyOpen active={profileSection==='friends' && ['following','followers','events'].includes(socialNavigationTab)}>
+                {([['following','↗','Seguindo'],['followers','↙','Seguidores'],['events','◷','Eventos']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              </SocialSidebarGroupV3056>
+              <SocialSidebarGroupV3056 title="Biblioteca" icon="▤" initiallyOpen active={profileSection==='friends' && ['saved','notifications','activity'].includes(socialNavigationTab)}>
+                {([['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              </SocialSidebarGroupV3056>
+              <SocialSidebarGroupV3056 title="Minha identidade" icon="✧" active={profileSection!=='friends'}>
+                {([['overview','◉','Minha página'],['journey','⚔','Minha jornada'],['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],['account','⌘','Conta e ajustes']] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection===section?'active':''}`} aria-current={profileSection===section?'page':undefined} onClick={()=>openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              </SocialSidebarGroupV3056>
+              <SocialSidebarGroupV3056 title="Mais opções" icon="☷" active={profileSection==='friends' && ['referral','blocked','moderation','administration'].includes(socialNavigationTab)}>
+                {([['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends'&&socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+                {isSiteAdmin&&<button type="button" className={`nav-link ${profileSection==='friends'&&socialNavigationTab==='administration'?'active':''}`} onClick={()=>openSocialTab('administration')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Painel Administrativo</span></button>}
+                <a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a>
+              </SocialSidebarGroupV3056>
+              </div>
+              <div className="hb-v3056-small-nav">
             <div className="hb-sidebar-nav-group hb-v159-nav-social">
               <span className="hb-sidebar-group-title">CONEXÕES</span>
               {([
@@ -11646,6 +11716,32 @@ counterAttackDT
               ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
+
+              </div>
+            </> : <>
+
+            <div className="hb-sidebar-nav-group hb-v159-nav-social">
+              <span className="hb-sidebar-group-title">CONEXÕES</span>
+              {([
+                ['feed','✦','Feed'],['messages','✉','Mensagens'],['friends','♧','Amigos'],
+                ['following','↗','Seguindo'],['followers','↙','Seguidores'],
+                ['discover','⌕','Explorar'],['communities','♧','Comunidades'],['events','◷','Eventos'],
+                ['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade'],
+                ['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança'],
+              ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+            </div>
+            {isSiteAdmin&&<div className="hb-sidebar-nav-group hb-site-admin-nav"><span className="hb-sidebar-group-title">ADMINISTRAÇÃO</span><button type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab==='administration'?'active':''}`} onClick={()=>openSocialTab('administration')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Painel Administrativo</span></button></div>}
+            <div className="hb-sidebar-nav-group hb-v159-nav-identity">
+              <span className="hb-sidebar-group-title">MINHA IDENTIDADE</span>
+              {([
+                ['overview','◉','Minha página'],['journey','⚔','Minha jornada'],
+                ['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],
+                ['account','⌘','Conta e ajustes'],
+              ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+            </div>
+            <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
+
+            </>}
           </> : activePage === 'communication' ? <>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNICAÇÃO</span>
               <button type="button" className="nav-link active hb-communication-nav-duplicate" aria-current="page" onClick={()=>document.getElementById('hb-communication')?.scrollIntoView({behavior:'smooth',block:'start'})}><span className="hb-sidebar-nav-icon" aria-hidden="true">✉</span><span className="hb-sidebar-nav-name">Servidores e canais</span></button>
@@ -18411,6 +18507,7 @@ style={{cursor:'pointer'}}>
           {error && activePage !== 'conditions' && activePage !== 'dice-tower' && (
             <div className="notice" role="alert">
               <span>!</span> {error}
+              {error.startsWith('Erro ao carregar temporadas:') && <button type="button" onClick={() => window.dispatchEvent(new Event('haxbag:retry-seasons'))}>Tentar novamente</button>}
               <button
                 onClick={() => setError('')}
                 aria-label="Fechar aviso"
