@@ -658,7 +658,7 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
             <div className="hb-comm-side-utility-head-v3052">
               <small>CANAL ATUAL</small>
               <strong>{channel.kind === 'voice' ? '♫' : '#'} {channel.name}</strong>
-              <p>{channel.description || (channel.kind === 'voice' ? 'Reúna o grupo em tempo real nesta sala de voz.' : 'Converse, compartilhe anexos e organize este canal.')}</p>
+              <p>{channel.topic || (channel.kind === 'voice' ? 'Reúna o grupo em tempo real nesta sala de voz.' : 'Converse, compartilhe anexos e organize este canal.')}</p>
             </div>
             <div className="hb-comm-side-quick-v3052">
               <button type="button" onClick={()=>setShowPinned(v=>!v)}>{showPinned ? '↺ Voltar às mensagens' : '⌁ Ver fixadas'}</button>
