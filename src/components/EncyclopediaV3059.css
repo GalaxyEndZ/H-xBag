@@ -1,0 +1,42 @@
+/* HäxBag V305.9 — Enciclopédia visual, com capas, galeria e editor de imagens.
+   Mantém paletas de temporada e responsividade do workspace V305.8. */
+.hb-ency-workspace .hb-ency-entry-icon {overflow:hidden;border:1px solid color-mix(in srgb,var(--season-line,#34414b) 75%,transparent)}
+.hb-ency-workspace .hb-ency-entry-icon img {width:100%;height:100%;object-fit:cover;display:block}
+.hb-ency-article-images{display:grid;gap:12px;margin:24px 0 4px}
+.hb-ency-workspace .hb-ency-cover{display:block;position:relative;overflow:hidden;width:100%;max-height:440px;padding:0!important;background:var(--season-bg,#10161c);border:1px solid var(--season-line,#34414b);border-radius:17px;box-shadow:0 16px 28px #00000020;cursor:zoom-in}
+.hb-ency-cover img{width:100%;height:clamp(210px,29vw,420px);object-fit:cover;object-position:center;display:block;transition:transform .2s ease}
+.hb-ency-cover:hover img{transform:scale(1.018)}
+.hb-ency-cover>span{position:absolute;bottom:12px;right:12px;padding:8px 11px;border-radius:10px;background:#0a1019df;color:#fff;font-size:12px;font-weight:800;border:1px solid #ffffff32}
+.hb-ency-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:10px}
+.hb-ency-gallery-item{min-width:0;border:1px solid var(--season-line,#34414b);border-radius:13px;overflow:hidden;background:color-mix(in srgb,var(--season-surface-alt,#1c2830) 76%,transparent)}
+.hb-ency-workspace .hb-ency-gallery-image{display:block;width:100%;padding:0!important;border:0;border-radius:0;background:none;cursor:zoom-in}
+.hb-ency-gallery-image img{width:100%;height:115px;object-fit:cover;display:block}
+.hb-ency-gallery-item>div{display:grid;gap:7px;padding:8px 9px}
+.hb-ency-gallery-item small{display:block;font-size:10px;line-height:1.35;color:var(--season-muted,#b4bbc1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-ency-workspace .hb-ency-gallery-item>div button{font-size:10px;padding:6px 7px;justify-self:start;border:1px solid var(--season-line,#34414b);border-radius:7px;background:transparent;color:var(--season-primary,#d9bd8b)}
+.hb-ency-image-caption{color:var(--season-muted,#b4bbc1);font-size:12px}
+.hb-ency-image-tip{color:var(--season-muted,#b4bbc1);font-size:11px}
+.hb-ency-editor-media{border:1px solid var(--season-line,#34414b);padding:15px;border-radius:14px;display:grid;gap:12px;background:color-mix(in srgb,var(--season-bg,#10161c) 55%,transparent)}
+.hb-ency-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.hb-ency-section-heading>div{display:grid;gap:4px}
+.hb-ency-section-heading strong{font-size:13px;color:var(--season-text,#f0ece7)}
+.hb-ency-section-heading small{font-size:11px;color:var(--season-muted,#b4bbc1);line-height:1.4}
+.hb-ency-section-heading>span{padding:5px 8px;white-space:nowrap;border-radius:8px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent);color:var(--season-primary,#d9bd8b);font-size:11px;font-weight:800}
+.hb-ency-workspace .hb-ency-upload{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;padding:15px!important;border:1px dashed color-mix(in srgb,var(--season-primary,#d9bd8b) 48%,var(--season-line,#34414b));border-radius:12px;background:color-mix(in srgb,var(--season-primary,#d9bd8b) 6%,transparent);color:var(--season-primary,#d9bd8b);font-size:12px;font-weight:800}
+.hb-ency-upload small{color:var(--season-muted,#b4bbc1);font-weight:500}
+.hb-ency-upload-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:10px}
+.hb-ency-upload-item{min-width:0;overflow:hidden;border:1px solid var(--season-line,#34414b);border-radius:12px;background:var(--season-surface,#172027)}
+.hb-ency-upload-item>img{display:block;width:100%;height:115px;object-fit:cover}
+.hb-ency-upload-item>span{display:grid;place-items:center;min-height:115px;font-size:11px;color:var(--season-muted,#b4bbc1)}
+.hb-ency-upload-item>div{display:grid;gap:8px;padding:8px}
+.hb-ency-upload-item small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--season-muted,#b4bbc1)}
+.hb-ency-workspace .hb-ency-upload-item button{font-size:10px;padding:5px 8px;border-radius:7px;color:#f5b1b1;justify-self:start;border-color:#d8787840;background:#a5434310}
+.hb-ency-image-warning{margin-top:12px;padding:10px 12px;border:1px solid color-mix(in srgb,#ca8e41 42%,var(--season-line,#34414b));border-radius:10px;color:#eacaa5;background:#bb873515;font-size:12px}
+.hb-ency-lightbox{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:20px;background:#020508df;backdrop-filter:blur(9px)}
+.hb-ency-lightbox-dialog{position:relative;display:grid;gap:8px;max-height:94vh;max-width:min(1100px,96vw);min-width:0;padding:14px;border:1px solid #596572;border-radius:17px;background:#121a20;box-shadow:0 24px 90px #000b}
+.hb-ency-lightbox-dialog>img{display:block;max-width:100%;max-height:calc(94vh - 96px);object-fit:contain;border-radius:10px;margin:auto}
+.hb-ency-lightbox-dialog>div{display:flex;justify-content:space-between;align-items:center;gap:16px;color:#ddd;font-size:12px}
+.hb-ency-workspace .hb-ency-lightbox-close{position:absolute;top:23px;right:23px;z-index:2;width:36px;height:36px;display:grid;place-items:center;background:#0a111aeb;border:1px solid #ffffff40;border-radius:10px;color:#fff;cursor:pointer}
+.hb-ency-lightbox-dialog>div button{font-size:11px;padding:7px 9px;border-radius:8px;color:#e0c197;background:#ffffff11;border:1px solid #ffffff30}
+@media(max-width:680px){.hb-ency-cover img{height:220px}.hb-ency-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}.hb-ency-lightbox{padding:10px}}
+@media(prefers-reduced-motion:reduce){.hb-ency-cover img{transition:none}.hb-ency-cover:hover img{transform:none}}

@@ -59,6 +59,7 @@ import './DesktopLayoutV3051.css'
 import './DesktopGlobalRailV3054.css'
 import './DesktopCommunityLayoutV3055.css'
 import './DesktopSocialPolishV3056.css'
+import './DesktopNavRefinementV30510.css'
 import SocialSidebarGroupV3056 from './components/SocialSidebarGroupV3056'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
@@ -2355,8 +2356,12 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
   const desktopClient = typeof window !== 'undefined' && Boolean((window as Window & { haxbagDesktop?: { enabled?: boolean } }).haxbagDesktop?.enabled)
   // V301: Preferências locais de ergonomia. Não são dados de conta nem de campanha.
   const [desktopNavWidth, setDesktopNavWidth] = useState(() => {
-    try { return Math.min(336, Math.max(254, Number(window.localStorage.getItem('haxbag-desktop-nav-width-v301')) || 286)) }
-    catch { return 286 }
+    try {
+      const current = window.localStorage.getItem('haxbag-desktop-nav-width-v30510')
+      if (current !== null) return Math.min(380, Math.max(300, Number(current) || 320))
+      const old = Number(window.localStorage.getItem('haxbag-desktop-nav-width-v301'))
+      return Number.isFinite(old) && old >= 308 ? Math.min(380, old) : 320
+    } catch { return 320 }
   })
   const [desktopDensity, setDesktopDensity] = useState<'comfortable' | 'compact'>(() => {
     try { return window.localStorage.getItem('haxbag-desktop-density-v301') === 'compact' ? 'compact' : 'comfortable' }
@@ -2379,9 +2384,9 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     setDesktopFocus(false)
     setDesktopSidebarMode('auto')
     setDesktopDensity('comfortable')
-    setDesktopNavWidth(286)
+    setDesktopNavWidth(320)
     try {
-      for (const key of ['haxbag-desktop-sidebar-v300','haxbag-desktop-density-v301','haxbag-desktop-nav-width-v301'])
+      for (const key of ['haxbag-desktop-sidebar-v300','haxbag-desktop-density-v301','haxbag-desktop-nav-width-v301','haxbag-desktop-nav-width-v30510'])
         window.localStorage.removeItem(key)
     } catch { /* sem armazenamento */ }
     // O painel de canais recebe o mesmo comando para restaurar sua largura.
@@ -2397,13 +2402,13 @@ const enemyUsesSkillPoints = systemFeatures?.usesSkillPoints ?? false
     }
     const drag = desktopNavDragRef.current
     if (!drag || drag.id !== event.pointerId) return
-    const next = Math.max(254, Math.min(336, drag.width + event.clientX - drag.x))
+    const next = Math.max(300, Math.min(380, drag.width + event.clientX - drag.x))
     if (phase === 'move') {
       event.currentTarget.closest<HTMLElement>('.app-shell')?.style.setProperty('--hb-v301-sidebar-width', `${next}px`)
     } else {
       desktopNavDragRef.current = null
       setDesktopNavWidth(next)
-      try { window.localStorage.setItem('haxbag-desktop-nav-width-v301', String(next)) } catch { /* sem armazenamento */ }
+      try { window.localStorage.setItem('haxbag-desktop-nav-width-v30510', String(next)) } catch { /* sem armazenamento */ }
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
     }
   }
@@ -11681,16 +11686,16 @@ counterAttackDT
                 <small>Conexões, atividade e identidade</small>
               </div>
               <SocialSidebarGroupV3056 title="Sua rede" icon="♧" initiallyOpen active={profileSection==='friends' && ['following','followers','events'].includes(socialNavigationTab)}>
-                {([['following','↗','Seguindo'],['followers','↙','Seguidores'],['events','◷','Eventos']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+                {([['following','↗','Seguindo'],['followers','↙','Seguidores'],['events','◷','Eventos']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" title={label} className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
               </SocialSidebarGroupV3056>
               <SocialSidebarGroupV3056 title="Biblioteca" icon="▤" initiallyOpen active={profileSection==='friends' && ['saved','notifications','activity'].includes(socialNavigationTab)}>
-                {([['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+                {([['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" title={label} className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends' && socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
               </SocialSidebarGroupV3056>
               <SocialSidebarGroupV3056 title="Minha identidade" icon="✧" active={profileSection!=='friends'}>
-                {([['overview','◉','Minha página'],['journey','⚔','Minha jornada'],['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],['account','⌘','Conta e ajustes']] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection===section?'active':''}`} aria-current={profileSection===section?'page':undefined} onClick={()=>openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+                {([['overview','◉','Minha página'],['journey','⚔','Minha jornada'],['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],['account','⌘','Conta e ajustes']] as const).map(([section,symbol,label]) => <button key={section} type="button" title={label} className={`nav-link ${profileSection===section?'active':''}`} aria-current={profileSection===section?'page':undefined} onClick={()=>openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
               </SocialSidebarGroupV3056>
               <SocialSidebarGroupV3056 title="Mais opções" icon="☷" active={profileSection==='friends' && ['referral','blocked','moderation','administration'].includes(socialNavigationTab)}>
-                {([['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends'&&socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+                {([['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança']] as const).map(([tab,symbol,label]) => <button key={tab} type="button" title={label} className={`nav-link ${profileSection==='friends' && socialNavigationTab===tab?'active':''}`} aria-current={profileSection==='friends'&&socialNavigationTab===tab?'page':undefined} onClick={()=>openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
                 {isSiteAdmin&&<button type="button" className={`nav-link ${profileSection==='friends'&&socialNavigationTab==='administration'?'active':''}`} onClick={()=>openSocialTab('administration')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Painel Administrativo</span></button>}
                 <a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a>
               </SocialSidebarGroupV3056>
@@ -11704,7 +11709,7 @@ counterAttackDT
                 ['discover','⌕','Explorar'],['communities','♧','Comunidades'],['events','◷','Eventos'],
                 ['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade'],
                 ['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança'],
-              ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" title={label} className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             {isSiteAdmin&&<div className="hb-sidebar-nav-group hb-site-admin-nav"><span className="hb-sidebar-group-title">ADMINISTRAÇÃO</span><button type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab==='administration'?'active':''}`} onClick={()=>openSocialTab('administration')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Painel Administrativo</span></button></div>}
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">
@@ -11713,7 +11718,7 @@ counterAttackDT
                 ['overview','◉','Minha página'],['journey','⚔','Minha jornada'],
                 ['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],
                 ['account','⌘','Conta e ajustes'],
-              ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              ] as const).map(([section,symbol,label]) => <button key={section} type="button" title={label} className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
 
@@ -11728,7 +11733,7 @@ counterAttackDT
                 ['discover','⌕','Explorar'],['communities','♧','Comunidades'],['events','◷','Eventos'],
                 ['saved','▤','Salvos'],['notifications','◉','Notificações'],['activity','✦','Atividade'],
                 ['referral','✧','Convite social'],['blocked','⊘','Bloqueados'],['moderation','⚑','Segurança'],
-              ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              ] as const).map(([tab,symbol,label]) => <button key={tab} type="button" title={label} className={`nav-link ${profileSection === 'friends' && socialNavigationTab === tab ? 'active' : ''}`} aria-current={profileSection === 'friends' && socialNavigationTab === tab ? 'page' : undefined} onClick={() => openSocialTab(tab)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             {isSiteAdmin&&<div className="hb-sidebar-nav-group hb-site-admin-nav"><span className="hb-sidebar-group-title">ADMINISTRAÇÃO</span><button type="button" className={`nav-link ${profileSection==='friends' && socialNavigationTab==='administration'?'active':''}`} onClick={()=>openSocialTab('administration')}><span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Painel Administrativo</span></button></div>}
             <div className="hb-sidebar-nav-group hb-v159-nav-identity">
@@ -11737,7 +11742,7 @@ counterAttackDT
                 ['overview','◉','Minha página'],['journey','⚔','Minha jornada'],
                 ['legacy','✧','Minha vitrine'],['studio','✎','Meu ateliê'],
                 ['account','⌘','Conta e ajustes'],
-              ] as const).map(([section,symbol,label]) => <button key={section} type="button" className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
+              ] as const).map(([section,symbol,label]) => <button key={section} type="button" title={label} className={`nav-link ${profileSection === section ? 'active' : ''}`} aria-current={profileSection === section ? 'page' : undefined} onClick={() => openSocialSection(section)}><span className="hb-sidebar-nav-icon" aria-hidden="true">{symbol}</span><span className="hb-sidebar-nav-name">{label}</span></button>)}
             </div>
             <div className="hb-sidebar-nav-group"><span className="hb-sidebar-group-title">COMUNIDADE</span><a className="nav-link hb-sidebar-discord-link" href="https://discord.gg/ERPq7KHS8S" rel="noopener noreferrer" target="_blank"><span className="hb-sidebar-nav-icon" aria-hidden="true">💬</span><span className="hb-sidebar-nav-name">Discord do HäxBag</span><span aria-hidden="true">↗</span></a></div>
 
@@ -11765,17 +11770,17 @@ counterAttackDT
               onClick={() => { setActivePage('player-table') }}
               disabled={!selectedCampaignId} aria-current={activePage === 'player-table' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">▦</span>
-              <span className="hb-sidebar-nav-name">Mesa dos jogadores</span>
+              <span className="hb-sidebar-nav-name" title="Mesa dos jogadores">Mesa dos jogadores</span>
               <span className="hb-sidebar-nav-flair">MESA</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'dice-tower' ? 'active' : ''}`} onClick={() => { setNotice(''); setError(''); setActivePage('dice-tower') }} disabled={!selectedCampaignId} aria-current={activePage === 'dice-tower' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">🎲</span><span className="hb-sidebar-nav-name">Torre de Dados</span>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">🎲</span><span className="hb-sidebar-nav-name" title="Torre de Dados">Torre de Dados</span>
             </button>
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-shield' ? 'active' : ''}`} onClick={() => setActivePage('master-shield')} disabled={!selectedCampaignId} aria-current={activePage === 'master-shield' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">♜</span><span className="hb-sidebar-nav-name" title="Escudo do mestre">Escudo do mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
             {isMaster && <button type="button" className={`nav-link ${activePage === 'master-chest' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('master-chest') }} disabled={!selectedCampaignId} aria-current={activePage === 'master-chest' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">🗝</span><span className="hb-sidebar-nav-name">Baú do Mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">🗝</span><span className="hb-sidebar-nav-name" title="Baú do Mestre">Baú do Mestre</span><span className="hb-sidebar-nav-flair">MESTRE</span>
             </button>}
           </div>
           <div className="hb-sidebar-nav-group">
@@ -11796,7 +11801,7 @@ counterAttackDT
               <span className="hb-sidebar-nav-icon" aria-hidden="true">📜</span><span className="hb-sidebar-nav-name">Missões</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'investigation' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('investigation') }} disabled={!selectedCampaignId} aria-current={activePage === 'investigation' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">🧵</span><span className="hb-sidebar-nav-name">Mesa de Investigação</span>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">🧵</span><span className="hb-sidebar-nav-name" title="Mesa de Investigação">Mesa de Investigação</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'shops' ? 'active' : ''}`} onClick={() => setActivePage('shops')} disabled={!selectedCampaignId} aria-current={activePage === 'shops' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">▤</span><span className="hb-sidebar-nav-name">Lojas</span><span className="nav-count">{shops.length}</span>
@@ -11805,13 +11810,13 @@ counterAttackDT
               <span className="hb-sidebar-nav-icon" aria-hidden="true">♞</span><span className="hb-sidebar-nav-name">Bestiário</span><span className="nav-count">{creatures.length}</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'encyclopedia' ? 'active' : ''}`} onClick={() => setActivePage('encyclopedia')} disabled={!selectedCampaignId} aria-current={activePage === 'encyclopedia' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">📖</span><span className="hb-sidebar-nav-name">Enciclopédia</span>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">📖</span><span className="hb-sidebar-nav-name" title="Enciclopédia">Enciclopédia</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'campaigns' ? 'active' : ''}`} onClick={() => { setActivePage('campaigns'); setShowCampaignForm(false) }} aria-current={activePage === 'campaigns' ? 'page' : undefined}>
               <span className="hb-sidebar-nav-icon" aria-hidden="true">⚑</span><span className="hb-sidebar-nav-name">Campanhas</span><span className="nav-count">{campaigns.length}</span>
             </button>
             <button type="button" className={`nav-link ${activePage === 'customization' ? 'active' : ''}`} onClick={() => { setNotice(''); setActivePage('customization') }} disabled={!selectedCampaignId} aria-current={activePage === 'customization' ? 'page' : undefined}>
-              <span className="hb-sidebar-nav-icon" aria-hidden="true">✧</span><span className="hb-sidebar-nav-name">Customização</span>
+              <span className="hb-sidebar-nav-icon" aria-hidden="true">✧</span><span className="hb-sidebar-nav-name" title="Customização">Customização</span>
             </button>
           </div>
           <div className="hb-sidebar-nav-group">
@@ -11860,13 +11865,13 @@ counterAttackDT
             <span className="hb-sidebar-online" aria-label="Conectado" title="Conectado" />
           </button>
         </div>
-        {desktopClient && !desktopRailOnly && <div className="hb-v301-nav-resizer" role="separator" aria-label="Ajustar largura da navegação" aria-orientation="vertical" aria-valuemin={254} aria-valuemax={336} aria-valuenow={desktopNavWidth} tabIndex={0}
+        {desktopClient && !desktopRailOnly && <div className="hb-v301-nav-resizer" role="separator" aria-label="Ajustar largura da navegação" aria-orientation="vertical" aria-valuemin={300} aria-valuemax={380} aria-valuenow={desktopNavWidth} tabIndex={0}
           onPointerDown={event => desktopNavResize(event,'start')}
           onPointerMove={event => desktopNavResize(event,'move')}
           onPointerUp={event => desktopNavResize(event,'end')}
           onPointerCancel={event => desktopNavResize(event,'end')}
-          onDoubleClick={() => { setDesktopNavWidth(286); try { window.localStorage.setItem('haxbag-desktop-nav-width-v301','286') } catch { /* sem armazenamento */ } }}
-          onKeyDown={event => { if(event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const value=Math.max(254,Math.min(336,desktopNavWidth+(event.key === 'ArrowRight'?16:-16))); setDesktopNavWidth(value);try{window.localStorage.setItem('haxbag-desktop-nav-width-v301',String(value))}catch{/* sem armazenamento */} } }}
+          onDoubleClick={() => { setDesktopNavWidth(320); try { window.localStorage.setItem('haxbag-desktop-nav-width-v30510','320') } catch { /* sem armazenamento */ } }}
+          onKeyDown={event => { if(event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const value=Math.max(300,Math.min(380,desktopNavWidth+(event.key === 'ArrowRight'?16:-16))); setDesktopNavWidth(value);try{window.localStorage.setItem('haxbag-desktop-nav-width-v30510',String(value))}catch{/* sem armazenamento */} } }}
           title="Arraste para redimensionar · Setas para ajustar · Clique duplo para restaurar" />}
       </aside>
 

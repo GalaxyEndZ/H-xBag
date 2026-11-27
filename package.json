@@ -1,7 +1,7 @@
 {
   "name": "haxbag",
   "private": true,
-  "version": "0.305.8",
+  "version": "0.305.10",
   "type": "module",
   "scripts": {
     "dev": "vite",
