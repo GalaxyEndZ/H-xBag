@@ -54,11 +54,25 @@ jobs:
       - name: Instalar Capacitor isolado do desktop
         run: npm run mobile:deps
 
-      - name: Preparar SDK Android
+      # Instala as command-line tools e registra sdkmanager no PATH.
+      # A action também aceita as licenças; não use yes | sdkmanager antes do setup.
+      - name: Configurar Android SDK (API 36)
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: 'true'
+          log-accepted-android-sdk-licenses: 'false'
+
+      - name: Verificar SDK antes do Gradle
         shell: bash
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          set -euo pipefail
+          command -v sdkmanager
+          sdkmanager --version
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$SDK_ROOT" || { echo 'ANDROID_SDK_ROOT/ANDROID_HOME nao configurado'; exit 1; }
+          test -d "$SDK_ROOT/platforms/android-36" || { echo 'Android API 36 nao instalada'; exit 1; }
+          test -d "$SDK_ROOT/build-tools/36.0.0" || { echo 'Build-tools 36.0.0 nao instalados'; exit 1; }
 
       - name: Gerar projeto Android e APK debug
         run: npm run mobile:apk

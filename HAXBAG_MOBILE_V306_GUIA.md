@@ -44,7 +44,7 @@ Para gerar um APK de teste:
 npm run mobile:apk
 ```
 
-O arquivo será gerado em `mobile/output/HaxBag-0.306.0-android-debug.apk`, se Gradle/SDK estiverem corretamente instalados. O APK **não está incluído** neste pacote porque a compilação nativa requer dependências e o Android SDK.
+O arquivo será gerado em `mobile/output/HaxBag-0.306.1-android-debug.apk`, se Gradle/SDK estiverem corretamente instalados. O APK **não está incluído** neste pacote porque a compilação nativa requer dependências e o Android SDK.
 
 Em cada alteração da interface, rode `npm run build` e depois `npm run mobile:android:sync` para copiar os arquivos atualizados ao Android. Após `npm run mobile:deps`, o npm cria o lockfile dentro de `mobile/`; é recomendável adicionar esse lockfile ao Git para builds reproduzíveis.
 
@@ -74,3 +74,9 @@ V306 é a **base Android com navegação touch**. A interface React/Vite e o Sup
 O identificador `com.haxbag.mobile` em `mobile/capacitor.config.ts` é provisório; defina o ID definitivo antes de qualquer publicação na Play Store. O projeto iOS poderá ser adicionado no futuro em um Mac.
 
 **Nenhum SQL novo é exigido** pelo Capacitor; o aplicativo usa o banco existente.
+
+## Correção V306.1 — SDK não encontrado no GitHub Actions
+
+O workflow `mobile-android-debug.yml` passou a usar `android-actions/setup-android@v4` antes da compilação nativa. Essa Action instala as ferramentas do Android SDK, configura `sdkmanager` no PATH e aceita licenças. Solicita explicitamente `platforms;android-36` e `build-tools;36.0.0`, com uma etapa de diagnóstico que verifica os diretórios e o executável antes de executar o Gradle.
+
+Se o erro persistir, abra os logs das etapas **Configurar Android SDK (API 36)** e **Verificar SDK antes do Gradle**. Não precisa executar `yes | sdkmanager --licenses` manualmente. Basta enviar o workflow corrigido à branch `main` e executar o fluxo novamente em Actions. Não é necessário criar uma tag: o workflow mobile é manual e a tag `v*` também dispara a publicação do Windows.
