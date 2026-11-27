@@ -1048,3 +1048,14 @@
 @media(max-width:700px){
   .app-shell .hb-comm-shell-v287 .hb-comm-footer{padding:10px 12px;align-items:flex-start;flex-direction:column}
 }
+
+
+/* V305.2 — usar o espaço lateral como painel de contexto */
+.app-shell .hb-comm-side-utility-v3052{display:grid;gap:10px;margin:14px 12px 12px;padding:12px;border:1px solid color-mix(in srgb,var(--hc-edge) 88%,var(--hc-gold));border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,var(--hc-panel) 92%,var(--hc-bg)),color-mix(in srgb,var(--hc-card) 88%,black))}
+.app-shell .hb-comm-side-utility-head-v3052{display:grid;gap:4px}.app-shell .hb-comm-side-utility-head-v3052 small{font-size:10px;letter-spacing:.12em;color:var(--hc-muted);font-weight:800}.app-shell .hb-comm-side-utility-head-v3052 strong{font-size:14px;color:var(--hc-text)}.app-shell .hb-comm-side-utility-head-v3052 p{margin:0;font-size:11px;line-height:1.45;color:var(--hc-dim)}
+.app-shell .hb-comm-side-quick-v3052{display:grid;gap:8px}.app-shell .hb-comm-side-quick-v3052 button{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;min-height:38px;padding:10px 12px;border-radius:12px;border:1px solid color-mix(in srgb,var(--hc-edge) 82%,transparent);background:color-mix(in srgb,var(--hc-panel) 70%,transparent);color:var(--hc-text);font-size:12px;font-weight:700;text-align:left}.app-shell .hb-comm-side-quick-v3052 button:hover{border-color:color-mix(in srgb,var(--hc-gold) 34%,var(--hc-edge));background:color-mix(in srgb,var(--hc-gold) 8%,transparent)}
+.app-shell .hb-comm-side-tool-title-v3052{font-size:10px;letter-spacing:.12em;color:var(--hc-muted);font-weight:800;padding-top:2px}
+.app-shell .hb-comm-side-tool-stack-v3052{display:grid;gap:8px}.app-shell .hb-comm-side-tool-card-v3052{margin:0!important}.app-shell .hb-comm-side-tool-card-v3052>summary{padding:11px 12px!important}.app-shell .hb-comm-side-tool-card-v3052>summary span:last-child{font-size:12px;font-weight:700}.app-shell .hb-comm-side-tool-card-v3052 .hb-comm-tool-popover-v3044{position:static!important;inset:auto!important;transform:none!important;min-width:0!important;width:100%!important;box-shadow:none!important;border:0!important;border-top:1px solid color-mix(in srgb,var(--hc-edge) 72%,transparent);background:transparent!important;padding:10px 0 0!important}
+.app-shell .hb-comm-shell-v287 .hb-comm-composer-wrap-v304{padding-top:10px}
+.app-shell .hb-communication-v287 .hb-comm-footer{display:none!important}
+@media (max-width: 1100px){.app-shell .hb-comm-side-utility-v3052{margin:10px}.app-shell .hb-comm-side-tool-card-v3052 .hb-comm-tool-popover-v3044{padding-top:8px}}
