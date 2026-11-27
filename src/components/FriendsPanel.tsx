@@ -138,6 +138,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const [searchResults,setSearchResults] = useState<Person[]>([])
   const [searchBusy,setSearchBusy] = useState(false)
   const [filter,setFilter] = useState('')
+  const [friendsPresenceFilter,setFriendsPresenceFilter] = useState<'all'|'available'>('all')
   const [peopleOrder,setPeopleOrder] = useState<'az'|'za'>('az')
   const [chatSearch,setChatSearch] = useState('')
   const [messageSearch,setMessageSearch] = useState('')
@@ -665,8 +666,10 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
   const currentPeople=people[tab]||EMPTY_PEOPLE
   const filteredPeople=useMemo(()=>currentPeople
     .filter(p=>foldText(`${p.display_name} ${p.username}`).includes(foldText(filter.trim())))
+    .filter(p=>tab!=='friends'||friendsPresenceFilter==='all'||onlinePresence[p.person_id]?.status==='available')
     .sort((a,b)=>peopleOrder==='az' ? nameOf(a).localeCompare(nameOf(b),'pt-BR') : nameOf(b).localeCompare(nameOf(a),'pt-BR')),
-  [currentPeople,filter,peopleOrder])
+  [currentPeople,filter,peopleOrder,tab,friendsPresenceFilter,onlinePresence])
+  const availableFriendsCount=useMemo(()=> (people.friends||[]).filter(p=>onlinePresence[p.person_id]?.status==='available').length,[people.friends,onlinePresence])
   const visiblePosts=useMemo(()=>posts.filter(post=>{
     if(feedScope==='friends'&&!((people.friends||[]).some(friend=>friend.person_id===post.author_id)))return false
     if(onlyPhotos && !(post.image_paths?.length))return false
@@ -752,7 +755,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
     const blocked=kind==='blocked'
     return <article className="hb-social-person" key={person.person_id}>
       <button className="hb-social-person-name" type="button" onClick={()=>blocked?undefined:viewPerson(person)} disabled={blocked}>
-        {avatarFor(person.person_id,nameOf(person))}
+        <span className="hb-v3055-presence-avatar">{avatarFor(person.person_id,nameOf(person))}<i className={`hb-v3055-presence-dot ${onlinePresence[person.person_id]?.status==='available'?'is-available':onlinePresence[person.person_id]?.status==='busy'?'is-busy':'is-hidden'}`} aria-hidden="true" /></span>
         <span><strong>{nameOf(person)}</strong><small>@{person.username||'aventureiro'} · {blocked?'Bloqueado':person.is_friend?'Amigos':person.follows_me?'Segue você':person.following?'Você segue':'Aventureiro'}{!blocked&&onlinePresence[person.person_id] ? ` · ${onlinePresence[person.person_id].status==='busy'?'Ocupado':'Disponível'}${onlinePresence[person.person_id].activity?` · ${onlinePresence[person.person_id].activity}`:''}` : ''}</small></span>
       </button>
       <div className="hb-social-person-actions">
@@ -820,6 +823,19 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
         </div>
       </aside>
       <div className="hb-v158-social-content">
+    {(['friends','following','followers','messages','discover'] as Tab[]).includes(tab)&&<nav className="hb-v3055-friends-toolbar" aria-label="Amigos e mensagens">
+      <span className="hb-v3055-toolbar-title"><span aria-hidden="true">♧</span><strong>{tab==='messages'?'Mensagens':'Amigos'}</strong></span>
+      <span className="hb-v3055-toolbar-divider" aria-hidden="true"/>
+      {tab!=='friends'&&<button type="button" onClick={()=>setTab('friends')}>Amigos <small>{summary.friends}</small></button>}
+      {tab==='friends'&&<>
+        <button type="button" className={friendsPresenceFilter==='available'?'is-active':''} aria-pressed={friendsPresenceFilter==='available'} onClick={()=>setFriendsPresenceFilter('available')}>Disponíveis <small>{availableFriendsCount}</small></button>
+        <button type="button" className={friendsPresenceFilter==='all'?'is-active':''} aria-pressed={friendsPresenceFilter==='all'} onClick={()=>setFriendsPresenceFilter('all')}>Todos <small>{summary.friends}</small></button>
+      </>}
+      <button type="button" className={tab==='following'?'is-active':''} aria-current={tab==='following'?'page':undefined} onClick={()=>setTab('following')}>Seguindo</button>
+      <button type="button" className={tab==='followers'?'is-active':''} aria-current={tab==='followers'?'page':undefined} onClick={()=>setTab('followers')}>Seguidores</button>
+      <button type="button" className={tab==='messages'?'is-active':''} aria-current={tab==='messages'?'page':undefined} onClick={()=>setTab('messages')}>Conversas {summary.unread>0&&<small>{summary.unread}</small>}</button>
+      <button type="button" className="hb-v3055-toolbar-primary" onClick={()=>setTab('discover')}>Encontrar pessoas</button>
+    </nav>}
     <header className="hb-social-hero hb-v160-hero" id="hb-social-page-heading" tabIndex={-1}>
       <div className="hb-v160-hero-copy"><span className="hb-social-overline">HÄXBAG / SOCIAL / {info.kicker}</span><h2><span className="hb-v160-hero-icon" aria-hidden="true">{info.icon}</span>{info.title}</h2><p>{info.description}</p></div>
       <div className="hb-v160-hero-actions">
@@ -877,7 +893,7 @@ export default function FriendsPanel({ campaignId, campaignName, canInvite, acti
       </section><aside className="hb-social-feed-aside"><span className="hb-social-overline">SEU CÍRCULO</span><h3>Histórias se conectam.</h3><p>Explore a comunidade e acompanhe as aventuras de quem você segue. O chat privado abre quando o seguimento é mútuo.</p><div className="hb-v158-aside-stats"><span><strong>{summary.followers}</strong> seguidores</span><span><strong>{summary.friends}</strong> amigos</span></div><span className="hb-v232-aside-label">CONTINUE EXPLORANDO</span><div className="hb-v232-aside-links"><button type="button" onClick={()=>setTab('discover')}><span aria-hidden="true">⌕</span> Encontrar aventureiros <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setTab('communities')}><span aria-hidden="true">♧</span> Comunidades <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setTab('events')}><span aria-hidden="true">◷</span> Eventos e sessões <span aria-hidden="true">↗</span></button><button type="button" onClick={()=>setTab('messages')}><span aria-hidden="true">✉</span> Mensagens {summary.unread>0?`(${summary.unread})`:''} <span aria-hidden="true">↗</span></button></div><div className="hb-social-privacy-note">◈ Você escolhe se cada publicação será pública, para seguidores ou apenas para amigos. Bloqueios valem nos dois sentidos.</div></aside></div>}
 
     {(['friends','following','followers','blocked'] as Tab[]).includes(tab)&&<section className="hb-social-list-pane hb-v214-people-page"><div className="hb-social-pane-top"><div><span className="hb-social-overline">SEU CÍRCULO</span><h3>{{friends:'Amigos mútuos',following:'Quem você segue',followers:'Quem segue você',blocked:'Contas bloqueadas'}[tab as 'friends'|'following'|'followers'|'blocked']}</h3><p>{tab==='friends'?'Vocês se seguem mutuamente e podem conversar em particular.':tab==='following'?'Pessoas cujas novidades você quer acompanhar.':tab==='followers'?'Pessoas que escolheram acompanhar seu perfil.':'Você pode desbloquear essas contas quando quiser.'}</p></div><span className="hb-v160-result-count">{filteredPeople.length} {filteredPeople.length===1?'perfil':'perfis'}</span></div>
-      <div className="hb-v160-people-tools"><label>Buscar nesta lista<input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Nome ou @usuário" /></label><label>Ordenar<select value={peopleOrder} onChange={e=>setPeopleOrder(e.target.value as 'az'|'za')}><option value="az">Nome: A → Z</option><option value="za">Nome: Z → A</option></select></label></div><div className="hb-social-people hb-v160-people-grid">{filteredPeople.map(person=>peopleCard(person,tab))}</div>{!filteredPeople.length&&!loading&&<div className="hb-social-empty hb-v160-empty"><strong>Nenhum resultado.</strong><p>{filter?'Tente outro termo de busca.':tab==='blocked'?'Você não bloqueou ninguém.':'Explore outros perfis para ampliar sua rede.'}</p>{tab!=='blocked'&&<button type="button" onClick={()=>setTab('discover')}>Descobrir jogadores</button>}</div>}</section>}
+      <div className="hb-v160-people-tools"><label>Buscar nesta lista<input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Nome ou @usuário" /></label><label>Ordenar<select value={peopleOrder} onChange={e=>setPeopleOrder(e.target.value as 'az'|'za')}><option value="az">Nome: A → Z</option><option value="za">Nome: Z → A</option></select></label></div><div className="hb-social-people hb-v160-people-grid">{filteredPeople.map(person=>peopleCard(person,tab))}</div>{!filteredPeople.length&&!loading&&<div className="hb-social-empty hb-v160-empty"><strong>{tab==='friends'&&friendsPresenceFilter==='available'?'Nenhum amigo disponível agora.':'Nenhum resultado.'}</strong><p>{filter?'Tente outro termo de busca.':tab==='friends'&&friendsPresenceFilter==='available'?'Seus amigos aparecerão aqui quando estiverem disponíveis e compartilhando sua presença.':tab==='blocked'?'Você não bloqueou ninguém.':'Explore outros perfis para ampliar sua rede.'}</p>{tab==='friends'&&friendsPresenceFilter==='available'?<button type="button" onClick={()=>setFriendsPresenceFilter('all')}>Ver todos os amigos</button>:tab!=='blocked'&&<button type="button" onClick={()=>setTab('discover')}>Descobrir jogadores</button>}</div>}</section>}
 
     {tab==='discover'&&<section className="hb-social-list-pane hb-v214-discover"><div className="hb-social-pane-top"><div><span className="hb-social-overline">NOVAS CONEXÕES</span><h3>Descobrir aventureiros</h3><p>Busque por nome ou @usuário. Não são exibidas pessoas com quem você tenha bloqueio.</p></div></div><label className="hb-social-search-label hb-v160-discover-search"><span>Pesquisar jogadores</span><span className="hb-v160-search-input"><span aria-hidden="true">⌕</span><input type="search" value={search} onChange={event=>setSearch(event.target.value)} placeholder="Nome ou @usuário — ao menos 2 caracteres" autoComplete="off" /></span></label>
       <div className="hb-v160-discover-note">✦ Encontrou alguém interessante? Siga essa pessoa. Se ela seguir você de volta, vocês se tornam amigos e podem conversar por mensagens.</div>{searchBusy&&<p className="hb-social-loading">Procurando aventureiros…</p>}<div className="hb-social-people hb-v160-people-grid">{searchResults.map(person=>peopleCard(person,'discover'))}</div><SocialV231Suite page="discover" userId={userId} profileName={profileIdentity?.name} currentAvatar={profileIdentity?.avatar} currentUsername={profileIdentity?.username} onNavigate={next=>setTab(next)}/>{search.trim().length<2&&<div className="hb-social-empty hb-v160-empty"><strong>Conheça outros mundos.</strong><p>Digite o nome ou identificador de quem você quer encontrar.</p></div>}{search.trim().length>=2&&!searchBusy&&!searchResults.length&&<div className="hb-social-empty"><strong>Nenhum perfil encontrado.</strong><p>Confira a grafia ou tente outro nome.</p></div>}</section>}

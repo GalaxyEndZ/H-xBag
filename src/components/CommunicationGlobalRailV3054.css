@@ -1,0 +1,49 @@
+/* V305.4 — elimina a segunda rail interna no Electron.
+   O componente continua no fluxo original no navegador e em telas pequenas. */
+@media (min-width: 801px) {
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054:not(:has(.hb-comm-members)),
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054:has(.hb-comm-members) {
+    grid-template-columns:minmax(202px,var(--hb-v301-channel-width,248px)) minmax(0,1fr) !important;
+    column-gap:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054.hb-v301-channels-collapsed,
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054.hb-v301-channels-collapsed:not(:has(.hb-comm-members)),
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054.hb-v301-channels-collapsed:has(.hb-comm-members) {
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054 .hb-comm-channels {
+    grid-column:1 !important;grid-row:1 !important;min-width:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054 .hb-comm-main {
+    grid-column:2 !important;grid-row:1 !important;min-width:0 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054.hb-v301-channels-collapsed .hb-comm-main {
+    grid-column:1 !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054 .hb-v301-channel-resizer {
+    left:calc(var(--hb-v301-channel-width,248px) - 5px) !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054 .hb-v301-channel-reopen{
+    left:12px !important;
+  }
+  .app-shell.hb-polish.hb-desktop-v295.hb-desktop-v299.hb-desktop-v300.hb-desktop-v301[data-hb-space="communication"] .hb-communication-v3044
+  .hb-comm-shell-v287.hb-comm-shell-v3044.hb-comm-shared-rail-v3054.hb-v301-channels-collapsed :is(.hb-comm-chat-head,.hb-comm-voice-stage-head-v288){
+    padding-left:126px !important;
+  }
+}
+
+/* Na web o agrupamento não adiciona nenhuma coluna nem altera a ordem. */
+.hb-comm-servers-v3054 .hb-comm-rail-primary-v3054,
+.hb-comm-servers-v3054 .hb-comm-rail-secondary-v3054 {display:contents}

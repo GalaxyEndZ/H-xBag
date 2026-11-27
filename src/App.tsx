@@ -56,6 +56,8 @@ import './DesktopRedesignV299.css'
 import './DesktopSidebarV300.css'
 import './DesktopExperienceV301.css'
 import './DesktopLayoutV3051.css'
+import './DesktopGlobalRailV3054.css'
+import './DesktopCommunityLayoutV3055.css'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
 import DesktopSpaceLauncherV3051 from './components/DesktopSpaceLauncherV3051'
@@ -11577,6 +11579,31 @@ counterAttackDT
           </>
         )}
         <button type="button" className="hb-sidebar-close" onClick={() => setSidebarMobileOpen(false)} aria-label="Fechar menu lateral" title="Fechar menu lateral">✕</button>
+
+        {desktopClient && activePage === 'profile' && (
+          <nav className="hb-v3055-global-quickrail" aria-label="Atalhos do Social">
+            <button type="button" title="Feed" aria-label="Abrir feed" className={profileSection==='friends'&&socialNavigationTab==='feed'?'is-active':''} onClick={()=>openSocialTab('feed')}><span aria-hidden="true">✦</span></button>
+            <button type="button" title="Mensagens privadas" aria-label="Abrir mensagens privadas" className={profileSection==='friends'&&socialNavigationTab==='messages'?'is-active':''} onClick={()=>openSocialTab('messages')}><span aria-hidden="true">✉</span></button>
+            <button type="button" title="Amigos" aria-label="Abrir amigos" className={profileSection==='friends'&&socialNavigationTab==='friends'?'is-active':''} onClick={()=>openSocialTab('friends')}><span aria-hidden="true">♧</span></button>
+            <span className="hb-v3055-rail-divider" aria-hidden="true"/>
+            <button type="button" title="Comunidades" aria-label="Abrir comunidades" onClick={()=>openSocialTab('communities')} className={profileSection==='friends'&&socialNavigationTab==='communities'?'is-active':''}><span aria-hidden="true">♜</span></button>
+            <button type="button" title="Encontrar pessoas" aria-label="Encontrar pessoas" onClick={()=>openSocialTab('discover')} className={profileSection==='friends'&&socialNavigationTab==='discover'?'is-active':''}><span aria-hidden="true">⌕</span></button>
+          </nav>
+        )}
+        {desktopClient && activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && (
+          <nav className="hb-v3055-global-quickrail" aria-label="Atalhos do RPG">
+            <button type="button" title="Visão geral" aria-label="Abrir visão geral" className={activePage==='overview'?'is-active':''} disabled={!selectedCampaignId} onClick={()=>setActivePage('overview')}><span aria-hidden="true">◫</span></button>
+            <button type="button" title="Fichas" aria-label="Abrir fichas" className={activePage==='sheets'?'is-active':''} disabled={!selectedCampaignId} onClick={()=>{setActivePage('sheets');setSheetCharacterView(false)}}><span aria-hidden="true">▧</span></button>
+            <button type="button" title="Torre de Dados" aria-label="Abrir Torre de Dados" className={activePage==='dice-tower'?'is-active':''} disabled={!selectedCampaignId} onClick={()=>setActivePage('dice-tower')}><span aria-hidden="true">⚄</span></button>
+            <span className="hb-v3055-rail-divider" aria-hidden="true"/>
+            <button type="button" title="Campanhas" aria-label="Abrir campanhas" className={activePage==='campaigns'?'is-active':''} onClick={()=>{setActivePage('campaigns');setShowCampaignForm(false)}}><span aria-hidden="true">⚑</span></button>
+          </nav>
+        )}
+        {/* V305.4: destino da barra de servidores, portado pela Comunicação.
+            O logo acima continua sendo o seletor global em todas as áreas. */}
+        {desktopClient && activePage === 'communication' && (
+          <div id="hb-desktop-rail-servers-v3054" className="hb-desktop-rail-servers-v3054" />
+        )}
 
         <div className="hb-v301-section-panel">
         {activePage !== 'profile' && activePage !== 'minigames' && activePage !== 'communication' && <div className="hb-sidebar-style-identity" title={`Identidade visual da temporada: ${activeVisualStyle.label}`}>

@@ -1,5 +1,6 @@
 import { publicHaxbagLink, DESKTOP_PUBLIC_URL_HELP } from '../desktopPublicLinks'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import type { VoiceRoomV302 } from './voiceTypesV302'
 import type { OnlinePresenceMapV302 } from './usePresenceV302'
 import ServerRolesV303 from './ServerRolesV303'
@@ -15,6 +16,7 @@ import './CommunicationExperienceV301.css'
 import './CommunicationRedesignV3044.css'
 import './CommunicationRefinementV3045.css'
 import './CommunicationPolishV3047.css'
+import './CommunicationGlobalRailV3054.css'
 
 const TABLE = {
   servers: 'hax_v284_servers', members: 'hax_v284_members', channels: 'hax_v284_channels',
@@ -145,6 +147,15 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
   const [showPinned,setShowPinned]=useState(false)
   const [showMembers,setShowMembers]=useState(false)
   const desktopExperience = typeof window !== 'undefined' && Boolean((window as Window & {haxbagDesktop?: {enabled?:boolean}}).haxbagDesktop?.enabled)
+  const [globalServerRailV3054, setGlobalServerRailV3054] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!desktopExperience) return
+    const mq = window.matchMedia('(min-width: 801px)')
+    const sync = () => setGlobalServerRailV3054(mq.matches ? document.getElementById('hb-desktop-rail-servers-v3054') : null)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [desktopExperience])
   const [channelPanelWidth,setChannelPanelWidth] = useState(() => {
     try { return Math.max(202,Math.min(360,Number(window.localStorage.getItem('haxbag:v301:channels-width'))||248)) }
     catch { return 248 }
@@ -610,6 +621,30 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
   const focusComposer = () => { window.requestAnimationFrame(()=>composerRef.current?.focus()) }
   const scrollToRecent = () => scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:'smooth'})
 
+  // Uma única árvore React dos servidores é montada na rail global do desktop.
+  // Em web e telas pequenas, continua exatamente na posição original.
+  const serversRailV3054 = <nav className="hb-comm-servers hb-comm-servers-v3054" aria-label="Seus servidores e atalhos">
+    <span className="hb-comm-rail-label">SERVIDORES</span>
+    <div className="hb-comm-rail-primary-v3054">
+    {servers.map(s => <button key={s.id} className={`hb-comm-server-icon${serverId===s.id?' active':''}`} type="button"
+      aria-label={`Servidor ${s.name}`} title={s.name} aria-pressed={serverId===s.id}
+      onClick={() => {setServerId(s.id);setMobileSidebar(true)}}>
+      <span>{s.icon || s.name[0]}</span>
+      {serverId===s.id && <i aria-hidden="true" className="hb-comm-rail-active" />}
+      {serverId===s.id && unreadCount>0 && <i aria-hidden="true" className="hb-comm-rail-unread-v3054" />}
+    </button>)}
+    <div className="hb-comm-rail-divider" aria-hidden="true" />
+    <button className="hb-comm-server-add" type="button" title="Criar servidor" aria-label="Criar servidor" onClick={()=>openModal('create-server')}>＋</button>
+    <button className="hb-comm-server-join" type="button" title="Entrar por convite" aria-label="Entrar por convite" onClick={()=>openModal('join')}>↗</button>
+    </div>
+    <div className="hb-comm-rail-secondary-v3054">
+    {activeVoice && <button type="button" className="hb-comm-rail-live-v3054"
+      aria-label={`Voltar à chamada ${activeVoice.name}`} title={`Chamada ativa: ${activeVoice.name}`}
+      onClick={() => {setServerId(activeVoice.serverId);setChannelId(activeVoice.id);setMobileSidebar(false)}}>♫</button>}
+    <button className="hb-comm-server-dm" type="button" aria-label="Abrir mensagens privadas" title="Mensagens privadas" onClick={onOpenDirectMessages}>✉</button>
+    </div>
+  </nav>
+
   return <section className="hb-communication hb-communication-v287 hb-communication-v3044 hb-communication-v3045 hb-communication-v3047" id="hb-communication" aria-labelledby="hb-communication-title">
     <header className="hb-comm-hero hb-comm-hero-v285 hb-comm-hero-v3044">
       <div className="hb-comm-hero-copy"><span className="hb-comm-eyebrow"><span className="hb-comm-live-dot" aria-hidden="true"/> HÄXBAG / SEU ESPAÇO SOCIAL</span><h1 id="hb-communication-title">Comunicação<span className="hb-comm-title-star">✦</span></h1><p>Suas pessoas, seus servidores, suas histórias — tudo em um só lugar.</p></div>
@@ -620,15 +655,8 @@ export default function CommunicationHubV284({userId,displayName,username,avatar
     </header>
     {error&&<div className="hb-comm-banner hb-comm-banner--error" role="alert"><span>{/(?:does not exist|schema cache|PGRST205|42P01)/i.test(error)?'A tabela da Comunicação não foi encontrada. Confira a migração SQL V284 no Supabase. ':/row.level security policy.*hax_v284_servers|hax_v284_servers.*row.level security policy/i.test(error)?'A política de criação de servidores foi bloqueada. Execute o reparo RLS V286 no Supabase. ':/row.level security policy.*hax_v284_channels|hax_v284_channels.*row.level security policy/i.test(error)?'O Supabase bloqueou um canal. Execute HAXBAG_REPARO_CANAIS_RLS_V289.sql e tente novamente. ':/row.level security policy|permission denied/i.test(error)?'A política de segurança do banco recusou esta operação. ':''}{error}</span><button type="button" aria-label="Dispensar aviso" onClick={()=>setError('')}>×</button></div>}
     {notice&&<div className="hb-comm-banner" role="status"><span>{notice}</span><button type="button" aria-label="Dispensar aviso" onClick={()=>setNotice('')}>×</button></div>}
-    <div ref={channelShellRef} style={{'--hb-v301-channel-width':`${channelPanelWidth}px`} as React.CSSProperties} className={`hb-comm-shell hb-comm-shell-v285 hb-comm-shell-v287${desktopExperience?' hb-comm-v301':''}${desktopExperience&&channelsCollapsed?' hb-v301-channels-collapsed':''}${mobileSidebar?' hb-comm-shell--show-nav':''}${showMembers?' hb-comm-shell--show-members':''} hb-comm-shell-v3044 hb-comm-shell-v3045`}>
-      <aside className="hb-comm-servers" aria-label="Seus servidores">
-        <span className="hb-comm-rail-label">SERVIDORES</span>
-        {servers.map(s=><button key={s.id} className={`hb-comm-server-icon${serverId===s.id?' active':''}`} type="button" aria-label={`Servidor ${s.name}`} title={s.name} aria-pressed={serverId===s.id} onClick={()=>{setServerId(s.id);setMobileSidebar(true)}}><span>{s.icon||s.name[0]}</span>{serverId===s.id&&<i aria-hidden="true" className="hb-comm-rail-active"/>}</button>)}
-        <div className="hb-comm-rail-divider" aria-hidden="true"/><button className="hb-comm-server-add" type="button" title="Criar servidor" aria-label="Criar servidor" onClick={()=>openModal('create-server')}>＋</button>
-        <button className="hb-comm-server-join" type="button" title="Entrar por convite" aria-label="Entrar por convite" onClick={()=>openModal('join')}>↗</button>
-        <span className="hb-comm-rail-spacer"/>
-        <button className="hb-comm-server-dm" type="button" title="Mensagens privadas" onClick={onOpenDirectMessages}>✉</button>
-      </aside>
+    <div ref={channelShellRef} style={{'--hb-v301-channel-width':`${channelPanelWidth}px`} as React.CSSProperties} className={`hb-comm-shell hb-comm-shell-v285 hb-comm-shell-v287${desktopExperience?' hb-comm-v301':''}${desktopExperience&&channelsCollapsed?' hb-v301-channels-collapsed':''}${globalServerRailV3054?' hb-comm-shared-rail-v3054':''}${mobileSidebar?' hb-comm-shell--show-nav':''}${showMembers?' hb-comm-shell--show-members':''} hb-comm-shell-v3044 hb-comm-shell-v3045`}>
+      {globalServerRailV3054 ? createPortal(serversRailV3054, globalServerRailV3054) : serversRailV3054}
       <aside id="hb-comm-channel-sidebar" className="hb-comm-channels" aria-label="Canais do servidor">
         <div className="hb-comm-server-heading"><div><small>ESPAÇO ATUAL</small><h2>{server?.name||'Comunicação'}</h2></div>{server&&<span className="hb-comm-server-heading-icon" aria-hidden="true">{server.icon||'✦'}</span>}{desktopExperience&&<button type="button" className="hb-v301-channel-collapse" title="Recolher lista de canais" aria-label="Recolher lista de canais" onClick={toggleChannelsCollapsed}>«</button>}</div>
         {server?<>

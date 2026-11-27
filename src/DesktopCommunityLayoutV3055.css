@@ -1,0 +1,156 @@
+/* HäxBag V305.5 — layout de três regiões, inspirado na ergonomia de mensageiros de desktop.
+   Identidade HäxBag e fluxo existente mantidos. Somente Electron >= 801px. */
+.hb-v3055-global-quickrail, .hb-v3055-friends-toolbar{display:none}
+@media (min-width:801px) {
+  .app-shell.hb-polish.hb-desktop-v301 {
+    --hb-v3055-outline:color-mix(in srgb,var(--season-line,#3a444e) 70%,transparent);
+    --hb-v3055-soft:color-mix(in srgb,var(--season-surface,#151f27) 80%,var(--season-bg,#0d1218));
+  }
+  /* Navegação principal tem três níveis: rail, contexto e conteúdo. */
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail {
+    grid-column:1!important;grid-row:2!important;
+    align-self:stretch;justify-self:stretch;
+    display:flex;flex-direction:column;align-items:center;
+    gap:10px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+    padding:17px 6px 12px;border-right:1px solid var(--hb-v3055-outline);
+    min-height:0;position:relative;z-index:1;
+  }
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail::-webkit-scrollbar{display:none}
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail button{
+    width:44px;height:44px;min-height:44px;flex:0 0 44px;
+    padding:0;display:grid;place-items:center;
+    border:1px solid transparent;border-radius:16px;
+    background:color-mix(in srgb,var(--season-surface,#19232d) 80%,transparent);
+    color:var(--season-muted,#b8b8bb);font-size:23px;
+    transition:background .15s,border-radius .15s,border-color .15s;
+  }
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail button:hover:not(:disabled),
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail button.is-active{
+    border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 40%,var(--hb-v3055-outline));
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 15%,var(--season-surface,#19232d));
+    color:var(--season-text,#f0f0ea);border-radius:12px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail button:disabled{opacity:.38;cursor:not-allowed}
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-global-quickrail button:focus-visible{
+    outline:2px solid var(--season-primary,#d9bd8b);outline-offset:2px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301 .hb-v3055-rail-divider{display:block;flex:0 0 1px;width:32px;height:1px;background:var(--hb-v3055-outline);margin:1px auto}
+  /* A coluna de navegação deixa de parecer um card isolado. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v301-section-panel,
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel{
+    background:linear-gradient(180deg,var(--hb-v3055-soft),color-mix(in srgb,var(--season-bg,#10161e) 94%,black));
+    border-right:1px solid var(--hb-v3055-outline);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v301-section-panel .hb-sidebar-nav,
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="rpg"] .hb-v301-section-panel .hb-sidebar-nav{padding:15px 10px!important;gap:12px!important}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v301-section-panel .nav-link{
+    min-height:40px!important;border-radius:9px!important;padding:8px 11px!important;
+  }
+  /* O Social já utiliza a navegação contextual do App. O menu duplicado dentro da página some. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v158-social-columns{
+    display:block!important;grid-template-columns:minmax(0,1fr)!important;gap:0!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v158-social-sidebar{
+    display:none!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v158-social-content{
+    width:100%!important;max-width:none!important;margin:0!important;min-width:0!important;gap:12px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] #hb-social-hub,
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel{width:100%!important;max-width:none!important;min-width:0!important}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel{
+    padding:0!important;background:transparent!important;border:0!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar {
+    display:flex;align-items:center;gap:6px;min-height:55px;padding:8px 14px;
+    border:1px solid var(--hb-v3055-outline);border-radius:12px;
+    background:color-mix(in srgb,var(--season-surface,#18212a) 88%,var(--season-bg,#090f14));
+    flex-wrap:wrap;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-toolbar-title{
+    display:inline-flex;align-items:center;gap:10px;white-space:nowrap;font-size:13px;
+    color:var(--season-text,#eee);padding:0 10px 0 4px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-toolbar-title>span{font-size:19px;color:var(--season-muted,#aaa)}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-toolbar-divider{
+    display:block;flex:0 0 1px;width:1px;height:22px;background:var(--hb-v3055-outline);margin:0 4px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar button{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    border:1px solid transparent;border-radius:8px;background:transparent;
+    padding:8px 10px;color:var(--season-muted,#bdc1c5);font-size:12px;font-weight:700;
+    min-height:34px;white-space:nowrap;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar button:is(:hover,.is-active){
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 12%,transparent);
+    border-color:color-mix(in srgb,var(--season-primary,#d9bd8b) 18%,transparent);
+    color:var(--season-text,#eee);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar button small{
+    min-width:18px;min-height:17px;text-align:center;padding:1px 5px;border-radius:6px;
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 15%,transparent);
+    color:var(--season-text,#eee);font-size:10px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar .hb-v3055-toolbar-primary{
+    background:var(--season-primary,#d9bd8b);color:var(--season-on-primary,#161719);margin-left:auto;
+    border-color:transparent;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar .hb-v3055-toolbar-primary:hover{
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 89%,white);color:var(--season-on-primary,#161719);
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel:is(.hb-social-page-friends,.hb-social-page-following,.hb-social-page-followers,.hb-social-page-messages,.hb-social-page-discover) .hb-social-hero,
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel:is(.hb-social-page-friends,.hb-social-page-following,.hb-social-page-followers,.hb-social-page-messages,.hb-social-page-discover) .hb-v180-quickbar,
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel:is(.hb-social-page-friends,.hb-social-page-following,.hb-social-page-followers,.hb-social-page-messages,.hb-social-page-discover) .hb-v160-stats{display:none!important}
+  /* Os amigos viram linhas legíveis, sem grade de cartões repetidos. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel:is(.hb-social-page-friends,.hb-social-page-following,.hb-social-page-followers) .hb-social-list-pane{
+    padding:8px 14px 18px!important;border:0!important;border-radius:12px!important;background:transparent!important;min-height:0!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel:is(.hb-social-page-friends,.hb-social-page-following,.hb-social-page-followers) .hb-v160-people-grid{
+    grid-template-columns:minmax(0,1fr)!important;gap:0!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel:is(.hb-social-page-friends,.hb-social-page-following,.hb-social-page-followers) .hb-social-person{
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    flex-wrap:nowrap!important;width:100%!important;gap:12px!important;
+    padding:11px 9px!important;min-height:68px!important;
+    background:transparent!important;border:0!important;
+    border-bottom:1px solid var(--hb-v3055-outline)!important;
+    border-radius:0!important;box-shadow:none!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-social-person:hover{
+    background:color-mix(in srgb,var(--season-primary,#d9bd8b) 5%,var(--season-surface,#19232c))!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-social-person-name{
+    flex:1 1 auto!important;width:auto!important;min-width:0!important;display:flex!important;
+    align-items:center;gap:12px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v3055-presence-avatar{
+    position:relative;display:inline-flex;flex:0 0 45px;width:45px;height:45px;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v3055-presence-avatar .hb-social-avatar{
+    width:45px!important;height:45px!important;border-radius:50%!important;overflow:hidden;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-presence-dot{
+    display:block;position:absolute;width:13px;height:13px;right:-1px;bottom:0;
+    border:3px solid var(--season-bg,#0d151b);border-radius:50%;background:#70757c;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-presence-dot.is-available{background:#56c28c}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-presence-dot.is-busy{background:#db9070}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-presence-dot.is-hidden{background:#75818a}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-social-person-actions{
+    display:flex!important;width:auto!important;flex:0 0 auto!important;gap:6px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-social-person-actions>button{
+    flex:0 0 auto!important;min-height:34px!important;padding:6px 10px!important;
+  }
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v160-people-tools{max-width:100%;gap:12px}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-v160-people-tools label:first-child{flex:1 1 260px;max-width:660px}
+  /* Mensagens privadas mantêm sua própria lista de contatos, sem segunda barra de navegação da comunidade. */
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel.hb-social-page-messages .hb-social-chat-shell{
+    border-radius:14px!important;min-height:min(610px,calc(100dvh - 180px));
+  }
+}
+@media (min-width:801px) and (max-width:1150px) {
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar{gap:3px;padding:8px}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-v3055-friends-toolbar button{padding:7px 8px;font-size:11px}
+  .app-shell.hb-polish.hb-desktop-v301[data-hb-space="social"] .hb-friends-panel .hb-social-person-actions>button{padding:5px 7px!important;font-size:11px}
+}
