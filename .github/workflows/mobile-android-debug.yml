@@ -1,0 +1,72 @@
+name: HäxBag Mobile — APK de teste (Android)
+
+# O APK é solicitado manualmente; não interfere nas releases do Electron.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Obter código-fonte
+        uses: actions/checkout@v5
+
+      - name: Configurar Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Validar variáveis públicas da aplicação
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          test -n "$SUPABASE_URL" || { echo 'Falta o secret VITE_SUPABASE_URL'; exit 1; }
+          test -n "$SUPABASE_PUBLISHABLE_KEY" || { echo 'Falta VITE_SUPABASE_PUBLISHABLE_KEY'; exit 1; }
+          case "$SUPABASE_URL" in https://*) ;; *) echo 'A URL do Supabase deve ser HTTPS'; exit 1 ;; esac
+
+      - name: Instalar dependências do projeto
+        run: npm install --no-audit --no-fund
+
+      - name: Testar integridade e atualizador
+        run: |
+          npm run mobile:check
+          npm run test:updater
+
+      - name: Compilar React e Vite para Android
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_HAXBAG_PUBLIC_URL: ${{ vars.VITE_HAXBAG_PUBLIC_URL }}
+          VITE_HAXBAG_VOICE_ICE_URL: ${{ vars.VITE_HAXBAG_VOICE_ICE_URL }}
+        run: npm run build
+
+      - name: Instalar Capacitor isolado do desktop
+        run: npm run mobile:deps
+
+      - name: Preparar SDK Android
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Gerar projeto Android e APK debug
+        run: npm run mobile:apk
+
+      - name: Publicar APK como artefato da execução
+        uses: actions/upload-artifact@v4
+        with:
+          name: HaxBag-Mobile-Android-Debug
+          path: mobile/output/*.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -29,3 +29,12 @@ dist-ssr
 
 # HäxBag Desktop
 dist-desktop/
+
+# HäxBag Mobile / Capacitor
+mobile/node_modules/
+mobile/output/*.apk
+mobile/output/*.aab
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/**/build/
+mobile/.env*

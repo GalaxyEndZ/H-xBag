@@ -1,7 +1,8 @@
+import { isHaxbagMobileNative } from './mobile/runtime'
 /** Compartilhamentos saem sempre pelo site HTTPS, não pelo protocolo local do Electron. */
 export function publicHaxbagLink(values: Record<string, string>): string {
   let url: URL
-  if (window.location.protocol === 'haxbag:') {
+  if (window.location.protocol === 'haxbag:' || isHaxbagMobileNative()) {
     const configured = String(import.meta.env.VITE_HAXBAG_PUBLIC_URL || '').trim()
     if (!configured) return ''
     try {

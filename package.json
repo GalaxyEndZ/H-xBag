@@ -1,7 +1,7 @@
 {
   "name": "haxbag",
   "private": true,
-  "version": "0.305.12",
+  "version": "0.306.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,7 +14,12 @@
     "desktop:unpacked": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win --dir --x64 --publish never",
     "desktop:release": "npm run build && electron-builder --config desktop/electron-builder.config.cjs --win nsis --x64 --publish always",
     "desktop:check-feed": "node desktop/check-public-release.cjs",
-    "test:updater": "node --test tests/desktop-update.test.cjs"
+    "test:updater": "node --test tests/desktop-update.test.cjs",
+    "mobile:deps": "npm install --prefix mobile --no-audit --no-fund",
+    "mobile:android:sync": "node mobile/scripts/android.mjs sync",
+    "mobile:android:open": "node mobile/scripts/android.mjs open",
+    "mobile:apk": "node mobile/scripts/android.mjs apk",
+    "mobile:check": "node mobile/scripts/check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",

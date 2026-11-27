@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from './supabase'
+import { isHaxbagMobileNative } from './mobile/runtime'
 import './Auth.css'
 
 type AuthMode = 'login' | 'signup' | 'recover'
@@ -157,7 +158,11 @@ export default function Auth() {
     setLoading(true)
     setFeedback(null)
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail)
+      // Links de recuperação continuam no site HTTPS; nunca usar o localhost do WebView.
+      const recoverySite = String(import.meta.env.VITE_HAXBAG_PUBLIC_URL || '').trim()
+      const mobileRecoveryUrl = isHaxbagMobileNative() && recoverySite.startsWith('https://') ? recoverySite : undefined
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail,
+        mobileRecoveryUrl ? { redirectTo: mobileRecoveryUrl } : undefined)
       if (error) throw error
       setFeedback({ kind: 'success', text: 'Se esse e-mail estiver cadastrado, você receberá um link de recuperação. Confira também a pasta de spam.' })
     } catch (error) {

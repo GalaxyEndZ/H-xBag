@@ -62,6 +62,8 @@ import './DesktopSocialPolishV3056.css'
 import './DesktopNavRefinementV30510.css'
 import './DesktopNavPolishV30512.css'
 import SocialSidebarGroupV3056 from './components/SocialSidebarGroupV3056'
+import MobileTabsV306 from './mobile/MobileTabsV306'
+import { isHaxbagMobileNative } from './mobile/runtime'
 import DesktopWorkspaceControls from './components/DesktopWorkspaceControlsV301'
 import DesktopUpdateCenter from './components/DesktopUpdateCenter'
 import DesktopSpaceLauncherV3051 from './components/DesktopSpaceLauncherV3051'
@@ -19838,6 +19840,15 @@ style={{cursor:'pointer'}}>
           </div>
         </main>
         {activeVoiceRoomV302 && <Suspense fallback={null}><VoiceDockV302 key={activeVoiceRoomV302.id} room={activeVoiceRoomV302} userId={session.user.id} label={String(displayName)} avatarUrl={profilePhotoUrls.avatar} activeSpace={presenceActivityV302} onLeave={()=>setActiveVoiceRoomV302(null)} /></Suspense>}
+        {isHaxbagMobileNative() && <MobileTabsV306
+          active={activePage === 'profile' ? 'social' : activePage === 'communication' ? 'communication' : activePage === 'minigames' ? 'minigames' : 'rpg'}
+          menuOpen={sidebarMobileOpen}
+          onSocial={openSocialSpace}
+          onRpg={openRpgSpace}
+          onCommunication={openCommunicationSpace}
+          onMinigames={openMinigamesSpace}
+          onMenu={() => setSidebarMobileOpen(value => !value)}
+        />}
         <nav className="hb-mobile-session-dock" aria-label="Acesso rápido no celular">
           {activePage === 'communication' ? <>
             <button type="button" className="active" aria-current="page" onClick={openCommunicationSpace}><span aria-hidden="true">✉</span><small>Conversas</small></button>
